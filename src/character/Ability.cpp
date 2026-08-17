@@ -25,25 +25,35 @@ void AbilityScores::adjust(Ability a, int delta) {
     }
 }
 
-int hpAdjustmentForConstitution(int constitution) {
-    if (constitution <= 3) return -3;
-    if (constitution <= 6) return -2;
-    if (constitution <= 8) return -1;
+int hpAdjustmentForConstitution(int constitution, bool isWarrior) {
+    if (constitution <= 3) return -2;
+    if (constitution <= 6) return -1;
     if (constitution <= 14) return 0;
-    if (constitution <= 16) return 1;
-    if (constitution <= 17) return 2;
-    return 3; // 18+
+    if (constitution == 15) return 1;
+    if (constitution == 16) return 2;
+    if (constitution == 17) return isWarrior ? 3 : 2;
+    return isWarrior ? 4 : 2; // 18+
 }
 
 int acAdjustmentForDexterity(int dexterity) {
-    if (dexterity <= 3) return -3;
-    if (dexterity <= 5) return -2;
-    if (dexterity <= 6) return -1;
+    if (dexterity <= 3) return -4;
+    if (dexterity == 4) return -3;
+    if (dexterity == 5) return -2;
+    if (dexterity == 6) return -1;
     if (dexterity <= 14) return 0;
-    if (dexterity <= 15) return 1;
-    if (dexterity <= 16) return 2;
-    if (dexterity <= 17) return 3;
+    if (dexterity == 15) return 1;
+    if (dexterity == 16) return 2;
+    if (dexterity == 17) return 3;
     return 4; // 18+
+}
+
+int constitutionMagicResistanceBonus(int constitution) {
+    if (constitution < 4) return 0;
+    if (constitution <= 6) return 1;
+    if (constitution <= 10) return 2;
+    if (constitution <= 13) return 3;
+    if (constitution <= 17) return 4;
+    return 5; // 18-19
 }
 
 } // namespace character

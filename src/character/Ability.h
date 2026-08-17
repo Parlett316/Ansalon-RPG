@@ -29,9 +29,22 @@ struct AbilityScores {
 // INT/WIS (spell bonuses), and CHA (reactions) all have their own 2e
 // tables too, but nothing in the game reads them yet -- deferred until
 // combat/spellcasting exist to use them (see docs/CHARACTER_NOTES.md).
-// Values below are best-effort from memory of the 2e PHB tables; spot-check
-// against the books.
-int hpAdjustmentForConstitution(int constitution);
+// Values below are transcribed from the 2e Player's Handbook (revised),
+// Table 2 (Dexterity, p.20) and Table 3 (Constitution, p.21).
+//
+// `isWarrior` matters only at Constitution 17-18: per Table 3's footnote,
+// only warrior-group classes (here, just Fighter) get the full bonus there
+// (+3/+4); every other class caps at +2 regardless of Constitution.
+int hpAdjustmentForConstitution(int constitution, bool isWarrior);
 int acAdjustmentForDexterity(int dexterity); // positive = better (lower) AC
+
+// Table 9 (Constitution Saving Throw Bonuses, p.28) -- the "+1 per 3.5
+// points of Constitution" bonus Dwarves, Gnomes, Halflings, and (per
+// Dragonlance Adventures, p.53) Kender get against magical wands, staves,
+// rods, and spells -- and, for Dwarves/Halflings/Kender specifically, also
+// against poison (see character::Race for which categories each race
+// applies this to). Returns 0 below the table's range (Constitution 3, reachable
+// via 3d6, isn't covered by the printed table).
+int constitutionMagicResistanceBonus(int constitution);
 
 } // namespace character

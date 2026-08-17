@@ -6,6 +6,12 @@ build/
 # to be committed or redistributed. See docs/MAP_NOTES.md.
 DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg
 
+# Source rulebook PDFs (Player's Handbook, DMG, Dragonlance sourcebooks) --
+# copyrighted TSR/Wizards of the Coast material, kept locally only as a
+# reference to verify game-rule numbers against. Not meant to be committed
+# or redistributed. See docs/CHARACTER_NOTES.md.
+*.pdf
+
 # Generated preview from tools/generate_overworld.py -- an inspection aid,
 # not game data (data/overworld.grid is the real output and IS committed).
 data/overworld_preview.png

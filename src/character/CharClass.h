@@ -43,10 +43,12 @@ struct ClassInfo {
     Ability primeRequisite;
     int primeRequisiteMinimum;
     int hitDieSides;
-    SavingThrows level1Saves; // best-effort from memory of the 2e PHB save tables -- verify
+    SavingThrows level1Saves;
     int goldDiceCount;
     int goldDiceSides;
-    int goldMultiplier; // starting gold = roll(goldDiceCount, goldDiceSides) * goldMultiplier
+    int goldFlatBonus;  // added to the dice roll BEFORE multiplying (Table 43's Mage row is
+                         // "(1d4+1) x 10", not a flat NdM -- this field exists for that case)
+    int goldMultiplier; // starting gold = (roll(goldDiceCount, goldDiceSides) + goldFlatBonus) * goldMultiplier
 };
 
 const ClassInfo& classInfo(ClassId id);

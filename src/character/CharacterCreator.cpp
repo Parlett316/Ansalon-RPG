@@ -96,12 +96,19 @@ Character CharacterCreator::run() {
     printScores(scores);
     character.scores = scores;
 
+    bool raceCanBeMage = raceInfo(character.race).canBeMage;
     std::cout << "\nChoose a class:\n";
     for (size_t i = 0; i < kAllClasses.size(); ++i) {
         const ClassInfo& c = classInfo(kAllClasses[i]);
         bool qualifies = scores.get(c.primeRequisite) >= c.primeRequisiteMinimum;
-        std::cout << "  " << (i + 1) << ". " << c.name
-                   << (qualifies ? "" : "  (does not meet prime requisite)") << "\n";
+        bool blockedByRace = c.id == ClassId::Mage && !raceCanBeMage;
+        std::cout << "  " << (i + 1) << ". " << c.name;
+        if (blockedByRace) {
+            std::cout << "  (kender have innate magic resistance and cannot learn arcane magic)";
+        } else if (!qualifies) {
+            std::cout << "  (does not meet prime requisite)";
+        }
+        std::cout << "\n";
     }
     int classChoice = promptChoice("> ", 1, static_cast<int>(kAllClasses.size()));
     character.charClass = kAllClasses[static_cast<size_t>(classChoice - 1)];
@@ -113,19 +120,18 @@ Character CharacterCreator::run() {
     }
     character.alignment = static_cast<Alignment>(promptChoice("> ", 1, 9) - 1);
 
-    character.maxHp = std::max(1, chosenClass.hitDieSides + hpAdjustmentForConstitution(scores.constitution));
+    bool isWarrior = character.charClass == ClassId::Fighter;
+    character.maxHp = std::max(1, chosenClass.hitDieSides + hpAdjustmentForConstitution(scores.constitution, isWarrior));
     character.currentHp = character.maxHp;
     character.armorClass = 10 - acAdjustmentForDexterity(scores.dexterity);
     character.thac0 = 20; // true to 2e: every class starts at THAC0 20, diverging only as levels are gained
 
     character.saves = chosenClass.level1Saves;
-    for (const auto& bonus : raceInfo(character.race).saveBonuses) {
-        if (bonus.bonus != 0) {
-            character.saves.at(bonus.category) -= bonus.bonus; // lower target number = easier save
-        }
-    }
+    applyRacialSavingThrowBonus(character.race, scores.constitution, character.saves);
 
-    character.goldPieces = roll(chosenClass.goldDiceCount, chosenClass.goldDiceSides) * chosenClass.goldMultiplier;
+    character.goldPieces =
+        (roll(chosenClass.goldDiceCount, chosenClass.goldDiceSides) + chosenClass.goldFlatBonus) *
+        chosenClass.goldMultiplier;
 
     std::cout << "\n=== " << character.name << " ===\n";
     std::cout << raceInfo(character.race).name << " " << chosenClass.name << ", "
