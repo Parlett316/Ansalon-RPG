@@ -1,35 +1,25 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 namespace world {
 
-// A single road leading from one Location to another. Roads are declared on
-// both ends in data/locations.txt (see docs/MAP_NOTES.md) -- the format does
-// not infer a reverse connection automatically, so a one-way road is
-// possible simply by omitting the CONNECT line on the far end.
-struct Connection {
-    std::string targetId;
-    int travelDays = 0;
-    std::string roadDescription;
-};
-
-// A single named place on the map. Plain data -- all behavior (loading,
-// rendering, travel) lives in WorldLoader/World/MapRenderer/GameLoop so this
-// struct stays easy to extend (e.g. adding shops, NPCs) without touching
-// unrelated code.
+// A single named place on the overworld map. Plain data -- all behavior
+// (loading, rendering, movement) lives elsewhere. x/y are tile coordinates
+// in the SAME coordinate space as OverworldGrid (see docs/MAP_NOTES.md for
+// how these were chosen: approximate, from relative geography, not
+// pixel-measured off the reference image's tiny labels).
 struct Location {
-    std::string id;           // stable key, e.g. "solace" -- used in CONNECT and GameState
-    std::string name;         // display name, e.g. "Solace"
-    std::string region;       // e.g. "Abanasinia" -- unused by logic today, reserved for the
-                               // future timeline engine to scope canon events by region
-    std::string terrain;      // free-form tag, e.g. "forest-town"
-    char glyph = '?';         // single ASCII character drawn on the schematic map
-    int row = 0;               // schematic (stylized, not geographic) grid position
-    int col = 0;
+    std::string id;        // stable key, e.g. "solace"
+    std::string name;      // display name, e.g. "Solace"
+    std::string region;    // e.g. "Abanasinia" -- unused by logic today, reserved for the
+                            // future timeline engine to scope canon events by region
+    std::string terrain;   // free-form descriptive tag (informational -- actual walkable
+                            // terrain under the location comes from OverworldGrid)
+    char glyph = '?';      // single ASCII character drawn on the overworld viewport
+    int x = 0;
+    int y = 0;
     std::string description;
-    std::vector<Connection> connections;
 };
 
 } // namespace world

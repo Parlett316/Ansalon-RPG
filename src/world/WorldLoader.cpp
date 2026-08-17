@@ -4,7 +4,6 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include <unordered_set>
 #include <utility>
 
 namespace world {
@@ -31,25 +30,6 @@ std::pair<std::string, std::string> splitKeyword(const std::string& line) {
     throw std::runtime_error("locations.txt:" + std::to_string(lineNumber) + ": " + message);
 }
 
-// Parses `targetId days "quoted road description"` as used by CONNECT lines.
-Connection parseConnection(const std::string& rest, const std::string& locationId, int lineNumber) {
-    std::istringstream iss(rest);
-    std::string targetId;
-    int days = 0;
-    if (!(iss >> targetId >> days)) {
-        fail(lineNumber, "malformed CONNECT in location '" + locationId +
-                             "' (expected: CONNECT id days \"text\")");
-    }
-    std::string remainder;
-    std::getline(iss, remainder);
-    remainder = trim(remainder);
-    if (remainder.size() < 2 || remainder.front() != '"' || remainder.back() != '"') {
-        fail(lineNumber, "CONNECT road description must be wrapped in double quotes (location '" +
-                              locationId + "')");
-    }
-    return Connection{targetId, days, remainder.substr(1, remainder.size() - 2)};
-}
-
 } // namespace
 
 void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
@@ -58,7 +38,6 @@ void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
         throw std::runtime_error("Could not open world data file: " + path);
     }
 
-    std::vector<Location> locations;
     Location current;
     bool inLocation = false;
     std::string line;
@@ -88,18 +67,16 @@ void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
             current.glyph = rest.empty() ? '?' : rest[0];
         } else if (keyword == "POS") {
             std::istringstream iss(rest);
-            if (!(iss >> current.row >> current.col)) {
-                fail(lineNumber, "malformed POS (expected: POS row col)");
+            if (!(iss >> current.x >> current.y)) {
+                fail(lineNumber, "malformed POS (expected: POS x y)");
             }
-            if (current.row < 0 || current.col < 0) {
-                fail(lineNumber, "POS row/col must be non-negative");
+            if (current.x < 0 || current.y < 0) {
+                fail(lineNumber, "POS x/y must be non-negative");
             }
         } else if (keyword == "DESC") {
             current.description = rest;
-        } else if (keyword == "CONNECT") {
-            current.connections.push_back(parseConnection(rest, current.id, lineNumber));
         } else if (keyword == "END") {
-            locations.push_back(current);
+            outWorld.addLocation(current);
             inLocation = false;
         } else {
             fail(lineNumber, "unknown keyword '" + keyword + "'");
@@ -108,23 +85,6 @@ void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
 
     if (inLocation) {
         throw std::runtime_error("locations.txt: reached end of file inside a LOCATION block missing END");
-    }
-
-    // Validate every CONNECT target refers to a location that actually
-    // exists, once, here -- see the rationale in WorldLoader.h.
-    std::unordered_set<std::string> ids;
-    for (const auto& loc : locations) ids.insert(loc.id);
-    for (const auto& loc : locations) {
-        for (const auto& conn : loc.connections) {
-            if (!ids.count(conn.targetId)) {
-                throw std::runtime_error("locations.txt: location '" + loc.id +
-                                          "' has a CONNECT to unknown location '" + conn.targetId + "'");
-            }
-        }
-    }
-
-    for (auto& loc : locations) {
-        outWorld.addLocation(std::move(loc));
     }
 }
 

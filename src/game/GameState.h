@@ -5,16 +5,15 @@
 
 namespace game {
 
-// Everything about the player's current situation in the world.
-// Deliberately minimal for milestone 1: dayCount is a plain counter, not a
-// real in-world calendar, and there is no Character yet. Both are known
-// extension points for later milestones (see docs/ARCHITECTURE.md) -- when
-// they're built, add fields to THIS struct rather than introducing a
-// parallel state object, so GameLoop/MapRenderer/the future timeline engine
-// all keep reading from one source of truth.
+// The player's position and progress in the world. x/y are overworld tile
+// coordinates (same space as world::OverworldGrid). hoursElapsed is the
+// single source of truth for in-game time -- day/hour are derived from it
+// (hoursElapsed/24, hoursElapsed%24) wherever displayed, rather than
+// tracked as separate fields, so they can never drift out of sync.
 struct GameState {
-    std::string currentLocationId;
-    int dayCount = 0;
+    int x = 0;
+    int y = 0;
+    long long hoursElapsed = 0;
     std::unordered_set<std::string> visitedLocations;
 };
 

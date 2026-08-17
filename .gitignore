@@ -6,6 +6,10 @@ build/
 # to be committed or redistributed. See docs/MAP_NOTES.md.
 DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg
 
+# Generated preview from tools/generate_overworld.py -- an inspection aid,
+# not game data (data/overworld.grid is the real output and IS committed).
+data/overworld_preview.png
+
 # Editor/IDE cruft
 .vs/
 *.user

@@ -1,29 +1,31 @@
 #pragma once
 
 #include "game/GameState.h"
+#include "world/OverworldGrid.h"
 #include "world/World.h"
 
 #include <string>
 
 namespace game {
 
-// Owns the read -> parse -> update -> render cycle. This is the one class
-// that knows about World, GameState, and rendering all at once --
-// everything else (World, MapRenderer, Command) is deliberately kept from
-// depending on the others so they stay independently reusable once later
-// milestones (character, timeline, combat) need to plug in here too.
+// Owns the render -> read-key -> update cycle. Movement is dispatched
+// directly from render::Key -- there is no verb/command parser anymore
+// (Command.h/.cpp was deleted in Milestone 2): a per-keystroke walking game
+// doesn't fit a "type a word, press enter" model. See docs/ARCHITECTURE.md.
 class GameLoop {
 public:
-    GameLoop(const world::World& world, GameState initialState);
+    GameLoop(const world::World& world, const world::OverworldGrid& grid, GameState initialState);
 
     void run();
 
 private:
-    void handleGo(const std::string& destinationName);
-    void printHelp() const;
+    void tryMove(int dx, int dy);
+    void look();
 
     const world::World& world_;
+    const world::OverworldGrid& grid_;
     GameState state_;
+    std::string message_; // transient, shown for one frame then cleared
 };
 
 } // namespace game

@@ -9,9 +9,10 @@ add_executable(ansalon_rpg
     src/main.cpp
     src/world/World.cpp
     src/world/WorldLoader.cpp
+    src/world/Terrain.cpp
+    src/world/OverworldGrid.cpp
     src/render/Console.cpp
     src/render/MapRenderer.cpp
-    src/game/Command.cpp
     src/game/GameLoop.cpp
 )
 # Source files are listed explicitly rather than globbed on purpose: adding a
@@ -28,7 +29,7 @@ endif()
 # Both branches are written now even though only MSVC is in use today, so
 # this file is already ready for a future GCC/Clang build.
 
-# The game loads its location/road data from data/locations.txt at runtime.
+# The game loads data/locations.txt and data/overworld.grid at runtime.
 # Resolving that path relative to the *running executable* would need
 # platform-specific APIs (GetModuleFileName on Windows, /proc/self/exe on
 # Linux) that would leak platform code outside render/Console.cpp. Instead,

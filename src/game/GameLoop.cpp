@@ -1,102 +1,89 @@
 #include "game/GameLoop.h"
-#include "game/Command.h"
+#include "render/Console.h"
 #include "render/MapRenderer.h"
+#include "world/Terrain.h"
 
-#include <iostream>
+#include <cmath>
+#include <sstream>
 
 namespace game {
 
-GameLoop::GameLoop(const world::World& world, GameState initialState)
-    : world_(world), state_(std::move(initialState)) {}
+namespace {
+
+// Grid y grows downward (row 0 is the top), so "north" is negative dy --
+// easy to get backwards, worth calling out.
+const char* compassDirection(int dx, int dy) {
+    constexpr double kPi = 3.14159265358979323846;
+    double angle = std::atan2(static_cast<double>(-dy), static_cast<double>(dx)); // 0 = east, increases counter-clockwise
+    static const char* kDirs[8] = {"east", "northeast", "north", "northwest",
+                                    "west", "southwest", "south", "southeast"};
+    int index = static_cast<int>(std::lround(angle / (kPi / 4.0))) & 7;
+    return kDirs[index];
+}
+
+} // namespace
+
+GameLoop::GameLoop(const world::World& world, const world::OverworldGrid& grid, GameState initialState)
+    : world_(world), grid_(grid), state_(std::move(initialState)) {}
 
 void GameLoop::run() {
-    render::MapRenderer::drawLocationScene(world_, state_);
-    std::cout << "\nType 'help' for a list of commands.\n";
-
-    std::string line;
     for (;;) {
-        std::cout << "\n> ";
-        if (!std::getline(std::cin, line)) {
-            // EOF (input redirected/piped and exhausted) ends the game
-            // gracefully instead of spinning on a failed read.
-            std::cout << "\n";
-            break;
-        }
+        render::MapRenderer::drawFrame(grid_, world_, state_, message_);
+        message_.clear();
 
-        ParsedCommand cmd = parseCommand(line);
-        switch (cmd.verb) {
-            case Verb::Look:
-                render::MapRenderer::drawLocationScene(world_, state_);
-                break;
-            case Verb::Map:
-                render::MapRenderer::drawSchematic(world_, state_);
-                break;
-            case Verb::Go:
-                handleGo(cmd.argument);
-                break;
-            case Verb::Help:
-                printHelp();
-                break;
-            case Verb::Quit:
-                std::cout << "Farewell, traveler.\n";
-                return;
-            case Verb::Unknown:
-            default:
-                std::cout << "I don't understand that. Type 'help' for commands.\n";
-                break;
+        switch (render::Console::readKey()) {
+            case render::Key::North:     tryMove(0, -1); break;
+            case render::Key::South:     tryMove(0, 1);  break;
+            case render::Key::East:      tryMove(1, 0);  break;
+            case render::Key::West:      tryMove(-1, 0); break;
+            case render::Key::NorthEast: tryMove(1, -1); break;
+            case render::Key::NorthWest: tryMove(-1, -1); break;
+            case render::Key::SouthEast: tryMove(1, 1);  break;
+            case render::Key::SouthWest: tryMove(-1, 1); break;
+            case render::Key::Look:      look(); break;
+            case render::Key::Quit:      return;
+            case render::Key::Unknown:   break;
         }
     }
 }
 
-void GameLoop::handleGo(const std::string& destinationName) {
-    if (destinationName.empty()) {
-        std::cout << "Go where? Try: go <place name>\n";
+void GameLoop::tryMove(int dx, int dy) {
+    int nx = state_.x + dx;
+    int ny = state_.y + dy;
+    const world::TerrainInfo& terrain = world::terrainFor(grid_.terrainCodeAt(nx, ny));
+    if (!terrain.passable) {
+        message_ = "You cannot cross " + std::string(terrain.name) + " on foot.";
         return;
     }
-
-    // Safe to dereference without a null check: state_.currentLocationId is
-    // seeded in main.cpp from an id validated to exist in World, and is only
-    // ever reassigned below to dest->id, which World::findByName guarantees
-    // is a real location. See docs/GOTCHAS.md.
-    const world::Location* current = world_.getLocation(state_.currentLocationId);
-
-    const world::Location* dest = world_.findByName(destinationName);
-    if (!dest) {
-        std::cout << "You've never heard of a place called \"" << destinationName << "\".\n";
-        return;
+    state_.x = nx;
+    state_.y = ny;
+    state_.hoursElapsed += terrain.hoursToCross;
+    if (const world::Location* here = world_.locationAt(nx, ny)) {
+        state_.visitedLocations.insert(here->id);
     }
-
-    const world::Connection* road = nullptr;
-    for (const auto& conn : current->connections) {
-        if (conn.targetId == dest->id) {
-            road = &conn;
-            break;
-        }
-    }
-    if (!road) {
-        std::cout << "There is no direct road from " << current->name << " to " << dest->name << ".\n";
-        return;
-    }
-
-    std::cout << "\nYou travel " << road->roadDescription << ".\n";
-    state_.dayCount += road->travelDays;
-    state_.currentLocationId = dest->id;
-    state_.visitedLocations.insert(dest->id);
-    std::cout << "(" << road->travelDays << " day" << (road->travelDays == 1 ? "" : "s")
-               << " pass" << (road->travelDays == 1 ? "es" : "") << ". It is now day "
-               << state_.dayCount << ".)\n";
-
-    render::MapRenderer::drawLocationScene(world_, state_);
 }
 
-void GameLoop::printHelp() const {
-    std::cout <<
-        "\nCommands:\n"
-        "  look            - describe where you are and list roads onward\n"
-        "  map             - show the schematic map of Ansalon\n"
-        "  go <place>      - travel to a directly connected place, e.g. 'go tarsis'\n"
-        "  help            - show this list\n"
-        "  quit            - leave the game\n";
+void GameLoop::look() {
+    const world::Location* nearest = nullptr;
+    int nearestDistSq = 0;
+    for (const auto& loc : world_.allLocations()) {
+        if (loc.x == state_.x && loc.y == state_.y) continue; // already described by the status line
+        int dx = loc.x - state_.x;
+        int dy = loc.y - state_.y;
+        int distSq = dx * dx + dy * dy;
+        if (nearest == nullptr || distSq < nearestDistSq) {
+            nearest = &loc;
+            nearestDistSq = distSq;
+        }
+    }
+    if (nearest == nullptr) {
+        message_ = "Nothing notable stands out on the horizon.";
+        return;
+    }
+    const char* dir = compassDirection(nearest->x - state_.x, nearest->y - state_.y);
+    std::ostringstream oss;
+    oss << "You reckon " << nearest->name << " lies to the " << dir << ".";
+    message_ = oss.str();
 }
 
 } // namespace game

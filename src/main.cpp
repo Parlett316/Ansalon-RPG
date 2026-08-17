@@ -1,6 +1,7 @@
 #include "game/GameLoop.h"
 #include "game/GameState.h"
 #include "render/Console.h"
+#include "world/OverworldGrid.h"
 #include "world/World.h"
 #include "world/WorldLoader.h"
 
@@ -24,29 +25,38 @@ int main() {
     // end of main().
     render::Console console;
 
-    world::World world;
     try {
+        world::OverworldGrid grid =
+            world::OverworldGrid::loadFromFile(std::string(ANSALON_DATA_DIR) + "/overworld.grid");
+
+        world::World world;
         world::WorldLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/locations.txt", world);
+
+        const world::Location* start = world.getLocation(kStartingLocationId);
+        if (!start) {
+            std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";
+            return 1;
+        }
+        // Checked here, not in WorldLoader: WorldLoader has no knowledge of
+        // OverworldGrid (deliberately decoupled -- see
+        // docs/ARCHITECTURE.md), so grid-bounds validation for location
+        // coordinates happens at this, the one place both are loaded together.
+        if (start->x < 0 || start->y < 0 || start->x >= grid.width() || start->y >= grid.height()) {
+            std::cerr << "Starting location '" << kStartingLocationId << "' is outside the overworld grid.\n";
+            return 1;
+        }
+
+        game::GameState state;
+        state.x = start->x;
+        state.y = start->y;
+        state.visitedLocations.insert(start->id);
+
+        game::GameLoop loop(world, grid, std::move(state));
+        loop.run();
     } catch (const std::exception& ex) {
-        std::cerr << "Failed to load world data: " << ex.what() << "\n";
+        std::cerr << "Failed to start: " << ex.what() << "\n";
         return 1;
     }
-
-    if (!world.getLocation(kStartingLocationId)) {
-        std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";
-        return 1;
-    }
-
-    game::GameState state;
-    state.currentLocationId = kStartingLocationId;
-    state.visitedLocations.insert(kStartingLocationId);
-
-    render::Console::clearScreen();
-    std::cout << "=== Ansalon: Age of Despair ===\n";
-    std::cout << "A War of the Lance chronicle.\n";
-
-    game::GameLoop loop(world, std::move(state));
-    loop.run();
 
     return 0;
 }

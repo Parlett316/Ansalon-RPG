@@ -2,13 +2,27 @@
 
 namespace render {
 
-// Owns terminal setup/teardown. On Windows this enables ANSI/VT100 escape
-// sequence processing for the lifetime of the object and restores the
-// console's original mode on destruction (see docs/GOTCHAS.md for why this
-// is necessary at all). All platform-specific console handling lives in
-// this one class -- it is the single file a future Linux/Mac port would
-// need to reimplement, since real terminals there already interpret ANSI
-// codes by default.
+enum class Key {
+    North,
+    South,
+    East,
+    West,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
+    Look,
+    Quit,
+    Unknown,
+};
+
+// Owns terminal setup/teardown and raw keyboard input. On Windows this
+// enables ANSI/VT100 escape sequence processing for the lifetime of the
+// object (restoring the original console mode on destruction -- see
+// docs/GOTCHAS.md) and reads single keypresses without waiting for Enter,
+// which is what makes movement feel immediate rather than command-based.
+// All platform-specific console handling lives in this one class -- it is
+// the single file a future Linux/Mac port would need to reimplement.
 class Console {
 public:
     Console();
@@ -18,6 +32,12 @@ public:
     Console& operator=(const Console&) = delete;
 
     static void clearScreen();
+
+    // Blocks until a key is pressed and returns what it means. Bindings:
+    // arrows / hjkl / wasd for the 4 cardinal directions, yubn for the 4
+    // diagonals (vi/roguelike convention), ';' to look around, 'q'/Esc to
+    // quit. See docs/GOTCHAS.md for the Windows arrow-key decoding quirk.
+    static Key readKey();
 
 private:
 #ifdef _WIN32

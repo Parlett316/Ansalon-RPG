@@ -1,24 +1,31 @@
 #pragma once
 
 #include "game/GameState.h"
+#include "world/OverworldGrid.h"
 #include "world/World.h"
+
+#include <string>
 
 namespace render {
 
-// Turns World data into player-facing ASCII output. Pure presentation: only
-// ever reads World/GameState and prints to stdout, never mutates anything.
-// Keeping it side-effect-free on its inputs means later additions (drawing
-// NPCs on the schematic, for instance) only ever need new read-only data to
-// draw, not a redesign of this interface.
+// Turns world data into a player-facing ASCII frame. Pure presentation:
+// only ever reads its inputs and prints to stdout, never mutates anything.
 class MapRenderer {
 public:
-    // Draws the continent schematic: every known location plotted at its
-    // stylized (row, col) grid position, with '@' marking the player.
-    static void drawSchematic(const world::World& world, const game::GameState& state);
+    static constexpr int kViewportWidth = 78;
+    static constexpr int kViewportHeight = 20;
+    // Fixed default size, not queried from the actual console -- dynamic
+    // resize handling is explicitly deferred (see docs/ARCHITECTURE.md).
+    // Assumes a terminal at least this large; README.md documents that
+    // assumption.
 
-    // Draws the current location's name, description, and the roads
-    // leading out of it.
-    static void drawLocationScene(const world::World& world, const game::GameState& state);
+    // Renders one full frame: a scrolling colored viewport of the
+    // overworld grid centered on the player (clamped at map edges),
+    // location glyphs and the player's '@' overlaid, and a status line.
+    // `message` is an optional transient line (e.g. "You cannot cross the
+    // ocean here.") shown once, below the status line.
+    static void drawFrame(const world::OverworldGrid& grid, const world::World& world,
+                           const game::GameState& state, const std::string& message);
 };
 
 } // namespace render
