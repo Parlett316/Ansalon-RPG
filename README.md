@@ -14,19 +14,23 @@ with or endorsed by Wizards of the Coast / the Dragonlance IP holders.
 
 ## Status
 
-**Milestone 2: walkable colored overworld.** The whole continent is a
-480×320 tile grid, generated from the reference map image, that the player
-walks across tile-by-tile in real time (no typing commands — just keys).
-Named locations (Solace, Tarsis, Xak Tsaroth, ...) sit on that same grid,
-connected by roads baked into the terrain. No character system, combat, or
-canon-encounter engine yet, and no walkable *interior* town/dungeon scenes
-yet either — see `docs/ARCHITECTURE.md`'s "extension points" for how those
-are meant to attach later (Milestone 3+).
+**Milestone 3: walkable interiors.** The whole continent is a 480×320 tile
+grid, generated from the reference map image, that the player walks across
+tile-by-tile in real time (no typing commands — just keys). Named locations
+(Solace, Tarsis, Xak Tsaroth, ...) sit on that same grid, connected by roads
+baked into the terrain. Standing on a location with a walkable interior and
+pressing Enter steps into its own small hand-authored ASCII scene — so far
+just Solace's town square (Inn of the Last Home, a couple of named
+vallenwood trees, a notice board). No character system, combat, or
+canon-encounter engine yet — see `docs/ARCHITECTURE.md`'s "extension
+points" for how those are meant to attach later.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),
-`docs/GOTCHAS.md` (non-obvious traps already hit and worked around), and
-`docs/MAP_NOTES.md` (how the map data was generated) before making changes.
+`docs/GOTCHAS.md` (non-obvious traps already hit and worked around),
+`docs/MAP_NOTES.md` (how the overworld map data was generated), and
+`docs/ZONE_NOTES.md` (how walkable interiors are authored) before making
+changes.
 
 ## Requirements
 
@@ -77,13 +81,19 @@ needed:
 - **Move**: arrow keys, or `hjkl` / `wasd` for the 4 cardinal directions,
   or `y u b n` for the 4 diagonals (vi/roguelike convention: `y`=NW, `u`=NE,
   `b`=SW, `n`=SE)
-- `;` — look around (names the nearest notable place and its direction)
+- **Enter** — step into a location's walkable interior (only works where
+  one exists — currently just Solace), or step back out if you're standing
+  on the `>` marker inside one
+- `;` — look around (overworld: names the nearest notable place and its
+  direction; inside a zone: everything is already on screen, so there's
+  nothing further to reveal)
 - `q` or Esc — quit
 
-Walking into impassable terrain (open ocean, the Blood Sea) is blocked with
-a message. Standing exactly on a named location shows its description.
-Requires a terminal at least 78 columns × ~24 rows (the viewport is a fixed
-78×20 plus a few status lines — dynamic resizing isn't handled yet).
+Walking into impassable terrain (open ocean, the Blood Sea, walls, trees) is
+blocked with a message. Standing exactly on a named location or a point of
+interest shows its description. Requires a terminal at least 78 columns ×
+~24 rows (the viewport is a fixed 78×20 plus a few status lines — dynamic
+resizing isn't handled yet).
 
 ## Regenerating the map
 
@@ -99,16 +109,18 @@ python tools/generate_overworld.py
 ## Project layout
 
 ```
-src/world/    map data: named places (Location, World, WorldLoader) and
-              walkable terrain (Terrain, OverworldGrid)
+src/world/    overworld: named places (Location, World, WorldLoader) and
+              walkable terrain (Terrain, OverworldGrid); interiors:
+              ZoneTile, Zone, ZoneLoader, ZoneCatalog
 src/render/   ASCII presentation + raw keyboard input (Console, MapRenderer)
 src/game/     orchestration (GameState, GameLoop) and main.cpp
-data/         locations.txt (hand-authored) + overworld.grid (generated)
+data/         locations.txt + zones/*.txt (hand-authored),
+              overworld.grid (generated)
 tools/        generate_overworld.py -- offline map generator, dev-only, not
               part of the shipped game
-docs/         ARCHITECTURE.md, GOTCHAS.md, MAP_NOTES.md
+docs/         ARCHITECTURE.md, GOTCHAS.md, MAP_NOTES.md, ZONE_NOTES.md
 ```
 
 See `docs/ARCHITECTURE.md` for the reasoning behind this split and where
-future systems (walkable interiors, character creation, the
-War-of-the-Lance timeline/encounter engine, combat) are meant to attach.
+future systems (character creation, the War-of-the-Lance timeline/encounter
+engine, combat) are meant to attach.

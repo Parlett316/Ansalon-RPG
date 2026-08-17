@@ -4,6 +4,7 @@
 #include "world/OverworldGrid.h"
 #include "world/World.h"
 #include "world/WorldLoader.h"
+#include "world/ZoneCatalog.h"
 
 #include <iostream>
 
@@ -32,6 +33,12 @@ int main() {
         world::World world;
         world::WorldLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/locations.txt", world);
 
+        // Zones are loaded after World, deliberately: ZoneCatalog matches
+        // zone files to locations by id, so it needs the location list
+        // first -- see docs/ARCHITECTURE.md.
+        world::ZoneCatalog zones =
+            world::ZoneCatalog::loadForWorld(world, std::string(ANSALON_DATA_DIR) + "/zones");
+
         const world::Location* start = world.getLocation(kStartingLocationId);
         if (!start) {
             std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";
@@ -51,7 +58,7 @@ int main() {
         state.y = start->y;
         state.visitedLocations.insert(start->id);
 
-        game::GameLoop loop(world, grid, std::move(state));
+        game::GameLoop loop(world, grid, zones, std::move(state));
         loop.run();
     } catch (const std::exception& ex) {
         std::cerr << "Failed to start: " << ex.what() << "\n";

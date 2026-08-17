@@ -19,8 +19,10 @@ history; it no longer exists in the code.
 ## Module map
 
 ```
-world/   Location, World, WorldLoader,     -- the map data model: named places
-         Terrain, OverworldGrid               (graph) + walkable terrain (grid)
+world/   Location, World, WorldLoader,     -- overworld: named places (graph)
+         Terrain, OverworldGrid               + walkable terrain (grid)
+         ZoneTile, Zone, ZoneLoader,        -- interiors: hand-authored walkable
+         ZoneCatalog                          scenes tied to overworld locations
 render/  Console, MapRenderer               -- ASCII presentation + raw input
 game/    GameState, GameLoop                -- orchestration / the actual game
 main.cpp                                    -- wires the above together
@@ -99,27 +101,47 @@ the set of kinds (ocean, forest, mountains, ...) is small, fixed, and
 tightly coupled to rendering/passability rules, which is exactly the case
 where a data file would be pure indirection with nothing gained.
 
+## Walkable interiors ("zones"): a second, smaller world, tied to the first
+
+Milestone 3 added `Zone`/`ZoneLoader`/`ZoneCatalog` — hand-authored walkable
+interiors (see `docs/ZONE_NOTES.md` for the file grammar and rationale for
+why they're hand-drawn rather than generated, and why they're capped to fit
+the viewport with no camera/scrolling). The key design choice: a zone is
+tied to an overworld `Location` **only by filename matching id**
+(`data/zones/<id>.txt` ↔ `LOCATION <id>`), checked once at startup by
+`ZoneCatalog::loadForWorld` — not a field on `Location` itself. This keeps
+`World`/`Location` completely unaware that zones exist at all, the same
+separation-of-concerns reasoning as "why `world/` doesn't know about the
+player" above: `Location` stays a single, simple, reusable concept whether
+or not a walkable interior happens to exist for it.
+
+`GameState.mode` (`Mode::Overworld` / `Mode::Zone`) is the single source of
+truth for which "world" is currently active; `GameLoop` dispatches
+movement/look to one of two parallel code paths
+(`tryMoveOverworld`/`tryMoveZone`, `lookOverworld`/`lookZone`) based on it,
+and `MapRenderer` gained a matching second render method (`drawZoneFrame`)
+rather than one method trying to handle both — the two "worlds" have
+different data sources (`OverworldGrid` vs `Zone`), different overlay
+concepts (named `Location`s vs. `PointOfInterest`s), and different camera
+behavior (scrolling vs. none), so sharing one code path would have meant
+branching throughout instead of once at the top.
+
 ## Extension points for later milestones
 
-These are the seams intentionally left in Milestone 2's code so later
-systems can attach without reworking it:
+These are the seams intentionally left in the code so later systems can
+attach without reworking it:
 
-- **Walkable interior "zone" maps** (Milestone 3, not yet built): stepping
-  "into" a town/dungeon to walk its own small hand-authored ASCII scene.
-  `GameState` would gain a mode/zone-id field; `GameLoop` would swap which
-  grid it's rendering/moving against (the overworld `OverworldGrid` vs. a
-  zone-local one) without `World`, `Terrain`, or the render loop's core
-  logic changing shape.
 - **Character creation** (2nd Ed. AD&D rules): add a `Character` type and a
   `Character*` (or similar) field to `game::GameState`. Nothing in `world/`
   or `render/` needs to change; `GameLoop` gains new key bindings.
 - **War-of-the-Lance timeline / chance-encounter engine**: `GameState`
   already tracks `x`, `y`, and `hoursElapsed` — a future `timeline::Timeline`
-  can be queried each time the player's position changes (`GameLoop::tryMove`,
-  after the state update) with "who else is here right now?" using the same
-  `region`/`id` fields `Location` already carries. `Location::region` exists
-  today specifically so region-scoped canon events have something to match
-  against later, even though nothing reads it yet.
+  can be queried each time the player's overworld position changes
+  (`GameLoop::tryMoveOverworld`, after the state update) with "who else is
+  here right now?" using the same `region`/`id` fields `Location` already
+  carries. `Location::region` exists today specifically so region-scoped
+  canon events have something to match against later, even though nothing
+  reads it yet.
 - **Combat**: would plug into `GameLoop` as a new mode entered when an
   encounter triggers, reusing `Console`/`MapRenderer` primitives already in
   place.

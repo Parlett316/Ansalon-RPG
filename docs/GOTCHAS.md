@@ -110,6 +110,30 @@ you hit something surprising — that's the whole point of it existing.
   double-check its `POS` doesn't land on impassable terrain (ocean, the
   Blood Sea) by hand.
 
+## Zones (walkable interiors)
+
+- **A zone's `GRID` must fit inside the viewport** (`MapRenderer::kViewportWidth/Height`,
+  78×20) — there is no camera/scrolling for zones, unlike the overworld
+  (see `docs/ZONE_NOTES.md`). A larger zone will render off the edge of a
+  normal terminal, not scroll into view.
+- **`ZoneCatalog` matches zones to locations purely by filename**
+  (`data/zones/<id>.txt` ↔ `LOCATION <id>`), not a field stored on
+  `Location`. Renaming a `LOCATION` id in `data/locations.txt` silently
+  disconnects its zone file (the game just won't find it — no error) unless
+  the zone filename is renamed to match. There's no validation that catches
+  this at load time, since `WorldLoader` has no knowledge that zones exist.
+- **`ZoneLoader`'s `GRID`/`ENDGRID` block is raw text, not keyword-parsed**
+  — every line in it is taken literally (no trimming, no `#`-comment
+  handling) until a line reads exactly `ENDGRID`. Don't try to add a comment
+  inside a `GRID` block expecting it to be stripped; it'll be read as a row
+  of terrain characters (and almost certainly fail the "every row same
+  width" check).
+- **Every non-base-terrain character in a `GRID` block needs a matching
+  `POI` declaration**, or the whole file fails to load with a clear error —
+  deliberately strict, same reasoning as `WorldLoader`'s `CONNECT`
+  validation in Milestone 1: a typo'd tile character should be caught at
+  startup, not silently misrendered during play.
+
 ## Map generation & fidelity
 
 - **Location `POS` coordinates are approximate**, chosen from relative

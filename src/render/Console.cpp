@@ -82,6 +82,7 @@ Key Console::readKey() {
         case 'b': case 'B': return Key::SouthWest;
         case 'n': case 'N': return Key::SouthEast;
         case ';': return Key::Look;
+        case 13: return Key::Enter; // Enter/Return
         case 'q': case 'Q': case 27: return Key::Quit; // 27 = Esc
         default: return Key::Unknown;
     }
@@ -92,7 +93,8 @@ Key Console::readKey() {
     // to support them properly; a POSIX termios-based readKey (raw mode,
     // single-character reads) is future work for an actual Linux/Mac port.
     std::string line;
-    if (!std::getline(std::cin, line) || line.empty()) return Key::Unknown;
+    if (!std::getline(std::cin, line)) return Key::Unknown;
+    if (line.empty()) return Key::Enter; // an empty line means the user just pressed Enter
     switch (line[0]) {
         case 'w': case 'k': return Key::North;
         case 's': case 'j': return Key::South;
