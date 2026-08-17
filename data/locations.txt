@@ -1,0 +1,108 @@
+# Ansalon world data -- milestone 1 slice.
+#
+# Grammar (documented in full in docs/MAP_NOTES.md):
+#   LOCATION <id>            starts a block; <id> is the stable key used by CONNECT and in-game state
+#   NAME <text>              display name
+#   REGION <text>             region name (not used by game logic yet -- reserved for the future timeline engine)
+#   TERRAIN <tag>             free-form terrain tag
+#   GLYPH <char>              single ASCII character drawn on the schematic map
+#   POS <row> <col>           stylized (NOT geographic) position on the schematic grid
+#   DESC <text>               one-line description shown by 'look'
+#   CONNECT <id> <days> "<text>"   a one-way road to another location; add the reverse
+#                                  CONNECT in the other block to make it two-way
+#   END                       closes the block
+#
+# Blank lines and lines starting with # are ignored anywhere.
+#
+# Locations below cover the Solace -> Tarsis corridor from the opening of
+# Dragons of Autumn Twilight. Positions are a stylized schematic layout
+# loosely following their relative real-map placement (north/south/east/west
+# only, not distances) -- see docs/MAP_NOTES.md for what's canon vs invented.
+
+LOCATION solace
+NAME Solace
+REGION Abanasinia
+TERRAIN forest-town
+GLYPH S
+POS 2 16
+DESC A town built high in the branches of ancient vallenwood trees, linked by swaying bridges and stairways. The Inn of the Last Home sits atop the tallest trunk, its chimney never quite cold.
+CONNECT darken_wood 1 "south along a narrow forest trail, vallenwood giving way to darker, older trees"
+END
+
+LOCATION darken_wood
+NAME Darken Wood
+REGION Abanasinia
+TERRAIN dark-forest
+GLYPH W
+POS 5 16
+DESC A dense, shadowed forest south of Solace. Sunlight rarely reaches the forest floor here, and travelers say the wood remembers footsteps long after they've passed.
+CONNECT solace 1 "north out of the shadowed wood, back toward the lights of Solace"
+CONNECT haven 1 "east along a rutted cart road toward open farmland"
+CONNECT qualinesti 2 "west, the trees growing taller and stranger the further you go"
+END
+
+LOCATION haven
+NAME Haven
+REGION Abanasinia
+TERRAIN plains-town
+GLYPH H
+POS 5 20
+DESC A modest farming town on the edge of the Abanasinia plains, its market square usually busy with wagons and rumor alike.
+CONNECT darken_wood 1 "west, the farmland giving way to the eaves of Darken Wood"
+CONNECT xak_tsaroth 2 "south into wetter ground, the road slowly sinking into swamp"
+END
+
+LOCATION xak_tsaroth
+NAME Xak Tsaroth
+REGION Abanasinia
+TERRAIN swamp-ruins
+GLYPH X
+POS 8 20
+DESC The flooded ruins of a once-great dwarven city, sunk into the swamp centuries ago. Broken towers rise from the mire, and the air smells of standing water and old stone.
+CONNECT haven 2 "north, the swamp firming into solid farmland again"
+CONNECT plains_of_dust 2 "south, the swamp drying out into dusty plains"
+END
+
+LOCATION qualinesti
+NAME Qualinesti
+REGION Qualinesti
+TERRAIN elven-forest
+GLYPH Q
+POS 5 10
+DESC The elven forest kingdom, its trees grown and shaped over centuries into living halls. Elves eye outsiders here with quiet, practiced wariness.
+CONNECT darken_wood 2 "east, leaving the elven wood behind for the wilder Darken Wood"
+CONNECT pax_tharkas 1 "south on the old military road climbing into the Kharolis foothills"
+END
+
+LOCATION pax_tharkas
+NAME Pax Tharkas
+REGION Kharolis
+TERRAIN mountain-fortress
+GLYPH P
+POS 9 10
+DESC A vast fortress carved into a mountain pass, its twin towers guarding the only easy road south. The stonework here predates the kingdoms that now claim it.
+CONNECT qualinesti 1 "north, the mountain road descending back into elven forest"
+CONNECT plains_of_dust 2 "southeast, the mountains falling away into open grassland"
+END
+
+LOCATION plains_of_dust
+NAME Plains of Dust
+REGION Plains of Dust
+TERRAIN plains-village
+GLYPH U
+POS 12 15
+DESC A wide, dry grassland dotted with the felt tents of the Plainsfolk. Dust rises in slow columns wherever a horse or wagon passes.
+CONNECT pax_tharkas 2 "northwest, the grassland climbing back into the Kharolis foothills"
+CONNECT xak_tsaroth 2 "north, the plains growing wetter until the ruins rise from the mire"
+CONNECT tarsis 2 "southwest across dry grassland toward a city that has forgotten the sea"
+END
+
+LOCATION tarsis
+NAME Tarsis
+REGION Kharolis
+TERRAIN dry-plains-city
+GLYPH T
+POS 15 9
+DESC A city stranded far from any sea, though its docks and rusting ship-hulks remain, half-buried in the dust. Old sailors still argue about which direction the water went.
+CONNECT plains_of_dust 2 "northeast, back out onto the open Plains of Dust"
+END

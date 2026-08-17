@@ -1,0 +1,11 @@
+# CMake build output
+build/
+
+# Reference map image -- someone else's copyrighted fan-map, kept locally
+# only as a visual reference for hand-authoring our own map data. Not meant
+# to be committed or redistributed. See docs/MAP_NOTES.md.
+DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg
+
+# Editor/IDE cruft
+.vs/
+*.user
