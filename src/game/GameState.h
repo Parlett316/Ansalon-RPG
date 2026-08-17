@@ -1,5 +1,7 @@
 #pragma once
 
+#include "character/Character.h"
+
 #include <string>
 #include <unordered_set>
 
@@ -22,6 +24,8 @@ enum class Mode {
 // inside a zone does not advance hoursElapsed (see docs/ARCHITECTURE.md) --
 // only overworld travel does.
 struct GameState {
+    character::Character character; // produced once by CharacterCreator before the loop starts
+
     Mode mode = Mode::Overworld;
     int x = 0;
     int y = 0;

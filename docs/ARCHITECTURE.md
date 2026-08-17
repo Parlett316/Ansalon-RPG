@@ -19,13 +19,16 @@ history; it no longer exists in the code.
 ## Module map
 
 ```
-world/   Location, World, WorldLoader,     -- overworld: named places (graph)
-         Terrain, OverworldGrid               + walkable terrain (grid)
-         ZoneTile, Zone, ZoneLoader,        -- interiors: hand-authored walkable
-         ZoneCatalog                          scenes tied to overworld locations
-render/  Console, MapRenderer               -- ASCII presentation + raw input
-game/    GameState, GameLoop                -- orchestration / the actual game
-main.cpp                                    -- wires the above together
+world/     Location, World, WorldLoader,     -- overworld: named places (graph)
+           Terrain, OverworldGrid               + walkable terrain (grid)
+           ZoneTile, Zone, ZoneLoader,        -- interiors: hand-authored walkable
+           ZoneCatalog                          scenes tied to overworld locations
+character/ Dice, Ability, Race, CharClass,    -- 2e AD&D rules content + the
+           Alignment, Character,                interactive creation wizard
+           CharacterCreator
+render/    Console, MapRenderer               -- ASCII presentation + raw input
+game/      GameState, GameLoop                -- orchestration / the actual game
+main.cpp                                      -- wires the above together
 ```
 
 The dependency direction is one-way: `game/` depends on `world/` and
@@ -126,14 +129,40 @@ concepts (named `Location`s vs. `PointOfInterest`s), and different camera
 behavior (scrolling vs. none), so sharing one code path would have meant
 branching throughout instead of once at the top.
 
+## Character creation: a fourth module, and a different interaction mode
+
+Milestone 4 added `src/character/` (`Dice`, `Ability`, `Race`, `CharClass`,
+`Alignment`, `Character`, `CharacterCreator`) — a new module sibling to
+`world/`, `render/`, `game/`, depending on nothing else in the project (same
+independence as `world/`). `game/GameState` depends on it (a
+`character::Character character;` field), and `render/MapRenderer` depends
+on it (`drawCharacterSheet`) — the same one-way dependency shape as
+everything else in the project.
+
+The interesting design choice here isn't the data model (it's plain structs
+and fixed lookup tables, same pattern as `Terrain`/`ZoneTile`) — it's that
+`CharacterCreator::run()` deliberately does **not** use
+`render::Console::readKey()`. Every other piece of player interaction in
+this game is single-keypress, real-time, no Enter required — but character
+creation is a one-time, deliberate, step-by-step wizard (name a character,
+roll and maybe reroll ability scores, pick from a numbered list), which is
+a fundamentally different interaction shape than "move one tile per
+keypress." Rather than force it through the movement input model, it's
+plain blocking `std::cin`/`std::cout` prompts, run once in `main.cpp`
+*before* `GameLoop` (and its raw-keypress world) ever starts. This also
+means, usefully, that character creation is the one part of the game that
+**can** be driven by piped/redirected input for testing — see
+`docs/GOTCHAS.md`.
+
+`docs/CHARACTER_NOTES.md` documents the actual 2e ruleset scope (which
+mechanics are modeled, which are deliberately deferred, and an explicit
+"these numbers are from memory, spot-check them" note).
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can
 attach without reworking it:
 
-- **Character creation** (2nd Ed. AD&D rules): add a `Character` type and a
-  `Character*` (or similar) field to `game::GameState`. Nothing in `world/`
-  or `render/` needs to change; `GameLoop` gains new key bindings.
 - **War-of-the-Lance timeline / chance-encounter engine**: `GameState`
   already tracks `x`, `y`, and `hoursElapsed` — a future `timeline::Timeline`
   can be queried each time the player's overworld position changes

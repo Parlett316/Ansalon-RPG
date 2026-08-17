@@ -15,6 +15,12 @@ add_executable(ansalon_rpg
     src/world/Zone.cpp
     src/world/ZoneLoader.cpp
     src/world/ZoneCatalog.cpp
+    src/character/Dice.cpp
+    src/character/Ability.cpp
+    src/character/Race.cpp
+    src/character/CharClass.cpp
+    src/character/Alignment.cpp
+    src/character/CharacterCreator.cpp
     src/render/Console.cpp
     src/render/MapRenderer.cpp
     src/game/GameLoop.cpp

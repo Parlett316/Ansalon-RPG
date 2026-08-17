@@ -33,6 +33,11 @@ public:
     // marked, POI glyphs and the player's '@' overlaid, and a status line.
     static void drawZoneFrame(const world::Zone& zone, const game::GameState& state,
                                const std::string& message);
+
+    // Renders the full character sheet as its own frame. GameLoop shows
+    // this on demand ('c'), blocks for one keypress to dismiss it, then
+    // resumes normal rendering -- see docs/ARCHITECTURE.md.
+    static void drawCharacterSheet(const character::Character& character);
 };
 
 } // namespace render

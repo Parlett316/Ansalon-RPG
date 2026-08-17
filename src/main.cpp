@@ -1,3 +1,4 @@
+#include "character/CharacterCreator.h"
 #include "game/GameLoop.h"
 #include "game/GameState.h"
 #include "render/Console.h"
@@ -53,7 +54,12 @@ int main() {
             return 1;
         }
 
+        // Character creation runs here, before the world is ever rendered:
+        // it's a deliberate step-by-step wizard on plain std::cin/std::cout,
+        // not part of the real-time keypress loop -- see
+        // docs/ARCHITECTURE.md and character/CharacterCreator.h.
         game::GameState state;
+        state.character = character::CharacterCreator::run();
         state.x = start->x;
         state.y = start->y;
         state.visitedLocations.insert(start->id);

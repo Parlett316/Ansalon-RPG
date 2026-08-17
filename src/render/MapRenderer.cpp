@@ -1,4 +1,6 @@
 #include "render/MapRenderer.h"
+#include "character/CharClass.h"
+#include "character/Race.h"
 #include "world/Terrain.h"
 #include "world/ZoneTile.h"
 
@@ -108,6 +110,37 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
         out << message << "\n";
     }
     out << "Move: arrows/hjkl/yubn/wasd   ;=look   Enter=leave (from the '>' marker)   q=quit\n";
+
+    std::cout << out.str();
+}
+
+void MapRenderer::drawCharacterSheet(const character::Character& c) {
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+
+    const auto& race = character::raceInfo(c.race);
+    const auto& cls = character::classInfo(c.charClass);
+
+    out << "=== " << c.name << " ===\n";
+    out << race.name << " " << cls.name << ", level " << c.level << "\n";
+    out << character::alignmentName(c.alignment) << "\n\n";
+
+    out << "STR " << c.scores.strength << "   DEX " << c.scores.dexterity
+        << "   CON " << c.scores.constitution << "\n";
+    out << "INT " << c.scores.intelligence << "   WIS " << c.scores.wisdom
+        << "   CHA " << c.scores.charisma << "\n\n";
+
+    out << "HP " << c.currentHp << "/" << c.maxHp << "   AC " << c.armorClass
+        << "   THAC0 " << c.thac0 << "\n\n";
+
+    out << "Saving Throws:\n";
+    for (int i = 0; i < static_cast<int>(character::SaveCategory::Count); ++i) {
+        auto category = static_cast<character::SaveCategory>(i);
+        out << "  " << character::saveCategoryName(category) << ": " << c.saves.at(category) << "\n";
+    }
+    out << "\nGold: " << c.goldPieces << " gp\n";
+
+    out << "\n(press any key to continue)\n";
 
     std::cout << out.str();
 }

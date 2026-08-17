@@ -14,22 +14,25 @@ with or endorsed by Wizards of the Coast / the Dragonlance IP holders.
 
 ## Status
 
-**Milestone 3: walkable interiors.** The whole continent is a 480×320 tile
-grid, generated from the reference map image, that the player walks across
-tile-by-tile in real time (no typing commands — just keys). Named locations
-(Solace, Tarsis, Xak Tsaroth, ...) sit on that same grid, connected by roads
-baked into the terrain. Standing on a location with a walkable interior and
-pressing Enter steps into its own small hand-authored ASCII scene — so far
-just Solace's town square (Inn of the Last Home, a couple of named
-vallenwood trees, a notice board). No character system, combat, or
-canon-encounter engine yet — see `docs/ARCHITECTURE.md`'s "extension
-points" for how those are meant to attach later.
+**Milestone 4: 2nd Edition AD&D character creation.** Starting the game now
+begins with an interactive text-prompt character creation wizard (roll
+3d6-down-the-line ability scores, reroll as many times as you like, pick a
+race, class, and alignment) before dropping you into the world with a real
+character behind the `@`. The whole continent is still a 480×320 tile grid,
+generated from the reference map image, walked tile-by-tile in real time;
+named locations (Solace, Tarsis, Xak Tsaroth, ...) sit on that grid,
+connected by roads baked into the terrain, and Solace has a walkable
+interior (Enter to step in). No combat or canon-encounter engine yet — see
+`docs/ARCHITECTURE.md`'s "extension points" for how those are meant to
+attach later.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),
 `docs/GOTCHAS.md` (non-obvious traps already hit and worked around),
-`docs/MAP_NOTES.md` (how the overworld map data was generated), and
-`docs/ZONE_NOTES.md` (how walkable interiors are authored) before making
+`docs/MAP_NOTES.md` (how the overworld map data was generated),
+`docs/ZONE_NOTES.md` (how walkable interiors are authored), and
+`docs/CHARACTER_NOTES.md` (which 2e rules are modeled, which are
+deliberately deferred, and an important accuracy caveat) before making
 changes.
 
 ## Requirements
@@ -75,8 +78,10 @@ cmake --build build
 
 ## Playing
 
-Run the built `ansalon_rpg.exe`. Movement is immediate — no Enter key
-needed:
+Run the built `ansalon_rpg.exe`. It opens with character creation (plain
+typed prompts — enter a name, keep or reroll your ability scores, pick a
+race/class/alignment number, confirm). Once that's done, movement is
+immediate — no Enter key needed:
 
 - **Move**: arrow keys, or `hjkl` / `wasd` for the 4 cardinal directions,
   or `y u b n` for the 4 diagonals (vi/roguelike convention: `y`=NW, `u`=NE,
@@ -84,6 +89,7 @@ needed:
 - **Enter** — step into a location's walkable interior (only works where
   one exists — currently just Solace), or step back out if you're standing
   on the `>` marker inside one
+- `c` — view your character sheet (any key dismisses it)
 - `;` — look around (overworld: names the nearest notable place and its
   direction; inside a zone: everything is already on screen, so there's
   nothing further to reveal)
@@ -109,18 +115,21 @@ python tools/generate_overworld.py
 ## Project layout
 
 ```
-src/world/    overworld: named places (Location, World, WorldLoader) and
-              walkable terrain (Terrain, OverworldGrid); interiors:
-              ZoneTile, Zone, ZoneLoader, ZoneCatalog
-src/render/   ASCII presentation + raw keyboard input (Console, MapRenderer)
-src/game/     orchestration (GameState, GameLoop) and main.cpp
-data/         locations.txt + zones/*.txt (hand-authored),
-              overworld.grid (generated)
-tools/        generate_overworld.py -- offline map generator, dev-only, not
-              part of the shipped game
-docs/         ARCHITECTURE.md, GOTCHAS.md, MAP_NOTES.md, ZONE_NOTES.md
+src/world/     overworld: named places (Location, World, WorldLoader) and
+               walkable terrain (Terrain, OverworldGrid); interiors:
+               ZoneTile, Zone, ZoneLoader, ZoneCatalog
+src/character/ 2e AD&D rules content (Race, CharClass, Ability, Alignment,
+               Dice) and the interactive CharacterCreator wizard
+src/render/    ASCII presentation + raw keyboard input (Console, MapRenderer)
+src/game/      orchestration (GameState, GameLoop) and main.cpp
+data/          locations.txt + zones/*.txt (hand-authored),
+               overworld.grid (generated)
+tools/         generate_overworld.py -- offline map generator, dev-only, not
+               part of the shipped game
+docs/          ARCHITECTURE.md, GOTCHAS.md, MAP_NOTES.md, ZONE_NOTES.md,
+               CHARACTER_NOTES.md
 ```
 
 See `docs/ARCHITECTURE.md` for the reasoning behind this split and where
-future systems (character creation, the War-of-the-Lance timeline/encounter
-engine, combat) are meant to attach.
+future systems (the War-of-the-Lance timeline/encounter engine, combat) are
+meant to attach.

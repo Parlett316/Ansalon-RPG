@@ -56,6 +56,16 @@ you hit something surprising — that's the whole point of it existing.
   Milestone 2's terrain/routing was sanity-checked before a human ever
   played it (a throwaway Dijkstra-based reachability check, not part of the
   repo).
+- **The exception: character creation CAN be piped.** `character::CharacterCreator::run()`
+  deliberately uses plain `std::cin`/`std::cout`, not `Console::readKey()`
+  (see `docs/ARCHITECTURE.md`), specifically because it runs before the
+  raw-keypress world starts. That means, unlike everything else in this
+  game, a full character-creation playthrough (name, ability score
+  rerolls, race/class/alignment choice, confirm) can be scripted and piped
+  into the exe for automated verification — this was how Milestone 4's math
+  (racial adjustments, prime requisite checks, HP/AC/saves/gold) was
+  confirmed correct before a human ever ran it. The moment `GameLoop`
+  starts, the game goes back to needing a real keyboard.
 
 ## Toolchain
 

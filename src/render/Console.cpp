@@ -83,6 +83,7 @@ Key Console::readKey() {
         case 'n': case 'N': return Key::SouthEast;
         case ';': return Key::Look;
         case 13: return Key::Enter; // Enter/Return
+        case 'c': case 'C': return Key::Sheet;
         case 'q': case 'Q': case 27: return Key::Quit; // 27 = Esc
         default: return Key::Unknown;
     }
@@ -105,6 +106,7 @@ Key Console::readKey() {
         case 'b': return Key::SouthWest;
         case 'n': return Key::SouthEast;
         case ';': return Key::Look;
+        case 'c': return Key::Sheet;
         case 'q': return Key::Quit;
         default: return Key::Unknown;
     }

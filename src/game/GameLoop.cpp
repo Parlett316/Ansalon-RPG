@@ -52,10 +52,16 @@ void GameLoop::run() {
             case render::Key::SouthWest: inZone ? tryMoveZone(-1, 1) : tryMoveOverworld(-1, 1); break;
             case render::Key::Look:      inZone ? lookZone() : lookOverworld(); break;
             case render::Key::Enter:     handleEnter(); break;
+            case render::Key::Sheet:     showCharacterSheet(); break;
             case render::Key::Quit:      return;
             case render::Key::Unknown:   break;
         }
     }
+}
+
+void GameLoop::showCharacterSheet() {
+    render::MapRenderer::drawCharacterSheet(state_.character);
+    render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
 void GameLoop::tryMoveOverworld(int dx, int dy) {

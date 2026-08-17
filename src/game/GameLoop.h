@@ -28,6 +28,7 @@ private:
     void lookOverworld();
     void lookZone();
     void handleEnter();
+    void showCharacterSheet();
 
     const world::World& world_;
     const world::OverworldGrid& grid_;
