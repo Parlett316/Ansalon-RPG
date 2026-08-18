@@ -1,0 +1,41 @@
+# data/zones/solace_inn.txt -- the Inn of the Last Home's ground floor.
+# Reached only via the 'I' PORTAL in data/zones/solace.txt (no matching
+# LOCATION of its own -- ZoneCatalog follows the PORTAL to find this file).
+NAME Inn of the Last Home
+ENTRY 21 15
+GRID
+############################################
+#.............................D............#
+#..........................................#
+#...KOY................................F...#
+#..........................................#
+#..................%%%%%%..................#
+#..................%%%%%%..................#
+#..................%%%%%%..................#
+#..................%%%%%%..................#
+#..................%%%%%%..................#
+#..........................................#
+#..............C...........................#
+#.......U..................................#
+#..........................................#
+#..........................................#
+####################...#####################
+ENDGRID
+POI K "The Bar" Otik Sandeth works the taps himself, sleeves rolled up, while Tika Waylan ducks between tables with a loaded tray and a look daring anyone to complain about the wait.
+POI O "Otik Sandeth" Up close, the innkeeper has the look of a man who's heard every excuse for an unpaid tab there is -- and forgiven most of them anyway.
+POI Y "Tika Waylan" She balances a full tray on one hand, sizing you up with the quick, practical eye of someone who's learned to spot trouble before it reaches a table.
+POI F "The Great Fireplace" A fire big enough to roast a boar crackles in a stone hearth built straight into the vallenwood's trunk. Regulars claim it has never once gone out.
+POI C "A Corner Table" Deep gouges scar the tabletop, like something with an axe once made a point of testing its edge here. Half the regulars have a story about who did it, and no two stories agree.
+POI D "Otik's Kitchen" Through the doorway, the smell of frying spiced potatoes is almost a physical wall. Someone is singing off-key over the clatter of pans.
+POI U "The Stairs Up" A narrow stair spirals up around the trunk toward the Inn's private rooms, lit by lanterns hung from the branches above.
+TALK O Otik wipes down the bar without looking up. "Sit, sit -- you look like you've walked further than you meant to. First mug's on the house, if you've got a good story to trade for it."
+TALK_AGAIN O Otik nods you toward your usual spot without asking. "Back again. I'll not pretend I remember the story you owed me, but I remember you owing one. Settle up whenever you like."
+SAY_IF O kender Otik's grin turns rueful before you've said a word. "Ah -- one of your kind. I'll save us both the trouble: house rules say I remember every unpaid tab, whether or not you remember owing it. That said, first mug's still on the house. I've never once regretted the policy. Mostly."
+TOPIC O "Keeping the Peace" Otik lowers his voice, glancing toward the door out of old habit. "You learn to keep peace behind a bar, and that goes twofold once the Highseekers start sending their own kind through on Theocracy business. Even a theocrat needs his belly filled and the fire and brimstone washed out of his throat by the end of a long day of preaching -- and I've never once turned away a coin for who's holding it. Bad for business, having opinions where the wrong ears can hear them."
+TALK Y Tika plants the tray on her hip and grins. "New face, or just one I haven't seen in a while? Either way, don't just stand there blocking the aisle -- there's a table free by the fire, if you want it."
+TALK_AGAIN Y Tika breezes past with the tray, flashing you a quick grin over her shoulder. "You again! Table by the fire's yours if you want it -- you've earned regular status, whether you meant to or not."
+SAY_IF Y fighter Tika's quick, appraising glance settles somewhere around your weapon before it reaches your face. "You've got the look of someone who's actually used that, which is more than I can say for half the trouble that walks through that door. Good. I like knowing who I can holler for if a table gets rowdy."
+TOPIC Y "Strange Talk" Tika's grin fades, just for a moment. "There's talk going around I don't like the sound of -- armies massing somewhere north, and strange hooded men skulking around town with the High Theocrat, asking questions nobody's got good answers to. Otik tells me it's just talk, same as it's always been since the Cataclysm. Maybe he's right. I still don't like it."
+TIMELINE_LOCATION solace
+TIMELINE_ANCHOR F
+END

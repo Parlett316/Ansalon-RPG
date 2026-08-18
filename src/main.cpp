@@ -1,7 +1,14 @@
 #include "character/CharacterCreator.h"
+#include "character/CharClass.h"
+#include "character/Race.h"
+#include "combat/Monster.h"
+#include "combat/MonsterLoader.h"
 #include "game/GameLoop.h"
 #include "game/GameState.h"
+#include "game/SaveGame.h"
 #include "render/Console.h"
+#include "timeline/Timeline.h"
+#include "timeline/TimelineLoader.h"
 #include "world/OverworldGrid.h"
 #include "world/World.h"
 #include "world/WorldLoader.h"
@@ -14,6 +21,11 @@
 // fallback here only exists so editor/IDE tooling that parses this file
 // without running through CMake configuration still sees something valid.
 #define ANSALON_DATA_DIR "data"
+#endif
+
+#ifndef ANSALON_SAVE_FILE
+// Same reasoning/fallback as ANSALON_DATA_DIR above.
+#define ANSALON_SAVE_FILE "save.txt"
 #endif
 
 namespace {
@@ -40,6 +52,17 @@ int main() {
         world::ZoneCatalog zones =
             world::ZoneCatalog::loadForWorld(world, std::string(ANSALON_DATA_DIR) + "/zones");
 
+        // Static content, same treatment as World/OverworldGrid/ZoneCatalog
+        // above -- loaded fresh every run, never touched by GameState/save
+        // data. See timeline::Timeline and docs/TIMELINE_NOTES.md.
+        timeline::Timeline timeline;
+        timeline::TimelineLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/timeline.txt", timeline);
+
+        // Static content too, same treatment -- see combat::MonsterCatalog
+        // and docs/COMBAT_NOTES.md.
+        combat::MonsterCatalog monsters;
+        combat::MonsterLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/monsters.txt", monsters);
+
         const world::Location* start = world.getLocation(kStartingLocationId);
         if (!start) {
             std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";
@@ -54,17 +77,49 @@ int main() {
             return 1;
         }
 
+        const std::string savePath = ANSALON_SAVE_FILE;
+
+        // If a save exists, offer to continue it -- plain std::cin/std::cout,
+        // same "before GameLoop's raw-keypress world starts" interaction mode
+        // as CharacterCreator (see docs/ARCHITECTURE.md). Declining, or no
+        // save existing, falls through to the ordinary CharacterCreator flow
+        // unchanged.
+        game::GameState state;
+        bool loadedSave = false;
+        if (game::SaveGame::exists(savePath)) {
+            game::GameState loaded = game::SaveGame::load(savePath);
+            if (loaded.mode == game::Mode::Zone && !zones.hasZone(loaded.currentZoneId)) {
+                std::cerr << "Save file references a zone ('" << loaded.currentZoneId
+                          << "') that no longer exists. Delete " << savePath
+                          << " to start fresh.\n";
+                return 1;
+            }
+            const character::Character& c = loaded.character;
+            std::cout << "\nA saved character was found: " << c.name << ", level " << c.level
+                       << " " << character::raceInfo(c.race).name << " "
+                       << character::classInfo(c.charClass).name << " (Day "
+                       << (loaded.hoursElapsed / 24) << ").\n";
+            std::cout << "Continue this character? (y/n) ";
+            std::string answer;
+            std::getline(std::cin, answer);
+            if (!answer.empty() && (answer[0] == 'y' || answer[0] == 'Y')) {
+                state = std::move(loaded);
+                loadedSave = true;
+            }
+        }
+
         // Character creation runs here, before the world is ever rendered:
         // it's a deliberate step-by-step wizard on plain std::cin/std::cout,
         // not part of the real-time keypress loop -- see
         // docs/ARCHITECTURE.md and character/CharacterCreator.h.
-        game::GameState state;
-        state.character = character::CharacterCreator::run();
-        state.x = start->x;
-        state.y = start->y;
-        state.visitedLocations.insert(start->id);
+        if (!loadedSave) {
+            state.character = character::CharacterCreator::run();
+            state.x = start->x;
+            state.y = start->y;
+            state.visitedLocations.insert(start->id);
+        }
 
-        game::GameLoop loop(world, grid, zones, std::move(state));
+        game::GameLoop loop(world, grid, zones, timeline, monsters, std::move(state), savePath);
         loop.run();
     } catch (const std::exception& ex) {
         std::cerr << "Failed to start: " << ex.what() << "\n";

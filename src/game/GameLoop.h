@@ -1,13 +1,46 @@
 #pragma once
 
+#include "combat/Monster.h"
 #include "game/GameState.h"
+#include "timeline/Timeline.h"
 #include "world/OverworldGrid.h"
 #include "world/World.h"
 #include "world/ZoneCatalog.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace game {
+
+// A talk interaction's content, adapted from either a
+// timeline::PresenceWindow or a world::PointOfInterest so
+// GameLoop::talkTo has one shape to work with regardless of source --
+// see docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md for the underlying
+// SAY/SAY_IF/SAY_AGAIN/TOPIC and TALK/TALK_AGAIN grammar.
+struct Speech {
+    std::string greeting;                                          // plain SAY/TALK
+    std::vector<std::pair<std::string, std::string>> conditional;  // SAY_IF (timeline or zone)
+    std::string again;                                             // SAY_AGAIN/TALK_AGAIN, may be empty
+    std::vector<std::pair<std::string, std::string>> topics;       // TOPIC (timeline or zone)
+};
+
+// SAY_IF's condition vocabulary -- see docs/TIMELINE_NOTES.md. A free
+// function (not a GameLoop member) so it's directly unit-testable without
+// constructing a whole GameLoop.
+bool conditionMatches(const std::string& condition, const character::Character& character);
+
+// One talkable candidate at the player's current tile -- either a zone
+// POI's own dialogue, or a canon character the timeline places there
+// today (overworld, or a zone's TIMELINE_ANCHOR tile -- see
+// docs/TIMELINE_NOTES.md). `id` is what GameState::metCharacters tracks:
+// a canon character's own stable id (e.g. "tanis"), or a zone-synthesized
+// "<zoneId>:<char>" for a zone-native NPC -- see GameLoop::handleTalk.
+struct TalkCandidate {
+    std::string id;
+    std::string name;
+    Speech speech;
+};
 
 // Owns the render -> read-key -> update cycle. Movement is dispatched
 // directly from render::Key -- there is no verb/command parser (see
@@ -17,8 +50,15 @@ namespace game {
 // which one that is.
 class GameLoop {
 public:
+    // `savePath` is where GameState autosaves after every processed
+    // keypress (see run()) -- see game::SaveGame and docs/ARCHITECTURE.md.
+    // `timeline` is the canon-character schedule queried while rendering
+    // the overworld -- see timeline::Timeline and docs/TIMELINE_NOTES.md.
+    // `monsters` is the roster random encounters draw from -- see
+    // combat::MonsterCatalog and docs/COMBAT_NOTES.md.
     GameLoop(const world::World& world, const world::OverworldGrid& grid,
-              const world::ZoneCatalog& zones, GameState initialState);
+              const world::ZoneCatalog& zones, const timeline::Timeline& timeline,
+              const combat::MonsterCatalog& monsters, GameState initialState, std::string savePath);
 
     void run();
 
@@ -28,12 +68,50 @@ private:
     void lookOverworld();
     void lookZone();
     void handleEnter();
+    // Talk to whoever's on the player's current tile -- a present canon
+    // character on the overworld (see timeline::Timeline), a zone's own
+    // talkable POI, and/or (as of Milestone 23) a canon character present
+    // at a zone's TIMELINE_ANCHOR tile. Builds a TalkCandidate list from
+    // whichever apply, then hands off to pickAndTalk. See
+    // docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md.
+    void handleTalk();
+    // Shared by every handleTalk path: 0 candidates -> "nothing to talk
+    // to" message; 1 -> talk directly; 2+ -> a drawPickerFrame loop asking
+    // which one (same nested-loop, locally-reinterpreted-Key shape as
+    // handleShop/talkTo's own topic-picker loop).
+    void pickAndTalk(const std::vector<TalkCandidate>& candidates);
+    // Shows one character's dialogue -- their real authored greeting (or
+    // the first matching SAY_IF condition, see conditionMatches below)
+    // the first time `id` is talked to, `speech.again` (or a generic
+    // recognition line if empty) every time after (see
+    // GameState::metCharacters), then a topic-picker loop if `speech` has
+    // any. Shared by every talk path (zone POI, single-character
+    // overworld, post-picker overworld) so "have I met them"/reactive-
+    // dialogue/topic logic lives in exactly one place.
+    void talkTo(const std::string& id, const std::string& name, const Speech& speech);
+    // Browse/buy at the shop POI the player is standing on (zones only) --
+    // see character/Equipment.h. Takes over input in its own nested loop,
+    // same architectural shape as runCombat, until the player leaves.
+    void handleShop();
+    // Carried-items screen -- always available (not gated on standing at a
+    // shop POI, unlike handleShop, since gear is on the player's person
+    // regardless of location). Same nested-loop shape as handleShop;
+    // Enter calls character::equipInventoryItem on the selected item.
+    void handleInventory();
     void showCharacterSheet();
+    // Takes over rendering/input in its own loop until the fight ends
+    // (victory, flee, or the player is knocked out) -- see
+    // docs/ARCHITECTURE.md and docs/COMBAT_NOTES.md for why this is a
+    // nested loop rather than a new GameState::mode.
+    void runCombat(const combat::Monster& monster);
 
     const world::World& world_;
     const world::OverworldGrid& grid_;
     const world::ZoneCatalog& zones_;
+    const timeline::Timeline& timeline_;
+    const combat::MonsterCatalog& monsters_;
     GameState state_;
+    std::string savePath_;
     std::string message_; // transient, shown for one frame then cleared
 };
 

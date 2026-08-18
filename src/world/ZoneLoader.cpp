@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 
@@ -72,6 +73,32 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     int entryY = -1;
     std::vector<std::string> gridRows;
     std::unordered_map<char, PointOfInterest> pois;
+    std::unordered_map<char, std::string> portals;
+    // TALK lines are applied to `pois` after the whole file is parsed (a
+    // TALK can't be required to appear after its POI line any more than
+    // PORTAL currently is) -- keyed by code, value is {dialogue, the line
+    // number TALK appeared on, for a clear error if its POI never shows up}.
+    std::unordered_map<char, std::pair<std::string, int>> talkLines;
+    // TALK_AGAIN gets the exact same "applied after the whole file is
+    // parsed, must reference an already-declared POI" treatment as talkLines.
+    std::unordered_map<char, std::pair<std::string, int>> talkAgainLines;
+    // Same "applied after the whole file is parsed" treatment as talkLines
+    // above -- keyed by code, value is the line number SHOP appeared on,
+    // for a clear error if its POI never shows up.
+    std::unordered_map<char, int> shopLines;
+    // SAY_IF/TOPIC get the same "collected by POI char, applied after the
+    // whole file is parsed" treatment as talkLines/shopLines above -- but
+    // unlike those (one dialogue per POI), a POI can have zero or more of
+    // each, so every entry keeps its own line number for a precise error if
+    // its POI never shows up or has no TALK line to react against.
+    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> sayIfLines;
+    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> topicLines;
+    // TIMELINE_ANCHOR -- see docs/TIMELINE_NOTES.md. At most one per zone;
+    // validated against declared POIs after the whole file is parsed, same
+    // as TALK/SHOP/PORTAL above.
+    char timelineAnchorCode = '\0';
+    int timelineAnchorLine = -1;
+    std::string timelineLocationId; // TIMELINE_LOCATION -- optional, no positional dependency
     int gridWidth = -1;
 
     // GRID/ENDGRID is a literal raw-text block embedded inside an otherwise
@@ -124,10 +151,104 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             if (keyword == "POI") {
                 PointOfInterest poi = parsePoi(rest, path, lineNumber);
                 pois[poi.code] = poi;
+            } else if (keyword == "PORTAL") {
+                std::istringstream iss(rest);
+                std::string codeToken, targetId;
+                if (!(iss >> codeToken >> targetId) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed PORTAL (expected: PORTAL <char> <zone-id>)");
+                }
+                portals[codeToken[0]] = targetId;
+            } else if (keyword == "TALK") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed TALK (expected: TALK <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "TALK is missing its dialogue text");
+                }
+                talkLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "TALK_AGAIN") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed TALK_AGAIN (expected: TALK_AGAIN <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "TALK_AGAIN is missing its dialogue text");
+                }
+                talkAgainLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "SHOP") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed SHOP (expected: SHOP <char>)");
+                }
+                shopLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "SAY_IF") {
+                std::istringstream iss(rest);
+                std::string codeToken, condition;
+                if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> condition)) {
+                    fail(path, lineNumber, "malformed SAY_IF (expected: SAY_IF <char> <condition> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "SAY_IF is missing its dialogue text");
+                }
+                sayIfLines[codeToken[0]].emplace_back(condition, dialogue, lineNumber);
+            } else if (keyword == "TOPIC") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed TOPIC (expected: TOPIC <char> \"label\" text)");
+                }
+                std::string remainder;
+                std::getline(iss, remainder);
+                remainder = trim(remainder);
+                if (remainder.empty() || remainder.front() != '"') {
+                    fail(path, lineNumber, "TOPIC label must be quoted, e.g. TOPIC K \"The Staff\" text");
+                }
+                size_t closeQuote = remainder.find('"', 1);
+                if (closeQuote == std::string::npos) {
+                    fail(path, lineNumber, "TOPIC label is missing its closing quote");
+                }
+                std::string label = remainder.substr(1, closeQuote - 1);
+                std::string text = trim(remainder.substr(closeQuote + 1));
+                if (text.empty()) {
+                    fail(path, lineNumber, "TOPIC is missing its text");
+                }
+                topicLines[codeToken[0]].emplace_back(label, text, lineNumber);
+            } else if (keyword == "TIMELINE_ANCHOR") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed TIMELINE_ANCHOR (expected: TIMELINE_ANCHOR <char>)");
+                }
+                if (timelineAnchorCode != '\0') {
+                    fail(path, lineNumber, "a zone can only have one TIMELINE_ANCHOR");
+                }
+                timelineAnchorCode = codeToken[0];
+                timelineAnchorLine = lineNumber;
+            } else if (keyword == "TIMELINE_LOCATION") {
+                if (rest.empty()) {
+                    fail(path, lineNumber, "malformed TIMELINE_LOCATION (expected: TIMELINE_LOCATION <location-id>)");
+                }
+                timelineLocationId = rest;
             } else if (keyword == "END") {
                 state = State::Done;
             } else {
-                fail(path, lineNumber, "unexpected '" + keyword + "' after GRID (expected POI or END)");
+                fail(path, lineNumber,
+                     "unexpected '" + keyword +
+                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, "
+                         "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -164,8 +285,90 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     if (entryX >= gridWidth || entryY >= static_cast<int>(gridRows.size())) {
         throw std::runtime_error(path + ": ENTRY is outside the GRID bounds");
     }
+    // A portal tile needs a description just as much as any other POI, so
+    // every PORTAL char is required to also have a POI declaration -- this
+    // is a deliberate grammar rule (see docs/ZONE_NOTES.md), not implied by
+    // the grid-character check above.
+    for (const auto& [code, targetId] : portals) {
+        if (pois.count(code) == 0) {
+            fail(path, lineNumber, "PORTAL '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+    }
+    // Same rule for TALK: a talkable NPC still needs a name/description via
+    // POI, TALK only adds the spoken line on top of it.
+    for (const auto& [code, dialogueAndLine] : talkLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "TALK '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.dialogue = dialogueAndLine.first;
+    }
+    // Same rule for TALK_AGAIN.
+    for (const auto& [code, dialogueAndLine] : talkAgainLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "TALK_AGAIN '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.dialogueAgain = dialogueAndLine.first;
+    }
+    // Same rule for SHOP: a browsable POI still needs a name/description
+    // via POI, SHOP only marks it as also being able to open the shop screen.
+    for (const auto& [code, lineNum] : shopLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "SHOP '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.isShop = true;
+    }
+    // Same rule for SAY_IF: it must reference an already-declared POI --
+    // but SAY_IF is reactive dialogue, so its POI must also already have a
+    // TALK line for it to react against. Without that, a SAY_IF/TOPIC pair
+    // could parse cleanly but never actually be reachable in play (a POI
+    // with no TALK line is never a talk candidate at all -- see
+    // GameLoop::handleTalk), so this fails fast at load time instead of
+    // silently authoring dead content.
+    for (const auto& [code, entries] : sayIfLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, std::get<2>(entries.front()),
+                 "SAY_IF '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, std::get<2>(entries.front()),
+                 "SAY_IF '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        for (const auto& entry : entries) {
+            it->second.conditionalDialogue.emplace_back(std::get<0>(entry), std::get<1>(entry));
+        }
+    }
+    // Same rule for TOPIC.
+    for (const auto& [code, entries] : topicLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, std::get<2>(entries.front()),
+                 "TOPIC '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, std::get<2>(entries.front()),
+                 "TOPIC '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        for (const auto& entry : entries) {
+            it->second.topics.emplace_back(std::get<0>(entry), std::get<1>(entry));
+        }
+    }
+    // Same rule for TIMELINE_ANCHOR: it must point at a real, already-
+    // declared POI (the anchor's own name/description come from that POI;
+    // TIMELINE_ANCHOR only marks it as also checking canon-character
+    // presence).
+    if (timelineAnchorCode != '\0' && pois.count(timelineAnchorCode) == 0) {
+        fail(path, timelineAnchorLine,
+             "TIMELINE_ANCHOR '" + std::string(1, timelineAnchorCode) + "' has no matching POI declaration");
+    }
 
-    return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois));
+    return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois), std::move(portals),
+                timelineAnchorCode, std::move(timelineLocationId));
 }
 
 } // namespace world

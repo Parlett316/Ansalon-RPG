@@ -63,7 +63,7 @@ you hit something surprising — that's the whole point of it existing.
   game, a full character-creation playthrough (name, ability score
   rerolls, race/class/alignment choice, confirm) can be scripted and piped
   into the exe for automated verification — this was how Milestone 4's math
-  (racial adjustments, prime requisite checks, HP/AC/saves/gold) was
+  (racial adjustments, prime requisite checks, HP/AC/saves/starting steel) was
   confirmed correct before a human ever ran it. The moment `GameLoop`
   starts, the game goes back to needing a real keyboard.
 
@@ -120,6 +120,82 @@ you hit something surprising — that's the whole point of it existing.
   double-check its `POS` doesn't land on impassable terrain (ocean, the
   Blood Sea) by hand.
 
+## Timeline (`timeline::Timeline`)
+
+- **`TimelineLoader` does not validate `PRESENCE`'s `location-id` against
+  `data/locations.txt`** — unlike `WorldLoader`'s fail-fast validation, a
+  typo'd location id in `data/timeline.txt` loads without error and just
+  never matches anything at query time (see `docs/TIMELINE_NOTES.md`).
+  Deliberate for now (a small, hand-authored file), but a silent-failure
+  risk worth revisiting if this file grows much bigger.
+- **Presence is overworld-only** — standing on a location's tile checks the
+  timeline; being inside that location's zone (interior) does not. Finding
+  a canon character specifically inside, say, the Inn of the Last Home
+  isn't wired up yet — see `docs/TIMELINE_NOTES.md`.
+- **`day = hoursElapsed / 24`, integer division** — matches how the status
+  line already computes "Day N," but means a character's window boundary
+  lands on a whole-day granularity, not an hour one. A window `PRESENCE
+  solace 0 1` covers all of hours 0–47, not just a couple of hours.
+
+## Combat (`combat::Combat`, `game::GameLoop::runCombat`)
+
+- **Combat state is never saved.** An encounter is a nested loop inside
+  `GameLoop`, not a `GameState.mode` — see `docs/COMBAT_NOTES.md`. A crash
+  or force-close mid-fight just loses that encounter entirely (player
+  resumes on the overworld tile where it started, monster forgotten). This
+  is an accepted trade-off given the "knocked out, not killed" death rule,
+  not an oversight — don't add mid-combat autosaving without also
+  reconsidering whether it's still needed.
+- **Adding a new `render::Key` value requires touching every `switch` over
+  `Key`, not just the one that cares about it.** This project relies on
+  exhaustive `switch` coverage instead of a `default:` label (so a
+  genuinely unhandled case is a compile warning, not a silent no-op).
+  Adding `Key::Flee` needed a `case render::Key::Flee: break;` in the main
+  loop's `switch` in `GameLoop::run()` even though that switch does
+  nothing with it — `runCombat` has its own separate, narrower key check.
+- **Monster stats in `data/monsters.txt` are invented, not sourced** — see
+  `docs/COMBAT_NOTES.md` for why (no Monstrous Compendium/Monster Manual
+  in this project's reference library). Don't assume they're
+  book-verified the way class/race numbers are.
+
+## Save/load (`game::SaveGame`)
+
+- **`save.txt` is resolved via a compile-time absolute path**
+  (`ANSALON_SAVE_FILE`, injected by `CMakeLists.txt`), same pattern and same
+  solo/dev-only limitation as `ANSALON_DATA_DIR` above. It's gitignored —
+  see `.gitignore`.
+- **`RACE`/`CLASS`/`ALIGNMENT` are stored as raw enum ints**, not names
+  (`static_cast<int>(character::RaceId)` etc.). This is a deliberate
+  simplicity trade-off (no name↔enum reverse lookup needed anywhere else in
+  the project) but it means **reordering or inserting values in `RaceId`,
+  `ClassId`, or `Alignment` silently corrupts any existing `save.txt`** — the
+  int will still parse and pass the range check, it'll just now mean a
+  different race/class/alignment. There's no version field to detect this.
+  Acceptable for a single personal save file; would need addressing (a
+  format version, or switching to stored names) before this format could
+  ever be shared between builds.
+- **Autosave happens after every processed keypress, unconditionally** — see
+  `GameLoop::run()`. This was a deliberate simplicity choice over only
+  saving on state-changing keys (`Look`/`Sheet` don't mutate `GameState`,
+  but saving anyway is simpler than tracking "did this branch change
+  anything," and the write is cheap). Practical effect: `Ctrl+C`/closing the
+  terminal loses at most the single most recent keypress, not a session.
+- **`SaveGame::load` does not validate cross-references** against `World` or
+  `ZoneCatalog` (e.g. that a saved `ZONE <id>` still exists) — same
+  separation as `WorldLoader` not knowing about `OverworldGrid`. That check
+  happens in `main.cpp`, the one place a loaded save and the freshly-loaded
+  `ZoneCatalog` are both available; a stale reference prints a clear error
+  and exits rather than crashing mid-game.
+- **`load()` accepts both `STEEL` and legacy `GOLD` as the currency
+  keyword** (Milestone 22's Gold -> Steel rename, see
+  `docs/CHARACTER_NOTES.md`) — `save()` only ever writes `STEEL` now, but a
+  save file written before that milestone still has a `GOLD <n>` line, and
+  refusing to load it would have broken the user's real in-progress
+  character. This is a deliberate, permanent compatibility fallback, not
+  a TODO to remove later — the same "keep old saves loading" spirit as the
+  raw-enum-int fragility above, just handled explicitly this time instead
+  of left as an accepted risk.
+
 ## Zones (walkable interiors)
 
 - **A zone's `GRID` must fit inside the viewport** (`MapRenderer::kViewportWidth/Height`,
@@ -143,6 +219,25 @@ you hit something surprising — that's the whole point of it existing.
   deliberately strict, same reasoning as `WorldLoader`'s `CONNECT`
   validation in Milestone 1: a typo'd tile character should be caught at
   startup, not silently misrendered during play.
+- **Bug found and fixed while adding the Inn of the Last Home's interior**:
+  every POI tile (Inn, Notice Board, named trees, etc.) was actually
+  *unwalkable*. `world::zoneTileFor` only recognizes the 5 base terrain
+  codes; any other character (including every POI code) fell through to the
+  "unknown tile" default, which is impassable. `GameLoop::tryMoveZone`
+  looked up passability purely via `zoneTileFor`, with no POI-aware branch,
+  so the player could never actually stand on a POI tile to see its
+  description — contradicting what `docs/ZONE_NOTES.md` and
+  `MapRenderer::drawZoneFrame` both assumed. Fixed by checking
+  `Zone::poiAt` first in `tryMoveZone`: a POI tile is now always passable,
+  regardless of glyph. This had gone unnoticed because earlier playtesting
+  exercised general movement, not those specific tiles.
+- **Zones can now portal into other zones** (`PORTAL <char> <zone-id>`, see
+  `docs/ZONE_NOTES.md`) — used for the Inn of the Last Home's interior,
+  entered from a door tile inside Solace's town square. A zone reached only
+  via a portal has no matching `LOCATION`, so `ZoneCatalog::loadForWorld`
+  has a second pass that follows `PORTAL` links transitively to find those
+  files; a portal pointing at a missing zone file throws at startup, same
+  as every other load-time validation in this project.
 
 ## Map generation & fidelity
 

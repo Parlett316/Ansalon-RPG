@@ -4,12 +4,22 @@
 
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 namespace game {
 
 enum class Mode {
     Overworld,
     Zone,
+};
+
+// Where to resume when leaving a zone that was entered via a PORTAL from
+// another zone (e.g. stepping out of the Inn of the Last Home's interior
+// back into Solace's town square), rather than from the overworld.
+struct ZoneReturnPoint {
+    std::string zoneId;
+    int x = 0;
+    int y = 0;
 };
 
 // The player's position and progress in the world. x/y are overworld tile
@@ -31,10 +41,17 @@ struct GameState {
     int y = 0;
     long long hoursElapsed = 0;
     std::unordered_set<std::string> visitedLocations;
+    // Ids of every canon/NPC character the player has ever talked to (via
+    // 't') at least once -- timeline characters use their CanonCharacter
+    // id, zone NPCs use "<zoneId>:<POI char>" (they have no id of their
+    // own). See game::GameLoop::talkTo.
+    std::unordered_set<std::string> metCharacters;
 
     std::string currentZoneId;
     int zoneX = 0;
     int zoneY = 0;
+    std::vector<ZoneReturnPoint> zoneStack; // parent zone(s) to pop back to on
+                                             // exit -- see ZoneReturnPoint above
 };
 
 } // namespace game

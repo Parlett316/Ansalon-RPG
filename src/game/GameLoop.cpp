@@ -1,10 +1,18 @@
 #include "game/GameLoop.h"
+#include "game/SaveGame.h"
+#include "character/Dice.h"
+#include "character/Equipment.h"
+#include "character/Leveling.h"
+#include "character/Spellcasting.h"
+#include "combat/Combat.h"
 #include "render/Console.h"
 #include "render/MapRenderer.h"
 #include "world/Terrain.h"
 #include "world/ZoneTile.h"
 
+#include <algorithm>
 #include <cmath>
+#include <functional>
 #include <sstream>
 
 namespace game {
@@ -22,24 +30,82 @@ const char* compassDirection(int dx, int dy) {
     return kDirs[index];
 }
 
+// Adapts a timeline::PresenceWindow into the Speech shape GameLoop::talkTo
+// works with -- see docs/TIMELINE_NOTES.md for the underlying grammar.
+Speech speechFromWindow(const timeline::PresenceWindow& window) {
+    Speech speech;
+    speech.greeting = window.dialogue;
+    speech.conditional = window.conditionalDialogue;
+    speech.again = window.dialogueAgain;
+    speech.topics = window.topics;
+    return speech;
+}
+
+// Adapts a world::PointOfInterest into the Speech shape GameLoop::talkTo
+// works with -- the zone-native counterpart to speechFromWindow above. See
+// docs/ZONE_NOTES.md for the underlying SAY_IF/TOPIC grammar.
+Speech speechFromPoi(const world::PointOfInterest& poi) {
+    Speech speech;
+    speech.greeting = poi.dialogue;
+    speech.conditional = poi.conditionalDialogue;
+    speech.again = poi.dialogueAgain;
+    speech.topics = poi.topics;
+    return speech;
+}
+
 } // namespace
 
+// Small, fixed condition vocabulary for SAY_IF (see docs/TIMELINE_NOTES.md):
+// "good"/"evil" check Alignment's ethical axis, the 7 playable races and 5
+// classes check by name. An unrecognized condition simply never matches --
+// checked at talk-time against runtime character data, not something
+// TimelineLoader can validate at load time, so failing safe (fall back to
+// the plain greeting) beats a load-time error here. A free function (not
+// anonymous-namespace-private) specifically so it's directly unit-testable.
+bool conditionMatches(const std::string& condition, const character::Character& c) {
+    using character::Alignment;
+    if (condition == "good") {
+        return c.alignment == Alignment::LawfulGood || c.alignment == Alignment::NeutralGood ||
+               c.alignment == Alignment::ChaoticGood;
+    }
+    if (condition == "evil") {
+        return c.alignment == Alignment::LawfulEvil || c.alignment == Alignment::NeutralEvil ||
+               c.alignment == Alignment::ChaoticEvil;
+    }
+    if (condition == "human") return c.race == character::RaceId::Human;
+    if (condition == "dwarf") return c.race == character::RaceId::Dwarf;
+    if (condition == "elf") return c.race == character::RaceId::Elf;
+    if (condition == "gnome") return c.race == character::RaceId::Gnome;
+    if (condition == "halfelf") return c.race == character::RaceId::HalfElf;
+    if (condition == "halfling") return c.race == character::RaceId::Halfling;
+    if (condition == "kender") return c.race == character::RaceId::Kender;
+    if (condition == "fighter") return c.charClass == character::ClassId::Fighter;
+    if (condition == "mage") return c.charClass == character::ClassId::Mage;
+    if (condition == "cleric") return c.charClass == character::ClassId::Cleric;
+    if (condition == "thief") return c.charClass == character::ClassId::Thief;
+    if (condition == "tinker") return c.charClass == character::ClassId::Tinker;
+    return false;
+}
+
 GameLoop::GameLoop(const world::World& world, const world::OverworldGrid& grid,
-                    const world::ZoneCatalog& zones, GameState initialState)
-    : world_(world), grid_(grid), zones_(zones), state_(std::move(initialState)) {}
+                    const world::ZoneCatalog& zones, const timeline::Timeline& timeline,
+                    const combat::MonsterCatalog& monsters, GameState initialState, std::string savePath)
+    : world_(world), grid_(grid), zones_(zones), timeline_(timeline), monsters_(monsters),
+      state_(std::move(initialState)), savePath_(std::move(savePath)) {}
 
 void GameLoop::run() {
     for (;;) {
         if (state_.mode == Mode::Overworld) {
-            render::MapRenderer::drawOverworldFrame(grid_, world_, state_, message_);
+            render::MapRenderer::drawOverworldFrame(grid_, world_, timeline_, state_, message_);
         } else {
             const world::Zone* zone = zones_.getZone(state_.currentZoneId);
-            render::MapRenderer::drawZoneFrame(*zone, state_, message_);
+            render::MapRenderer::drawZoneFrame(*zone, timeline_, state_, message_);
         }
         message_.clear();
 
         render::Key key = render::Console::readKey();
         bool inZone = state_.mode == Mode::Zone;
+        bool quit = false;
 
         switch (key) {
             case render::Key::North:     inZone ? tryMoveZone(0, -1) : tryMoveOverworld(0, -1); break;
@@ -51,16 +117,28 @@ void GameLoop::run() {
             case render::Key::SouthEast: inZone ? tryMoveZone(1, 1)  : tryMoveOverworld(1, 1);  break;
             case render::Key::SouthWest: inZone ? tryMoveZone(-1, 1) : tryMoveOverworld(-1, 1); break;
             case render::Key::Look:      inZone ? lookZone() : lookOverworld(); break;
+            case render::Key::Talk:      handleTalk(); break;
             case render::Key::Enter:     handleEnter(); break;
             case render::Key::Sheet:     showCharacterSheet(); break;
-            case render::Key::Quit:      return;
+            case render::Key::Shop:      handleShop(); break;
+            case render::Key::Inventory: handleInventory(); break;
+            case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
+            case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
+            case render::Key::Quit:      quit = true; break;
             case render::Key::Unknown:   break;
         }
+
+        // Autosaved after every processed keypress, unconditionally -- see
+        // docs/ARCHITECTURE.md. Quit falls through to here too (rather than
+        // returning directly above) so the very last action is captured
+        // before the process exits.
+        SaveGame::save(state_, savePath_);
+        if (quit) return;
     }
 }
 
 void GameLoop::showCharacterSheet() {
-    render::MapRenderer::drawCharacterSheet(state_.character);
+    render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
     render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
@@ -75,8 +153,17 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     state_.x = nx;
     state_.y = ny;
     state_.hoursElapsed += terrain.hoursToCross;
-    if (const world::Location* here = world_.locationAt(nx, ny)) {
+    const world::Location* here = world_.locationAt(nx, ny);
+    if (here != nullptr) {
         state_.visitedLocations.insert(here->id);
+    }
+
+    // Random encounters: towns/named places stay safe (here == nullptr
+    // guards that), everywhere else on the overworld has a per-terrain
+    // chance per move -- see docs/COMBAT_NOTES.md.
+    if (here == nullptr && monsters_.size() > 0 &&
+        character::roll(1, 100) <= terrain.encounterChancePercent) {
+        runCombat(monsters_.randomMonster());
     }
 }
 
@@ -84,10 +171,16 @@ void GameLoop::tryMoveZone(int dx, int dy) {
     const world::Zone* zone = zones_.getZone(state_.currentZoneId);
     int nx = state_.zoneX + dx;
     int ny = state_.zoneY + dy;
-    const world::ZoneTileInfo& tile = world::zoneTileFor(zone->tileCodeAt(nx, ny));
-    if (!tile.passable) {
-        message_ = "You can't walk through " + std::string(tile.name) + ".";
-        return;
+    // POIs are always passable, regardless of their glyph -- zoneTileFor
+    // only knows the 5 base terrain codes, so a POI character (which is
+    // deliberately something else) would otherwise fall through to the
+    // "unknown tile" default of impassable. See docs/ZONE_NOTES.md.
+    if (zone->poiAt(nx, ny) == nullptr) {
+        const world::ZoneTileInfo& tile = world::zoneTileFor(zone->tileCodeAt(nx, ny));
+        if (!tile.passable) {
+            message_ = "You can't walk through " + std::string(tile.name) + ".";
+            return;
+        }
     }
     // Deliberately does not touch hoursElapsed -- indoor shuffling isn't
     // meaningful travel time; only overworld movement advances the clock.
@@ -127,6 +220,206 @@ void GameLoop::lookZone() {
     message_ = "Nothing else catches your eye here.";
 }
 
+void GameLoop::handleTalk() {
+    std::vector<TalkCandidate> candidates;
+
+    if (state_.mode == Mode::Overworld) {
+        const world::Location* here = world_.locationAt(state_.x, state_.y);
+        if (here != nullptr) {
+            // Same query drawOverworldFrame already makes for the passive
+            // flavor line -- see docs/TIMELINE_NOTES.md.
+            for (const auto& presence :
+                 timeline_.presentAt(here->id, static_cast<int>(state_.hoursElapsed / 24))) {
+                if (!presence.window->dialogue.empty()) {
+                    candidates.push_back(
+                        {presence.character->id, presence.character->name, speechFromWindow(*presence.window)});
+                }
+            }
+        }
+    } else {
+        const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+        const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
+        if (poi != nullptr && !poi->dialogue.empty()) {
+            candidates.push_back(
+                {state_.currentZoneId + ":" + std::string(1, poi->code), poi->name, speechFromPoi(*poi)});
+        }
+        // Zone-interior encounters (Milestone 23): standing on this zone's
+        // TIMELINE_ANCHOR tile also makes any canon character the timeline
+        // places at its effective location today talkable -- using the
+        // character's own stable id (not the zone-synthesized id above),
+        // so "have I met them" carries over correctly from the overworld.
+        // See docs/TIMELINE_NOTES.md.
+        if (poi != nullptr && poi->code == zone->timelineAnchorPoi()) {
+            const std::string& effectiveId =
+                zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
+            for (const auto& presence :
+                 timeline_.presentAt(effectiveId, static_cast<int>(state_.hoursElapsed / 24))) {
+                if (!presence.window->dialogue.empty()) {
+                    candidates.push_back(
+                        {presence.character->id, presence.character->name, speechFromWindow(*presence.window)});
+                }
+            }
+        }
+    }
+
+    pickAndTalk(candidates);
+}
+
+void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
+    if (candidates.empty()) {
+        message_ = "There's no one here to talk to.";
+        return;
+    }
+    if (candidates.size() == 1) {
+        const TalkCandidate& c = candidates.front();
+        talkTo(c.id, c.name, c.speech);
+        return;
+    }
+
+    // More than one candidate at once (e.g. all 8 Heroes sharing a
+    // schedule) -- ask which one rather than dumping every line at once.
+    // Same nested-loop, local North/South/Enter/Quit reinterpretation
+    // shape as handleShop.
+    std::vector<std::string> names;
+    for (const TalkCandidate& c : candidates) names.push_back(c.name);
+    int selected = 0;
+    for (;;) {
+        render::MapRenderer::drawPickerFrame("Talk to whom?", names, selected,
+                                              "up/down=select   Enter=talk   q=cancel");
+        render::Key key = render::Console::readKey();
+        if (key == render::Key::North) {
+            selected = (selected - 1 + static_cast<int>(names.size())) % static_cast<int>(names.size());
+        } else if (key == render::Key::South) {
+            selected = (selected + 1) % static_cast<int>(names.size());
+        } else if (key == render::Key::Enter) {
+            const TalkCandidate& c = candidates[selected];
+            talkTo(c.id, c.name, c.speech);
+            return;
+        } else if (key == render::Key::Quit) {
+            return;
+        }
+    }
+}
+
+void GameLoop::talkTo(const std::string& id, const std::string& name, const Speech& speech) {
+    bool alreadyMet = state_.metCharacters.count(id) > 0;
+    std::string text;
+    if (alreadyMet) {
+        text = !speech.again.empty() ? speech.again
+                                      : (name + " catches your eye and gives a small nod of recognition.");
+    } else {
+        text = speech.greeting;
+        for (const auto& [condition, conditionalText] : speech.conditional) {
+            if (conditionMatches(condition, state_.character)) {
+                text = conditionalText;
+                break;
+            }
+        }
+    }
+    render::MapRenderer::drawDialogueFrame({{name, text}});
+    render::Console::readKey(); // block for one keypress to dismiss, any key
+    state_.metCharacters.insert(id);
+
+    if (!speech.topics.empty()) {
+        std::vector<std::string> labels;
+        for (const auto& [label, topicText] : speech.topics) labels.push_back(label);
+        labels.push_back("Nothing, thanks");
+        int selected = 0;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame("Ask " + name + " about...", labels, selected,
+                                                  "up/down=select   Enter=ask   q=leave");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North) {
+                selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
+            } else if (key == render::Key::South) {
+                selected = (selected + 1) % static_cast<int>(labels.size());
+            } else if (key == render::Key::Enter) {
+                if (selected == static_cast<int>(speech.topics.size())) return; // "Nothing, thanks"
+                render::MapRenderer::drawDialogueFrame({{name, speech.topics[selected].second}});
+                render::Console::readKey();
+            } else if (key == render::Key::Quit) {
+                return;
+            }
+        }
+    }
+}
+
+void GameLoop::handleShop() {
+    if (state_.mode != Mode::Zone) {
+        message_ = "There's nothing to buy here.";
+        return;
+    }
+    const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+    const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
+    if (poi == nullptr || !poi->isShop) {
+        message_ = "There's nothing to buy here.";
+        return;
+    }
+
+    int selected = 0;
+    bool sellMode = false;
+    std::string shopMessage;
+    for (;;) {
+        std::vector<character::ShopItem> buyItems = character::availableShopItems(state_.character);
+        std::vector<character::SellItem> sellItems = character::sellableItems(state_.character);
+        size_t activeSize = sellMode ? sellItems.size() : buyItems.size();
+        render::MapRenderer::drawShopFrame(state_.character, poi->name, buyItems, sellItems, sellMode,
+                                            selected, shopMessage);
+        render::Key key = render::Console::readKey();
+
+        // Reinterprets North/South/Enter/Inventory/Quit locally rather
+        // than adding new Key values -- same trick runCombat already uses
+        // for Flee inside its own nested loop (see docs/GOTCHAS.md).
+        // Key::Quit here exits the shop, not the whole game; Key::Inventory
+        // ('i') toggles the buy/sell view rather than opening the real
+        // inventory screen.
+        if (key == render::Key::North) {
+            selected = activeSize == 0 ? 0 : static_cast<int>((selected - 1 + activeSize) % activeSize);
+        } else if (key == render::Key::South) {
+            selected = activeSize == 0 ? 0 : static_cast<int>((selected + 1) % activeSize);
+        } else if (key == render::Key::Enter) {
+            if (sellMode) {
+                if (!sellItems.empty()) {
+                    character::PurchaseResult result = character::sellItem(state_.character, selected);
+                    shopMessage = result.message;
+                }
+            } else if (!buyItems.empty()) {
+                character::PurchaseResult result = character::purchaseItem(state_.character, selected);
+                shopMessage = result.message;
+            }
+        } else if (key == render::Key::Inventory) {
+            sellMode = !sellMode;
+            selected = 0;
+            shopMessage.clear();
+        } else if (key == render::Key::Quit) {
+            return;
+        }
+    }
+}
+
+void GameLoop::handleInventory() {
+    int selected = 0;
+    for (;;) {
+        auto& inventory = state_.character.inventory;
+        render::MapRenderer::drawInventoryFrame(state_.character, selected);
+        render::Key key = render::Console::readKey();
+
+        // Same North/South/Enter/Quit local reinterpretation as handleShop.
+        if (key == render::Key::North) {
+            selected = inventory.empty() ? 0 : (selected - 1 + static_cast<int>(inventory.size())) % static_cast<int>(inventory.size());
+        } else if (key == render::Key::South) {
+            selected = inventory.empty() ? 0 : (selected + 1) % static_cast<int>(inventory.size());
+        } else if (key == render::Key::Enter) {
+            if (!inventory.empty()) {
+                character::equipInventoryItem(state_.character, selected);
+                selected = 0; // the list just changed shape -- reset the cursor
+            }
+        } else if (key == render::Key::Quit) {
+            return;
+        }
+    }
+}
+
 void GameLoop::handleEnter() {
     if (state_.mode == Mode::Overworld) {
         const world::Location* here = world_.locationAt(state_.x, state_.y);
@@ -149,14 +442,172 @@ void GameLoop::handleEnter() {
 
     // Mode::Zone
     const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+
+    // Stepping onto a portal tile (e.g. the Inn's door) descends into a
+    // nested zone. The current zone/position is remembered on zoneStack so
+    // leaving the nested zone returns here, not to the overworld.
+    if (const std::string* target = zone->portalAt(state_.zoneX, state_.zoneY)) {
+        const world::Zone* targetZone = zones_.getZone(*target);
+        state_.zoneStack.push_back({state_.currentZoneId, state_.zoneX, state_.zoneY});
+        state_.currentZoneId = *target;
+        state_.zoneX = targetZone->entryX();
+        state_.zoneY = targetZone->entryY();
+        message_ = "You step into " + targetZone->name() + ".";
+        return;
+    }
+
     if (state_.zoneX != zone->entryX() || state_.zoneY != zone->entryY()) {
         message_ = "You need to be at the entrance (marked '>') to leave.";
         return;
     }
+
+    if (!state_.zoneStack.empty()) {
+        ZoneReturnPoint back = state_.zoneStack.back();
+        state_.zoneStack.pop_back();
+        message_ = "You step back out into " + zones_.getZone(back.zoneId)->name() + ".";
+        state_.currentZoneId = back.zoneId;
+        state_.zoneX = back.x;
+        state_.zoneY = back.y;
+        return;
+    }
+
     const world::Location* here = world_.getLocation(state_.currentZoneId);
     message_ = "You step back out into " + (here != nullptr ? here->name : "the world") + ".";
     state_.mode = Mode::Overworld;
     state_.currentZoneId.clear();
+}
+
+void GameLoop::runCombat(const combat::Monster& monster) {
+    int monsterMaxHp = character::roll(monster.hpDiceCount, monster.hpDiceSides) + monster.hpFlatBonus;
+    int monsterHp = monsterMaxHp;
+    std::vector<std::string> log;
+    log.push_back("A " + monster.name + " appears! " + monster.description);
+
+    auto playerAttacks = [&]() {
+        combat::AttackOutcome outcome = combat::resolvePlayerAttack(state_.character, monster);
+        if (outcome.hit) {
+            monsterHp -= outcome.damage;
+            log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ".");
+        } else {
+            log.push_back("You miss the " + monster.name + ".");
+        }
+    };
+    auto monsterAttacks = [&]() {
+        combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character);
+        if (outcome.hit) {
+            state_.character.currentHp -= outcome.damage;
+            log.push_back("The " + monster.name + " hits you for " + std::to_string(outcome.damage) + ".");
+            // Giant Spider's real Type F poison bite (Monstrous Manual
+            // p.329): a failed save is "immediate death" in the book, but
+            // this project never permadeaths the player (see docs/
+            // COMBAT_NOTES.md) -- setting currentHp to 0 here lets the
+            // existing knockout check right after this lambda runs handle
+            // it exactly like any other lethal hit, no separate logic.
+            if (monster.poisonOnHit) {
+                if (combat::rollSavingThrow(state_.character, character::SaveCategory::ParalyzationPoisonDeath)) {
+                    log.push_back("You resist the poison.");
+                } else {
+                    log.push_back("The poison overwhelms you!");
+                    state_.character.currentHp = 0;
+                }
+            }
+        } else {
+            log.push_back("The " + monster.name + " misses you.");
+        }
+    };
+    // Cast the character's one known spell (see character/Spellcasting.h)
+    // as their action for the round instead of attacking. Magic Missile
+    // damages the monster; Cure Light Wounds heals the caster and never
+    // touches the monster -- either way this replaces playerAttacks() in
+    // the initiative-ordered exchange below, the monster still gets its
+    // attack afterward per the usual ordering.
+    auto playerCasts = [&]() {
+        character::SpellCastResult result = character::castSpell(state_.character);
+        if (result.targetsMonster) {
+            monsterHp -= result.amount;
+            log.push_back("Your Magic Missile strikes the " + monster.name + " for " +
+                           std::to_string(result.amount) + ".");
+        } else {
+            int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
+            state_.character.currentHp += healed;
+            log.push_back("You cast Cure Light Wounds and heal " + std::to_string(healed) + " hit points.");
+        }
+    };
+
+    for (;;) {
+        render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+        render::Key key = render::Console::readKey();
+
+        if (key == render::Key::Flee) {
+            log.push_back("You break off and retreat.");
+            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+            render::Console::readKey();
+            return;
+        }
+
+        bool casting = false;
+        if (key == render::Key::Cast) {
+            if (!character::canCastSpells(state_.character.charClass)) {
+                log.push_back("You have no spell to cast.");
+                continue;
+            }
+            if (!character::hasSpellSlotAvailable(state_.character, state_.hoursElapsed / 24)) {
+                log.push_back("You have no spells remaining today.");
+                continue;
+            }
+            casting = true;
+        } else if (key != render::Key::Enter) {
+            continue;
+        }
+
+        // PHB p.124: one d10 per side, lower goes first. Whoever acts
+        // second is skipped if the first attacker already ended the fight.
+        std::function<void()> playerActs = casting ? std::function<void()>(playerCasts)
+                                                     : std::function<void()>(playerAttacks);
+        if (combat::playerActsFirst()) {
+            playerActs();
+            if (monsterHp > 0) monsterAttacks();
+        } else {
+            monsterAttacks();
+            if (state_.character.currentHp > 0) playerActs();
+        }
+
+        if (monsterHp <= 0) {
+            int steel = std::max(0, character::roll(monster.steelDiceCount, monster.steelDiceSides) +
+                                         monster.steelFlatBonus);
+            state_.character.steelPieces += steel;
+            // Baaz Draconians turn to stone on death -- their single most
+            // iconic trait (Dragonlance Adventures, TSR 2021, p.75) -- worth
+            // a special line rather than the generic victory message.
+            if (monster.id == "baaz") {
+                log.push_back("The Baaz Draconian falls and its body crumbles to stone! You find " +
+                               std::to_string(steel) + " steel among the rubble.");
+            } else {
+                log.push_back("The " + monster.name + " falls! You find " + std::to_string(steel) + " steel.");
+            }
+            if (monster.xpValue > 0) {
+                state_.character.experience += monster.xpValue;
+                log.push_back("You gain " + std::to_string(monster.xpValue) + " experience.");
+                character::applyPendingLevelUps(state_.character, log);
+            }
+            render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log);
+            render::Console::readKey();
+            return;
+        }
+        if (state_.character.currentHp <= 0) {
+            // Knocked out, not killed -- see docs/COMBAT_NOTES.md. Capped
+            // at 1 HP and warped back to Solace rather than a real death.
+            state_.character.currentHp = 1;
+            log.push_back("You are struck down... and wake up back in Solace, battered but alive.");
+            if (const world::Location* solace = world_.getLocation("solace")) {
+                state_.x = solace->x;
+                state_.y = solace->y;
+            }
+            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+            render::Console::readKey();
+            return;
+        }
+    }
 }
 
 } // namespace game

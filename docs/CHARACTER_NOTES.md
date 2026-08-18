@@ -41,6 +41,16 @@ Dragonlance Campaign.pdf`, kept locally, not committed — see
   Half-Orcs having essentially no presence in Dragonlance/Ansalon lore,
   it's been replaced with **Kender** (verified against Dragonlance
   Adventures p.53 — see below).
+- **Elf/Dwarf subraces (DL Adventures pp.60–69), Tinker Gnome (p.57), and
+  Knights of Solamnia entry requirements (pp.14–20)**: same
+  render-the-page-and-read-it discipline, done by a research agent rather
+  than inline in this session. Found real gaps versus what this project
+  had: Krynn's dwarves/Kagonesti elves can't be Mages at all (not
+  previously modeled), Tinker Gnome's real adjustment (STR−1/DEX+2) differs
+  from the generic PHB Gnome stats this project used before, and Wizards of
+  High Sorcery turned out to have essentially nothing to model at 1st level
+  (Robes aren't assigned until 3rd). See "Dragonlance depth" below for the
+  full writeup.
 
 Any *remaining* unverified numbers (things not read directly from a book
 page — mainly flavor text and minor rounding choices) are called out
@@ -92,13 +102,14 @@ not having min/max enforcement either.
 
 ## Scope: what this milestone does and doesn't model
 
-No combat or leveling system exists yet, which is what makes several 2e
-mechanics safe to skip for now rather than build unused:
+No leveling system exists yet (combat now does — see
+`docs/COMBAT_NOTES.md`), which is what makes several 2e mechanics safe to
+skip for now rather than build unused:
 
-- **No percentile Strength.** A Fighter with 18 Strength in real 2e rolls
-  percentile (18/01–18/00) for a finer-grained bonus; here it's just 18.
-  Worth adding once STR-derived to-hit/damage bonuses matter (i.e., once
-  combat exists).
+- **Percentile Strength is implemented** (`Character::exceptionalStrengthPercentile`,
+  rolled by `CharacterCreator` for a Fighter at STR 18, per PHB Table 1's
+  warrior-only rule) — no longer deferred, now that combat reads
+  STR-derived to-hit/damage bonuses. See `docs/COMBAT_NOTES.md`.
 - **THAC0 is a flat 20 for every class at level 1.** This is correct 2e
   behavior at level 1 — THAC0 only diverges by class as levels are gained.
   Once leveling exists, THAC0 needs a per-class, per-level progression
@@ -111,27 +122,467 @@ mechanics safe to skip for now rather than build unused:
   magic/casting system. (Kender specifically are flagged as unable to cast
   arcane magic at all — see above — but nothing stops them from being
   *chosen* as Mage today, since spellcasting doesn't exist yet either way.)
-- **No equipment or armor system.** Starting gold is tracked as a bare
-  number (`Character::goldPieces`); Armor Class is always unarmored
-  (`10 - Dex adjustment`) until there's an inventory system to equip armor
-  from. The Priest-specific rule that clerics must return excess starting
-  gold to their order (PHB p.89) isn't enforced for the same reason.
-- **Only two derived ability modifiers are computed**: Constitution → HP
-  adjustment, Dexterity → AC adjustment. STR (to-hit/damage), INT/WIS
-  (spell bonuses/max spell level), and CHA (reactions/henchmen) all have
-  their own 2e tables too, deferred until something reads them.
+- **A real but deliberately small equipment system exists** (see
+  "Equipment" below) — a General Store sells a handful of sourced armor
+  tiers and one weapon upgrade per class, buyable with `steelPieces`, and
+  a real carried inventory + equip/unequip screen (Milestone 21). Still no
+  other item types, no selling gear back, no armor weight/encumbrance. The
+  Priest-specific rule that clerics must return excess starting funds to
+  their order (PHB p.89) still isn't enforced.
+- **Three derived ability modifiers are computed**: Constitution → HP
+  adjustment, Dexterity → AC adjustment, and (as of combat) Strength →
+  to-hit/damage adjustment (`docs/COMBAT_NOTES.md`). INT/WIS (spell
+  bonuses/max spell level) and CHA (reactions/henchmen) still have their
+  own 2e tables too, deferred until something reads them (a magic system,
+  for INT/WIS; nothing currently models NPC reactions or henchmen at all).
 
 ## Race and class scope
 
 Six core 2e PHB races (Human, Dwarf, Elf, Gnome, Half-Elf, Halfling) plus
 Kender (see above, replacing Half-Orc), and the four foundational classes
 (Fighter, Mage, Cleric, Thief — confirmed on PHB p.35 as "the standard
-classes... appropriate to any sort of AD&D game campaign"). Paladin,
+classes... appropriate to any sort of AD&D game campaign"), plus a fifth,
+Dragonlance-only class, Tinker, forced automatically onto every Gnome PC
+(see "Tinker Gnome" below) rather than offered as a menu choice. Paladin,
 Ranger, Druid, Bard, and specialist wizards are not implemented — adding
 one means extending `character::ClassId`/`kAllClasses` and the table in
-`CharClass.cpp` with its prime requisite, hit die, level-1 saves, and gold
-formula, plus (for Paladin/Ranger/Druid) deciding how to handle their
+`CharClass.cpp` with its prime requisite, hit die, level-1 saves, and
+starting-steel formula, plus (for Paladin/Ranger/Druid) deciding how to handle their
 alignment restrictions, which nothing currently enforces.
+
+## Dragonlance depth: subraces, Knights of Solamnia, Wizards of High Sorcery
+
+Everything in this section was verified against scanned pages of
+`TSR 2021 DragonLance Adventures.pdf`, the same visual-confirmation
+discipline as the rest of this document — a research agent rendered each
+relevant page as an image and read it directly rather than trusting the
+scan's garbled OCR text layer. Page numbers below are PDF page numbers
+(the book's own printed page number is consistently one less, e.g. PDF
+p.60 = printed p.59).
+
+### Elf and Dwarf subraces are mandatory, not optional
+
+There's no generic "Elf" or "Dwarf" PC on Krynn — choosing either race in
+`CharacterCreator` immediately prompts a subrace choice, which **replaces**
+(doesn't add to) the base race's ability adjustment:
+
+- **Silvanesti Elf** (p.60): CON−1/DEX+1 — identical to the base PHB Elf
+  adjustment, just restated in the subrace's own table. Can be a Mage.
+- **Qualinesti Elf** (p.61): same CON−1/DEX+1. Can be a Mage.
+- **Kagonesti Elf** (p.62): STR+1/CON+1/DEX+2/INT−3 — four simultaneous
+  adjustments, more than `RaceInfo::adjustments`' 3-slot array can hold,
+  which is why `character::SubraceInfo` uses its own 6-int array indexed
+  directly by `Ability` instead. **Cannot be a Mage at all.**
+- **Hill Dwarf** (p.67): CHA−1/CON+1 — same as the base PHB Dwarf
+  adjustment. **Cannot be a Mage at all** (a Dragonlance-specific
+  restriction the base Dwarf entry doesn't have).
+- **Mountain Dwarf** (p.68): same CHA−1/CON+1. Also cannot be a Mage.
+
+`character::effectiveCanBeMage(race, subrace)` returns the subrace's
+`canBeMage` when one is selected, else the base race's — this is how
+Kagonesti/Hill/Mountain block Mage while Silvanesti/Qualinesti don't, using
+the same non-blocking "flagged, not hard-blocked" UX as Kender's Mage
+restriction (see above).
+
+**Not modeled, deliberately**: each subrace's book page also lists ability
+score *ranges* (min/max caps) and class *level limit* tables (e.g. a
+Silvanesti Fighter capped at level 10) — left unenforced, extending the
+exact same precedent already documented for Kender ("racial ability ranges
+and class level limits... not enforced, consistent with every other race
+here"). Level limits specifically are moot anyway until a leveling system
+exists (see "No demihuman level limits" above).
+
+**Gully Dwarf is deliberately not included** as a third Dwarf subrace
+option, even though it's in the source book (p.69) and was on this
+project's own "extend later" list. The book generates Gully Dwarf ability
+scores with an entirely different method (e.g. Strength 4d4+2, Intelligence
+2d4+1) instead of 3d6 — incompatible with this project's settled
+3d6-down-the-line-with-reroll house rule. Approximating it with a flat
+ability adjustment (the way every other subrace works) would misrepresent
+a genuinely different generation method rather than honestly model it, so
+it's left as clearly-flagged future work instead of a fudged approximation.
+
+### Tinker Gnome replaces the generic PHB Gnome entirely, and Tinker is a real class
+
+`character::raceInfo(RaceId::Gnome)`'s adjustment changed from the old
+generic-PHB INT+1/WIS−1 to **Tinker Gnome's STR−1/DEX+2** (p.57) — Krynn
+gnomes *are* Tinker Gnomes, there's no other kind of PC gnome in this
+setting, same precedent as Kender fully replacing Half-Orc rather than
+being an optional variant alongside it.
+
+The book states *"Gnomes in Krynn can only be of the tinker class"* (p.57).
+**This is hard-enforced, by explicit user decision** (superseding an
+earlier, softer pass of this same feature that just printed a caveat and
+left Gnomes free to pick any of the four core classes — the user asked
+directly to force it instead). `character::ClassId` gained a fifth value,
+`Tinker`; `CharacterCreator` auto-assigns it to every Gnome PC with no
+class-choice prompt at all (there's only one legal answer, so there's
+nothing to choose), and it never appears as an option for any other race —
+`kAllClasses` (the menu list) deliberately still only lists the core four.
+
+**Tinker's stats** (Dragonlance Adventures pp.22–23/printed pp.21–22,
+"Gnome Advancement Table," visually confirmed): prime requisite
+**Intelligence 10+**, hit die **d4**. The book also states Dexterity 12+
+and a maximum Wisdom of 12 for Tinkers — **not enforced**, consistent with
+this project's standing precedent of never enforcing ability score ranges
+(see "Elf and Dwarf subraces" above).
+
+**Not in the source book at all — a real gap, not an OCR failure**: a
+dedicated research pass read the entire Tinker chapter and confirmed the
+book has **no saving-throw table, no starting-steel formula, and no THAC0
+value** for this class. Its own front matter states it deliberately avoids
+duplicating PHB/DMG material and expects those to come from the core
+books — but it never says which PHB class-group (Warrior/Wizard/Priest/
+Rogue) a Tinker should borrow from. `CharClass.cpp`'s Tinker entry reuses
+**Mage's** saving throws and starting-steel formula as a documented analogy (same d4
+hit die, same Intelligence prime requisite, same fragile-caster
+archetype) — clearly commented as an analogy, not a sourced number, so
+it's a one-line fix if a better source ever turns up. THAC0 isn't an issue
+either way: every class in this project is flat 20 at level 1 regardless
+(true to 2e — see "Scope" above).
+
+**Not modeled at all — deliberately out of scope, and a real subsystem**:
+the book defines a genuinely detailed **device-construction minigame**
+(pp.23–25/printed pp.22–24) — Complexity scores, part-cost tables, crew-size
+modifiers, build-time charts, and a Success/Unpredictable/Failure roll
+against a Gnomish Invention Results table (with its own Mishap sub-table).
+This is Tinkers' whole reason for existing flavor-wise, but it's a sizable
+standalone system (several cross-referenced tables, two of which — the
+Complexity and Mishap tables themselves, printed pp.118–119 — weren't even
+rendered/transcribed in the research pass that found this). Worth building
+eventually as its own feature, not bolted onto character creation.
+
+### Knights of Solamnia — Order of the Crown only
+
+Every Knight starts in the **Order of the Crown** (p.17: "every candidate
+... must first enter the Knighthood as a squire of the Order of the
+Crown"); advancing into the Order of the Sword and then the Order of the
+Rose requires XP thresholds and a witnessed quest (p.18–20) that this
+project can't model yet — there's no leveling/XP system at all, only
+level-1 character creation, so Sword and Rose are cleanly out of scope
+rather than half-implemented.
+
+**Entry requirements for Knight of the Crown** (p.18, "Game Data",
+visually confirmed on the rendered page): ability minimums **Strength 10,
+Intelligence 7, Wisdom 10, Dexterity 8, Constitution 10** (no Charisma
+minimum), and alignment must be **Good** (Lawful, Neutral, or Chaotic Good
+— the book ties Knighthood to the good/evil axis specifically, not a
+law/chaos one). Implemented in `character::meetsKnightOfCrownRequirements`
+(`Knighthood.h/.cpp`), offered as a yes/no prompt in `CharacterCreator`
+immediately after alignment is chosen, only to Fighters.
+
+**Deliberate simplification**: the book actually builds Knights of
+Solamnia on the **Cavalier** class (Unearthed Arcana), not Fighter — this
+project doesn't implement Cavalier (out of scope, same as Paladin/Ranger/
+Druid/Bard above) and isn't adding it just for this. Modeled instead as "a
+qualifying Fighter who swears the oath," which loses the Cavalier-specific
+perks the book mentions (e.g. guaranteed weapon specialization) — moot for
+now anyway, since this project has no weapon-proficiency system for that to
+plug into.
+
+**Racial exclusion**: every Elf and Dwarf subrace researched shows "N/E"
+(not eligible) for Knight of Crown/Sword/Rose in its class-limit table — no
+exceptions found in any of the five tables checked. Modeled as a hard
+exclusion by parent race (`race == RaceId::Elf || race == RaceId::Dwarf`)
+in `meetsKnightOfCrownRequirements`. **Other races' Knighthood eligibility
+was not found in the researched pages** (the class-limit tables checked
+were specifically the Elf/Dwarf subrace ones) — they default to allowed
+rather than guessed-excluded, since Solamnic Knights are portrayed as
+predominantly-but-not-exclusively human in the wider setting. Revisit if a
+source page covering Human/Half-Elf/Halfling/Kender/Gnome Knighthood
+eligibility turns up.
+
+**Not modeled**: no saving-throw bonus tied to Crown rank was found
+anywhere in the chapter (any such bonus would come from the base Cavalier
+chassis in Unearthed Arcana, which isn't implemented); falling from Good
+alignment is described as demoting a Knight back to a plain Fighter (p.14)
+but nothing currently tracks alignment changes after character creation to
+enforce this.
+
+### Wizards of High Sorcery — mostly out of scope at level 1, and that's correct
+
+This is the single biggest scope-reducer the research turned up, and it's
+worth stating plainly: **a starting (1st-level) Krynn wizard has no Robe
+and belongs to no Order at all.** Per p.28 and p.35, alignment declaration
+and Robe assignment (White/Red/Black, tied to Solinari/Lunitari/Nuitari)
+don't happen until the **Test of High Sorcery at 3rd level** — a level this
+project's level-1-only character creation never reaches. Inventing a
+robe-choice prompt now would mean fabricating a mechanic the source
+material explicitly says doesn't apply yet, which this project avoids on
+principle (see the accuracy note at the top of this document).
+
+What *does* apply at 1st level, confirmed on the "Student Wizard Minimum
+Scores" table (p.35): an added **Dexterity 6+** requirement for Mage, on
+top of the existing Intelligence 9+. Checked in `CharacterCreator` (a
+non-blocking flag, same UX as every other class-eligibility note) and
+paired with flavor text on the final summary and character sheet — "an
+unaffiliated student of the arcane, a Robe and Order await at higher
+levels" — rather than any mechanical robe system.
+
+**Now that leveling exists** (see below): Robe assignment by alignment at
+the Test of High Sorcery is implemented as a level-3 flavor moment.
+Spellcasting itself now exists too (see "Spellcasting" below), but
+Robe-based spell-sphere restrictions and moon-phase
+(Solinari/Lunitari/Nuitari) saving-throw/spellcasting bonuses are still
+deferred — moot with only one, non-sphere-restricted Mage spell in the
+game (the book itself states a wizard "is unaffected by phases of the
+moons" below 3rd level anyway, so this was never a level-1 concern
+either).
+
+## Leveling / experience
+
+`character::applyPendingLevelUps` (`Leveling.h/.cpp`) is called from
+`GameLoop::runCombat` after a monster's XP award, and covers everything
+sourced from the PHB, visually confirmed against rendered page images:
+
+- **XP tables per class** (Fighter: Table 14 p.36; Mage: Table 20 p.42;
+  Cleric: Table 23 p.47; Thief: Table 25 p.53), **levels 1–20 — the full
+  printed table for each class**. (Originally implemented through level
+  10 only; extended to the full 20 in a follow-up pass once the user
+  asked why it stopped short.) Level 20 costs 2.2–3.75 million XP
+  depending on class, against monster kills worth 7–420 XP
+  (`docs/COMBAT_NOTES.md`) — a very long way off, but no longer an
+  artificial cap. THAC0 (Table 53) and saves (Table 60) were already
+  sourced through 20/21+ from the start, so nothing else needed
+  extending. Tinker reuses
+  the Mage/Wizard-group table (see "Tinker Gnome" above for the existing
+  saves/steel analogy this extends — the real *Dragonlance Adventures*
+  Advancement Table, p.22, was only partially glimpsed in an earlier
+  research pass and not re-confirmed, so it wasn't used).
+- **HP per level**: each class rolls its hit die + CON adjustment through
+  a cutoff level (9th for Fighter/Cleric, 10th for Mage/Thief), then a
+  flat amount with **no** CON bonus after that (Fighter +3, Cleric +2,
+  Mage +1, Thief +2) — each class's chapter states this near-verbatim.
+  Level-ups heal (`currentHp` rises by the same amount as `maxHp`) — a
+  standard convention, not a specifically-cited rule.
+- **THAC0 by level** (Table 53, p.121) and **saving throws by level**
+  (Table 60, p.134, bracketed by level range) are both transcribed as
+  small lookup tables in `Leveling.cpp`, per class group (Warrior/Wizard/
+  Priest/Rogue — Fighter/Mage/Cleric/Thief respectively; Tinker again
+  maps to Wizard). Racial saving-throw bonuses
+  (`applyRacialSavingThrowBonus`) are reapplied after every level's table
+  lookup, same as at character creation.
+
+**Not modeled**: Fighter's extra attacks per round past 6th level (PHB
+Table 15) — the combat round loop resolves exactly one attack per side;
+adding a second would mean restructuring it, deferred since level 7 is
+far off given the XP costs above. Demihuman level limits — same standing
+deferral as every other race/subrace ability-range cut in this document.
+
+**Flavor-only, not mechanical**: a Knight of the Crown reaching level 3
+gets a line about the Order of the Sword noticing them (Sword itself —
+requiring "a witnessed quest of heroism," DL Adventures p.19 — needs a
+quest system this project doesn't have). A Mage reaching level 3 actually
+does get the mechanical Test of High Sorcery outcome (robe assigned by
+alignment, per the "Wizards of High Sorcery" section above) — that one
+isn't just flavor, since the alignment-to-robe mapping was already fully
+sourced and needed no quest-like narrative gate to apply.
+
+## Spellcasting
+
+`character::Spellcasting` (`Spellcasting.h/.cpp`) gives Mage and Cleric one
+real, PHB-sourced spell each -- not a spellbook/spell-selection system,
+same "one sourced thing done honestly, not a whole subsystem faked" spirit
+as `ClassInfo`'s single placeholder weapon (see `docs/COMBAT_NOTES.md`).
+Everything below was visually confirmed against rendered PHB pages, same
+discipline as every other rules pass in this project:
+
+- **Mage knows Magic Missile** (PHB p.176, Evocation): 1d4+1 damage per
+  missile, automatic hit (no attack roll, no saving throw -- the book's
+  own wording: "unerringly strike their target"), missile count = 1 at
+  1st level plus one more every two levels, capped at 5 (reached at 9th
+  level).
+- **Cleric knows Cure Light Wounds** (PHB p.253, Necromancy, Reversible):
+  a flat 1d8 healed, no level scaling, capped at the character's `maxHp`.
+- **Spell slots are real and level-based**: Wizard 1st-level-spell-per-day
+  counts come from Table 21 (Wizard Spell Progression, p.43); Cleric's
+  come from Table 24 (Priest Spell Progression, p.47) *plus* Wisdom bonus
+  spells (Table 5, p.23, cumulative per the book's own worked example).
+  Both tables' 1st-level column is transcribed in full for levels 1-20,
+  matching `Leveling`'s existing level range. **Mages get no
+  Intelligence-based bonus slots** -- confirmed against the book: INT
+  governs chance-to-learn-a-spell and max spell level for Wizards, not
+  slot count, unlike Wisdom's role for Clerics. This asymmetry is
+  deliberate, not a missing feature on the Mage side.
+- **No rest/memorization action is modeled.** Slots simply refill the
+  first time `hasSpellSlotAvailable` is checked on a new in-game day
+  (`hoursElapsed / 24`, the same day convention `timeline::Timeline`
+  uses) -- `Character::spellsCastToday`/`spellsCastDay` track this, reset
+  as a side effect of the check rather than by an explicit "pray" or
+  "study" command.
+- **Real enforcement, finally, of the racial arcane-magic block.** Kender
+  (`raceInfo(Kender).canBeMage == false`) and the three subraces that
+  can't be Mages (Kagonesti Elf, Hill Dwarf, Mountain Dwarf, via
+  `effectiveCanBeMage`) now actually get `maxSpellSlotsPerDay == 0` --
+  before spellcasting existed, this restriction was flavor-only (see
+  "Kender in place of Half-Orc" and "Dragonlance depth" above, which both
+  said as much). Character creation is unchanged: you can still *choose*
+  Mage as one of these, same non-blocking UX as every other
+  eligibility mismatch in this project -- the consequence just shows up
+  in combat now instead of nowhere.
+
+**Wired into combat** (`GameLoop::runCombat`, see `docs/COMBAT_NOTES.md`):
+a new `render::Key::Cast` (`'m'`/`'M'`) lets a Mage or Cleric spend their
+round casting instead of attacking, through the same initiative-ordered
+exchange as a normal attack.
+
+**Not modeled, deliberately, and still real gaps**: no spells above 1st
+level, ever, in this pass; Elf/Half-Elf's sleep/charm magic resistance
+still has nothing to resist (neither Magic Missile nor Cure Light Wounds
+triggers it); Wizard Robe spell-sphere restrictions are moot with only one
+spell in the game, which isn't sphere-restricted to begin with. Tinker
+still never casts despite borrowing Mage's saves/steel table as an analogy
+-- gadgets, not magic.
+
+## Equipment
+
+`character::Equipment` (`Equipment.h/.cpp`) lets a character buy armor and
+one weapon upgrade at a shop POI (`p` while standing on one) — same "solve
+the reported problem, not the whole simulation" scope as Spellcasting's one
+known spell per caster. Everything below was visually confirmed against
+rendered PHB pages (this scan's OCR badly garbles table columns, so text
+search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
+
+- **Armor tiers**: Leather (AC 8, 5stl), Chain Mail (AC 5, 75stl), Splint
+  Mail (AC 4, 80stl) — Table 46 (Armor Class Ratings, p.99) for the AC
+  values, Table 47 (Armor, p.92) for cost (the PHB's own gold-piece
+  numbers, applied here as Steel Pieces, Krynn's real currency — see
+  "Gold -> Steel" below). Splint Mail is offered instead of Banded/Bronze
+  Plate Mail for the same AC 4 tier because it's the cheapest real item at
+  that protection level (80stl vs 200stl/400stl) — Plate Mail and heavier
+  are priced far beyond any level-1 character's starting steel and aren't
+  offered yet.
+- **Shield**: -1 AC, 7stl (Table 47's "Medium" shield entry). Table 46
+  confirms a shield always improves AC by exactly 1 over the same armor
+  without one, so this is modeled as a flat subtraction, not a separate
+  lookup row.
+- **"Wizards cannot wear any armor, for several reasons"** (PHB, Money
+  and Equipment chapter) — a real, sourced restriction, not house rule.
+  `character::canWearArmor` is false only for Mage and Tinker (the
+  Mage-analogy class — same fragile-caster archetype already established
+  for its saves/steel/hit die, see "Tinker Gnome" above). Mirrors the
+  existing Kender/subrace arcane-magic-block precedent as a genuine
+  class-differentiating rule, not an oversight.
+- **One weapon upgrade per class that can use one** (Table 44, Weapons,
+  p.94): Fighter's Long Sword (1d8) upgrades to Two-Handed Sword (1d10,
+  50stl); Cleric's Mace (1d6) upgrades to Footman's Flail (1d6+1, 15stl);
+  Thief's Short Sword (1d6) upgrades to Long Sword (1d8, 15stl). Mage and
+  Tinker have no upgrade offered — their dagger/wrench stays as-is,
+  consistent with wizards' traditionally short allowed-weapons list and
+  their fragile-caster identity being intentional, not a gap.
+- **`Character::armorClass` is always kept in sync**, not derived on the
+  fly: `Equipment::recomputeArmorClass` runs at character creation
+  (equivalent to the old `10 - Dex adjustment` formula, since
+  `equippedArmor` starts as `ArmorId::None`) and again after every
+  purchase. `combat::resolvePlayerAttack` reads
+  `Character::weaponDamageSides`/`weaponDamageBonus` directly instead of
+  the class's placeholder starting weapon — the one change that actually
+  makes a purchased weapon upgrade matter in a fight.
+- **The shop is a zone-grammar addition, not a new mechanism**: a `SHOP
+  <char>` line in a zone file (see `docs/ZONE_NOTES.md`) marks an
+  existing POI as browsable, same "must reference an already-declared
+  POI" validation `TALK`/`PORTAL` already use. `GameLoop::handleShop()`
+  takes over input in its own nested loop (same architectural shape as
+  `runCombat`), reinterpreting `Key::North`/`South`/`Enter`/`Inventory`/
+  `Quit` locally (cursor up/down, buy or sell depending on the active
+  view, toggle buy/sell, exit the shop — not the whole game) rather than
+  adding new `Key` values for item selection. The shop's on-screen title
+  is the POI's own name, not a hardcoded string — Solace's General Store,
+  Haven's Market Stalls, and Tarsis's Old Sailor all reuse the exact same
+  `handleShop`/`availableShopItems` code, so what's for sale is identical
+  everywhere (a deliberate scope cut, see "Three shops now" below, not an
+  oversight).
+- **No downgrading protection.** Nothing stops buying a worse item by
+  mistake. Same minimalism as one weapon/spell/dialogue-line precedent
+  elsewhere in this project.
+
+### Selling gear back
+
+As of Milestone 28, the shop screen has a second view: pressing `i` while
+inside a shop toggles between "Buying" (the existing catalog) and
+"Selling" (`character::sellableItems`, one entry per carried
+`inventory` item), with the same up/down-select-Enter-to-confirm
+interaction either way.
+
+**The resale price is an invented convention, not a sourced rule** — both
+the PHB (Money and Equipment chapter) and the DMG (treasure chapter) were
+searched (`pdftotext -layout` + text search for "sell"/"resale"/"resell")
+specifically to check for a printed mundane-equipment buy-back rule before
+picking a number. None exists in either book: the only "selling" passages
+found are about merchants using deliberately mismatched coin-weights (PHB)
+and magic-item trading (DMG), neither a resale-price table for ordinary
+armor/weapons. So `character::sellItem` uses the near-universal RPG
+convention instead — half of the item's real shop price, floored — flagged
+here exactly the way `docs/COMBAT_NOTES.md`'s "damage floored at 1" note
+flags its own unsourced-but-conventional number.
+
+Only items that actually match something in the shop catalog are
+sellable: any carried `ArmorId`, the shield, or a class's purchased
+`WeaponUpgrade`. A class's **starting weapon** (Longsword, Mace,
+Shortsword, Dagger, the Tinker's wrench) — which can land back in
+inventory after buying and equipping an upgrade — was never itself sold
+in any shop and has no established price, so it's marked unsellable
+("cannot sell") rather than assigned an invented number for something
+that was never actually for sale.
+
+### Three shops now, one shared catalog
+
+Haven's Market Stalls (`K`) and Tarsis's Old Sailor (`S`) each gained a
+`SHOP` line alongside their existing `POI`/`TALK` content — no new POIs or
+zone-grid changes, reusing already-written, already-justified tiles rather
+than inventing new merchant characters with no grounding (Haven's stalls
+already sell goods to passersby; Steel Pieces are established lore as "the
+universal equivalent," so even Tarsis's xenophobic-toward-outsiders sailor
+plausibly deals in it — see "Gold -> Steel" below). `K` was already the
+zone's `TIMELINE_ANCHOR`; `SHOP` and `TIMELINE_ANCHOR` are independent
+flags on the same POI, so this doesn't interfere with canon-character
+encounters there. All three shops sell from the exact same
+`availableShopItems` catalog — there's no per-location wares (Haven
+doesn't sell anything Solace doesn't) — a real, documented scope cut, see
+"Extending this later" below.
+
+### Carried inventory and equip/unequip (Milestone 21)
+
+Buying at the General Store no longer replaces whatever's equipped
+directly — it adds the item to `Character::inventory`
+(`std::vector<character::InventoryItem>`), a carried-but-not-worn list.
+Equipping is a separate, deliberate action: press `i`
+(`render::Key::Inventory`, always available, not gated on standing at a
+shop POI) to open the inventory screen and pick a carried item to wear.
+`character::equipInventoryItem` swaps it into the matching slot
+(`equippedArmor`/`hasShield`/the `weapon*` fields) and pushes whatever was
+previously equipped there back into `inventory` — gear is swapped, never
+destroyed or discarded. `availableShopItems`'s "already owned" check now
+looks at both the equipped slot and inventory contents, so buying a
+duplicate of an identical armor tier/shield/weapon upgrade is blocked
+(there's no reason to carry two).
+
+Deliberately not modeled: there's no "unequip to nothing" action (going
+fully bare-handed/unarmored isn't offered — equipping is always a swap
+between two items, and a weapon slot is never actually empty since every
+class starts with one); no sell-back (unchanged from before); no
+encumbrance/weight limit (same minimalism as everywhere else). `i` also
+works mid-adventure regardless of location, unlike `p` which needs a shop
+POI underfoot.
+
+### Gold -> Steel (Milestone 22)
+
+Krynn's real currency, post-Cataclysm, is Steel Pieces (`stl`), not gold —
+confirmed via `pdftotext` search of *Dragonlance Adventures* (TSR 2021):
+"stl stands for steel pieces, the universal equivalent," used throughout
+that book's own cost tables (e.g. Knights of Solamnia Circle-tithe
+amounts). `character::Character::steelPieces` (and every dice/cost field
+that used to say `gold`) is renamed accordingly, top to bottom: class
+starting-currency dice, monster reward dice, shop prices, every in-game
+"Gold: N gp" display. The underlying dice/prices themselves are unchanged
+— this is a currency *name* accuracy fix, not a rebalance; the PHB's own
+generic-D&D "gold piece" numbers (Table 43 starting funds, Table 47 armor
+prices, Table 44 weapon prices) are applied as-is under the new name, same
+as before the rename.
+
+The save file's `GOLD` keyword became `STEEL`, but `SaveGame::load` still
+accepts a legacy `GOLD` line too (a save written before this milestone) —
+see `docs/GOTCHAS.md`.
 
 ## Where a character lives
 
@@ -145,23 +596,54 @@ stored in `GameState::character` and never reassigned after that; pressing
 
 ## Extending this later
 
-- **Leveling/XP**: would need a per-class, per-level table for THAC0 and
-  saving throws (currently only level 1 is modeled), plus demihuman level
-  limits if those are to be enforced.
-- **Combat**: would start reading `Character::thac0`/`armorClass` and the
-  currently-unused STR-derived to-hit/damage tables.
-- **Spellcasting**: Mage/Cleric would need spell list data and a "known/
-  memorized spells" concept added to `Character`. This is also where
-  Kender's "cannot cast arcane magic" restriction and Elf/Half-Elf's sleep/
-  charm magic resistance would finally need real enforcement.
-- **Equipment/inventory**: would replace the flat unarmored AC calculation
-  with armor-modified AC, and give `goldPieces` somewhere to actually be
-  spent.
-- **Dragonlance-specific depth**: `TSR 2021 DragonLance Adventures.pdf` and
-  the DL Player's Guide contain much more setting-specific material worth
-  mining later — subrace variants (Silvanesti/Qualinesti/Kagonesti elves,
-  Hill/Mountain/Gully dwarves, Tinker Gnomes), and the Knights of Solamnia/
-  Wizards of High Sorcery kit systems that would let Fighter/Mage feel more
-  distinctly Dragonlance. Not pulled in now — deliberately out of scope for
-  this pass, which focused on getting the *core* four-class ruleset
-  correct first.
+- **Leveling/XP past level 20**: `Leveling.cpp`'s XP tables now go the
+  full 1–20 the PHB itself prints for these four classes; the book
+  doesn't give single-class thresholds beyond that either, so extending
+  further would mean a different (optional/epic-level) rule set, not
+  just more of the same table.
+- **Fighter's extra attacks per round** (level 7+, PHB Table 15): needs
+  the combat round loop restructured to resolve more than one attack per
+  side — see "Leveling / experience" above and `docs/COMBAT_NOTES.md`.
+- **Spellcasting past 1st level**: Mage and Cleric each know exactly one
+  spell (see "Spellcasting" above) with real per-day slot counts; actual
+  spell selection/spellbooks and spells above 1st level are still future
+  work. Elf/Half-Elf's sleep/charm magic resistance and Wizard Robe
+  spell-sphere restrictions remain unenforced since nothing currently
+  in the game triggers either (no sleep/charm spell exists, and the one
+  Mage spell isn't sphere-restricted).
+- **Equipment/inventory, past what exists now**: armor/weapon purchases,
+  a carried inventory, sell-back, and three shops (Solace, Haven, Tarsis)
+  all exist now (see "Equipment" above). Still missing: per-location
+  wares (every shop sells the identical catalog), armor weight/
+  encumbrance, and any item types beyond armor/shield/weapon (potions,
+  scrolls, tools).
+- **Sword and Rose Knights, for real**: currently just a flavor line at
+  level 3 (see "Leveling / experience" above) — actual advancement needs
+  a quest system for Sword's "witnessed quest of heroism" requirement.
+  Rose's exact minimum-scores table was also only text-extracted, not
+  visually re-confirmed — see the research notes referenced in project
+  memory.
+- **Wizard Robe mechanics, for real**: Robe assignment by alignment at
+  3rd level is implemented (see "Leveling / experience" above); robe-based
+  spell-sphere restrictions and moon-phase (Solinari/Lunitari/Nuitari)
+  bonuses still need a spell system to attach to.
+- **Gully Dwarf**: needs its own ability-score generation method (e.g.
+  Strength 4d4+2) instead of 3d6 — see "Elf and Dwarf subraces" above for
+  why it wasn't approximated instead.
+- **Ability score ranges and class level limits** for every race/subrace
+  (not just Kender) — a real 2e/Dragonlance mechanic, consistently left
+  unenforced across this whole project so far; would need a decision on
+  what happens when a roll falls outside a race's range (reroll that one
+  score? clamp it?) before implementing.
+- **Cavalier class**: would let Knights of Solamnia be modeled on their
+  actual book chassis instead of the current Fighter-plus-flag
+  simplification — see "Knights of Solamnia" above.
+- **Tinker's device-construction minigame**: a real, sizable subsystem
+  (Complexity/cost/build-time tables, a Success/Unpredictable/Failure
+  invention roll) — see "Tinker Gnome" above for what's already sourced and
+  what still needs the two illegible table pages (printed pp.118–119)
+  re-rendered.
+- **Tinker's saving throws/starting steel**: currently a documented analogy
+  to Mage (the source book doesn't print class-specific numbers for its own
+  Dragonlance classes at all) — revisit if a better-grounded source or
+  a deliberate house-rule choice ever supersedes the analogy.

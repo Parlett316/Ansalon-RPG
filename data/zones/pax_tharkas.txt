@@ -1,0 +1,35 @@
+# data/zones/pax_tharkas.txt -- hand-authored walkable interior: the
+# fortress courtyard, not the mines or tunnels beneath it (Sla-Mori and the
+# Tharkadan mines are described but not modeled as their own zone -- future
+# work, same pattern as the Inn's private rooms). The filename stem
+# ("pax_tharkas") is the zone id and MUST match the LOCATION id in
+# data/locations.txt for the Enter key to find it. Grammar: docs/ZONE_NOTES.md
+NAME Pax Tharkas
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..T................................T..#
+#......................................#
+#...................M..................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#.........G............................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI T "A Twin Tower" One of the fortress's two great guard towers, flanking the pass it was built to hold. The stonework predates every banner that's flown from it since.
+POI M "The Tharkadan Mine Entrance" A wide iron-bound gate opens into the mountain itself, dwarven-cut and elven-mortared, older than the war currently fought over who controls what's dug from it.
+POI G "A Fortress Guard" A soldier stands post in the courtyard, watching the road south more than he watches you. Whoever holds Pax Tharkas this season, the pass still needs watching.
+TALK G Move through if you're moving through. The road south is open today, for whatever that's worth -- I wouldn't count on it staying that way, and I wouldn't ask me who's counting.
+TALK_AGAIN G Still standing, same as you. Road's still open. I'd tell you that's a good sign, but I've been wrong about that before.
+SAY_IF G fighter The guard's posture doesn't relax, exactly, but it shifts -- soldier recognizing soldier. "You'd know, then, how a place like this gets held as much by who's willing to stand the watch as by how thick the walls are. I'll say no more than that. Walls have ears, and so do the men standing in front of them."
+TOPIC G "A Fortress Between Masters" He looks past you, out toward the pass, rather than at you. "Pax Tharkas has outlasted every banner that's ever flown over it. Dwarves cut it, elves mortared it, and I couldn't begin to tell you how many armies have marched through since and called it theirs for a season. The mountain doesn't much care whose flag is up that week. Neither, most days, do I. I just watch the road."
+TIMELINE_ANCHOR M
+END

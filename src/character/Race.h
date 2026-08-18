@@ -66,4 +66,57 @@ void applyRacialAdjustments(RaceId id, AbilityScores& scores);
 // constitutionMagicResistanceBonus(). No-op for races without the ability.
 void applyRacialSavingThrowBonus(RaceId id, int constitution, SavingThrows& saves);
 
+// Dragonlance-specific elf/dwarf subraces (Dragonlance Adventures, TSR
+// 2021), verified against scanned book pages -- see docs/CHARACTER_NOTES.md.
+// Elf and Dwarf PCs always pick one of these (there's no generic "Elf" or
+// "Dwarf" character on Krynn); every other race has no subrace, hence
+// SubraceId::None. Gully Dwarf is deliberately not included -- see
+// docs/CHARACTER_NOTES.md for why.
+enum class SubraceId {
+    None,
+    SilvanestiElf,
+    QualinestiElf,
+    KagonestiElf,
+    HillDwarf,
+    MountainDwarf,
+};
+
+struct SubraceInfo {
+    SubraceId id;
+    RaceId parentRace;
+    const char* name;
+
+    // Indexed directly by Ability (static_cast<size_t>(Ability::X)), unlike
+    // RaceInfo::adjustments' 3-slot array -- Kagonesti needs four
+    // simultaneous non-zero adjustments (STR/CON/DEX/INT), more than that
+    // array can hold. REPLACES the parent race's adjustments when a subrace
+    // is selected; the two are never combined -- see
+    // applyRacialOrSubracialAdjustments.
+    std::array<int, 6> abilityAdjustments;
+
+    // Overrides RaceInfo::canBeMage when a subrace is selected: Hill/
+    // Mountain Dwarf and Kagonesti Elf cannot be Mages at all (a
+    // Dragonlance-specific restriction the base Elf/Dwarf entries don't
+    // have), while Silvanesti/Qualinesti Elf can.
+    bool canBeMage;
+};
+
+// Returns nullptr for SubraceId::None.
+const SubraceInfo* subraceInfo(SubraceId id);
+
+constexpr std::array<SubraceId, 3> kElfSubraces = {
+    SubraceId::SilvanestiElf, SubraceId::QualinestiElf, SubraceId::KagonestiElf,
+};
+constexpr std::array<SubraceId, 2> kDwarfSubraces = {
+    SubraceId::HillDwarf, SubraceId::MountainDwarf,
+};
+
+// Applies `subrace`'s adjustments if it's not SubraceId::None, otherwise
+// falls back to `race`'s own adjustments (applyRacialAdjustments) --
+// subrace adjustments replace the base race's, they don't stack with it.
+void applyRacialOrSubracialAdjustments(RaceId race, SubraceId subrace, AbilityScores& scores);
+
+// subrace's canBeMage if a subrace is selected, else race's own.
+bool effectiveCanBeMage(RaceId race, SubraceId subrace);
+
 } // namespace character

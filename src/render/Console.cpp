@@ -82,8 +82,13 @@ Key Console::readKey() {
         case 'b': case 'B': return Key::SouthWest;
         case 'n': case 'N': return Key::SouthEast;
         case ';': return Key::Look;
+        case 't': case 'T': return Key::Talk;
         case 13: return Key::Enter; // Enter/Return
         case 'c': case 'C': return Key::Sheet;
+        case 'p': case 'P': return Key::Shop;
+        case 'i': case 'I': return Key::Inventory;
+        case 'f': case 'F': return Key::Flee;
+        case 'm': case 'M': return Key::Cast;
         case 'q': case 'Q': case 27: return Key::Quit; // 27 = Esc
         default: return Key::Unknown;
     }
@@ -106,7 +111,12 @@ Key Console::readKey() {
         case 'b': return Key::SouthWest;
         case 'n': return Key::SouthEast;
         case ';': return Key::Look;
+        case 't': return Key::Talk;
         case 'c': return Key::Sheet;
+        case 'p': return Key::Shop;
+        case 'i': return Key::Inventory;
+        case 'f': return Key::Flee;
+        case 'm': return Key::Cast;
         case 'q': return Key::Quit;
         default: return Key::Unknown;
     }

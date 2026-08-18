@@ -1,0 +1,132 @@
+# data/monsters.txt -- hand-authored monster roster for random encounters.
+# Grammar: docs/COMBAT_NOTES.md. Stats are sourced from real 2e rulebooks
+# (Monster Manual (2nd ed).pdf, actually the 1993 Monstrous Manual
+# compilation, and TSR 2021 DragonLance Adventures.pdf for the Baaz and
+# Kapak Draconians) -- visually confirmed against rendered page images,
+# not invented. See docs/COMBAT_NOTES.md for page citations. The Giant
+# Spider's real Type F poison bite is modeled (POISON below); the Baaz's
+# 20% magic resistance and the Kapak's real paralysis-poison bite are
+# different mechanics (not modeled the same way, see COMBAT_NOTES.md) and
+# still not modeled; Baaz's and Kapak's XP values are also simplified,
+# see below. This project models Krynn specifically -- no orcs, matching
+# Dragonlance's distinct bestiary.
+#
+# MONSTER <id>            starts a block
+# NAME <text>              display name
+# HP <count> <sides> <flat>       rolled once per encounter
+# AC <n>
+# THAC0 <n>
+# DAMAGE <count> <sides> <flat>   per hit
+# STEEL <count> <sides> <flat>    steel pieces awarded on victory
+# XP <n>                   awarded on victory
+# POISON                   optional; a hit also forces a saving throw vs.
+#                          poison (see docs/COMBAT_NOTES.md) -- currently
+#                          only the Giant Spider has this
+# DESC <text>              shown when the encounter starts
+# END                      closes the block
+
+MONSTER goblin
+NAME Goblin Raider
+HP 1 8 -1
+AC 6
+THAC0 20
+DAMAGE 1 6 0
+STEEL 1 6 0
+XP 15
+DESC A skulking, yellow-eyed goblin lunges from the brush, crude spear already leveled.
+END
+
+MONSTER kobold
+NAME Kobold Skirmisher
+HP 1 4 0
+AC 7
+THAC0 20
+DAMAGE 1 4 0
+STEEL 1 4 0
+XP 7
+DESC A scaly, dog-faced kobold darts out from behind a rock, yipping for reinforcements that may or may not come.
+END
+
+MONSTER hobgoblin
+NAME Hobgoblin
+HP 1 8 1
+AC 5
+THAC0 19
+DAMAGE 1 8 0
+STEEL 2 4 0
+XP 35
+DESC A burly hobgoblin in scavenged armor squares up, sizing you the way a butcher sizes a carcass.
+END
+
+MONSTER wolf
+NAME Timber Wolf
+HP 3 8 0
+AC 7
+THAC0 18
+DAMAGE 1 4 1
+STEEL 0 0 0
+XP 120
+DESC A lean gray wolf circles once, hackles raised, before it charges.
+END
+
+MONSTER spider
+NAME Giant Spider
+HP 3 8 3
+AC 4
+THAC0 17
+DAMAGE 1 8 0
+STEEL 1 8 0
+XP 420
+POISON
+DESC A spider the size of a hound drops from the canopy on a line of silk, mandibles clicking.
+END
+
+MONSTER baaz
+NAME Baaz Draconian
+HP 2 8 0
+AC 4
+THAC0 19
+DAMAGE 1 8 0
+STEEL 2 6 0
+# Real formula is "81 + 1/hp" (Dragonlance Adventures p.75) -- simplified
+# to a flat value near the average roll (2d8 averages ~9) rather than
+# adding per-hp-XP complexity to the Monster struct for one creature.
+XP 90
+DESC A scaled, armored figure blocks the path -- a draconian, blade drawn, wings half-spread. Killing it will turn its body to stone.
+END
+
+MONSTER bugbear
+NAME Bugbear
+HP 3 8 1
+AC 5
+THAC0 17
+DAMAGE 2 4 0
+STEEL 2 6 0
+XP 120
+DESC A hulking, hairy shape unfolds from the shadows of the treeline, grinning with a bear-trap mouth.
+END
+
+MONSTER ogre
+NAME Ogre
+HP 4 8 1
+AC 5
+THAC0 17
+DAMAGE 1 10 0
+STEEL 2 10 0
+XP 270
+DESC A nine-foot brute in stinking, ill-cured hides shoulders a crude, knotted club and roars a challenge.
+END
+
+MONSTER kapak
+NAME Kapak Draconian
+HP 3 8 0
+AC 4
+THAC0 18
+DAMAGE 1 4 0
+STEEL 2 8 0
+# Real formula is "105 + 3/hp" (Dragonlance Adventures p.75) -- simplified
+# to a flat value near the average roll (3d8 averages ~13.5), same
+# treatment as the Baaz's XP simplification above.
+XP 145
+DESC A wiry, hunched draconian licks its blade before it strikes, venom glistening along the edge.
+END

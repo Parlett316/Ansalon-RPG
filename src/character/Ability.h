@@ -47,4 +47,12 @@ int acAdjustmentForDexterity(int dexterity); // positive = better (lower) AC
 // via 3d6, isn't covered by the printed table).
 int constitutionMagicResistanceBonus(int constitution);
 
+// Table 1 (Strength, PHB p.19), transcribed directly from the rendered
+// page image. `exceptionalPercentile` is the 18/01-18/00 sub-bracket roll
+// -- 0 if not applicable (Strength < 18, or a non-"warrior" class at
+// Strength 18; only Fighter rolls this in CharacterCreator, see
+// docs/CHARACTER_NOTES.md), otherwise 1-100.
+int strengthToHitAdjustment(int strength, int exceptionalPercentile);
+int strengthDamageAdjustment(int strength, int exceptionalPercentile);
+
 } // namespace character

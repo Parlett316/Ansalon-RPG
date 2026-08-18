@@ -1,21 +1,35 @@
 # CMake build output
 build/
 
-# Reference map image -- someone else's copyrighted fan-map, kept locally
-# only as a visual reference for hand-authoring our own map data. Not meant
-# to be committed or redistributed. See docs/MAP_NOTES.md.
-DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg
-
-# Source rulebook PDFs (Player's Handbook, DMG, Dragonlance sourcebooks) --
-# copyrighted TSR/Wizards of the Coast material, kept locally only as a
-# reference to verify game-rule numbers against. Not meant to be committed
-# or redistributed. See docs/CHARACTER_NOTES.md.
+# Reference material -- the Ansalon map image, source rulebook PDFs (PHB,
+# DMG, Dragonlance sourcebooks/modules), and the Chronicles novels, all
+# copyrighted TSR/Wizards of the Coast (or Weis/Hickman) material kept
+# locally only to verify map/rules/lore content against. Not meant to be
+# committed or redistributed. See docs/MAP_NOTES.md and
+# docs/CHARACTER_NOTES.md.
+References/
 *.pdf
 
 # Generated preview from tools/generate_overworld.py -- an inspection aid,
 # not game data (data/overworld.grid is the real output and IS committed).
 data/overworld_preview.png
 
+# Player savegame -- personal session state, not project data. See
+# docs/ARCHITECTURE.md / game::SaveGame.
+save.txt
+
 # Editor/IDE cruft
 .vs/
 *.user
+
+# Claude Code local tool state (scheduled-task locks, etc.) -- not project
+# data.
+.claude/
+
+# Scratch pdftotext dumps and self-test artifacts left at repo root by past
+# research/verification sessions -- not meant to be committed (some contain
+# full copyrighted book text extracted for sourcing checks, see CLAUDE.md's
+# throwaway self-test pattern and non-infringement discipline).
+dat_full.txt
+dl1_full.txt
+steel_selftest_save.txt

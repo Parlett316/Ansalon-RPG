@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace world {
@@ -13,6 +14,34 @@ struct PointOfInterest {
     char code = '?';
     std::string name;
     std::string description;
+    // Spoken line shown when the player presses 't' (talk) while standing
+    // on this tile -- empty means this POI is just scenery, not an NPC.
+    // Set via a TALK line in the zone file (see docs/ZONE_NOTES.md), which
+    // must reference an already-declared POI char.
+    std::string dialogue;
+    // Reactive variants of `dialogue`, checked in authored order against
+    // the player's character (race/class/alignment) the first time this
+    // POI is talked to -- the first matching condition wins over the plain
+    // `dialogue`. Set via zero or more SAY_IF lines (see
+    // docs/ZONE_NOTES.md), which must reference a POI that also has a
+    // TALK line. Same condition vocabulary as timeline::PresenceWindow,
+    // evaluated by game::conditionMatches (not here -- world stays
+    // decoupled from character::Character, same reasoning as Timeline.h).
+    std::vector<std::pair<std::string, std::string>> conditionalDialogue;
+    // Shown instead of the generic recognition fallback on every talk
+    // after the first -- empty means fall back to that generic line. Set
+    // via an optional TALK_AGAIN line (see docs/ZONE_NOTES.md).
+    std::string dialogueAgain;
+    // Topics offered after the greeting, in authored order -- empty means
+    // no topic-picker menu. Set via zero or more TOPIC lines (see
+    // docs/ZONE_NOTES.md), which must reference a POI that also has a
+    // TALK line.
+    std::vector<std::pair<std::string, std::string>> topics;
+    // True if the player can press 'b' (shop) while standing on this tile
+    // to browse/buy from character::Equipment's catalog -- set via a SHOP
+    // line in the zone file, which must reference an already-declared POI
+    // char (see docs/ZONE_NOTES.md).
+    bool isShop = false;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in
@@ -23,9 +52,16 @@ class Zone {
 public:
     // Built by ZoneLoader from a parsed data/zones/<id>.txt file. `rows`
     // must be rectangular (every row the same length) -- ZoneLoader
-    // enforces this before constructing.
+    // enforces this before constructing. `portals` maps a POI char to the
+    // id of another zone it steps into (e.g. an Inn door leading to the
+    // Inn's own interior zone) -- see docs/ZONE_NOTES.md. `timelineAnchorPoi`
+    // ('\0' for none) and `timelineLocationId` ("" to default to this
+    // zone's own catalog id) are optional zone-interior-encounter fields --
+    // see docs/TIMELINE_NOTES.md.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
-         std::unordered_map<char, PointOfInterest> pois);
+         std::unordered_map<char, PointOfInterest> pois,
+         std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
+         std::string timelineLocationId);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -42,6 +78,23 @@ public:
     // isn't a POI.
     const PointOfInterest* poiAt(int x, int y) const;
 
+    // Returns the target zone id if (x, y) is a portal tile, or nullptr.
+    const std::string* portalAt(int x, int y) const;
+
+    // Every portal declared in this zone, for ZoneCatalog to follow at load
+    // time (a zone reached only via a portal has no matching Location, so
+    // it isn't found any other way -- see ZoneCatalog::loadForWorld).
+    const std::unordered_map<char, std::string>& portals() const { return portals_; }
+
+    // The POI char where canon-character presence is checked/talkable
+    // inside this zone (see docs/TIMELINE_NOTES.md), or '\0' if this zone
+    // has none authored.
+    char timelineAnchorPoi() const { return timelineAnchorPoi_; }
+    // Which timeline location id to check presence for -- empty means "use
+    // this zone's own catalog id" (true for every top-level zone, whose
+    // filename/catalog id already matches a Location id).
+    const std::string& timelineLocationId() const { return timelineLocationId_; }
+
 private:
     std::string name_;
     int width_ = 0;
@@ -50,6 +103,9 @@ private:
     int entryY_ = 0;
     std::vector<std::string> rows_;
     std::unordered_map<char, PointOfInterest> pois_;
+    std::unordered_map<char, std::string> portals_;
+    char timelineAnchorPoi_ = '\0';
+    std::string timelineLocationId_;
 };
 
 } // namespace world

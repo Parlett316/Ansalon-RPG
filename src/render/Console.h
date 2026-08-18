@@ -12,8 +12,13 @@ enum class Key {
     SouthEast,
     SouthWest,
     Look,
+    Talk,  // talk to a present NPC/canon character -- see game::GameLoop::handleTalk
     Enter, // enter/exit a walkable interior -- see game::GameLoop
     Sheet, // view the character sheet -- see game::GameLoop
+    Shop,  // browse/buy at a shop POI -- see game::GameLoop::handleShop
+    Inventory, // carried items / equip-unequip -- see game::GameLoop::handleInventory
+    Flee,  // retreat from combat -- see game::GameLoop::runCombat
+    Cast,  // cast the character's one known spell in combat -- see game::GameLoop::runCombat
     Quit,
     Unknown,
 };
@@ -37,9 +42,13 @@ public:
 
     // Blocks until a key is pressed and returns what it means. Bindings:
     // arrows / hjkl / wasd for the 4 cardinal directions, yubn for the 4
-    // diagonals (vi/roguelike convention), ';' to look around, Enter to
-    // step into/out of a walkable interior, 'c' for the character sheet,
-    // 'q'/Esc to quit. See docs/GOTCHAS.md for the Windows arrow-key
+    // diagonals (vi/roguelike convention), ';' to look around, 't' to talk
+    // to a present NPC/canon character, Enter to step into/out of a
+    // walkable interior (or attack, during combat -- see
+    // game::GameLoop::runCombat), 'c' for the character sheet, 'p' to
+    // browse/buy at a shop, 'i' for the inventory/equip screen, 'f' to
+    // flee combat, 'm' to cast in combat, 'q'/Esc to quit. See
+    // docs/GOTCHAS.md for the Windows arrow-key
     // decoding quirk.
     static Key readKey();
 

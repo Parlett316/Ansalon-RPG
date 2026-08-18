@@ -38,7 +38,7 @@ from pathlib import Path
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE_IMAGE = REPO_ROOT / "DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg"
+SOURCE_IMAGE = REPO_ROOT / "References" / "DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg"
 OUTPUT_GRID = REPO_ROOT / "data" / "overworld.grid"
 PREVIEW_IMAGE = REPO_ROOT / "data" / "overworld_preview.png"  # inspection aid only, gitignored
 LOCATIONS_FILE = REPO_ROOT / "data" / "locations.txt"

@@ -18,6 +18,8 @@ struct TerrainInfo {
     bool passable;
     int hoursToCross;      // in-game hours consumed by stepping onto this tile
     const char* name;      // shown in the status line, e.g. "forest"
+    int encounterChancePercent; // risk of a random encounter per move onto
+                                 // this tile -- see docs/COMBAT_NOTES.md
 };
 
 // Looks up terrain info for a character read from data/overworld.grid.

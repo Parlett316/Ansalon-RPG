@@ -56,4 +56,30 @@ int constitutionMagicResistanceBonus(int constitution) {
     return 5; // 18-19
 }
 
+int strengthToHitAdjustment(int strength, int exceptionalPercentile) {
+    if (strength <= 3) return -3;
+    if (strength <= 5) return -2;
+    if (strength <= 7) return -1;
+    if (strength <= 16) return 0;
+    if (strength == 17) return 1;
+    // strength == 18 (or, defensively, higher -- not reachable via this
+    // project's 3d6 generation, but the 18/00 row is a sane fallback).
+    if (exceptionalPercentile <= 0) return 1;    // flat 18, no percentile rolled
+    if (exceptionalPercentile <= 50) return 1;   // 18/01-18/50
+    if (exceptionalPercentile <= 99) return 2;   // 18/51-18/99
+    return 3;                                    // 18/00
+}
+
+int strengthDamageAdjustment(int strength, int exceptionalPercentile) {
+    if (strength <= 5) return -1;
+    if (strength <= 15) return 0;
+    if (strength <= 17) return 1;
+    if (exceptionalPercentile <= 0) return 2;    // flat 18
+    if (exceptionalPercentile <= 50) return 3;   // 18/01-18/50
+    if (exceptionalPercentile <= 75) return 3;   // 18/51-18/75
+    if (exceptionalPercentile <= 90) return 4;   // 18/76-18/90
+    if (exceptionalPercentile <= 99) return 5;   // 18/91-18/99
+    return 6;                                    // 18/00
+}
+
 } // namespace character
