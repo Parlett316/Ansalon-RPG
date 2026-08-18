@@ -15,10 +15,33 @@ currently does nothing because `data/zones/tarsis.txt` doesn't exist yet.
 
 A zone is rendered in full every frame — no camera, no scrolling (unlike
 the overworld). That means a zone's `GRID` block must be no larger than
-`MapRenderer::kViewportWidth` × `kViewportHeight` (78×20 as of this
-writing). This is a real, current limitation, not just a style guideline —
-a bigger zone will render past the edge of what a normal terminal shows.
-A dungeon big enough to need its own scrolling camera is future work.
+`MapRenderer::kMinViewportWidth` × `kMinViewportHeight` (44×16 — the
+widest/tallest currently-authored zone, `solace_inn.txt`, is exactly at
+this floor). This is a real, current limitation, not just a style
+guideline — a bigger zone will render past the edge of what a normal
+terminal shows. A dungeon big enough to need its own scrolling camera is
+future work.
+
+**Deliberately the *minimum*, not `kViewportWidth`/`kViewportHeight`
+themselves.** As of Milestone 33 (adaptive layout — see
+`docs/ARCHITECTURE.md`), those two are sized to the player's actual
+console window at startup and can be as small as 44×16 on a minimal
+supported terminal, or as large as 78×30 on a roomy one. A zone has to
+work at the *smallest* size this game will still run at, not whatever a
+given run's larger/preferred layout happens to be — so `kMinViewportWidth`/
+`kMinViewportHeight` are the real authoring ceiling, not the two
+adaptive members.
+
+This is still an upper bound only. As of Milestone 29 (the Caves of
+Qud-style wide layout — see `docs/ARCHITECTURE.md`), `drawZoneFrame`
+always renders the full `kViewportWidth`×`kViewportHeight` frame
+(whatever that run's adaptive size is) regardless of a zone's actual
+size: a zone smaller than that (e.g. Solace's 42-column-wide town
+square) now wall-pads out to fill it, so the side-by-side log panel's
+left edge sits at the same screen column no matter which zone is
+showing. There's nothing to author differently for this — it falls out
+of `Zone::tileCodeAt`/`poiAt` already returning a wall/no-POI for any
+out-of-bounds tile.
 
 ## File grammar (`data/zones/<location-id>.txt`)
 

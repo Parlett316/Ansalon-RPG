@@ -7,6 +7,7 @@
 #include "game/GameState.h"
 #include "game/SaveGame.h"
 #include "render/Console.h"
+#include "render/MapRenderer.h"
 #include "timeline/Timeline.h"
 #include "timeline/TimelineLoader.h"
 #include "world/OverworldGrid.h"
@@ -38,6 +39,20 @@ int main() {
     // restores the original console mode when it goes out of scope at the
     // end of main().
     render::Console console;
+
+    // Sizes MapRenderer's layout to the real, currently visible console
+    // window (not the scrollback buffer -- see Console::currentWindowSize
+    // and docs/GOTCHAS.md) before anything renders. Must happen before any
+    // GameLoop/MapRenderer usage below. Same "fail fast with a clear
+    // message" convention as the starting-location checks further down --
+    // not a new pattern.
+    render::WindowSize windowSize = render::Console::currentWindowSize();
+    if (!render::MapRenderer::configureLayout(windowSize.columns, windowSize.rows)) {
+        std::cerr << "Terminal too small: detected " << windowSize.columns << "x" << windowSize.rows
+                   << ", need at least " << render::MapRenderer::kAbsoluteMinColumns << "x"
+                   << render::MapRenderer::kAbsoluteMinRows << ". Enlarge your terminal window and try again.\n";
+        return 1;
+    }
 
     try {
         world::OverworldGrid grid =

@@ -54,6 +54,27 @@ void Console::clearScreen() {
     std::fputs("\x1b[2J\x1b[H", stdout);
 }
 
+WindowSize Console::currentWindowSize() {
+    constexpr WindowSize kFallback{80, 24};
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (handle == INVALID_HANDLE_VALUE || handle == nullptr || !GetConsoleScreenBufferInfo(handle, &info)) {
+        return kFallback; // e.g. stdout redirected to a file/pipe -- not a real console
+    }
+    // srWindow is the VISIBLE window rectangle -- deliberately not
+    // dwSize, which is the scrollback buffer's size and can be far
+    // taller than what's actually on screen without scrolling. Using
+    // dwSize here would silently reintroduce the exact "bigger than my
+    // console" bug this function exists to fix -- see docs/GOTCHAS.md.
+    int columns = info.srWindow.Right - info.srWindow.Left + 1;
+    int rows = info.srWindow.Bottom - info.srWindow.Top + 1;
+    return WindowSize{columns, rows};
+#else
+    return kFallback;
+#endif
+}
+
 Key Console::readKey() {
 #ifdef _WIN32
     int c = _getch();
@@ -87,6 +108,7 @@ Key Console::readKey() {
         case 'c': case 'C': return Key::Sheet;
         case 'p': case 'P': return Key::Shop;
         case 'i': case 'I': return Key::Inventory;
+        case 'v': case 'V': return Key::Log;
         case 'f': case 'F': return Key::Flee;
         case 'm': case 'M': return Key::Cast;
         case 'q': case 'Q': case 27: return Key::Quit; // 27 = Esc
@@ -115,6 +137,7 @@ Key Console::readKey() {
         case 'c': return Key::Sheet;
         case 'p': return Key::Shop;
         case 'i': return Key::Inventory;
+        case 'v': return Key::Log;
         case 'f': return Key::Flee;
         case 'm': return Key::Cast;
         case 'q': return Key::Quit;

@@ -65,6 +65,17 @@ public:
 private:
     void tryMoveOverworld(int dx, int dy);
     void tryMoveZone(int dx, int dy);
+    // Pushes the current tile's "standing here" content (a Location's
+    // heading + description, or a zone POI's name + description, plus any
+    // canon-character presence/flavor lines) to log_ -- called once per
+    // arrival (movement, mode transitions, and the very first frame), not
+    // every render, so it behaves like any other logged event rather than
+    // an always-redrawn status block. See docs/ARCHITECTURE.md.
+    // Deliberately silent on plain terrain / an empty zone tile -- the map
+    // glyph already shows what's there, and logging every wilderness step
+    // would flood the panel.
+    void announceOverworldTile();
+    void announceZoneTile();
     void lookOverworld();
     void lookZone();
     void handleEnter();
@@ -98,12 +109,23 @@ private:
     // regardless of location). Same nested-loop shape as handleShop;
     // Enter calls character::equipInventoryItem on the selected item.
     void handleInventory();
+    // Dedicated scrollable full-history view of log_ ('v') -- the live
+    // side panel MapRenderer draws every frame only ever shows a tail, so
+    // this is the one place the player can scroll back through everything
+    // ever logged. Same nested-loop shape as handleShop/handleInventory,
+    // reinterpreting North/South locally as "scroll" -- see
+    // docs/ARCHITECTURE.md.
+    void handleLog();
     void showCharacterSheet();
     // Takes over rendering/input in its own loop until the fight ends
     // (victory, flee, or the player is knocked out) -- see
     // docs/ARCHITECTURE.md and docs/COMBAT_NOTES.md for why this is a
     // nested loop rather than a new GameState::mode.
     void runCombat(const combat::Monster& monster);
+    // Appends one entry to log_ (the scrolling event log MapRenderer shows
+    // in its side panel -- see docs/ARCHITECTURE.md), capping its size so a
+    // long session doesn't grow the vector unbounded.
+    void pushLog(std::string text);
 
     const world::World& world_;
     const world::OverworldGrid& grid_;
@@ -112,7 +134,11 @@ private:
     const combat::MonsterCatalog& monsters_;
     GameState state_;
     std::string savePath_;
-    std::string message_; // transient, shown for one frame then cleared
+    // Persistent scrolling event log (movement-blocked messages, look
+    // results, enter/exit lines, combat continuity) -- rendered as
+    // MapRenderer's right-hand log panel. Never saved/loaded; purely
+    // in-session UI state. See docs/ARCHITECTURE.md.
+    std::vector<std::string> log_;
 };
 
 } // namespace game

@@ -17,10 +17,18 @@ enum class Key {
     Sheet, // view the character sheet -- see game::GameLoop
     Shop,  // browse/buy at a shop POI -- see game::GameLoop::handleShop
     Inventory, // carried items / equip-unequip -- see game::GameLoop::handleInventory
+    Log,   // dedicated scrollable full-history log screen -- see game::GameLoop::handleLog
     Flee,  // retreat from combat -- see game::GameLoop::runCombat
     Cast,  // cast the character's one known spell in combat -- see game::GameLoop::runCombat
     Quit,
     Unknown,
+};
+
+// The real console window's visible size, in character cells -- see
+// Console::currentWindowSize().
+struct WindowSize {
+    int columns;
+    int rows;
 };
 
 // Owns terminal setup/teardown and raw keyboard input. On Windows this
@@ -40,14 +48,26 @@ public:
 
     static void clearScreen();
 
+    // Queries the real, currently visible console window size (not the
+    // scrollback buffer, which can be much taller -- see docs/GOTCHAS.md
+    // for why that distinction matters). Used once at startup by main.cpp
+    // to size MapRenderer's layout to what's actually on screen -- see
+    // MapRenderer::configureLayout and docs/ARCHITECTURE.md. Falls back to
+    // a conservative {80, 24} if the query fails (stdout redirected, e.g.
+    // a piped smoke test or the throwaway self-test pattern) or on
+    // non-Windows, where no real implementation exists yet -- same
+    // honesty precedent as readKey's non-Windows fallback below.
+    static WindowSize currentWindowSize();
+
     // Blocks until a key is pressed and returns what it means. Bindings:
     // arrows / hjkl / wasd for the 4 cardinal directions, yubn for the 4
     // diagonals (vi/roguelike convention), ';' to look around, 't' to talk
     // to a present NPC/canon character, Enter to step into/out of a
     // walkable interior (or attack, during combat -- see
     // game::GameLoop::runCombat), 'c' for the character sheet, 'p' to
-    // browse/buy at a shop, 'i' for the inventory/equip screen, 'f' to
-    // flee combat, 'm' to cast in combat, 'q'/Esc to quit. See
+    // browse/buy at a shop, 'i' for the inventory/equip screen, 'v' for
+    // the scrollable full log-history screen, 'f' to flee combat, 'm' to
+    // cast in combat, 'q'/Esc to quit. See
     // docs/GOTCHAS.md for the Windows arrow-key
     // decoding quirk.
     static Key readKey();

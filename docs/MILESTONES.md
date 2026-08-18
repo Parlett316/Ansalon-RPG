@@ -110,6 +110,67 @@ this stays authoritative.
     POIs that just gained a `SHOP` line rather than new, ungrounded
     merchant characters. All three shops share the identical catalog. See
     `docs/CHARACTER_NOTES.md` and `docs/ZONE_NOTES.md`.
+29. Caves of Qud-style presentation overhaul: a wide (120x30) fixed frame
+    replacing the old 78x24 one, with a top HUD (name/day-hour/steel, an
+    ASCII HP bar, AC/THAC0) and a persistent, word-wrapped, scrolling
+    40-column event log panel beside the map -- `GameLoop::message_` (one
+    transient line, shown once then cleared) became `log_`
+    (`std::vector<std::string>`, capped at 300 entries), rendered by a new
+    `MapRenderer::buildLogPanel` helper. Applies to the two exploration
+    frames only (overworld and zone) -- combat/shop/inventory/sheet/
+    dialogue/picker keep their existing simple screens. A zone smaller
+    than the viewport now wall-pads out to the full frame size rather
+    than rendering at its native smaller size (relies on
+    `Zone::tileCodeAt`/`poiAt`'s existing bounds-safe out-of-range
+    behavior). Explicitly does not add dynamic terminal-resize handling
+    -- still a fixed default size, just a wider one. See
+    `docs/ARCHITECTURE.md`.
+30. Folded the "standing here" description block (a Location's or zone
+    POI's name/description plus any canon-character presence text) into
+    the scrolling log panel instead of redrawing it full-width below the
+    map every frame -- new `GameLoop::announceOverworldTile`/
+    `announceZoneTile` push it once per arrival, and `MapRenderer` lost
+    the `timeline::Timeline` parameter it no longer needs. Deliberately
+    dropped the per-step "You are in grassland." terrain line and the
+    always-redrawn zone-name heading rather than porting them into the
+    log (would've either spammed every wilderness step or been fully
+    redundant with the "You step into/back out into X." lines already
+    logged). See `docs/ARCHITECTURE.md`.
+31. Fixed the live log panel's biggest usability gap: it was tail-only,
+    with no way to scroll back and re-read anything that had aged off.
+    Bumped `MapRenderer::kViewportHeight` 20->30 (growing the live panel
+    and the map camera together, since both already keyed off the one
+    constant), and added a new dedicated, pageable full-history screen
+    (`v`/`V`, `GameLoop::handleLog`/`MapRenderer::drawLogFrame`) that
+    wraps and scrolls through the *entire* `log_`, not just the live
+    panel's tail. `README.md`'s minimum terminal size moved to 120x36.
+    See `docs/ARCHITECTURE.md`.
+32. Plain-ASCII (`+`/`-`/`|`) window border on every screen, so the game
+    feels like a contained app rather than raw text in a console.
+    Unicode box-drawing was considered and rejected as a real
+    compatibility risk (`Console.cpp` never enables UTF-8 output). Two
+    families of screen (`MapRenderer.cpp`'s new `writeBorder`/
+    `writeBoxed` helpers): the map/log frames and the log pager already
+    build exact-width content (some of it carrying ANSI color codes) and
+    border it directly; every other screen hugs its own content width via
+    a new prose-wrapping pass. Entirely contained inside
+    `MapRenderer.cpp` -- no signature changes, so `GameLoop` needed no
+    changes at all. `README.md`'s minimum terminal size moved to 124x38.
+    See `docs/ARCHITECTURE.md`.
+33. Adaptive layout: the fixed frame size finally got checked against a
+    real terminal and, predictably, didn't fit -- Milestones 29-32 had
+    grown it (78x24 -> 120x30 -> 120x36 -> 124x38) without ever querying
+    an actual console. New `Console::currentWindowSize()` reads the
+    visible window (`srWindow`, deliberately not the taller scrollback
+    `dwSize`) and `MapRenderer::configureLayout` sizes the frame to fit
+    it once at startup, shrinking the map viewport toward a measured real
+    floor (44x16, the widest/tallest authored zone) before ever shrinking
+    the log panel below a 20-column minimum. Fails fast with a clear
+    message below the absolute minimum (70x23) rather than rendering
+    something broken. Adapts once at launch, not continuously -- live
+    mid-session resize stays deferred. `docs/ZONE_NOTES.md`'s authoring
+    ceiling corrected to the new fixed floor accordingly. See
+    `docs/ARCHITECTURE.md`.
 
 ## NEXT UP
 

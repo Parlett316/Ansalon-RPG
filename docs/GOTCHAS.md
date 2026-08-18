@@ -6,6 +6,17 @@ you hit something surprising — that's the whole point of it existing.
 
 ## Windows console / ANSI
 
+- **`GetConsoleScreenBufferInfo`'s `srWindow` vs `dwSize` — easy to get
+  backwards.** `Console::currentWindowSize()` (Milestone 33) exists
+  specifically to fix "the game renders bigger than my actual console
+  window, so I have to scroll." `dwSize` is the **scrollback buffer**
+  size — it can be, and often is, much taller than what's actually
+  visible on screen, so sizing the layout to `dwSize` would silently
+  reintroduce the exact bug this function exists to fix. `srWindow` (a
+  `SMALL_RECT`: width = `Right-Left+1`, height = `Bottom-Top+1`) is the
+  **visible window rectangle** — that's the one to use. If you're ever
+  touching this code and the game starts needing to scroll again, check
+  this first.
 - **ANSI/VT100 escape codes are OFF by default on Windows consoles.** Unless
   `SetConsoleMode` is called with `ENABLE_VIRTUAL_TERMINAL_PROCESSING`,
   escape sequences like `\x1b[2J` print as literal garbage instead of
@@ -238,6 +249,26 @@ you hit something surprising — that's the whole point of it existing.
   has a second pass that follows `PORTAL` links transitively to find those
   files; a portal pointing at a missing zone file throws at startup, same
   as every other load-time validation in this project.
+
+## Presentation (Milestone 29: wide HUD + log panel)
+
+- **`drawZoneFrame` loops the full `kViewportWidth`/`kViewportHeight`
+  now, not `zone.width()`/`height()`.** This depends on
+  `Zone::tileCodeAt`/`poiAt` (`src/world/Zone.cpp`) returning `'#'`/
+  `nullptr` for any out-of-bounds coordinate rather than throwing/
+  asserting — that behavior already existed (for the entry/exit edge
+  case), this milestone just started relying on it for every
+  out-of-zone-bounds tile, not just a few. If that OOB behavior is ever
+  changed (e.g. made to assert in a debug build), `drawZoneFrame` will
+  need an explicit bounds check reintroduced before the render loop.
+- **The log panel wraps and pads to a fixed width/height
+  (`MapRenderer::buildLogPanel`)** — every raw `log_` entry is word-
+  wrapped to `kLogPanelWidth` (40) and the result is truncated to the
+  last `kViewportHeight` (20) physical lines. A single very long log
+  entry can therefore push earlier entries off the top of the panel in
+  one frame; this is intentional (matches a real scrolling log), not a
+  bug, but worth knowing if a future entry seems to "disappear" sooner
+  than expected.
 
 ## Map generation & fidelity
 

@@ -94,14 +94,23 @@ GameLoop::GameLoop(const world::World& world, const world::OverworldGrid& grid,
       state_(std::move(initialState)), savePath_(std::move(savePath)) {}
 
 void GameLoop::run() {
+    // Parity with the very first frame -- previously the "standing here"
+    // description was always-redrawn by MapRenderer regardless of how the
+    // player got there; now it's a one-time log entry, so it needs an
+    // explicit push before the loop's first render.
+    if (state_.mode == Mode::Overworld) {
+        announceOverworldTile();
+    } else {
+        announceZoneTile();
+    }
+
     for (;;) {
         if (state_.mode == Mode::Overworld) {
-            render::MapRenderer::drawOverworldFrame(grid_, world_, timeline_, state_, message_);
+            render::MapRenderer::drawOverworldFrame(grid_, world_, state_, log_);
         } else {
             const world::Zone* zone = zones_.getZone(state_.currentZoneId);
-            render::MapRenderer::drawZoneFrame(*zone, timeline_, state_, message_);
+            render::MapRenderer::drawZoneFrame(*zone, state_, log_);
         }
-        message_.clear();
 
         render::Key key = render::Console::readKey();
         bool inZone = state_.mode == Mode::Zone;
@@ -122,6 +131,7 @@ void GameLoop::run() {
             case render::Key::Sheet:     showCharacterSheet(); break;
             case render::Key::Shop:      handleShop(); break;
             case render::Key::Inventory: handleInventory(); break;
+            case render::Key::Log:       handleLog(); break;
             case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
             case render::Key::Quit:      quit = true; break;
@@ -137,6 +147,47 @@ void GameLoop::run() {
     }
 }
 
+void GameLoop::pushLog(std::string text) {
+    // Capped so a long session's log_ doesn't grow unbounded -- only the
+    // tail is ever shown (MapRenderer's log panel), so trimming the front
+    // once the cap is hit loses nothing visible.
+    constexpr size_t kMaxLogEntries = 300;
+    log_.push_back(std::move(text));
+    if (log_.size() > kMaxLogEntries) {
+        log_.erase(log_.begin(), log_.begin() + static_cast<long>(log_.size() - kMaxLogEntries));
+    }
+}
+
+void GameLoop::announceOverworldTile() {
+    const world::Location* here = world_.locationAt(state_.x, state_.y);
+    if (here == nullptr) return; // plain terrain: the map glyph already shows it, no log spam per step
+    pushLog("== " + here->name + " (" + here->region + ") ==");
+    pushLog(here->description);
+    for (const timeline::Presence& presence :
+         timeline_.presentAt(here->id, static_cast<int>(state_.hoursElapsed / 24))) {
+        pushLog(presence.character->name + ": " + presence.window->flavorText);
+    }
+    pushLog(""); // spacer so consecutive arrivals are visually separated in the log
+}
+
+void GameLoop::announceZoneTile() {
+    const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+    if (const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY)) {
+        pushLog(poi->name + ": " + poi->description);
+        if (poi->code == zone->timelineAnchorPoi()) {
+            const std::string& effectiveId =
+                zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
+            for (const timeline::Presence& presence :
+                 timeline_.presentAt(effectiveId, static_cast<int>(state_.hoursElapsed / 24))) {
+                pushLog(presence.character->name + ": " + presence.window->flavorText);
+            }
+        }
+        pushLog("");
+    } else if (state_.zoneX == zone->entryX() && state_.zoneY == zone->entryY()) {
+        pushLog("You stand at the way back out.");
+    }
+}
+
 void GameLoop::showCharacterSheet() {
     render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
     render::Console::readKey(); // block for one keypress to dismiss, any key
@@ -147,7 +198,7 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     int ny = state_.y + dy;
     const world::TerrainInfo& terrain = world::terrainFor(grid_.terrainCodeAt(nx, ny));
     if (!terrain.passable) {
-        message_ = "You cannot cross " + std::string(terrain.name) + " on foot.";
+        pushLog("You cannot cross " + std::string(terrain.name) + " on foot.");
         return;
     }
     state_.x = nx;
@@ -157,6 +208,7 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     if (here != nullptr) {
         state_.visitedLocations.insert(here->id);
     }
+    announceOverworldTile();
 
     // Random encounters: towns/named places stay safe (here == nullptr
     // guards that), everywhere else on the overworld has a per-terrain
@@ -178,7 +230,7 @@ void GameLoop::tryMoveZone(int dx, int dy) {
     if (zone->poiAt(nx, ny) == nullptr) {
         const world::ZoneTileInfo& tile = world::zoneTileFor(zone->tileCodeAt(nx, ny));
         if (!tile.passable) {
-            message_ = "You can't walk through " + std::string(tile.name) + ".";
+            pushLog("You can't walk through " + std::string(tile.name) + ".");
             return;
         }
     }
@@ -186,6 +238,7 @@ void GameLoop::tryMoveZone(int dx, int dy) {
     // meaningful travel time; only overworld movement advances the clock.
     state_.zoneX = nx;
     state_.zoneY = ny;
+    announceZoneTile();
 }
 
 void GameLoop::lookOverworld() {
@@ -202,13 +255,13 @@ void GameLoop::lookOverworld() {
         }
     }
     if (nearest == nullptr) {
-        message_ = "Nothing notable stands out on the horizon.";
+        pushLog("Nothing notable stands out on the horizon.");
         return;
     }
     const char* dir = compassDirection(nearest->x - state_.x, nearest->y - state_.y);
     std::ostringstream oss;
     oss << "You reckon " << nearest->name << " lies to the " << dir << ".";
-    message_ = oss.str();
+    pushLog(oss.str());
 }
 
 void GameLoop::lookZone() {
@@ -217,7 +270,7 @@ void GameLoop::lookZone() {
     // to do finding the nearest hidden landmark), a zone is always rendered
     // in full -- every POI is already visible on screen. There's nothing
     // for a "look" action to reveal that isn't already there.
-    message_ = "Nothing else catches your eye here.";
+    pushLog("Nothing else catches your eye here.");
 }
 
 void GameLoop::handleTalk() {
@@ -267,7 +320,7 @@ void GameLoop::handleTalk() {
 
 void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
     if (candidates.empty()) {
-        message_ = "There's no one here to talk to.";
+        pushLog("There's no one here to talk to.");
         return;
     }
     if (candidates.size() == 1) {
@@ -346,13 +399,13 @@ void GameLoop::talkTo(const std::string& id, const std::string& name, const Spee
 
 void GameLoop::handleShop() {
     if (state_.mode != Mode::Zone) {
-        message_ = "There's nothing to buy here.";
+        pushLog("There's nothing to buy here.");
         return;
     }
     const world::Zone* zone = zones_.getZone(state_.currentZoneId);
     const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
     if (poi == nullptr || !poi->isShop) {
-        message_ = "There's nothing to buy here.";
+        pushLog("There's nothing to buy here.");
         return;
     }
 
@@ -420,23 +473,48 @@ void GameLoop::handleInventory() {
     }
 }
 
+void GameLoop::handleLog() {
+    // Scrolls by a fixed chunk rather than one physical line per keypress
+    // -- a long session's log_ can wrap to hundreds of lines, and North/
+    // South are the only scroll input available (no dedicated page keys).
+    constexpr int kLogScrollStep = 10;
+    int scrollOffset = -1; // sentinel: drawLogFrame starts at the bottom (most recent) on the first draw
+    for (;;) {
+        scrollOffset = render::MapRenderer::drawLogFrame(log_, scrollOffset);
+        render::Key key = render::Console::readKey();
+
+        // Same local-reinterpretation trick as handleShop/handleInventory
+        // -- Key::Quit here returns to the live view, not the whole game;
+        // Key::Log ('v') also closes it, so the key that opened it closes
+        // it too.
+        if (key == render::Key::North) {
+            scrollOffset = std::max(0, scrollOffset - kLogScrollStep);
+        } else if (key == render::Key::South) {
+            scrollOffset += kLogScrollStep; // drawLogFrame clamps to the real max on the next call
+        } else if (key == render::Key::Quit || key == render::Key::Log) {
+            return;
+        }
+    }
+}
+
 void GameLoop::handleEnter() {
     if (state_.mode == Mode::Overworld) {
         const world::Location* here = world_.locationAt(state_.x, state_.y);
         if (here == nullptr) {
-            message_ = "There is nothing here to step into.";
+            pushLog("There is nothing here to step into.");
             return;
         }
         const world::Zone* zone = zones_.getZone(here->id);
         if (zone == nullptr) {
-            message_ = "There is nothing to explore inside " + here->name + " yet.";
+            pushLog("There is nothing to explore inside " + here->name + " yet.");
             return;
         }
         state_.mode = Mode::Zone;
         state_.currentZoneId = here->id;
         state_.zoneX = zone->entryX();
         state_.zoneY = zone->entryY();
-        message_ = "You step into " + here->name + ".";
+        pushLog("You step into " + here->name + ".");
+        announceZoneTile();
         return;
     }
 
@@ -452,29 +530,32 @@ void GameLoop::handleEnter() {
         state_.currentZoneId = *target;
         state_.zoneX = targetZone->entryX();
         state_.zoneY = targetZone->entryY();
-        message_ = "You step into " + targetZone->name() + ".";
+        pushLog("You step into " + targetZone->name() + ".");
+        announceZoneTile();
         return;
     }
 
     if (state_.zoneX != zone->entryX() || state_.zoneY != zone->entryY()) {
-        message_ = "You need to be at the entrance (marked '>') to leave.";
+        pushLog("You need to be at the entrance (marked '>') to leave.");
         return;
     }
 
     if (!state_.zoneStack.empty()) {
         ZoneReturnPoint back = state_.zoneStack.back();
         state_.zoneStack.pop_back();
-        message_ = "You step back out into " + zones_.getZone(back.zoneId)->name() + ".";
+        pushLog("You step back out into " + zones_.getZone(back.zoneId)->name() + ".");
         state_.currentZoneId = back.zoneId;
         state_.zoneX = back.x;
         state_.zoneY = back.y;
+        announceZoneTile();
         return;
     }
 
     const world::Location* here = world_.getLocation(state_.currentZoneId);
-    message_ = "You step back out into " + (here != nullptr ? here->name : "the world") + ".";
+    pushLog("You step back out into " + (here != nullptr ? here->name : "the world") + ".");
     state_.mode = Mode::Overworld;
     state_.currentZoneId.clear();
+    announceOverworldTile();
 }
 
 void GameLoop::runCombat(const combat::Monster& monster) {
@@ -482,6 +563,11 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     int monsterHp = monsterMaxHp;
     std::vector<std::string> log;
     log.push_back("A " + monster.name + " appears! " + monster.description);
+    // Combat has its own local blow-by-blow log (above, shown on
+    // drawCombatFrame's dedicated screen) -- this just leaves a short
+    // continuity trail in the persistent exploration log_ so returning to
+    // the overworld afterward isn't silent about what just happened.
+    pushLog("A " + monster.name + " appears!");
 
     auto playerAttacks = [&]() {
         combat::AttackOutcome outcome = combat::resolvePlayerAttack(state_.character, monster);
@@ -542,6 +628,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("You break off and retreat.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
             render::Console::readKey();
+            pushLog("You fled from the " + monster.name + ".");
             return;
         }
 
@@ -592,6 +679,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             }
             render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log);
             render::Console::readKey();
+            pushLog("You defeated the " + monster.name + ".");
             return;
         }
         if (state_.character.currentHp <= 0) {
@@ -605,6 +693,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             }
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
             render::Console::readKey();
+            pushLog("You were knocked out by the " + monster.name + " and woke up back in Solace.");
             return;
         }
     }

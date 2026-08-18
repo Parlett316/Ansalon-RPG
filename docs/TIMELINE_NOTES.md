@@ -7,8 +7,11 @@ around (see `README.md`): a hand-authored schedule of where canon
 Dragonlance characters are on which in-game day. `game::GameState` already
 tracks `hoursElapsed` and the player's overworld position for its own
 reasons; the timeline just reads both and answers "who's here right now?"
-whenever `render::MapRenderer::drawOverworldFrame` draws a location the
-player is standing on.
+whenever the player arrives at a location. As of Milestone 30, that
+answer is pushed to `GameLoop`'s scrolling event log once on arrival
+(`GameLoop::announceOverworldTile`) rather than redrawn by
+`render::MapRenderer::drawOverworldFrame` every frame — see
+`docs/ARCHITECTURE.md`.
 
 Like `world::World`/`world::OverworldGrid`, a `timeline::Timeline` is
 **static content** — loaded fresh from `data/timeline.txt` every run by
@@ -72,19 +75,21 @@ typo becomes a real risk.
 
 ## How presence is shown
 
-`MapRenderer::drawOverworldFrame` calls `Timeline::presentAt(locationId,
+`GameLoop::announceOverworldTile` calls `Timeline::presentAt(locationId,
 day)` (where `day = state.hoursElapsed / 24`, integer division, matching
-how the status line already displays "Day N") only when the player is
-standing exactly on a `Location`. Every character present gets one line,
-`<Name>: <flavor text>`, appended right after that location's own
-description.
+how the HUD already displays "Day N") only when the player has just
+arrived exactly on a `Location`. Every character present gets one line,
+`<Name>: <flavor text>`, pushed to the scrolling event log panel right
+after that location's own heading/description.
 
-This is a **persistent** line, not a one-shot toast message — it's part of
-the ordinary per-frame render, so it reappears every time the player is at
-that location while the window is active, including after leaving and
-coming back. Simpler than tracking "has this already been shown," and
-better for a "wander around and stumble into people" game than a
-blink-and-miss-it notification would be.
+As of Milestone 30 this is a **logged event, not a redrawn status
+line** — pushed once per arrival (see `docs/ARCHITECTURE.md`), not
+recomputed on every frame the player happens to be standing there. It
+still reappears on leaving and coming back (arriving again re-triggers
+the push), so "wander around and stumble into people" still works the
+same way — it just no longer stays pinned on screen indefinitely while
+stationary, and can scroll off the log panel if enough other events
+happen first.
 
 ## Talking to a canon character
 
@@ -242,9 +247,11 @@ only the *voice*, not the *plot*, carried over.
 **Zone-interior encounters, as of Milestone 23.** Standing on a location's
 overworld tile shows who's there (unchanged); a zone can now also declare
 one **`TIMELINE_ANCHOR <char>`** — an already-declared POI where present
-canon characters are found and talkable, checked and rendered by
-`drawZoneFrame`/`GameLoop::handleTalk` the same way the overworld checks
-its own tile. A zone's *effective* timeline location defaults to its own
+canon characters are found and talkable, checked by
+`GameLoop::announceZoneTile`/`handleTalk` (Milestone 30 moved the
+announce side from `drawZoneFrame` into `GameLoop` — see
+`docs/ARCHITECTURE.md`) the same way the overworld checks its own tile.
+A zone's *effective* timeline location defaults to its own
 catalog id (true for every top-level zone: `haven`, `xak_tsaroth`,
 `qualinesti` all match their Location id exactly), or can be overridden
 with an optional **`TIMELINE_LOCATION <location-id>`** line for a

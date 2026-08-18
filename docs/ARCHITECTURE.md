@@ -478,6 +478,268 @@ are all decided in `Equipment.cpp`, never in `GameLoop.cpp`.
 `MapRenderer::drawInventoryFrame` is an eighth per-context draw method
 (after `drawPickerFrame`'s seventh, see "NPC interaction" above).
 
+## Presentation: a wide HUD + side-by-side log panel (Milestone 29)
+
+Prompted by a Caves of Qud reference screenshot the user dropped into
+`References/CavesofQud.jpg` and asked to match. Qud's screen has three
+things the original `MapRenderer` (Milestone 2) didn't: a persistent
+scrolling event log rather than one transient line, a compact top HUD
+(HP bar, stats) instead of prose below the map, and a wide side-by-side
+layout — map left, log panel right — instead of one narrow column.
+
+**Still a fixed frame size, just a wider one.** `kViewportWidth`/
+`kViewportHeight` (78×20, the map itself) are unchanged — zones are still
+authored to fit them. `MapRenderer` gained `kLogPanelWidth`/
+`kLogPanelGap` (40/2), so the real frame is now 120 columns wide, and
+taller (~30 rows) to fit the new HUD lines. This is the same "not queried
+from the actual console" tradeoff `kViewportWidth`/`Height` already made
+(see "What's deliberately NOT abstracted yet" below) — **dynamic
+terminal-resize handling is still not implemented**, this milestone just
+widens the fixed assumption. `README.md`'s stated minimum terminal size
+moved from 78×~24 to 120×30 accordingly (chosen to match Windows
+Terminal/console host's own common 120-column default buffer, so most
+users shouldn't need to resize at all).
+
+**`GameLoop::message_` (a transient `std::string`, set then cleared every
+frame) became `log_` (`std::vector<std::string>`, capped at 300 entries
+via a new `pushLog` helper) — a real, persistent history**, matching
+Qud's own ":: you take X" scrolling log. Every existing `message_ = ...`
+call site became `pushLog(...)` (mechanical, no behavior change to *what*
+gets logged, just that it now accumulates instead of being overwritten
+each frame). `runCombat` also pushes a short one-line summary to `log_`
+at its start and each of its three exit points (victory/flee/knockout) so
+the exploration log has continuity after a fight — this is separate from,
+and doesn't duplicate, the full attack-by-attack local `log` vector
+`drawCombatFrame` already shows on its own dedicated screen.
+
+**`MapRenderer::buildLogPanel`** (a new private helper) wraps every raw
+`log_` entry to `kLogPanelWidth` (greedy word wrap via `wrapText`), takes
+the tail `kViewportHeight` physical lines (oldest scrolls off the top
+once the panel fills — most recent is always visible at the bottom), and
+pads the *end* with blank lines while there isn't yet a full panel's
+worth of content, so a fresh session's log anchors at the top and grows
+downward rather than jumping around.
+
+**Only `drawOverworldFrame` and `drawZoneFrame` got this treatment** —
+matching exactly what the reference screenshot depicts (walking around),
+not `drawCombatFrame`/`drawShopFrame`/`drawInventoryFrame`/
+`drawCharacterSheet`/`drawDialogueFrame`/`drawPickerFrame`, which keep
+their existing simple full-screen text. Consistent with "restraint over
+completeness" — revisit if a future milestone wants those widened too.
+
+**`drawZoneFrame` now always renders the full `kViewportWidth`/`Height`**
+(previously it looped `zone.width()`/`height()`, whatever size that
+specific zone happened to be) so the log panel's left edge sits at a
+stable screen column regardless of which zone is showing. Safe because
+`Zone::tileCodeAt`/`poiAt` already return `'#'`/`nullptr` for any
+out-of-bounds coordinate (a pre-existing guarantee, not something added
+for this) — a zone smaller than 78×20 now wall-pads out to the full frame
+size, arguably a nicer look (framed by walls) than the old blank space.
+See `docs/GOTCHAS.md` and `docs/ZONE_NOTES.md`.
+
+## The "standing here" text moved into the log too (Milestone 30)
+
+Milestone 29 left one thing behind: the location/POI description block
+(a Location's `== Name (Region) ==` heading + description, or a zone
+POI's name + description, plus any canon-character presence/flavor
+lines) still printed full-width below the map every single frame,
+recomputed fresh each time by `MapRenderer` regardless of how the player
+got there. Milestone 30 folds this into the log too, matching how Caves
+of Qud actually works — it has no separate persistent description box,
+place flavor is just another log entry.
+
+**`GameLoop` gained two "announce" helpers** — `announceOverworldTile()`
+and `announceZoneTile()` — that push the same content `MapRenderer` used
+to print, but as `pushLog(...)` calls instead, called once per arrival:
+from `run()` before the loop starts (parity with the very first frame),
+from `tryMoveOverworld`/`tryMoveZone` after a successful step, and from
+all four of `handleEnter`'s arrival points (entering a zone, a portal
+into a nested zone, popping back to a parent zone, and exiting to the
+overworld). `MapRenderer::drawOverworldFrame`/`drawZoneFrame` lost the
+`timeline::Timeline` parameter entirely — they no longer need to know
+about it, since that lookup now happens in `GameLoop` at announce time.
+
+**Two deliberate omissions, not oversights**: plain overworld terrain
+(previously "You are in grassland.", redrawn every frame) gets no log
+entry at all — logging every wilderness step would flood the panel and
+bury real events; the map glyph already conveys terrain. And a zone's
+own `== Name ==` heading (also previously redrawn every frame,
+regardless of what tile the player stood on) isn't ported anywhere —
+it's already implied by the "You step into X."/"You step back out into
+X." log lines `handleEnter` pushes on the same transition. Both are
+minor, visible changes (no persistent on-screen reminder of which
+zone/terrain the player is in beyond the map itself) accepted as the
+point of the change rather than compensated for with new HUD content.
+
+## A taller live panel and a dedicated log-history screen (Milestone 31)
+
+Milestones 29-30 gave `log_` real content, but the live side panel
+(`MapRenderer::buildLogPanel`) is a tail view only — once a wrapped line
+scrolls off the top of its fixed `kViewportHeight`-row window, there was
+no way to get back to it. Two fixes, both requested together:
+
+**`kViewportHeight` went from 20 to 30.** Since the map render loop, the
+live log panel, and zone wall-padding (Milestone 29) all already key off
+this one constant, this was a one-line change — no restructuring. Side
+effect: the overworld camera and zone view both show 10 more rows too,
+a harmless bonus. `README.md`'s stated minimum terminal size moved from
+120×30 to **120×36** (2 HUD + 1 blank + 30 map/log + 1 blank + 1
+controls = 35, +1 buffer).
+
+**A new dedicated, pageable full-history screen**, bound to `v`/`V`
+(`l`/`L` was already taken by East, the vi `hjkl` convention). Same
+architectural shape as `handleShop`/`handleInventory`: a new
+`render::Key::Log` enum value, `GameLoop::handleLog()` (a nested loop
+that reinterprets `North`/`South` locally as "scroll by
+`kLogScrollStep` (10) wrapped lines" rather than one line at a time — a
+long session's `log_` can wrap to hundreds of physical lines, so a
+single-line-per-keypress pager would feel unusably slow), and a new pure
+`MapRenderer::drawLogFrame(log, scrollOffset)`. Unlike the live panel,
+`drawLogFrame` wraps *every* entry (not just the tail) to a wider
+`kLogFrameWidth` (110, vs. the live panel's 40 — this screen has the
+whole frame to itself) and returns the actual clamped offset it used, so
+`handleLog`'s loop can keep adjusting a plain `int` across calls without
+duplicating the wrap/line-count math itself. A negative `scrollOffset`
+means "start at the bottom" (most recent), matching the live panel's own
+default-to-recent convention.
+
+**The one thing that had to be touched everywhere**: `docs/GOTCHAS.md`
+already documents that `GameLoop::run()`'s main `switch` relies on
+*exhaustive* `Key` coverage (no `default:` label), so adding
+`Key::Log` required a matching `case render::Key::Log: handleLog();
+break;` there too — the same rule Milestone 9's `Key::Flee` addition
+already hit.
+
+## A plain-ASCII window border on every screen (Milestone 32)
+
+Asked to make the game feel like a contained app rather than raw text
+floating in a console. Unicode box-drawing (`─│┌┐` etc.) was considered
+and rejected — a real functional risk, not a style choice, since
+`Console.cpp` deliberately never enables UTF-8 console output (see
+`docs/GOTCHAS.md`), so those glyphs would garble on plenty of Windows
+consoles. Landed on a plain `+`/`-`/`|` border instead, applied to
+*every* `draw*Frame` function, each sized to hug its own content rather
+than all forcing themselves into one giant fixed window.
+
+**Entirely contained inside `MapRenderer.cpp`** — every `draw*Frame`
+function kept its exact existing signature, so `GameLoop` needed zero
+changes; it has no idea its frames are bordered now.
+
+**Two families, because of ANSI color codes.** A border requires every
+row between the two `|` characters to be *exactly* the box's inner
+width — including the map+log rows (`drawOverworldFrame`/
+`drawZoneFrame`), which carry a `\x1b[...m`/`\x1b[0m` pair around every
+single glyph. Measuring "visible width" through those escape codes with
+a generic `std::string::size()`-based helper would silently miscount, so:
+- **"Fixed" screens** (`drawOverworldFrame`, `drawZoneFrame`,
+  `drawLogFrame`) already build their content at a known, exact width by
+  construction — the map+log rows are already exactly `kViewportWidth +
+  kLogPanelGap + kLogPanelWidth` (120) visible columns, and
+  `drawLogFrame`'s wrapped lines are plain text padded to
+  `kLogFrameWidth` (110). These build their own exact-width line vector
+  (HUD/blank/footer lines padded via `padPlain`; map+log rows trusted
+  as-is, never re-measured) and hand it straight to the shared
+  `writeBorder` primitive.
+- **"Organic" screens** (`drawCharacterSheet`, `drawCombatFrame`,
+  `drawDialogueFrame`, `drawPickerFrame`, `drawShopFrame`,
+  `drawInventoryFrame`) have no ANSI, but unbounded line lengths
+  (dialogue text, a long carried-inventory listing). These go through
+  `writeBoxed`, which wraps any line longer than `kProseWrapWidth` (76)
+  via the existing `wrapText` helper (reused unchanged), computes box
+  width as the longest resulting line (or the title's own minimum width,
+  whichever is bigger) clamped to `[kSecondaryBoxMinWidth=20,
+  kSecondaryBoxMaxWidth=100]`, pads every line to that width via
+  `padPlain`, then also calls `writeBorder`.
+
+**`writeBorder(out, title, width, exactWidthLines)`** is the one place
+the actual `+`/`-`/`|` characters get printed — both families funnel
+into it, so there's exactly one border implementation, not two.
+
+**Titles replace the old `"=== X ==="` content lines.** Every screen
+already printed something like `"=== Combat ==="` or `c.name` as its
+first line — these fold into the border's top edge as a title bar
+instead (`"+-- Combat ---...--+"`). Footer/controls hint lines moved
+from "printed after the box" to "the last content line inside it" —
+everything about a screen now lives inside its own window.
+
+**New frame sizes**: the main map/log screen is 120×35 content → 124×37
+bordered (2 border rows, 4 border/padding columns);
+`README.md`'s minimum terminal size moved to 124×38. "Organic" screens
+vary per their own content and never exceed 100 columns wide
+(`kSecondaryBoxMaxWidth`), comfortably under the main screen's 120.
+
+**Superseded by Milestone 33 below** — those fixed 124×38/100-column
+numbers stopped being fixed almost immediately once someone actually ran
+the game in a real (smaller) terminal.
+
+## Adaptive layout sized to the real console window (Milestone 33)
+
+Every one of Milestones 29-32 grew the frame without checking it against
+a real terminal (78×24 → 120×30 → 120×36 → 124×38) — the user hit the
+predictable consequence: the frame no longer fit their actual console
+window, so they had to scroll to see it, defeating the entire point of a
+full-screen redraw. Fixed by querying the real console size at startup
+and sizing the frame to it, rather than continuing to guess a fixed
+number.
+
+**Key finding that shaped the whole design**: measuring every zone's
+actual authored `GRID` size (`data/zones/*.txt`) showed the largest is
+`solace_inn.txt` at **44×16** — every other zone is 40×16 or smaller.
+The 78×30 map viewport was never a real content requirement, just a
+generous default with a lot of unused headroom to shrink into before
+anything would actually clip.
+
+**`Console::currentWindowSize()`** (new static method, same
+static-only-public-API shape as `readKey()`/`clearScreen()`) queries
+`GetConsoleScreenBufferInfo` and reads **`srWindow`** (the visible
+window rectangle) — deliberately **not** `dwSize` (the scrollback
+buffer size, which can be much taller than what's actually on screen).
+Using `dwSize` by mistake here would silently reintroduce the exact bug
+this method exists to fix — see `docs/GOTCHAS.md`. Falls back to a
+conservative `{80, 24}` if the query fails (stdout redirected — every
+piped smoke test and the throwaway self-test pattern hit this path) or
+on non-Windows, where no real implementation exists yet.
+
+**`MapRenderer::configureLayout(columns, rows)`** turns
+`kViewportWidth`/`kViewportHeight`/`kLogPanelWidth`/`kLogFrameWidth`
+from `static constexpr int` into plain `static int`, default-initialized
+to their old preferred values (so a throwaway self-test that never calls
+`configureLayout` behaves exactly like the old fixed-size build).
+Priority order: map width gets the 78-preferred size unless that would
+leave the log panel below its own 20-column floor, in which case map
+width shrinks — but never below `kMinViewportWidth` (44, the measured
+zone floor above) — just enough to guarantee the log panel its minimum;
+the log panel then takes whatever's left, clamped to `[20, 60]` (a huge
+terminal doesn't need an absurdly wide log column — the unused width
+past 60 is just left as slack rather than forcing the frame to fill the
+whole screen). Map height is `min(30, available)`. Returns `false`
+(layout left unchanged) below `kAbsoluteMinColumns`/`Rows` (70×23,
+derived from the same constants, not a separately-chosen number) —
+`main.cpp` prints a clear error and exits rather than attempting to
+render something broken, the same fail-fast convention already used for
+a missing starting location or an out-of-bounds `POS`. The two "organic
+screen" internals (`kProseWrapWidth`, `kSecondaryBoxMaxWidth` in
+`MapRenderer.cpp`'s anonymous namespace) get the same treatment, so a
+narrow-but-still-valid terminal can't overflow on a long dialogue line
+even though the main frame fits fine.
+
+**Zone-authoring consequence**: `docs/ZONE_NOTES.md`'s "must fit inside
+the viewport" constraint now means the guaranteed floor
+(`kMinViewportWidth`/`kMinViewportHeight`, 44×16), not whatever a given
+run's larger/preferred layout happens to be — a zone has to work on the
+smallest terminal this game will still run on, not just the author's own
+big monitor. Every currently-authored zone already fits (44×16 is
+exactly the measured maximum), so this is a documentation correction,
+not a required content change.
+
+**Scope boundary, stated plainly**: this adapts **once, at process
+startup** — not continuously. A terminal resized mid-session won't
+reflow until the game restarts; `docs/GOTCHAS.md`'s and this document's
+older "dynamic resize is deferred" framing still holds for that
+narrower, harder problem. Solving the reported bug (frame bigger than
+the window at launch) didn't require solving live resize too, and
+taking on that scope wasn't asked for.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can
@@ -516,8 +778,11 @@ attach without reworking it:
 ## What's deliberately NOT abstracted yet
 
 No plugin system, no generic "event" bus, no data-driven scripting layer,
-no dynamic console-resize handling (the viewport is a fixed default size —
-see `docs/GOTCHAS.md`). Those would be premature — the systems that would
-need them don't exist yet. When a milestone that actually needs one of
-these is built, revisit this document and update it to describe what
+no *live* console-resize handling (Milestone 33's `MapRenderer::
+configureLayout` sizes the viewport to the real console once at startup,
+but a resize mid-session doesn't reflow anything until restart — see the
+Milestone 33 section above and `docs/GOTCHAS.md`). Those would be
+premature — the systems that would need them don't exist yet. When a
+milestone that actually needs one of these is built, revisit this
+document and update it to describe what
 shipped, not just what was planned.

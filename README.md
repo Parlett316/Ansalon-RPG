@@ -21,7 +21,21 @@ times as you like, pick a race — Elf and Dwarf prompt a Dragonlance
 subrace — class, and alignment; qualifying Fighters can join the Knights
 of Solamnia, and Gnomes are always Tinkers) before dropping you into the
 world with a real character behind the `@`. Progress autosaves
-continuously. The whole continent is a 480×320 tile grid, generated from
+continuously. Styled after Caves of Qud's own screen: a compact top HUD
+(name, in-game day/hour, Steel, an ASCII HP bar, AC, THAC0) sits above a
+wide, side-by-side view — the walkable map on the left, a persistent,
+scrolling event log on the right narrating what's happened (blocked
+moves, look results, stepping in/out of a location, a short line after
+each fight, canon-character presence and location flavor when you
+arrive somewhere) rather than a single message that vanishes the next
+frame. That side panel only ever shows the most recent stretch — press
+`v` at any time for a full-screen, scrollable view of everything logged
+all session. Every screen in the game — not just this one — now renders
+inside a plain-ASCII `+`/`-`/`|` window border with its own title bar,
+so nothing floats loose against the raw terminal, and the whole frame
+sizes itself to your actual terminal window at launch rather than
+assuming a fixed size. The whole continent is a 480×320 tile grid,
+generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, ...) sit on that grid, connected by roads
 baked into the terrain, and every one of them now has a walkable interior
@@ -158,6 +172,10 @@ needed:
   selects, Enter equips (swapping in whatever you were wearing before),
   `q`/Esc leaves
 - `c` — view your character sheet (any key dismisses it)
+- `v` — view the full scrollable event log (everything logged this
+  session — arrivals, blocked moves, look results, combat outcomes —
+  not just the live side panel's recent tail), up/down to scroll,
+  `v`/`q` to return
 - `;` — look around (overworld: names the nearest notable place and its
   direction; inside a zone: everything is already on screen, so there's
   nothing further to reveal)
@@ -171,9 +189,14 @@ Traveling away from named locations carries a chance of a random encounter,
 which takes over the screen: **Enter** attacks, **`m`** casts your one
 known spell if you're a Mage or Cleric (and you have a spell slot left
 today), **`f`** flees. Losing a fight knocks you out (HP capped at 1) and
-sends you back to Solace rather than ending the run. Requires a terminal at least 78 columns × ~24 rows
-(the viewport is a fixed 78×20 plus a few status lines — dynamic resizing
-isn't handled yet).
+sends you back to Solace rather than ending the run. The game sizes
+itself to your terminal automatically at startup (queries the real
+visible console window, not just the scrollback buffer, and shrinks the
+map/log frame to fit — see `docs/ARCHITECTURE.md`); the absolute
+minimum is 70 columns × 23 rows, below which it prints a clear error
+and exits rather than trying to render something broken. This adapts
+once at launch, not continuously — resizing your terminal window
+mid-session won't reflow the frame until you restart.
 
 ## Regenerating the map
 
