@@ -127,6 +127,7 @@ void SaveGame::save(const GameState& state, const std::string& path) {
         file << " " << id;
     }
     file << "\n";
+    file << "BOAT " << (state.hasBoat ? 1 : 0) << "\n";
     if (state.mode == Mode::Zone) {
         file << "ZONE " << state.currentZoneId << "\n";
         file << "ZONEPOS " << state.zoneX << " " << state.zoneY << "\n";
@@ -323,6 +324,12 @@ GameState SaveGame::load(const std::string& path) {
                 if (!(iss >> id)) fail(path, lineNumber, "MET has fewer ids than its count");
                 state.metCharacters.insert(id);
             }
+        } else if (keyword == "BOAT") {
+            int value = -1;
+            if (!(iss >> value) || (value != 0 && value != 1)) {
+                fail(path, lineNumber, "malformed BOAT (expected 0 or 1)");
+            }
+            state.hasBoat = value == 1;
         } else if (keyword == "ZONE") {
             state.currentZoneId = rest;
             haveZoneLine = true;

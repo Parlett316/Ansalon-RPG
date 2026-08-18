@@ -1,10 +1,17 @@
 # data/timeline.txt -- hand-authored canon character schedule for the
 # chance-encounter system. Grammar: docs/TIMELINE_NOTES.md. All eight
-# Heroes of the Lance now share the same four-stop schedule (Solace ->
-# Haven -> Xak Tsaroth -> Qualinesti), following Dragons of Autumn
-# Twilight/DL1/DL2's general shape (the party travels as one group through
-# this stretch of the story) -- original prose, not quoted from the books.
-# More locations are meant to be added the same incremental way zones were.
+# Heroes of the Lance share one schedule through Dragons of Autumn Twilight
+# (Solace -> Haven/Darken Wood -> Xak Tsaroth -> Qualinesti -> Pax Tharkas
+# -> Tarsis), then diverge at Tarsis as of Dragons of Winter Night: Sturm,
+# Flint, and Tasslehoff continue on, first to Ice Wall Castle (a
+# dragon-orb quest, reachable only by the sea-travel mechanic -- see
+# GameState::hasBoat / docs/ARCHITECTURE.md) and then to the High Clerist's
+# Tower, while Tanis, Raistlin, Caramon, Goldmoon, and Riverwind are swept
+# east to Silvanesti instead, griffon-carried into a second dragon-orb
+# crisis of their own -- see docs/TIMELINE_NOTES.md's "Dragons of Winter
+# Night"/"Ice Wall"/"Silvanesti" sections for the sourcing. Original prose
+# throughout, not quoted from the books. More
+# locations are meant to be added the same incremental way zones were.
 #
 # CHARACTER <id>          starts a block
 # NAME <text>              display name
@@ -51,6 +58,15 @@ SAY_AGAIN Tanis glances back at the tree line, still faintly rueful. "No one's b
 PRESENCE pax_tharkas 10 12 Tanis stands near the fortress gates counting heads without seeming to, the particular tension of a man who knows exactly how many people he's responsible for getting out alive.
 SAY Tanis doesn't take his eyes off the gate mechanism overhead. "We're not out of this yet. Watch the walls, not the view -- Pax Tharkas has a way of finishing conversations early."
 SAY_AGAIN Tanis's eyes are still on the walls, not you. "Still counting heads. Ask me again once we're clear of this place."
+PRESENCE tarsis 20 22 Tanis stands near the harbor's dry, dust-choked mooring rings, one hand resting on his sword hilt without seeming to notice he's put it there -- a half-elf who has learned to read a city's mood before he's finished reading its streets.
+SAY Tanis's eyes don't quite settle anywhere long. "Tarsis makes for strange lodging. A harbor with no water, and a city that still argues about where it went. Keep your coin close and your voice down -- I don't like how quickly the guards noticed us."
+SAY_AGAIN Tanis's gaze is still moving, still counting exits without meaning to. "Still watching the guards. Old habit. I'd rather have it and not need it."
+TOPIC "A City Without a Sea" Tanis studies the beached hulls along the old harbor with something between pity and unease. "Tarsis lost its sea to the Cataclysm same as Ansalon lost half of everything else, and never got around to admitting it. I understand a city that won't stop arguing about what it lost. I've been having a version of that argument with myself for five years."
+PRESENCE silvanesti 25 30 Tanis stands near the Ferry Landing with his arms crossed, watching the white Tower of the Stars across the water with the guarded expression of a man who trusts almost nothing about how they got here, least of all his own relief at arriving.
+SAY "Raistlin knew what waited across that river before we ever crossed it," Tanis says, low, not looking away from the tower. "He won't say how, and I've stopped asking in front of the others. I haven't stopped wondering." His hand doesn't leave his sword hilt.
+SAY_AGAIN Tanis is still watching the tower, still not entirely trusting the quiet around it. "Nothing's changed since I last said this to you. I don't find that reassuring in a place like this."
+SAY_IF halfelf Tanis's guarded look toward the tower softens, just slightly, at the sight of you. "Strange, being the only half-elf most rooms have ever held, and then walking into the one land that would call both halves of me unwelcome for different reasons. I don't say that looking for sympathy. I say it because I suspect you'd understand it without needing it explained."
+TOPIC "A Half-Elf's Doubt" Tanis's jaw sets. "I've trusted Raistlin with my life more times than I can count, and distrusted his reasons for helping me nearly as often. Both of those are still true standing here. I don't know what he traded, or who he traded it with, to know what he knew. I only know he hasn't told me, and that frightens me more than the dragon did."
 END
 
 CHARACTER raistlin
@@ -79,6 +95,15 @@ TOPIC "The Spectre's Commander" Raistlin's thin mouth curves, not quite a smile.
 PRESENCE pax_tharkas 10 12 Raistlin crouches over a sword laid across his knees, tracing the blade's fuller with one thin finger, an expression of rare, unguarded fascination on his face.
 SAY Raistlin doesn't look up from the blade. "Enchanted. Genuinely, not the trinket-shop kind. I have not decided yet whether that makes this fortress more interesting or more dangerous. Possibly both."
 SAY_AGAIN Raistlin is still turning the sword's discovery over, unhurried. "I have not finished deciding what this place is worth. Ask me again once the walls stop trying to kill everyone in them."
+PRESENCE tarsis 20 22 Raistlin has already found his way toward the city's ruined quarter, asking pointed, patient questions about a library no one else remembers standing, his golden eyes bright with a hunger that has nothing to do with food.
+SAY Raistlin doesn't look up from the crumbling wall he's tracing with one thin finger. "Tarsis kept a library, once, before the sea and most of its books left it. I intend to find what's left. Knowledge doesn't drown as easily as ships do."
+SAY_AGAIN Raistlin's search hasn't slowed. "Still here. Still looking. Some ruins reward patience more than others -- I have not yet decided which kind this is."
+TOPIC "The Drowned Library" Raistlin's whisper carries an edge of real excitement, rare enough to notice. "A library that predates the Cataclysm, in a city the Cataclysm forgot to finish destroying. If even a fraction of it survived the centuries, it would be worth more than anything Xak Tsaroth's vault held." His golden eyes glitter. "Caramon thinks I should rest instead. Caramon is welcome to rest on my behalf."
+PRESENCE silvanesti 25 30 Raistlin stands apart from the others near the Twisted Gardens, staring into the wrongness of the bleeding trees with an expression that looks, disturbingly, more like recognition than horror.
+SAY "I drove the dragon off with help," Raistlin says, before you can ask. "I will not tell you whose. Some debts are not improved by being spoken aloud, and this one least of all." His golden eyes don't leave the trees.
+SAY_AGAIN Raistlin is still watching the same stretch of twisted forest as before. "I have nothing new to tell you. I have a great deal I am choosing not to tell you. Do not confuse the two for the same thing."
+SAY_IF mage Raistlin's attention shifts to you with sudden, focused interest. "A fellow student of the Art, here of all places. Tell me -- have you ever bargained with a power you couldn't fully name, for help you couldn't fully verify the cost of? No?" A thin, humorless smile. "You will understand this conversation better once you have."
+TOPIC "What the Mage Knew" Raistlin's expression goes carefully blank. "I knew what waited across that river before Alhana's griffons ever brought us to it. Tanis has asked me how. I have told him nothing, and I will tell you nothing either -- not from cruelty, whatever he believes, but because some knowledge costs more to share than to carry alone." He looks back at the trees. "I am already carrying enough."
 END
 
 CHARACTER caramon
@@ -106,6 +131,14 @@ SAY_AGAIN Caramon still hasn't drawn his bow on anything. "Still hungry. Still l
 PRESENCE pax_tharkas 10 12 Caramon stands near a heap of rubble with his sword drawn, radiating the particular calm of a big man who has decided exactly who he's allowed to be angry at today.
 SAY Caramon's grip tightens on his sword hilt. "Whoever built the gate mechanism in this place built it to kill everyone standing where you're standing, given the chance. Stay close, and don't make me explain that to Raist if it goes wrong."
 SAY_AGAIN Caramon still hasn't relaxed his grip on the hilt. "Still watching that gate. Still not explaining anything to Raist. Let's keep it that way."
+PRESENCE tarsis 20 22 Caramon trails a half-step behind his brother through Tarsis's rubble-choked streets, sword loose in hand, doing a poor job of pretending he isn't standing guard over a library hunt he thinks is a waste of good daylight.
+SAY Caramon shoots a look at his brother, already elbow-deep in some collapsed archive. "He wants old books. I want him not dying under a wall that's been waiting two hundred years to fall on somebody. Seems like a fair trade, watching him for that." He grins, tired. "Mostly fair."
+SAY_AGAIN Caramon is still watching the same collapsed archive, still watching his brother more than the books. "Still here. Still counting how many of these walls look ready to come down. It's a longer list than I'd like."
+PRESENCE silvanesti 25 30 Caramon stands close to Tika near the Ferry Landing, sword drawn, positioned so he can watch both the tree line and his brother without turning his head too far from either.
+SAY "Raistlin's been like this since before we crossed the river," Caramon says quietly, not taking his eyes off his brother's back. "Staring at nothing like he's listening to something the rest of us can't hear. I don't like it. I like even less that I can't do anything about it but stand close."
+SAY_AGAIN Caramon hasn't moved far from his usual post near his brother. "Still watching him. Still not liking what I see. Some things about being a twin don't get easier with practice."
+SAY_IF fighter Caramon gives you an appraising, grateful look. "Good to have another blade who isn't waiting on me to explain the plan. Whatever's wrong with this forest, I'd rather have someone at my back who can already tell a real threat from a bad feeling." He doesn't look away from the trees again.
+TOPIC "Standing Ready" Caramon's easy grin doesn't quite reach his eyes. "I've stood over Raistlin through fevers, through the Test, through worse things than either of us talks about. I don't know what he traded to drive that dragon off, and he won't tell me either, which is new." He shifts his grip on his sword. "New, and I don't care for it. But standing ready is the one thing I know how to do regardless."
 END
 
 CHARACTER flint
@@ -135,6 +168,17 @@ PRESENCE pax_tharkas 10 12 Flint has both palms flat against the fortress wall, 
 SAY "Whoever cut this wall knew what they were about," Flint says, not looking away from the stone. "Dwarven work, under the elvish trim. There's a door in here somewhere -- built things this old always have one more way in than anybody's told." He raps a knuckle against the rock. "Just need to find it before this place decides to fall on us."
 SAY_AGAIN Flint is still working his way along the same stretch of wall. "Still looking. This fortress keeps its secrets better than most, but not better than a patient dwarf."
 TOPIC "The Fortress's Making" Flint's hand goes still against the stone, and some of the gruffness drains out of his voice. "Dwarves and elves built this place together, once. Not traded goods, not tolerated each other at a careful distance -- built it, side by side, like the difference didn't matter." He's quiet a moment. "I told you once we build different because we trust different things. Looking at this wall, I'm not sure that was ever true. I think we just forgot how not to."
+PRESENCE tarsis 20 22 Flint stands well back from the beached ship hulls, arms crossed, regarding a harbor with no water in it with the deep, personal offense of a dwarf who believes things ought to stay where they're put.
+SAY "A harbor," Flint mutters, "with no harbor in it. Whole city's built on an argument nobody can win, near as I can tell -- where the sea went, and whether it's coming back. Give me a mountain. Mountains have the decency to stay put."
+SAY_AGAIN Flint is still glaring at the dry mooring rings like they've personally wronged him. "Still no water. Still ridiculous. I've decided I mostly admire the stubbornness of a place that won't let a little thing like a missing ocean change the street names."
+PRESENCE ice_wall 38 42 Flint stands guard over a heap of gear near the castle's broken gate, war-axe out, watching the dark with the flat, humorless attention of a dwarf who has already decided this place means to kill someone before they leave.
+SAY "Walrus-men," Flint mutters, hefting the axe. "Never thought I'd say that sentence in my life, and here I am, saying it twice in one week." He spits into the snow. "Give me an honest goblin any day. At least a goblin looks embarrassed about the ambush."
+SAY_AGAIN Flint hasn't moved from his post by the gate. "Still watching. Still no walrus-men through it today, which I've decided to call a victory, seeing as how low my standards have gotten out here."
+TOPIC "The Ice-Bound Dragon" Flint's usual gruffness quiets. "Saw a dragon back there, sealed up in ice like a fly in amber. Silver, not one of the evil colors. Had a rider once, from the look of the harness." He shakes his head slowly. "Don't know what that means. Don't much like not knowing. I've decided to keep an eye out, in case it starts meaning something while we're still standing here."
+PRESENCE high_clerist_tower 76 80 Flint has both palms flat against the Tower's foundation stones, working the wall the same patient way he did at Pax Tharkas, though his attention keeps drifting to the courtyard where Sturm stands his watch.
+SAY "Boy's a Knight now," Flint says, not looking up from the stone, though something in his voice has gone rougher than usual. "Proper one, oath and all, in a fortress that's about to be short on everything except dragons. I've half a mind to be proud of him and half a mind to drag him somewhere safer. Neither half's winning."
+SAY_AGAIN Flint is still working the same stretch of wall, still glancing toward the courtyard more than the stonework strictly requires. "Still here. Still keeping an eye on him, whether he notices or not. Somebody ought to."
+TOPIC "Standing With Him" Flint's hands go still against the stone. "I told him once, back at Pax Tharkas, that dwarves and elves built that fortress together and then forgot how not to trust each other again. I didn't say it then, but I meant it as a warning too -- good things built together don't hold just because they were built well. They hold because somebody keeps choosing to stand by them." He clears his throat, gruff again. "That's the only speech I've got in me. Don't ask for a second one."
 END
 
 CHARACTER goldmoon
@@ -163,6 +207,14 @@ SAY_AGAIN Goldmoon's grip on the staff hasn't eased. "Still walking forward. It'
 PRESENCE pax_tharkas 10 12 Goldmoon stands very still near the fortress gate, the wrapped staff held close, weighing something in her expression that looks less like fear than resolve.
 SAY "I mean to offer myself, and what I carry, straight to the Dragon Highlord," Goldmoon says, quiet and level. "It is the fastest way to be brought before him, and the only plan anyone has proposed that doesn't cost more lives first. I have made my peace with the risk. I would rather you not try to talk me out of it."
 SAY_AGAIN Goldmoon's resolve hasn't shifted. "The plan still stands. So do I."
+PRESENCE tarsis 20 22 Goldmoon walks close beside Riverwind through Tarsis's dust-drifted streets, her hand resting on the wrapped staff as it has at every stop since Solace, watching the city's wary crowds with the same careful, searching attention she gives every new place now.
+SAY "Even a city that has lost its own sea still searches for something," Goldmoon says quietly, watching a knot of suspicious dockhands part around them. "I understand that better than I once did. I used to think losing what mattered most meant a person stopped moving forward. I no longer believe that's true."
+SAY_AGAIN Goldmoon's hand hasn't left the staff. "Still watching this strange, stranded city. It reminds me, a little, of my own people -- searching for water that isn't coming back, and building a life around the search anyway."
+PRESENCE silvanesti 25 30 Goldmoon stands very still near the Tower of the Stars, the wrapped staff held close, her expression the particular stillness of a healer looking at a wound she isn't sure her gift can reach.
+SAY "The elf-king is not sick, and he is not wounded, and I have no cure prepared for what's actually wrong with him," Goldmoon says quietly. "I have spent five years learning that healing has limits. I don't think I had understood, until now, how far those limits could still surprise me."
+SAY_AGAIN Goldmoon's gaze hasn't left the tower. "I still don't have an answer for him. I've stopped expecting to find one standing here. That doesn't make it easier to stand here anyway."
+SAY_IF cleric Goldmoon turns to you, searching your face with sudden intensity. "You understand what it is to hold power meant for healing and find a wound it wasn't shaped for. Tell me honestly -- is it worse to have no gift at all, or to have one and watch it fail the person who needs it most?" She doesn't wait for an answer she isn't sure exists.
+TOPIC "A King's Nightmare" Goldmoon's hand tightens on the staff. "Raistlin says the elf-king's own grief made his nightmare real -- that loving this land too much was what let the dragon orb use him. I keep thinking of my own father, and the staff, and how much of what I carry is also love turned into something I can't fully control." She's quiet a moment. "I don't say that to compare our griefs. I say it because I recognized his the moment I saw him."
 END
 
 CHARACTER riverwind
@@ -188,6 +240,13 @@ SAY_AGAIN Riverwind is still reading ground he can't quite make sense of. "Still
 PRESENCE pax_tharkas 10 12 Riverwind crouches at the mouth of a passage studying old tracks in the dust, patient and thorough, while the rest of the fortress goes on not noticing him.
 SAY "Someone came through here recently, and tried not to be seen doing it," Riverwind says, not looking up from the tracks. "I would rather know who, before we walk the same way blind. Give me a moment. This, at least, I know how to read."
 SAY_AGAIN Riverwind is still crouched over tracks, unhurried. "Still reading what I can. This fortress has more paths through it than doors, if you know where to look."
+PRESENCE tarsis 20 22 Riverwind studies the cracked, salt-pale ground of Tarsis's dead harbor the way he'd study open plains, reading a story in the dust that the city's own people seem to have stopped trying to read.
+SAY "The ground remembers water, even if the city argues about it," Riverwind says, crouching to touch the cracked earth. "I trust the ground before I trust an argument. Something happened here, and it wasn't gentle. I don't need a guard to tell me that twice."
+SAY_AGAIN Riverwind is still reading the salt-cracked ground, unhurried as ever. "The story hasn't changed since I last told it to you. Neither, I think, has this city's willingness to hear it."
+PRESENCE silvanesti 25 30 Riverwind stands at the edge of the Twisted Gardens, reading the ground and the twisted trees the way he'd read a storm front, unsettled by how little of what he's trained himself to notice applies here.
+SAY "The plains taught me to read weather, tracks, the mood of a herd before it bolts," Riverwind says, low. "This forest doesn't give any of that away. It's not empty, and it's not honest about what it is instead. I don't like walking somewhere I can't read. I like standing still even less, so we go on."
+SAY_AGAIN Riverwind is still reading ground that won't tell him anything new. "Still nothing to read here that I trust. I've stopped expecting that to change while we're still inside these trees."
+TOPIC "A Land That Dreams" Riverwind's eyes stay on the tree line. "Goldmoon says the elf-king's grief became real enough to hurt people. Among my own, an elder's dream could sometimes do the same, if it was strong enough and the spirits were listening." He's quiet a moment. "I did not expect to find that same truth this far from the plains, wearing a crown instead of a headdress. I am not certain it comforts me, knowing it travels."
 END
 
 CHARACTER sturm
@@ -217,6 +276,21 @@ TOPIC "The Forestmaster's Judgment" Sturm's hand rests, briefly, on his sword hi
 PRESENCE pax_tharkas 10 12 Sturm stands rigid at the northern end of the courtyard, watching the fortress gates with the stillness of a man who has already decided he won't be the one to run.
 SAY "There will be a reckoning in this place, one way or another," Sturm says quietly, eyes on the gate. "I intend to still be standing for it, and I intend for it to matter that I was. Stay close, if you're of a mind to see it through as well."
 SAY_AGAIN Sturm's eyes haven't left the gate. "Still standing. Still watching for the reckoning I mentioned. It hasn't lost my attention, and neither have you."
+PRESENCE tarsis 20 22 Sturm stands near the inn door rather than inside it, correct and watchful as ever, one hand resting on his sword hilt while he studies a city that has apparently spent centuries disagreeing about its own geography.
+SAY "A city that argues with itself about where its own sea went," Sturm says, "strikes me as a poor place to feel safe standing still." His eyes don't stop moving over the street. "I would rather we didn't linger longer than the errand requires."
+SAY_AGAIN Sturm's watchfulness hasn't eased. "Still don't care for how this city watches strangers back. Call it a soldier's instinct, if you like. I'd rather call it being right."
+TOPIC "An Uneasy City" Sturm's jaw is tight. "I don't like how quickly the guards noticed us, or how fast that innkeeper found reasons to leave the room. A city this suspicious of visitors is usually hiding something it doesn't want visitors to see. I intend to be ready before I find out what."
+PRESENCE ice_wall 38 42 Sturm stands at the castle's shattered gate in borrowed cold-weather gear, sword drawn, positioned between the dark hall behind him and whatever the ice outside might still be hiding.
+SAY "We came for an orb and found a battlefield instead," Sturm says, low, eyes on the dark. "Derek's knights fought well. I intend that their names be remembered for it, whatever else is said of any of us afterward." His grip on his sword doesn't ease.
+SAY_IF fighter Sturm's attention shifts to you, brief and assessing. "You've the bearing of someone who's held a line in worse cold than this. Good. I'd rather have one more blade I can trust at my back than a dozen I have to watch instead." He returns his gaze to the dark hall.
+SAY_AGAIN Sturm's watch on the gate hasn't wavered. "Still standing here. Still glad of it. I've stopped taking that for granted, in a place like this."
+TOPIC "An Old Debt" Sturm's jaw tightens. "Derek and I do not agree on much, and I doubt we ever will. But he stood his ground in that hall same as the rest of us, and lost two of his own knights doing it. Whatever comes between us later, I intend to remember that plainly, and not let anything after change what I saw with my own eyes."
+PRESENCE high_clerist_tower 76 80 Sturm stands in the Tower's courtyard in a knight's plain traveling gear, freshly vigiled and formally sworn, watching the northern sky with the stillness of a man who has been waiting his whole life for a war to finally need him by name.
+SAY Sturm's bearing is different here -- not less watchful, but settled, the way a blade settles once it's finally been given a scabbard that fits. "I am a Knight of Solamnia now, in fact as well as blood. My father would recognize the words, if nothing else about this age. I mean to be worth them." His hand rests on his sword hilt, steady. "Stay close to the walls if the horns sound. I intend to still be standing when this is finished."
+SAY_IF fighter Sturm studies you for a long moment, a soldier's brief appraisal. "Another blade who understands what standing a wall actually costs, then. Good. I find I trust a fighter's read of this siege more than a stranger's optimism." He inclines his head. "Whatever comes through that gate, I'm glad it won't only be knights meeting it."
+SAY_AGAIN Sturm gives you a steady, formal nod, no less resolved than before. "Still standing. Still watching the northern sky. I said I would be, and a Knight's word is the one thing this fortress hasn't run short of."
+TOPIC "The Trial at Sancrist" Sturm's jaw tightens, old anger controlled but not gone. "Lord Derek Crownguard called me coward before the full assembly at Sancrist, and very nearly made it stick. I owe my Knighthood less to my own testimony than to Lord Gunthar's patience with the letter of the Measure -- he found the door it left open and walked me through it before Derek could nail it shut." He's quiet a moment. "I have tried since to be worth a mercy I didn't entirely earn on my own. I would rather earn it here, where it counts for something."
+TOPIC "A Fortress Waiting" Sturm doesn't take his eyes off the northern approach. "Vingaard Keep was to resupply us. That supply stopped weeks ago, and no one here says aloud what that likely means for Vingaard's people. We hold this pass regardless -- Palanthas stands or falls on whether this Tower does, and I would rather be remembered for holding a doomed wall honestly than for abandoning a safe one." He glances at you. "Huma held worse ground than this, or so the stories say. I try to remember that when the waiting gets long."
 END
 
 CHARACTER tasslehoff
@@ -246,4 +320,16 @@ PRESENCE pax_tharkas 10 12 Tasslehoff is admiring a sword nearly as long as he i
 SAY "Look what I found!" Tasslehoff says, delighted, holding the blade up (carefully, point away from anyone). "Raistlin says it's enchanted, which is the best kind of found thing there is. I haven't decided if I'm keeping it or just borrowing it extensively."
 SAY_AGAIN Tasslehoff still has the sword, or a very similar one. "Still enchanted! Still borrowing it extensively! I'm keeping excellent notes on which walls have secret doors, too, in case anyone asks."
 TOPIC "The Chain Room" Tasslehoff's eyes go wide and delighted. "There's a chain in here so big each link is as long as Caramon is tall! I wanted to climb it so badly, but everyone said no, which is what everyone always says right before the interesting thing happens without me." He brightens further. "I did find the secret door, though -- there's a little chip in the stone at the bottom where the catch is, practically an invitation. The dwarves who built this place were very good, but they weren't perfect, and I find that enormously reassuring."
+PRESENCE tarsis 20 22 Tasslehoff is delightedly informing anyone who'll listen that Tarsis used to be a seaport, isn't anymore, and that this is, in his professional kender opinion, the single most interesting thing a city has ever done to itself.
+SAY "Did you know," Tasslehoff informs you, already halfway into an explanation nobody asked for, "this whole city used to have an ocean, and then the Cataclysm just -- took it? I've been looking at the old ships. They're stuck. In dust. I love it here."
+SAY_AGAIN "Still here!" Tasslehoff reports, cheerfully examining a mooring ring that has clearly disappointed him by staying empty. "Still no ocean. I keep checking, just in case it changed its mind."
+TOPIC "Where the Sea Went" Tasslehoff's eyes go wide and delighted. "I asked an old sailor down at the docks where the water went, and he told me it went 'wherever the world went wrong,' which I thought was very poetic for someone who seemed to mostly want me to leave. I've written it down. I'm collecting answers. So far nobody actually knows, which I think is the most honest thing anyone in this city has told me."
+PRESENCE ice_wall 38 42 Tasslehoff is thoroughly, delightedly unbothered by the cold, cataloguing frost patterns on the castle's broken walls while everyone else huddles nearer the torches.
+SAY "This place is FASCINATING," Tasslehoff informs you, hopping in place partly from cold and partly from enthusiasm. "There's a dragon frozen in the wall! A whole entire dragon! I've been very good and not touched it, which I think you should know, because it was extremely difficult."
+SAY_AGAIN Tasslehoff is still admiring the ice-bound dragon from what he insists is a respectful distance. "Still haven't touched it! I did lean in very close once. I don't think that counts."
+TOPIC "The Walrus-Men" Tasslehoff's eyes go wide with professional appreciation. "The Thanoi have TUSKS, real actual tusks, and they hit remarkably hard for people who mostly eat fish, which I've decided is very unfair of them." He considers. "I tried to talk to one. It did not go the way I hoped. I'm keeping notes for next time, in case there's a next time. I hope there's a next time."
+PRESENCE high_clerist_tower 76 80 Tasslehoff has already mapped three secret passages, one sealed door he's very curious about, and the exact number of steps to the battlements, and is cheerfully offering this information to anyone who holds still long enough.
+SAY "This tower has a room nobody's allowed into!" Tasslehoff reports, practically vibrating with the injustice and delight of it. "Not even the knights! There's supposed to be a proper High Clerist to open it and there hasn't been one in hundreds of years, which I think is a terrible waste of a locked door, honestly. I haven't opened it. Yet. I'm very proud of that 'yet.'"
+SAY_AGAIN Tasslehoff is still eyeing the sealed doors with unmistakable longing. "Still haven't opened it! Sturm says I'm not to. I've decided that's very good self-control on my part, resisting a direct order like that."
+TOPIC "The Door Nobody Opens" Tasslehoff's eyes go round and serious, which for him is unusual enough to notice. "I asked Sturm what's supposed to be behind it, and he said something about the Tower's heart, and history, and things a kender shouldn't go digging through. I said that sounded exactly like something a kender should go digging through." A pause. "I'm still thinking about it. That's practically restraint, for me."
 END

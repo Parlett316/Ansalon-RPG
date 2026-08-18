@@ -4,25 +4,33 @@ Nothing in flight. All completed milestones are documented in the
 relevant `docs/*_NOTES.md` files and `README.md`'s Status paragraph — see
 `CLAUDE.md` for which doc covers which system.
 
-Most recent milestone: Milestone 33 (adaptive layout — the fixed frame
-size finally got checked against a real terminal and didn't fit, since
-Milestones 29-32 had grown it repeatedly without ever querying one. New
-`Console::currentWindowSize()` reads the real visible console window
-(`srWindow`, not the taller scrollback `dwSize`), and
-`MapRenderer::configureLayout` sizes the frame to it once at startup —
-shrinks the map viewport toward a measured real floor (44×16, the
-widest/tallest authored zone) before ever shrinking the log panel below
-20 columns, fails fast with a clear message below the absolute minimum
-(70×23). Adapts once at launch, not continuously. See
-`docs/ARCHITECTURE.md`).
+Most recent milestone: Milestone 37 (Silvanesti — the third and final
+Winter Night arc, completing the party split Milestone 35 started).
+Tanis, Raistlin, Caramon, Goldmoon, and Riverwind — griffon-carried away
+from Tarsis in the same dragon attack that sent Sturm/Flint/Tasslehoff to
+Ice Wall — finally get their own destination and timeline stop
+(`silvanesti 25 30`), instead of their schedules simply dead-ending at
+Tarsis. Unlike Ice Wall, this needed no new engine feature: checking the
+reference map found Silvanesti is bounded by a river (the Thon-Thalas),
+not open ocean, matching the source text's own on-foot ferry crossing —
+pure data again, same shape as Milestone 35. New `LOCATION silvanesti`
+(a fully-invented ~127-tile road east from Solace — the party actually
+arrives by griffon, so unlike every prior road there's no walkable route
+in the source material at all to lean on) and a new zone depicting
+Silvanost: the Ferry Landing, the Tower of the Stars (Lorac Caladon,
+trapped by a dragon orb, tormented by the green dragon Cyan Bloodbane),
+the nightmare-corrupted Twisted Gardens, and a generic Warder NPC
+(deliberately not Alhana Starbreeze by name — she has extensive ongoing
+canon plot, same reasoning that's kept Derek Crownguard and Gunthar
+off-stage). Regenerating the overworld grid for the new road silently
+wiped Milestone 36's hand-painted Ice Wall glacier patch — reapplied
+identically afterward, a live example of the caveat `docs/MAP_NOTES.md`
+already documented. Verified via clean rebuild (zero new warnings, no
+`.cpp`/`.h` changes), the piped smoke test, and a throwaway self-test. See
+`docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
 
-**Important — this is the one milestone that actually needs the user's
-real terminal to confirm it worked.** The reported bug was "the game is
-bigger than my console window" — ask them to relaunch and confirm the
-frame now fits without scrolling before considering this closed. Every
-milestone since 29 has carried some form of "needs a real interactive
-check," but this one specifically exists *because* that check was
-skipped for too long — worth being more insistent about it this time.
-
-Next step: confirm the sizing fix actually worked for the user, then
-ask what's next (backlog menu).
+Next step: nothing pending — ask the user what's next. All three Winter
+Night arcs have now shipped; `docs/MILESTONES.md`'s "NEXT UP" list has
+terrain-specific monster pools and more monsters as ready candidates, or
+starting fresh research into *Dragons of Spring Dawning* for the next
+story arc.

@@ -37,28 +37,45 @@ sizes itself to your actual terminal window at launch rather than
 assuming a fixed size. The whole continent is a 480×320 tile grid,
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
-(Solace, Tarsis, Xak Tsaroth, ...) sit on that grid, connected by roads
-baked into the terrain, and every one of them now has a walkable interior
-(Enter to step in) — including the Inn of the Last Home inside Solace,
-and Qualinost, the elven capital, inside Qualinesti. Standing at a location can also
-reveal canon Heroes of the Lance passing through on their own schedule —
-the beginnings of the "chance encounter" engine described above (all
-eight Heroes of the Lance now, at six of the eight locations, including
-an alternate path through Darken Wood and the climactic siege of Pax
-Tharkas — see `docs/TIMELINE_NOTES.md`), and stepping inside carries the
-encounter through too: find them gathered at the Inn's fireplace, Haven's
-market, Xak Tsaroth's old well, Qualinost's Hall of the Sky, Darken
-Wood's faded trail, or the Tharkadan mine entrance at Pax Tharkas, not
-just standing on the overworld tile. You can actually talk to them (and to NPCs
-inside zones, like the Inn's Otik and Tika, Haven's Seeker Guard, and Darken
-Wood's Forestmaster) — press `t`, grounded in the original DL1-3 adventure
+(Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
+Silvanesti, ...) sit on that grid, most connected by roads baked into the
+terrain — Ice Wall is the one exception, a sea-locked ruin reachable only
+by arranging passage and crossing open water (see below) — and every one
+of them now has a walkable interior (Enter to step in) — including the
+Inn of the Last Home inside Solace, and Qualinost, the elven capital,
+inside Qualinesti. Standing at a location can also reveal canon Heroes of
+the Lance passing through on their own schedule — the "chance encounter"
+engine described above now spans two novels: all eight Heroes travel
+together through *Dragons of Autumn Twilight* (an alternate path through
+Darken Wood, the climactic siege of Pax Tharkas, then together again in
+Tarsis as *Dragons of Winter Night* opens), and then genuinely split for
+the first time — Sturm, Flint, and Tasslehoff continue on, first to a
+dragon-orb quest at Ice Wall Castle and then to the siege of the High
+Clerist's Tower and Sturm's Knighting and death, while Tanis, Raistlin,
+Caramon, Goldmoon, and Riverwind are griffon-carried east to Silvanesti
+instead, into a second dragon-orb crisis of their own — see
+`docs/TIMELINE_NOTES.md`. Stepping inside a zone carries the encounter
+through too: find them gathered at the Inn's fireplace, Haven's market,
+Xak Tsaroth's old well, Qualinost's Hall of the Sky, Darken Wood's faded
+trail, the Tharkadan mine entrance at Pax Tharkas, Tarsis's old dock, the
+Tower's Muster Yard, or the Tower of the Stars in Silvanost, not just
+standing on the overworld tile. You can actually talk to them (and to
+NPCs inside zones, like the Inn's Otik and Tika, Haven's Seeker Guard,
+Darken Wood's Forestmaster, the Tower's Garrison Knight, Ice Wall's own
+young Knight, and Silvanost's Warder) — press `t`, grounded in the
+original DL1-3 adventure
 modules and, for the Heroes of the Lance, the Chronicles/Legends novels:
 real reactive dialogue based on your own race/class/alignment, branching
 topics to ask about, and real memory of whether you've spoken before, not
 just one static line forever — carried whether you met them out in the
-open or found them indoors. Traveling the wilds now risks a random encounter — goblins, kobolds,
-hobgoblins, wolves, giant spiders, bugbears, ogres, or Baaz/Kapak
-draconians, all sourced from a real 2e Monster Manual and, for the
+open or found them indoors. Some places, like Ice Wall Castle, sit on
+their own sea-locked landmass with no road to them at all — talk to the
+Knight's Runner in Tarsis to arrange passage, and you can then cross open
+water the same way you cross any other terrain (the ocean itself, not a
+separate travel screen), Blood Sea excepted. Traveling the wilds now risks a random encounter — goblins, kobolds,
+hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
+skeletons, zombies, or Baaz/Kapak draconians, all sourced from a real
+2e Monster Manual and, for the
 Krynn-specific draconians, Dragonlance Adventures (no orcs, since Krynn
 has none) — the chance of one varies by terrain, roads safest and forest/
 mountains riskiest — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or

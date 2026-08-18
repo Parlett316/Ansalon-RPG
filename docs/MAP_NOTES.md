@@ -94,6 +94,107 @@ downsampling at this resolution, see `docs/GOTCHAS.md`). **Glacier, bog, and
 salt-flat did not emerge as distinct colors** at 16 buckets and don't appear
 in the generated grid.
 
+## The High Clerist's Tower (Milestone 35)
+
+The first location placed outside the original 8's tight Abanasinia
+cluster, and the first placed by actually cropping and inspecting the
+reference image at full resolution (`References/DragonLance_-_Continent_of_
+Ansalon_-_Age_of_Despair.jpg` is 10125×6750 — the earlier locations were
+placed from the *shape* of the continent alone, since the labels were
+illegible at any practical viewing resolution; Python + Pillow, already a
+project dependency for `tools/generate_overworld.py`, made cropping tight
+regions for a legible read straightforward). The image's pixel scale
+matches the grid exactly (10125/480 = 6750/320 = 21.09 px/grid-unit), so a
+label's pixel position can be converted to a grid `POS` directly, then
+cross-checked against Solace's already-known `POS 185 230` for sanity.
+`POS 173 100` for the Tower was derived this way — still **approximate**,
+per this file's standing honesty rule, since it's a human eyeballing a
+label's position on a downsampled crop, not a precise measurement.
+
+**A road drawn this far north surfaces a real, pre-existing classification
+gap.** The new `("solace", "high_clerist_tower")` road crosses roughly 130
+grid units of the Vingaard Mountains — and inspecting the regenerated
+`data/overworld.grid` around that stretch shows a large number of tiles
+classified `!` (`blood_sea`, impassable) that clearly aren't the Blood Sea
+on the reference map at all: the 16-color global quantization apparently
+bucketed dark reddish-brown mountain-shadow shading into the same palette
+index as the Blood Sea's maroon fill, somewhere the classification was
+never checked before because no content existed this far from the original
+cluster. This doesn't break anything gameplay-wise — the drawn road tiles
+are always the `#` character regardless of what was underneath, so the
+literal path to the Tower is guaranteed walkable — but wandering off-road
+in this region will show visually-wrong "Blood Sea" tiles that are really
+just mountain shadow. Not fixed this milestone (would mean rerunning
+Phase 1 discovery with a higher `NUM_COLORS` and re-auditing the *entire*
+existing classification, not just this new corner of it — out of scope for
+a single-location content milestone); worth fixing before any future
+milestone adds more content near mountainous terrain elsewhere on the map.
+
+## Ice Wall (Milestone 36)
+
+The first location placed with **no `ROAD_PAIRS` entry at all**, on purpose:
+Ice Wall Castle is on a separate, sea-locked landmass south of Kharolis/
+Tarsis, confirmed by cropping the reference image at full resolution
+(`crop_icewall_grid.png` in that session's scratchpad) -- open ocean the
+whole way, no land bridge, same situation Milestone 35 found (and skipped)
+for Sancrist Isle. This time the milestone added a real sea-travel
+mechanic instead of skipping the location -- see `docs/ARCHITECTURE.md`'s
+"Sea travel" section.
+
+The region itself is confirmed, not guessed: the reference map labels it
+"Black Ice Valley"/"Ice Mountain Bay" south of Tarsis, and `TSR 2143
+Player's Guide to the Dragonlance Campaign` independently confirms
+"Icewall"/"Ice Mountain Bay" as the Thanoi/Ice Barbarians' home region in
+that same spot. `POS 110 307` was derived the same pixel-crop-and-scale way
+as the Tower, then nudged a few tiles onto confirmed-walkable land in the
+already-generated `data/overworld.grid` (the coastline in the generator's
+16-color classification doesn't land exactly where a human eye would draw
+it -- same imprecision already disclosed for every other placement).
+
+**A small, targeted hand-edit, not a regenerate.** Milestone 2's
+classifier has never produced glacier (`:`) anywhere on the map (noted
+since Milestone 2's writeup above) -- so without intervention, Ice Wall's
+tile and its surroundings would render as green grassland, which reads
+wrong for a location described as icy ruins. Rather than rerun the whole
+discovery/classification pipeline (out of scope for one location), a
+~46-tile patch around `POS 110 307` was hand-repainted from grassland/hills
+to glacier directly in `data/overworld.grid`. Same standing caveat as any
+hand-edit to this file: it will be silently lost if the generator is ever
+rerun from scratch.
+
+## Silvanesti (Milestone 37)
+
+Unlike Ice Wall, this location needed **no boat, no hand-edit, and no
+`ROAD_PAIRS` skip** — a genuinely simpler placement than either of the
+prior two milestones. Cropping and gridding the reference image
+(`crop_silvanost_grid.png` in that session's scratchpad) around Silvanost
+confirmed the Thon-Thalas River loops around the Silvanesti peninsula as a
+river, not open ocean — the same `r`/shallow-water terrain type already
+classified elsewhere on the map, matching `dwn_full.txt`'s own text (the
+party's griffons land on the riverbank and the party crosses on foot via
+"the ferry landing," not by any special travel mechanic). `POS 312 231`
+landed directly on forest terrain in the already-generated
+`data/overworld.grid` — checked before writing the location, not assumed.
+
+**The road is fully invented, more so than any prior one.** Every other
+`ROAD_PAIRS` entry connects locations a party could plausibly walk between
+in the story; here, the actual journey is three days by griffon flight
+(`dwn_full.txt` line 3774), with no on-page overland route at all. The
+`("solace", "silvanesti")` road (~127 tiles, almost due east, comparable
+in length to the Tower's road) exists purely so the location is reachable
+in a walking-based game, disclosed as invented rather than left
+unstated — same honesty standard as every other placement in this file,
+just a bigger gap between "what's sourced" and "what's drawn."
+
+**Regenerating wipes hand-edits — hit for real this time.** Adding the
+new road pair required rerunning `tools/generate_overworld.py`, which
+silently erased Milestone 36's hand-painted glacier patch around Ice Wall
+(exactly the caveat this file already documented, not a surprise when it
+happened) — reapplied identically afterward (same coordinates, same tile
+count, 46 tiles) before moving on. Worth remembering for any future
+milestone that touches `ROAD_PAIRS`: check for other hand-edits in this
+file before regenerating, not after.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

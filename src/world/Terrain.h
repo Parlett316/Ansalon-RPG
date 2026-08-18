@@ -20,6 +20,11 @@ struct TerrainInfo {
     const char* name;      // shown in the status line, e.g. "forest"
     int encounterChancePercent; // risk of a random encounter per move onto
                                  // this tile -- see docs/COMBAT_NOTES.md
+    // True only for ocean -- crossable on foot never, but crossable with
+    // GameState::hasBoat (Milestone 36's sea-travel mechanic, see
+    // docs/ARCHITECTURE.md). The Blood Sea deliberately stays false even
+    // with a boat -- sourced restraint, not an oversight: see Terrain.cpp.
+    bool crossableByBoat = false;
 };
 
 // Looks up terrain info for a character read from data/overworld.grid.

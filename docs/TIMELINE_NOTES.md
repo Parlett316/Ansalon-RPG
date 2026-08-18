@@ -289,15 +289,24 @@ than a third near-duplicate loop.
 
 `data/timeline.txt` now has **all eight** Heroes of the Lance — Tanis,
 Raistlin, Caramon, Flint, Goldmoon, Riverwind, Sturm, and Tasslehoff —
-sharing the same six-stop schedule (Solace → Haven *or* Darken Wood →
-Xak Tsaroth → Qualinesti → Pax Tharkas, days 0–1/2–3/2–3/4–6/7–9/10–12),
-since DL1/DL2/DAT's actual text keeps the whole party moving together
-through this stretch of the story (DL1 is literally designed to be played
-by this cast, via pregenerated character cards; DL2's "Elvenhome" chapter
-has the group as a whole travel to Qualinost; DAT's climax is the whole
-company together at Pax Tharkas). Windows are deliberately generous (2–3
-days each) so a player has a real chance of crossing paths without
-needing frame-perfect timing.
+sharing the same seven-stop schedule through *Dragons of Autumn Twilight*
+and the opening of *Dragons of Winter Night* (Solace → Haven *or* Darken
+Wood → Xak Tsaroth → Qualinesti → Pax Tharkas → Tarsis, days
+0–1/2–3/2–3/4–6/7–9/10–12/20–22), since DL1/DL2/DAT's actual text keeps
+the whole party moving together through this stretch of the story (DL1 is
+literally designed to be played by this cast, via pregenerated character
+cards; DL2's "Elvenhome" chapter has the group as a whole travel to
+Qualinost; DAT's climax is the whole company together at Pax Tharkas; DWN
+opens with everyone still together in Tarsis). Windows are deliberately
+generous (2–3 days each) so a player has a real chance of crossing paths
+without needing frame-perfect timing. **As of Milestone 35, the shared
+schedule ends at Tarsis** — Sturm, Flint, and Tasslehoff continue on,
+first to an `ice_wall 38 42` window (Milestone 36) and then to a
+`high_clerist_tower 76 80` window, while Tanis, Raistlin, Caramon,
+Goldmoon, and Riverwind instead gain a `silvanesti 25 30` window
+(Milestone 37); see "Dragons of Winter Night: the party splits" below for
+the mechanics of the split itself, and "Ice Wall"/"Silvanesti" below for
+each group's own destination.
 
 **Darken Wood shares Haven's day window (2–3), deliberately.** Milestone
 24's research confirmed directly in *Dragons of Autumn Twilight*: the
@@ -339,21 +348,21 @@ to Verminaard as bait, Riverwind tracking fresh passage through the
 tunnels, Sturm and Tanis watching the courtyard as the gates prepare to
 seal).
 
-**Plains of Dust and Tarsis stay out of scope, and why.** Plains of Dust
-has zero presence anywhere in *Dragons of Autumn Twilight* — it simply
-isn't on this book's route (and Milestone 14 already found DL3
-establishes Que-Shu, Goldmoon/Riverwind's home tribe, as destroyed by
-that point, so inventing a stop there would need to sidestep that
-directly). Tarsis is *named* — the book's own closing pages have the
-party plan to "travel south in search of the legendary seaport city of
-Tarsis the Beautiful" — but that's DAT's setup for its sequel, not a
-scene of the party actually being there; writing arrival-scene flavor
-text for a place they haven't reached yet would mean inventing what the
-source doesn't provide. Both remain real, obvious future work if the
-project ever extends into *Dragons of Winter Night*'s territory.
-Zone-interior encounters (finding a Hero inside a specific room, not just
-standing on the overworld tile) landed in Milestone 23 and were extended
-to `darken_wood.txt`/`pax_tharkas.txt` in this same pass — see
+**Plains of Dust stays out of scope, and why.** Plains of Dust has zero
+presence anywhere in *Dragons of Autumn Twilight* — it simply isn't on
+this book's route (and Milestone 14 already found DL3 establishes
+Que-Shu, Goldmoon/Riverwind's home tribe, as destroyed by that point, so
+inventing a stop there would need to sidestep that directly), and *Dragons
+of Winter Night* doesn't send the party there either (see below). Remains
+real, obvious future work if a later milestone extends into that
+territory. **Tarsis was the same story through Milestone 34** — DAT's own
+closing pages only have the party *planning* to travel there, never
+arriving on-page — but Milestone 35 resolved this properly: *Dragons of
+Winter Night* opens with the party already in Tarsis, so it finally has
+real timeline content — see "Dragons of Winter Night" below. Zone-interior
+encounters (finding a Hero inside a specific room, not just standing on
+the overworld tile) landed in Milestone 23 and were extended to
+`darken_wood.txt`/`pax_tharkas.txt` in this same pass — see
 "Zone-interior encounters" above.
 
 **Source library addition (Milestone 19).** The user added the full
@@ -374,6 +383,199 @@ voice/tone, never transcribed. The other five novels cover story
 territory well past what this game currently models (Qualinesti is as
 far as the map goes) — noted as available for whenever the game's scope
 extends that far, not mined this pass.
+
+## Dragons of Winter Night: the party splits (Milestone 35)
+
+The first timeline content sourced from a novel beyond *Dragons of Autumn
+Twilight*, and the first time the 8 Heroes' schedules genuinely diverge —
+the data model already supported this natively (each `CHARACTER` block has
+always had its own independent `PRESENCE` list; the 8 sharing identical
+windows through Milestone 34 was a fact about the source material, not an
+engine constraint), so no code changed, only content.
+
+**Sourcing.** Full text of *Dragons of Winter Night* and *Dragons of
+Spring Dawning* extracted via `pdftotext -layout` (same method as every
+prior research pass) and searched directly, line-cited below (line numbers
+refer to that extraction, not any published page numbering).
+
+**The split, verified against the actual text.** *Dragons of Winter
+Night* opens with the whole party together in Tarsis. A dragon attack on
+the city (lines 2861-2990) scatters them: Tanis, Raistlin, Caramon,
+Goldmoon, and Riverwind are carried by griffon-riders to Silvanesti (lines
+3774-3985) — at the time of Milestone 35, not yet a modeled location in
+this game, so per this project's standing "don't invent to fill a gap"
+rule (the same restraint already applied to Riverwind never getting a
+forced `SAY_IF`, or Haven staying out of scope until real material
+existed), their tracked schedules simply ended at their new `tarsis`
+window, with a real `silvanesti 25 30` stop added two milestones later
+once the location itself was properly researched and built — see
+"Silvanesti" below. Sturm, Flint, and Tasslehoff, separated from that
+group in the same chaos, sail on to Ice Wall Castle for a dragon-orb
+quest (Milestone 36), then to Sancrist Isle (line 5697-5744, 5920-5996) —
+this is where Sturm's Knights' Trial actually happens (Lord Gunthar Uth
+Wistan's Castle Uth Wistan, lines 10237-10786 — Gunthar's own name
+matches "Castle Uth Wistan," confirmed by name on the reference map, a
+nice unplanned cross-check) — and finally to the High Clerist's Tower for
+the siege, the Knighting, and Sturm's death (lines 13500-15000+).
+
+**Sancrist Isle is deliberately not modeled, even after Milestone 36 added
+sea travel.** It's a real, richly documented scene — Derek Crownguard's
+accusation, Gunthar's procedural rescue of Sturm via a gap in the Measure,
+the Order splitting into pro-Gunthar/pro-Derek factions on the spot — but
+adding a boat mechanic for Ice Wall doesn't retroactively make every other
+ocean-locked location worth building; Sancrist's trial content is already
+covered as folded-in retrospective `TOPIC` dialogue at the Tower (see
+Milestone 35 above) and duplicating it as an actual walkable stop would be
+scope creep, not a gap this project failed to notice. Its content stays
+folded into the Tower zone's Knight NPC as retrospective `TOPIC` dialogue
+— he can talk about a trial he witnessed, the same "describe, don't model"
+treatment the game already gives Sla-Mori or the Inn's upper floor.
+Vingaard Keep, similarly, is only ever mentioned in the text (a cut-off
+supply source, Sturm's ancestral homeland) and never visited on-page —
+confirmed by checking every mention in the extracted text before writing
+anything, not assumed.
+
+**Day-range placement.** The existing 8-Hero schedule ends at
+`pax_tharkas 10 12`. The new `tarsis 20 22` window (all 8) and
+`high_clerist_tower 76 80` window (Sturm/Flint/Tasslehoff only) are soft
+placements — *Dragons of Winter Night* gives only vague timing cues, not
+exact day counts: the shared prophetic dream from the end of DAT is
+referenced as "well over a month" before the Ice Wall voyage (line 5709),
+the Sancrist Trial happens "at the beginning of the Yuletide season" (line
+10259), and the Tower's garrison had "moved out from Palanthas only a few
+weeks ago" (line 13576) by the time of the siege — consistent with roughly
+2-3 months total elapsing between Pax Tharkas and Sturm's death. The tight
+siege climax itself (blizzard night → Knighting → Derek's fatal sortie →
+full assault → Sturm's death → funeral) spans roughly 4-5 in-game days per
+the text, reflected in the Tower window's width.
+
+**Why the Tower's zone flavor and Sturm's death don't need a new
+mechanic.** There's no "character has died" flag anywhere in this engine,
+and this milestone doesn't add one. Sturm's `high_clerist_tower 76 80`
+window is simply the last `PRESENCE` line in his `CHARACTER` block — once
+day 80 passes, `Timeline::presentAt` stops returning him anywhere, which
+already reads correctly as "he's gone" without any special-casing. The
+zone's own static flavor text (the Chapel, the Muster Yard) is written to
+be evergreen — true whether a player visits before, during, or after his
+window — rather than presupposing the Knighting has already happened,
+since a zone has no day-gating on its own POI descriptions.
+
+## Ice Wall (Milestone 36)
+
+The second Winter Night stop for Sturm/Flint/Tasslehoff, and the first
+milestone to add a real engine feature (sea travel, `GameState::hasBoat`
+— see `docs/ARCHITECTURE.md`) rather than pure content, because the
+location itself is genuinely unreachable any other way — confirmed by
+cropping the reference map at full resolution: Ice Wall Castle sits on a
+separate, sea-locked landmass south of Tarsis/Kharolis, no land bridge.
+This was presented to the user as an explicit choice (fold in as dialogue,
+like Sancrist / build sea travel / do Silvanesti instead), and the user
+chose to build sea travel.
+
+**Sourcing.** `dwn_full.txt` lines 5690-5734 (a retrospective recap
+chapter): Sturm, Flint, and Tasslehoff, joined by Derek Crownguard and two
+other young knights who signed on at Tarsis, search Ice Wall Castle for a
+dragon orb, repeatedly fighting off Thanoi ("walrus-men"), winter wolves,
+and bears, and losing two of Derek's knights in the process. They find an
+ice-encased silver dragon with a mysterious rider (deliberate foreshadowing
+the novel itself doesn't resolve yet, so this game doesn't invent a payoff
+either), then defeat the dark elf Dragonlord Feal-thas and recover the
+orb. `TSR 2143 Player's Guide to the Dragonlance Campaign` (`pg1_full.txt`
+lines 2289, 2304-2306, 2340-2342, 5896) independently confirms
+"Icewall"/"Ice Mountain Bay" as a real named region south of
+Kharolis/Tarsis, home to the Thanoi and Ice Barbarians — matching the
+reference map's own "Black Ice Valley"/"Ice Mountain Bay" labels in that
+exact spot, and cross-checked by direct pixel inspection (see
+`docs/MAP_NOTES.md`).
+
+**Southern Ergoth is deliberately not modeled, even though the original
+backlog line named it alongside Ice Wall.** Checking the actual text
+before building anything found the ship only sails *past* it on the way
+from Ice Wall to Sancrist (`dwn_full.txt` lines 5920-5927 — the captain
+points it out at a distance, mentions elves have settled there, nothing
+more). The party never lands. Per this project's standing "don't invent to
+fill a gap" rule (the same restraint that kept Plains of Dust and Tarsis
+out of scope until real material existed), a location the party only sees
+from a moving ship doesn't earn its own walkable zone — it's folded into
+the Ice Wall Knight's `TOPIC "The Voyage South"` as a forward-looking
+mention instead.
+
+**Day-range placement.** `ice_wall 38 42` sits between the shared `tarsis
+20 22` window and the trio's `high_clerist_tower 76 80` window — another
+soft, invented placement (same disclosed-not-sourced treatment as every
+other day range in this file), roughly the midpoint of the ~2-3 month gap
+Milestone 35's research already established between Pax Tharkas and
+Sturm's death, leaving room either side for the unnarrated legs of the
+journey (Tarsis to Ice Wall, then Ice Wall to Sancrist to the Tower).
+
+**How the boat is granted.** `data/zones/tarsis.txt`'s new `R "A Knight's
+Runner"` POI, not the existing `S "An Old Sailor"` — see
+`docs/ZONE_NOTES.md`'s "Boats: POIs that grant sea travel" for why (the
+Old Sailor's own dialogue already establishes Tarsis's harbor as
+permanently dead; contradicting that would undercut Milestone 28's
+flavor). The Runner represents passage arranged by Derek Crownguard's
+knights, who the text confirms "joined them at Tarsis" (`dwn_full.txt`
+line 5720) after making camp outside the city during the dragon attack
+(lines 2424-2425).
+
+## Silvanesti (Milestone 37)
+
+Tanis, Raistlin, Caramon, Goldmoon, and Riverwind's own Winter Night
+destination — the third and final arc from this project's Winter Night
+backlog, and the one that finally lets their schedules extend past
+Tarsis (the "don't invent to fill a gap" placeholder from Milestone 35's
+section above). Unlike Ice Wall, this needed no new engine feature: the
+Thon-Thalas River bounding Silvanesti is a river, not open ocean —
+confirmed by cropping the reference map — matching the source text's own
+crossing (a ferry, on foot, not a ship voyage). See `docs/MAP_NOTES.md`
+for the placement/road details.
+
+**Sourcing.** `dwn_full.txt` lines 3770-3990: three days of griffon
+flight east from Tarsis (piloted by Alhana Starbreeze, a Silvanesti
+princess who joined the party at Tarsis), landing at the Thon-Thalas
+riverbank when the griffons refuse to fly further, then crossing on foot
+via "the ferry landing... down around the bend" (line 3918). Lines
+4800-4950: inside the Tower of the Stars, they find Lorac Caladon
+(Silvanesti's king, Alhana's father) enthroned and half-conscious,
+trapped by a second dragon orb he tried and failed to control years
+earlier. The orb summoned the green dragon Cyan Bloodbane to guard
+Silvanesti, and has been tormenting Lorac with nightmares so vivid his
+own grief-stricken empathy with the land made them physically real — the
+"trees weep blood" imagery (lines 4043-4058) is the corrupted land
+itself, not a separate monster. Raistlin drives Cyan Bloodbane off with
+help he refuses to name (line 4926: "With help, I was able to defeat the
+dragon" — deliberately unresolved in the source text itself, not a gap
+this project's restraint introduced). Lorac's own fate is left open too
+("He lives. For the time being," line 4940) — the zone's static text is
+written to hold up regardless of exactly when a player reads it, same
+"evergreen despite dramatic content" treatment as the Tower's Muster Yard.
+
+**Alhana Starbreeze is deliberately not a named NPC**, despite being a
+major on-page character throughout this arc (she pilots the griffons,
+leads the party to her father, has her own extensive future plot in
+*Dragons of Spring Dawning* and beyond) — same reasoning that's kept Derek
+Crownguard and Lord Gunthar off-stage at the Tower: a character with
+significant ongoing canon fate doesn't become a static, permanently-
+available NPC. `data/zones/silvanesti.txt`'s talkable Warder is generic,
+the same "unnamed sentinel" pattern used for Pax Tharkas's Fortress
+Guard and the Tower/Ice Wall Knights.
+
+**Day-range placement.** `silvanesti 25 30` follows directly from the
+text's own "the third day" flight-time cue (line 3774) after leaving
+Tarsis (`tarsis 20 22`), plus a few days' settling time once they arrive
+— soft and invented, same disclosed-estimate convention as every other
+day range in this file. This window is entirely disjoint from the other
+group's `ice_wall 38 42`/`high_clerist_tower 76 80` windows, both in the
+characters involved and the days — the two groups' stories don't need to
+stay in lockstep, matching how the novel itself cuts between them freely.
+
+**Silver dragons, Cyan Bloodbane, and Thanoi all stay flavor-only, not
+monster-roster entries.** Unique, named canon creatures with specific
+plot roles (the ice-bound silver dragon and its rider at Ice Wall, Cyan
+Bloodbane here) were never candidates for `data/monsters.txt` — that file
+holds generic, repeatable encounter types, not named story beats. This
+isn't a new restraint call, just a restatement of the same one Milestone
+36 already made for Feal-thas and the Thanoi.
 
 ## Adding a new character or event
 

@@ -172,17 +172,110 @@ this stays authoritative.
     ceiling corrected to the new fixed floor accordingly. See
     `docs/ARCHITECTURE.md`.
 
+34. Four more ordinary Monstrous Manual monsters -- Gnoll, Ghoul,
+    Skeleton, Zombie -- bringing the roster to 13. Sourced from
+    `Monster Manual (2nd ed).pdf`, but with a real caveat: no PDF-page-
+    image renderer was available that session, so these four were
+    cross-checked between two independent text extractions
+    (`pdftotext -table` and `-raw`) instead of the usual visually-
+    confirmed page image. Each monster's real standout trait (the
+    Ghoul's paralyzing touch, the Skeleton's edged-weapon resistance,
+    the Zombie's spell immunities) is left unmodeled as flavor-only text,
+    same restraint already applied to the Baaz's magic resistance and
+    the Kapak's paralysis-poison bite -- no status-effect system exists
+    for anyone yet. Pure data addition to `data/monsters.txt`, no source
+    changes. See `docs/COMBAT_NOTES.md`.
+
+35. The High Clerist's Tower -- the first content beyond *Dragons of
+    Autumn Twilight*, starting *Dragons of Winter Night*'s Solamnia arc
+    (Sturm's Knighting and death). New `LOCATION high_clerist_tower`
+    (Solamnia, reached by a new long Solace-rooted road through the
+    Vingaard Mountains) and its own zone (a courtyard/chapel/battlements/
+    sealed-inner-doors layout, a generic Garrison Knight NPC). All 8
+    Heroes gain a shared `tarsis` window (day 20-22) for the first time,
+    since Autumn Twilight never reaches Tarsis but Winter Night opens
+    there -- the party then genuinely splits for the first time in this
+    project: only Sturm, Flint, and Tasslehoff continue on to the Tower
+    (day 76-80); Tanis, Raistlin, Caramon, Goldmoon, and Riverwind are
+    carried to Silvanesti instead, not modeled yet, so their schedules
+    simply end at Tarsis rather than inventing a stop. Sancrist Isle
+    (where Sturm's actual Knights' Trial happens) stays unmodeled too --
+    an ocean-locked island with no sea-travel mechanic in this engine --
+    folded into the Tower's Knight NPC as retrospective dialogue instead.
+    Verified via clean rebuild, the piped character-creation smoke test,
+    and a throwaway self-test asserting `Timeline::presentAt`'s day-range
+    correctness (no in-game way to fast-forward to day 76+ to check this
+    live). See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
+    `docs/TIMELINE_NOTES.md`.
+
+36. Ice Wall Castle -- the second Winter Night arc, and the first
+    milestone to add a real engine feature rather than pure content: sea
+    travel. Feasibility check (cropping the reference map, same method as
+    Milestone 35) found both Ice Wall and Southern Ergoth genuinely
+    sea-locked, the same situation Milestone 35 hit with Sancrist Isle --
+    presented to the user as a choice, and the user chose to build a real
+    `GameState::hasBoat` mechanic rather than fold the content into
+    dialogue. New `LOCATION ice_wall` (no `ROAD_PAIRS` entry -- sea-only
+    access, the whole point), a small hand-painted glacier patch in
+    `data/overworld.grid` (the classifier has never produced glacier
+    anywhere), and its own zone (an ice-bound silver dragon with a
+    mysterious rider, left as unresolved foreshadowing same as the novel;
+    where the dark elf Feal-thas fell; a generic Knight NPC). A new
+    `data/zones/tarsis.txt` POI (`R`, "A Knight's Runner") grants the boat
+    -- deliberately not the existing Old Sailor, whose dialogue already
+    establishes Tarsis's harbor as dead. Southern Ergoth stays unmodeled:
+    checking the actual text found the ship only sails *past* it, never
+    lands -- folded into the Ice Wall Knight's dialogue as one flavor
+    line instead of inventing a landing that doesn't happen in the book.
+    Sturm/Flint/Tasslehoff gain an `ice_wall 38 42` window between their
+    existing `tarsis`/`high_clerist_tower` stops. Verified via clean
+    rebuild (this milestone touches `.cpp`/`.h` files, not just data),
+    the piped smoke test, a throwaway self-test, and confirming the
+    user's real save (predating the new `BOAT` save line) still loads.
+    See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
+    `docs/TIMELINE_NOTES.md`, `docs/ARCHITECTURE.md`.
+
+37. Silvanesti -- the third and final Winter Night arc, completing the
+    party split Milestone 35 started: Tanis, Raistlin, Caramon, Goldmoon,
+    and Riverwind's own destination after Tarsis, griffon-carried east
+    into a second dragon-orb crisis (the elf-king Lorac Caladon, trapped
+    and tormented by an orb he couldn't control, guarded by the green
+    dragon Cyan Bloodbane). Unlike Ice Wall, no new engine feature was
+    needed -- checking the reference map found Silvanesti is
+    river-bounded, not ocean-locked, matching the source text's own ferry
+    crossing on foot. New `LOCATION silvanesti` (a ~127-tile invented
+    road east from Solace -- the biggest gap yet between "sourced" and
+    "drawn," since the party actually arrives by griffon, not any
+    walkable route) and its own zone depicting Silvanost (the Ferry
+    Landing, the Tower of the Stars, the nightmare-corrupted Twisted
+    Gardens, a generic Warder NPC -- deliberately not Alhana Starbreeze
+    by name, same reasoning that's kept Derek Crownguard and Gunthar
+    off-stage). Regenerating the overworld grid for the new road silently
+    wiped Milestone 36's hand-painted Ice Wall glacier patch, exactly the
+    caveat `docs/MAP_NOTES.md` already documented -- reapplied
+    identically afterward. The five Heroes gain a `silvanesti 25 30`
+    window right after their shared `tarsis` stop. Verified via clean
+    rebuild (pure data again, no `.cpp`/`.h` changes), the piped smoke
+    test, and a throwaway self-test. See `docs/MAP_NOTES.md`,
+    `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **More ordinary monsters** — the roster is at 9; the Monstrous Manual
-   has more of Krynn's actual bestiary untouched (Gnolls, Ghouls,
-   Skeletons/Zombies). See `docs/COMBAT_NOTES.md`'s "Extending this
-   later."
-2. **Terrain-specific monster pools** — encounter *chance* now varies by
+1. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
+2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+   flavor-only at Ice Wall so far -- see Milestone 36), and other
+   Monstrous Manual entries are still untouched; the higher-tier
+   draconians are spellcasters/shapeshifters, real mechanics this project
+   doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
+
+All three Winter Night arcs (Solamnia, Ice Wall, Silvanesti) have now
+shipped -- the natural next content candidate is *Dragons of Spring
+Dawning*, whenever that's wanted; needs its own research pass first, same
+as each Winter Night arc got.

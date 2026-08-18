@@ -197,8 +197,13 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     int nx = state_.x + dx;
     int ny = state_.y + dy;
     const world::TerrainInfo& terrain = world::terrainFor(grid_.terrainCodeAt(nx, ny));
-    if (!terrain.passable) {
-        pushLog("You cannot cross " + std::string(terrain.name) + " on foot.");
+    bool canCross = terrain.passable || (terrain.crossableByBoat && state_.hasBoat);
+    if (!canCross) {
+        if (terrain.crossableByBoat) {
+            pushLog("You'd need a boat to cross " + std::string(terrain.name) + ".");
+        } else {
+            pushLog("You cannot cross " + std::string(terrain.name) + " on foot.");
+        }
         return;
     }
     state_.x = nx;
@@ -293,8 +298,8 @@ void GameLoop::handleTalk() {
         const world::Zone* zone = zones_.getZone(state_.currentZoneId);
         const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
         if (poi != nullptr && !poi->dialogue.empty()) {
-            candidates.push_back(
-                {state_.currentZoneId + ":" + std::string(1, poi->code), poi->name, speechFromPoi(*poi)});
+            candidates.push_back({state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
+                                   speechFromPoi(*poi), poi->isBoat});
         }
         // Zone-interior encounters (Milestone 23): standing on this zone's
         // TIMELINE_ANCHOR tile also makes any canon character the timeline
@@ -325,7 +330,7 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
     }
     if (candidates.size() == 1) {
         const TalkCandidate& c = candidates.front();
-        talkTo(c.id, c.name, c.speech);
+        talkTo(c.id, c.name, c.speech, c.grantsBoat);
         return;
     }
 
@@ -346,7 +351,7 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
             selected = (selected + 1) % static_cast<int>(names.size());
         } else if (key == render::Key::Enter) {
             const TalkCandidate& c = candidates[selected];
-            talkTo(c.id, c.name, c.speech);
+            talkTo(c.id, c.name, c.speech, c.grantsBoat);
             return;
         } else if (key == render::Key::Quit) {
             return;
@@ -354,7 +359,7 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
     }
 }
 
-void GameLoop::talkTo(const std::string& id, const std::string& name, const Speech& speech) {
+void GameLoop::talkTo(const std::string& id, const std::string& name, const Speech& speech, bool grantsBoat) {
     bool alreadyMet = state_.metCharacters.count(id) > 0;
     std::string text;
     if (alreadyMet) {
@@ -372,6 +377,10 @@ void GameLoop::talkTo(const std::string& id, const std::string& name, const Spee
     render::MapRenderer::drawDialogueFrame({{name, text}});
     render::Console::readKey(); // block for one keypress to dismiss, any key
     state_.metCharacters.insert(id);
+    if (grantsBoat && !state_.hasBoat) {
+        state_.hasBoat = true;
+        pushLog("You've arranged passage south. You can now cross open water.");
+    }
 
     if (!speech.topics.empty()) {
         std::vector<std::string> labels;

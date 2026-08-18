@@ -1,0 +1,36 @@
+# data/zones/ice_wall.txt -- hand-authored walkable interior: the ruined
+# outer halls of Ice Wall Castle, reachable only by sea (Milestone 36's
+# boat mechanic -- see data/zones/tarsis.txt's Knight's Runner POI and
+# docs/ARCHITECTURE.md). The filename stem ("ice_wall") is the zone id and
+# MUST match the LOCATION id in data/locations.txt for the Enter key to
+# find it. Grammar: docs/ZONE_NOTES.md
+NAME Ice Wall Castle
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..D................................K..#
+#......................................#
+#......................................#
+#......................................#
+#......................F...............#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI D "An Ice-Bound Dragon" A silver dragon, easily forty feet long, is sealed within a wall of clear ice, wings spread as if still mid-flight. Its face holds no rage, only a vast, patient sorrow. Stranger still are the scraps of harness at its shoulders -- this dragon carried a rider, once, and whoever they were, no one here has found a body to match.
+POI K "A Young Knight" Barely older than a squire, he keeps watch over the ruined hall with a spear that shakes only slightly in the cold. Whatever he saw fighting through this place to reach it, he hasn't slept well since.
+POI F "Where Feal-thas Fell" Scorch marks and frost-shattered stone mark where the dark elf who called himself Dragonlord made his last stand, guarding an orb he'd sworn to keep from anyone's hands but his own. He kept that oath about as well as anyone keeps an oath to a dragon queen.
+TALK K "Another one come looking for the orb? You're late. It's already gone -- south, with the ones who took it." He shifts his grip on the spear, eyes flicking to the dark beyond the torchlight. "The walrus-men don't know that yet. Mind you don't linger long enough to explain it to them."
+TALK_AGAIN K "Still here, and still no walrus-men through that door. I'll count that as a good day."
+SAY_IF K fighter He looks you over, spear easing a fraction. "You've the look of someone who's held a line before. Good. We lost two of ours clearing this hall -- Thanoi, winter wolves, worse. I'd rather not lose a third to bad company in the dark."
+TOPIC K "The Walrus-Men" "Thanoi, the Ice Barbarians call them -- and barbarian's the wrong word for people who've survived out here since before this castle had a roof. The Thanoi are the real terror of this coast: tusked, vicious, and they don't tire of a fight the way a man does." He shudders. "We were glad of every wall still standing between us and them."
+TOPIC K "The Voyage South" "Our ship makes for Sancrist next, with the orb and whatever's left of us aboard." He nods vaguely southeast. "The captain says we'll pass within sight of Southern Ergoth on the way -- elves living there now, he tells me, driven off their own lands by the dragonarmies. I can't say I'll be sorry to see any coastline that isn't this one."
+TIMELINE_ANCHOR F
+END

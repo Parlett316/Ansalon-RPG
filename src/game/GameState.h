@@ -46,6 +46,11 @@ struct GameState {
     // id, zone NPCs use "<zoneId>:<POI char>" (they have no id of their
     // own). See game::GameLoop::talkTo.
     std::unordered_set<std::string> metCharacters;
+    // True once the player has arranged passage by sea (Milestone 36) --
+    // lets tryMoveOverworld cross ocean tiles (world::TerrainInfo::
+    // crossableByBoat). Granted as a side effect of talking to a zone POI
+    // marked BOAT (see world::PointOfInterest::isBoat), never revoked.
+    bool hasBoat = false;
 
     std::string currentZoneId;
     int zoneX = 0;

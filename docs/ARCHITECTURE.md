@@ -740,6 +740,53 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
+## Sea travel: a small conditional-passability feature (Milestone 36)
+
+The first genuinely new overworld-movement rule since Milestone 2's
+terrain table shipped: some locations (Ice Wall Castle) are sea-locked —
+confirmed by direct inspection of the reference map, no land route exists
+— so reaching them needs the player to be able to cross ocean tiles,
+which `world::Terrain` has always marked hard-`passable = false`, same as
+the Blood Sea.
+
+**Kept out of `world::Terrain` as a static fact, resolved in `GameLoop` as
+a player-state fact.** `TerrainInfo` gained one new field,
+`crossableByBoat` (true only for ocean; the Blood Sea stays `false`
+unconditionally — a sourced restraint, not an oversight, see
+`docs/MAP_NOTES.md`/`docs/TIMELINE_NOTES.md`), but `Terrain.h/.cpp` still
+has zero knowledge of `GameState` — the same "`world/` doesn't know about
+the player" separation this document establishes above. `game::GameState`
+gained `bool hasBoat`, and `GameLoop::tryMoveOverworld` is the one place
+that combines the two: `terrain.passable || (terrain.crossableByBoat &&
+state_.hasBoat)`. This mirrors exactly how `world::Timeline` stays
+state-agnostic while `GameLoop` combines it with `GameState.hoursElapsed`
+at query time (see "Timeline / chance-encounter engine" above) — a
+recurring shape in this codebase: static/data-driven rules in `world/`
+(or `timeline/`), combined with mutable player state only inside `game/`.
+
+**Granted through the existing `talkTo` path, not a new key or screen.**
+A zone `POI` can now carry `BOAT <char>` (`ZoneLoader`, same
+must-already-have-a-`TALK`-line validation as `SAY_IF`/`TOPIC` — see
+`docs/ZONE_NOTES.md`). `TalkCandidate` (`GameLoop.h`) gained a
+`grantsBoat` bool, set from `PointOfInterest::isBoat` when `handleTalk`
+builds a zone candidate; `talkTo` sets `state_.hasBoat = true` and pushes
+one log line the first time such a candidate is actually talked to. No
+new `render::Key`, no new screen, no confirmation prompt — reusing `t`
+(talk) and the existing scrolling log keeps this a small, contained
+addition rather than a general "vehicle system." `hasBoat` is a one-way
+flag (never revoked) and persists via a new `BOAT <0/1>` line in
+`game::SaveGame` — optional on load, so a save written before this
+milestone (no `BOAT` line at all) still loads cleanly with `hasBoat`
+defaulting `false`, same backward-compatibility shape `INVENTORY` already
+established as optional.
+
+**Deliberately no HUD indicator and no new random-encounter risk.** Ocean
+got a real `hoursToCross` (2) now that it's sometimes traversable, but
+`encounterChancePercent` stays 0 — no sea monsters exist in
+`data/monsters.txt` yet, and drawing a land creature into open water would
+read as a bug, not content. Revisit both if a future milestone adds sea
+monsters or wants the HUD to surface `hasBoat` directly.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can

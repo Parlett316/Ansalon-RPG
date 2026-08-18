@@ -86,6 +86,45 @@ was chosen and checked with that constraint in mind.
   Left unmodeled (flavor-only), same restraint as the Baaz's unmodeled
   20% magic resistance. Its acid-pool-on-death trait is also not modeled
   (no environmental-hazard system for anyone yet).
+- **Gnoll** (p.161): HD 2, AC 5, THAC0 19, damage 2-8 (2d4) — "by weapon"
+  in the book, same monster-side-weapon simplification as Hobgoblin/
+  Bugbear/Ogre. XP 35.
+- **Ghoul** (p.134): HD 2, AC 6, THAC0 19, XP 175. Real attack is three
+  hits (claw/claw/bite, 1-3/1-3/1-4-or-6 — the last die was genuinely
+  ambiguous across both extractions of the scan, reading as either 1-4
+  or 1-6 depending on which of the page's parallel monster columns is
+  checked) — simplified to a single 1d6 hit, same "one representative
+  die" treatment as Baaz's two claws. Real Ghouls also paralyze on a hit
+  (save vs. paralyzation or be unable to act) — left unmodeled, same
+  restraint as the Kapak's paralysis-poison bite above (no status-effect
+  system exists for anyone yet).
+- **Skeleton** (p.318, the base "Skeleton" column on that page — not the
+  Animal or Monster skeleton variants sharing it): HD 1, AC 7, THAC0 19,
+  damage 1-6 (weapon), XP 65. Real Skeletons take half damage from
+  edged/piercing weapons and are immune to sleep/charm/hold/cold/fear —
+  no per-monster damage-type or immunity mechanic exists in this project
+  (same restraint as Baaz's unmodeled magic resistance), so it's flavor
+  text in `DESC` only.
+- **Zombie** (p.376, the base "Common" column — not the Monster/Ju-ju/
+  Lord/Sea variants sharing it): HD 2, AC 8, THAC0 19, damage 1-8, XP 65.
+  Real Zombies are immune to sleep/charm/hold/death-magic/poison/cold,
+  same flavor-only treatment as the Skeleton's immunities above.
+
+**Sourcing caveat for this batch (Milestone 34)**: no PDF-page-image
+renderer was available in that session (no `pdftoppm`/ImageMagick/Python
+on the machine), so these four weren't visually confirmed against a
+rendered page image the way every earlier monster was. Instead, each
+stat block was extracted as text twice, independently
+(`pdftotext -table` and `pdftotext -raw`, two different column-alignment
+heuristics against the same scanned PDF), and only values both
+extractions agreed on were used — cross-checked further against this
+project's own established HD-to-THAC0 pattern (roughly one point of
+THAC0 per Hit Die, the same empirical relationship already used to
+derive the Baaz's and Kapak's un-printed THAC0 above; all four new
+monsters' printed THAC0 fits comfortably). Still real text from the
+actual scanned book, not memory — just missing the usual
+visual-confirmation step. Worth re-confirming against a rendered page
+image if that tooling becomes available later.
 
 None of these have HP dice matching their HD 1:1 in a way this project can
 represent with a plain `NdM+flat` -- 2e's default monster Hit Die is d8,
@@ -261,14 +300,15 @@ either.
   Draconian's 20% magic resistance is a related but different mechanic
   (resistance to being targeted at all, not a saving throw) and still
   isn't modeled.
-- **More monsters**: nine creatures are in the roster now (Goblin, Kobold,
-  Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak Draconian, Bugbear,
-  Ogre); `Monster Manual (2nd ed).pdf` and *Dragonlance Adventures* have
-  far more of Krynn's actual bestiary still untouched (Bozak/Sivak/Aurak
-  Draconians — the higher-tier ones are spellcasters or shapeshifters,
-  real mechanics this project doesn't model yet — plus ordinary Monstrous
-  Manual entries like Gnolls, Ghouls, Skeletons/Zombies). Can be added the
-  same way, one more sourced `MONSTER` block at a time.
+- **More monsters**: thirteen creatures are in the roster now (Goblin,
+  Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak Draconian,
+  Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie); `Monster Manual (2nd
+  ed).pdf` and *Dragonlance Adventures* have far more of Krynn's actual
+  bestiary still untouched (Bozak/Sivak/Aurak Draconians — the
+  higher-tier ones are spellcasters or shapeshifters, real mechanics this
+  project doesn't model yet — plus other ordinary Monstrous Manual
+  entries). Can be added the same way, one more sourced `MONSTER` block
+  at a time.
 - **Terrain-specific monster pools**: `combat::MonsterCatalog::randomMonster`
   is still uniform-random regardless of which terrain triggered the
   encounter, even though the chance of an encounter now varies by terrain

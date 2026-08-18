@@ -42,6 +42,11 @@ struct PointOfInterest {
     // line in the zone file, which must reference an already-declared POI
     // char (see docs/ZONE_NOTES.md).
     bool isShop = false;
+    // True if talking to this POI grants GameState::hasBoat (Milestone
+    // 36's sea-travel mechanic) the first time -- set via a BOAT line in
+    // the zone file, same "must reference an already-declared POI with a
+    // TALK line" validation as SHOP (see docs/ZONE_NOTES.md).
+    bool isBoat = false;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in

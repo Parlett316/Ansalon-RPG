@@ -113,6 +113,8 @@ ROAD_PAIRS = [
     ("pax_tharkas", "plains_of_dust"),
     ("xak_tsaroth", "plains_of_dust"),
     ("plains_of_dust", "tarsis"),
+    ("solace", "high_clerist_tower"),
+    ("solace", "silvanesti"),
 ]
 
 

@@ -40,6 +40,11 @@ struct TalkCandidate {
     std::string id;
     std::string name;
     Speech speech;
+    // True for a zone POI marked BOAT (world::PointOfInterest::isBoat) --
+    // talkTo() grants GameState::hasBoat the first time such a candidate is
+    // actually talked to. Always false for timeline (canon-character)
+    // candidates. See Milestone 36 / docs/ZONE_NOTES.md.
+    bool grantsBoat = false;
 };
 
 // Owns the render -> read-key -> update cycle. Movement is dispatched
@@ -98,8 +103,11 @@ private:
     // GameState::metCharacters), then a topic-picker loop if `speech` has
     // any. Shared by every talk path (zone POI, single-character
     // overworld, post-picker overworld) so "have I met them"/reactive-
-    // dialogue/topic logic lives in exactly one place.
-    void talkTo(const std::string& id, const std::string& name, const Speech& speech);
+    // dialogue/topic logic lives in exactly one place. `grantsBoat` (true
+    // only for a zone POI marked BOAT, see world::PointOfInterest::isBoat)
+    // sets GameState::hasBoat the first time such a candidate is talked to
+    // -- Milestone 36's sea-travel mechanic, see docs/ZONE_NOTES.md.
+    void talkTo(const std::string& id, const std::string& name, const Speech& speech, bool grantsBoat = false);
     // Browse/buy at the shop POI the player is standing on (zones only) --
     // see character/Equipment.h. Takes over input in its own nested loop,
     // same architectural shape as runCombat, until the player leaves.

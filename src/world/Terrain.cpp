@@ -14,7 +14,17 @@ namespace {
 // invented, tuned (not sourced) risk -- roads safest, forest/mountains
 // riskiest -- see docs/COMBAT_NOTES.md's "Encounters" section.
 constexpr std::array<TerrainInfo, 12> kTable = {{
-    {'~', '~', "\x1b[34m", false, 0, "the ocean", 0},
+    // Ocean's hoursToCross/encounterChancePercent were irrelevant while it
+    // was unconditionally impassable; now that GameState::hasBoat can cross
+    // it (Milestone 36), it gets real (still invented-for-pacing) values.
+    // encounterChancePercent stays 0 -- no sea monsters exist in the
+    // monster roster yet, so a random encounter here would draw a land
+    // creature into open water; revisit if sea monsters are ever added.
+    {'~', '~', "\x1b[34m", false, 2, "the ocean", 0, true},
+    // The Blood Sea stays impassable even with a boat -- not an oversight,
+    // a sourced restraint: the Blood Sea of Istar is supernaturally
+    // hazardous in canon, and no lore is invented here about ships
+    // crossing it. See docs/MAP_NOTES.md / docs/TIMELINE_NOTES.md.
     {'!', '~', "\x1b[31m", false, 0, "the Blood Sea", 0},
     {'r', '~', "\x1b[36m", true, 2, "shallow water", 5},
     {':', '.', "\x1b[97m", true, 4, "glacier", 6},

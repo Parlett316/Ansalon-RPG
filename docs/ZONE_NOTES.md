@@ -92,6 +92,13 @@ SHOP <char>                             optional, marks a POI as
                                         below); must reference a char
                                         already declared via POI, same
                                         rule as TALK
+BOAT <char>                             optional, marks a POI as granting
+                                        GameState::hasBoat the first time
+                                        it's talked to (see "Boats: POIs
+                                        that grant sea travel" below);
+                                        same "must already have a POI
+                                        **and** a TALK line" rule as
+                                        SAY_IF/TOPIC
 TIMELINE_ANCHOR <char>                  optional, at most one -- marks a
                                         POI as where present canon
                                         characters are found/talkable
@@ -252,6 +259,28 @@ catalog -- see `docs/CHARACTER_NOTES.md`'s "Equipment" section for the
 full catalog, sourcing, and the sell-back mechanic added the same
 milestone.
 
+## Boats: POIs that grant sea travel (Milestone 36)
+
+`BOAT <char>` marks a POI whose `TALK` interaction, the first time it
+happens, sets `GameState::hasBoat` (see `docs/ARCHITECTURE.md`'s "Sea
+travel"). Same "layers an ability on top of an existing POI" pattern as
+`SHOP`/`TIMELINE_ANCHOR`, but tied to *talking* rather than a separate key
+-- there's no dedicated "board the ship" key, reusing `t` and the existing
+dialogue/log-message flow keeps this minimal. Unlike `SHOP`, `BOAT`
+requires its POI to already have a `TALK` line (same rule `SAY_IF`/`TOPIC`
+follow): without one, the POI would never actually be a talk candidate,
+and the grant would be unreachable dead content.
+
+As of Milestone 36, exactly one POI carries `BOAT`: `data/zones/tarsis.txt`'s
+`R "A Knight's Runner"`. Deliberately not Tarsis's existing `S "An Old
+Sailor"` -- his established `TALK`/`TALK_AGAIN` lines say outright that
+the sea "isn't coming back," and Tarsis's harbor is canonically dead (see
+the zone's own section below); routing the boat grant through him would
+contradict flavor already written in Milestone 28. The Runner instead
+represents passage arranged by Derek Crownguard's knights (see
+`docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
+the Old Sailor's characterization untouched.
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -393,7 +422,82 @@ same freshly-written-not-transcribed treatment as everywhere else:
   reaching it), so this one leans on general established Dragonlance
   lore and this project's own existing `locations.txt` description
   (beached ship hulls, a dry stone quay, a xenophobic-toward-outsiders
-  Old Sailor NPC) rather than a specific module citation.
+  Old Sailor NPC) rather than a specific module citation. As of
+  Milestone 35 it gained a `TIMELINE_ANCHOR D` (the Old Dock) once real
+  timeline content finally existed for it — see `docs/TIMELINE_NOTES.md`.
+  As of Milestone 36 it also has `R "A Knight's Runner"`, the zone's
+  `BOAT`-carrying POI (see "Boats: POIs that grant sea travel" above) —
+  the party's actual route off this landlocked city, since the Old
+  Sailor's own dialogue rules out a local ship.
+
+## The High Clerist's Tower (Milestone 35)
+
+`data/zones/high_clerist_tower.txt` — the fortress's outer courtyard, the
+first zone built for *Dragons of Winter Night* content. An original
+layout (not copied from any published floorplan), grounded in on-page
+details from the actual siege/Knighting/death chapters (verified via
+`pdftotext -layout` against the novel, not written from memory): the
+Chapel of the High Clerist (`C`, where Sturm keeps his knighting vigil,
+described generically enough to read sensibly whether visited before or
+after his window — the zone itself has no day-gating, so its flavor text
+can't presuppose a scheduled event has already happened), the Tower's
+sealed inner doors (`D`, "no one but a High Clerist may enter" — described,
+not modeled, same treatment as the Inn's upstairs rooms and Pax Tharkas's
+Sla-Mori/mines), a stair to the battlements (`B`, where Sturm's death
+takes place in the novel — flavor-only, since this engine has no
+scripted-death combat), the Muster Yard (`Y`, the `TIMELINE_ANCHOR` — kept
+as a distinct scenery POI rather than the talkable Knight's own tile,
+matching every other anchored zone's pattern of anchoring on scenery, not
+the zone-native NPC), and one generic talkable Knight (`K`). The Knight is
+deliberately unnamed rather than Derek Crownguard/Lord Alfred/Lord
+Gunthar — all three have canon fates (two die during the siege, one stays
+on Sancrist) this engine has no mechanism to represent for a permanent
+NPC, same reasoning `pax_tharkas.txt`'s deliberately unaffiliated
+"Fortress Guard" already established. His `TOPIC`s fold in the Sancrist
+Knights' Trial (Sturm's real vindication scene, and the Gunthar/Derek
+factional split it caused) as retrospective dialogue, since Sancrist
+Isle itself isn't modeled — see `docs/TIMELINE_NOTES.md` for why.
+
+## Ice Wall Castle (Milestone 36)
+
+`data/zones/ice_wall.txt` — the castle's ruined outer hall, reachable only
+by crossing open water with `GameState::hasBoat` (see
+`docs/ARCHITECTURE.md`). An original layout, grounded in the actual
+dragon-orb-quest chapters of *Dragons of Winter Night* (verified via
+`pdftotext -layout`, not written from memory): an ice-bound silver dragon
+with a mysterious rider (`D`, deliberate foreshadowing the novel itself
+doesn't pay off yet, so this project doesn't invent a payoff either — same
+"described, not modeled" restraint as the Tower's sealed doors), the spot
+where the dark elf Feal-thas fell defending the orb (`F`, the
+`TIMELINE_ANCHOR` — scenery, not the talkable Knight's own tile, matching
+every other anchored zone's established pattern), and one generic talkable
+Knight (`K`, one of Derek Crownguard's two unnamed knights — Derek himself
+stays off-stage, same reasoning the Tower already established for not
+naming him directly). The Knight's `TOPIC`s fold in the Thanoi
+("walrus-men") and a brief Southern Ergoth sail-past mention as
+retrospective dialogue rather than inventing new locations/monsters for
+either — see `docs/TIMELINE_NOTES.md` for why both stay unmodeled this
+milestone. Thanoi are flavor-only text, not added to `data/monsters.txt`.
+
+## Silvanost, Silvanesti's capital (Milestone 37)
+
+`data/zones/silvanesti.txt` — same `LOCATION`-is-the-nation/zone-is-the-
+capital relationship `qualinesti.txt`/Qualinost already established. An
+original layout, grounded in the actual dragon-orb-crisis chapters of
+*Dragons of Winter Night* (verified via `pdftotext -layout`, not written
+from memory): the Ferry Landing (`F`, the actual crossing point the text
+describes), the Tower of the Stars (`T`, the `TIMELINE_ANCHOR` — Lorac
+Caladon enthroned beside the dragon orb, described, not an
+enterable/resolvable puzzle, same restraint as the Tower's sealed doors
+and Ice Wall's ice-bound dragon), the Twisted Gardens (`G`, the
+"trees weep blood" corruption imagery, written evergreen since the source
+material itself never resolves Lorac's fate cleanly), and one generic
+talkable Warder (`W`, third use of this project's "unnamed sentinel"
+pattern after the Fortress Guard and the Tower/Ice Wall Knights).
+Deliberately **not** Alhana Starbreeze by name, despite her being a major
+on-page character here — she has extensive ongoing plot significance
+beyond this book, the same reasoning that's kept Derek Crownguard and
+Lord Gunthar off-stage as named NPCs.
 
 ## Adding a new zone
 

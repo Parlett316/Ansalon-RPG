@@ -86,6 +86,9 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // above -- keyed by code, value is the line number SHOP appeared on,
     // for a clear error if its POI never shows up.
     std::unordered_map<char, int> shopLines;
+    // Same "applied after the whole file is parsed" treatment as shopLines
+    // above -- keyed by code, value is the line number BOAT appeared on.
+    std::unordered_map<char, int> boatLines;
     // SAY_IF/TOPIC get the same "collected by POI char, applied after the
     // whole file is parsed" treatment as talkLines/shopLines above -- but
     // unlike those (one dialogue per POI), a POI can have zero or more of
@@ -191,6 +194,13 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed SHOP (expected: SHOP <char>)");
                 }
                 shopLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "BOAT") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed BOAT (expected: BOAT <char>)");
+                }
+                boatLines[codeToken[0]] = lineNumber;
             } else if (keyword == "SAY_IF") {
                 std::istringstream iss(rest);
                 std::string codeToken, condition;
@@ -247,7 +257,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             } else {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
-                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, "
+                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, "
                          "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, or END)");
             }
         } else {
@@ -321,6 +331,20 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             fail(path, lineNum, "SHOP '" + std::string(1, code) + "' has no matching POI declaration");
         }
         it->second.isShop = true;
+    }
+    // Same rule for BOAT, but -- like SAY_IF/TOPIC -- it must also already
+    // have a TALK line: BOAT is granted as a side effect of talking to the
+    // POI (see GameLoop::talkTo), so a POI with no TALK line could never
+    // actually trigger it, and this would silently author dead content.
+    for (const auto& [code, lineNum] : boatLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no TALK line to grant it through");
+        }
+        it->second.isBoat = true;
     }
     // Same rule for SAY_IF: it must reference an already-declared POI --
     // but SAY_IF is reactive dialogue, so its POI must also already have a

@@ -1,0 +1,39 @@
+# data/zones/silvanesti.txt -- hand-authored walkable interior: the
+# approach to Silvanost, the Silvanesti capital, reached on foot from the
+# Thon-Thalas River's ferry landing (Milestone 37 -- Tanis, Raistlin,
+# Caramon, Goldmoon, and Riverwind's actual arrival, not modeled by a
+# separate boat mechanic since this is a river crossing, not open sea --
+# see docs/MAP_NOTES.md). The filename stem ("silvanesti") is the zone id
+# and MUST match the LOCATION id in data/locations.txt for the Enter key
+# to find it. Grammar: docs/ZONE_NOTES.md
+NAME Silvanost
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..F................................T..#
+#......................................#
+#......................................#
+#......................................#
+#.........W............................#
+#......................................#
+#......................................#
+#...........................G..........#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI F "The Ferry Landing" A flat-bottomed boat waits tied to a marble post worn smooth by centuries of hands, the only crossing point on a river too wide and too cold to ford. Nothing about it looks abandoned. Everything about it looks like nobody has used it in a very long time.
+POI T "The Tower of the Stars" A slender white tower rises above the aspens, catching what little light reaches this deep into the forest. Somewhere inside it, an elf-king sits a throne beside a crystal too heavy for any one soul to have carried alone, and has not moved from it in longer than anyone outside these woods will ever know.
+POI G "The Twisted Gardens" Marble paths wind between trees shaped, over centuries, into impossible and beautiful forms -- and now something else besides. The bark here weeps a dark, slow sap that catches the light wrong. It is easy to tell yourself it's only sap.
+POI W "A Silvanesti Warder" She watches the tree line with an attention that never fully settles on you, as though you are, at most, the second most dangerous thing she's minding today.
+TALK W "You should not be here. Humans are not permitted in Silvanesti -- were never permitted, and are less welcome now than ever." Her eyes flick, briefly, toward the white tower before returning to you. "I will not raise the alarm. Not today. Do not mistake that for welcome."
+TALK_AGAIN W "Still here, and still not raising the alarm. I find I no longer know if that's mercy or simply that I have larger fears than one wandering human."
+SAY_IF W elf Something in her posture eases, fractionally, at the sight of another elf, even one raised among round-ears. "You, at least, might understand what it costs us to let anyone see the land like this. Say nothing of what you find here, when you leave. If you leave."
+TOPIC W "The Green Dragon" Her jaw tightens. "Cyan Bloodbane. It came when the crystal called it, and it has not left since -- guarding something it was never invited to guard, in a home it was never invited to enter. We are not accustomed to being unable to drive an intruder from our own woods." She looks away. "I try not to think about what that means."
+TOPIC W "A Land That Keeps to Itself" "We closed our borders to your kind generations before the Cataclysm, and to the Qualinesti not long after -- our own kin, and still we shut the gate." Her expression is unreadable. "I used to think that caution had kept us safe. I no longer know what it's kept us safe from, if this is what waited for us anyway."
+TIMELINE_ANCHOR T
+END

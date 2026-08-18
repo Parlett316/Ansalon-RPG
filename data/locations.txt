@@ -94,3 +94,30 @@ GLYPH T
 POS 170 300
 DESC A city stranded far from any sea, though its docks and rusting ship-hulks remain, half-buried in the dust. Old sailors still argue about which direction the water went.
 END
+
+LOCATION high_clerist_tower
+NAME High Clerist's Tower
+REGION Solamnia
+TERRAIN mountain-fortress
+GLYPH C
+POS 173 100
+DESC A fortress built into the only pass through the Vingaard Mountains, guarding the road to Palanthas beyond. No one but a High Clerist may enter the Tower proper -- and there has been no High Clerist since the Cataclysm -- so the garrison holds only the walls around it.
+END
+
+LOCATION ice_wall
+NAME Ice Wall Castle
+REGION Icereach
+TERRAIN glacial-ruin
+GLYPH I
+POS 110 307
+DESC A half-ruined keep on a frozen, wind-scoured coast far south of anywhere charted. No road reaches it -- only the sea does. Ice has crept into its broken halls faster than anyone left could clear it out.
+END
+
+LOCATION silvanesti
+NAME Silvanesti
+REGION Silvanesti
+TERRAIN elven-forest
+GLYPH V
+POS 312 231
+DESC The ancient elven homeland, far east across the continent, sealed off from the outside world since before the Kinslayer Wars. No human is known to have set foot here in living memory -- not because none have tried, but because none have been let in.
+END
