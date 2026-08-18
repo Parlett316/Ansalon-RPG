@@ -499,6 +499,30 @@ on-page character here — she has extensive ongoing plot significance
 beyond this book, the same reasoning that's kept Derek Crownguard and
 Lord Gunthar off-stage as named NPCs.
 
+## Kalaman (Milestone 39)
+
+`data/zones/kalaman.txt` — the harbor district and market square, this
+project's first *Dragons of Spring Dawning* zone. An original layout at
+the 44×16 ceiling (matching the Tower/Silvanesti's own 40×16 grids),
+grounded in the actual festival and reunion chapters of *Dragons of Spring
+Dawning* (verified via `pdftotext -layout`, not written from memory): the
+Harbor (`H`, "white-winged ships lay at anchor"), the Lord's Keep (`L`,
+where the victory speeches happen), a stair to the city wall (`W`, where
+the whole city gathers to watch the Dark Lady's arrival), a locked
+Cartographer's Stall (`C`, grounding Tasslehoff's actual sourced
+pickpocketing/lockpicking beat — flavor-only, not a `SHOP`, since the
+scene is specifically about a locked, unattended stall, not a functioning
+merchant), the Market Square (`M`, the `TIMELINE_ANCHOR` — both sourced
+story beats happen here or pass through it), and one generic talkable
+City Watchman (`G`, fourth use of the "unnamed sentinel" pattern after the
+Fortress Guard, the Tower/Ice Wall Knights, and Silvanesti's Warder). The
+Dragon Highlord who delivers the ultimatum ("the Dark Lady," i.e. Kitiara)
+and the Golden General (Laurana) both stay unnamed throughout — same
+off-stage-major-character precedent as Alhana/Derek/Gunthar, now also
+applied to two characters with active roles across the whole trilogy
+rather than one book. See `docs/TIMELINE_NOTES.md` for the two day-windows
+this zone's `TIMELINE_ANCHOR` serves.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

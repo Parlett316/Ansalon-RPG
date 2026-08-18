@@ -195,6 +195,43 @@ count, 46 tiles) before moving on. Worth remembering for any future
 milestone that touches `ROAD_PAIRS`: check for other hand-edits in this
 file before regenerating, not after.
 
+## Kalaman (Milestone 39)
+
+The first location placed by reading labels directly off the reference
+image rather than relative geography alone — cropping
+`References/DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg` at
+full resolution around grid (150-260, 60-160) turned out to have fully
+legible place-name labels (`crop_tower_kalaman.png`/`crop_kalaman_tight.png`
+in that session's scratchpad), unlike the Milestone 2-era assumption that
+labels were illegible at any practical resolution. A "Kalaman" city icon on
+"Kalaman Bay" was located directly, next to "Dargaard Keep" and the
+"Estwilde" region label, east of the already-placed `high_clerist_tower`
+across the "Hinterlund" plains — matching the novel's own description
+(*Dragons of Spring Dawning*: "heading for Kalaman, northwest of Flotsam,
+around the cape of Nordmaar"; "the Dargaard Mountains that divided
+Solamnia from Estwilde... Kalaman and its harbor").
+
+**Cross-checked against a known point before trusting the new one.**
+Converting `high_clerist_tower`'s already-recorded `POS 173 100` to a pixel
+position on this same crop landed correctly on the crop's own fortress
+icon, validating the pixel-to-grid conversion before using it to place
+Kalaman. The raw pixel estimate for Kalaman itself landed on a `data/
+overworld.grid` tile classified mountain/hills (Northern Dargaard Mountains
+foothills, visible on the reference map right next to the city, not a
+misclassification this time); nudged east onto confirmed grassland
+immediately next to the bay/river tiles, same "nudge onto walkable
+terrain" precedent Ice Wall set. Final: `POS 262 73`, `REGION Estwilde`.
+
+**`("high_clerist_tower", "kalaman")` added to `ROAD_PAIRS`** — the
+nearest already-modeled location, not the book's own unmodeled route
+(Palanthas and Vingaard Keep aren't zones yet). Regenerating wiped Ice
+Wall's hand-painted glacier patch again, exactly as documented above and
+already hit once at Milestone 37 — this time the patch's 46 exact tile
+coordinates were captured to a scratch file *before* regenerating and
+reapplied afterward with a diff confirming byte-for-byte identical
+placement, rather than re-deriving the patch by eye. Worth doing the same
+capture-before-regenerate step for any future `ROAD_PAIRS` change.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

@@ -38,32 +38,37 @@ assuming a fixed size. The whole continent is a 480×320 tile grid,
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
-Silvanesti, ...) sit on that grid, most connected by roads baked into the
-terrain — Ice Wall is the one exception, a sea-locked ruin reachable only
-by arranging passage and crossing open water (see below) — and every one
-of them now has a walkable interior (Enter to step in) — including the
-Inn of the Last Home inside Solace, and Qualinost, the elven capital,
-inside Qualinesti. Standing at a location can also reveal canon Heroes of
-the Lance passing through on their own schedule — the "chance encounter"
-engine described above now spans two novels: all eight Heroes travel
-together through *Dragons of Autumn Twilight* (an alternate path through
-Darken Wood, the climactic siege of Pax Tharkas, then together again in
-Tarsis as *Dragons of Winter Night* opens), and then genuinely split for
-the first time — Sturm, Flint, and Tasslehoff continue on, first to a
-dragon-orb quest at Ice Wall Castle and then to the siege of the High
-Clerist's Tower and Sturm's Knighting and death, while Tanis, Raistlin,
-Caramon, Goldmoon, and Riverwind are griffon-carried east to Silvanesti
-instead, into a second dragon-orb crisis of their own — see
-`docs/TIMELINE_NOTES.md`. Stepping inside a zone carries the encounter
-through too: find them gathered at the Inn's fireplace, Haven's market,
-Xak Tsaroth's old well, Qualinost's Hall of the Sky, Darken Wood's faded
-trail, the Tharkadan mine entrance at Pax Tharkas, Tarsis's old dock, the
-Tower's Muster Yard, or the Tower of the Stars in Silvanost, not just
-standing on the overworld tile. You can actually talk to them (and to
-NPCs inside zones, like the Inn's Otik and Tika, Haven's Seeker Guard,
-Darken Wood's Forestmaster, the Tower's Garrison Knight, Ice Wall's own
-young Knight, and Silvanost's Warder) — press `t`, grounded in the
-original DL1-3 adventure
+Silvanesti, Kalaman, ...) sit on that grid, most connected by roads baked
+into the terrain — Ice Wall is the one exception, a sea-locked ruin
+reachable only by arranging passage and crossing open water (see below) —
+and every one of them now has a walkable interior (Enter to step in) —
+including the Inn of the Last Home inside Solace, and Qualinost, the
+elven capital, inside Qualinesti. Standing at a location can also reveal
+canon Heroes of the Lance passing through on their own schedule — the
+"chance encounter" engine described above now spans three novels: all
+eight Heroes travel together through *Dragons of Autumn Twilight* (an
+alternate path through Darken Wood, the climactic siege of Pax Tharkas,
+then together again in Tarsis as *Dragons of Winter Night* opens), then
+genuinely split for the first time — Sturm, Flint, and Tasslehoff continue
+on, first to a dragon-orb quest at Ice Wall Castle and then to the siege
+of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
+Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
+Silvanesti instead, into a second dragon-orb crisis of their own — and
+then, as *Dragons of Spring Dawning* opens, Flint and Tasslehoff reach
+Kalaman for its Spring Dawning festival before the rest of the surviving
+party (minus Raistlin, who splits off toward Palanthas) washes ashore
+after a shipwreck and reunites with them there, just as a Dragon
+Highlord's ultimatum arrives — see `docs/TIMELINE_NOTES.md`. Stepping
+inside a zone carries the encounter through too: find them gathered at
+the Inn's fireplace, Haven's market, Xak Tsaroth's old well, Qualinost's
+Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine entrance at
+Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the Tower of the
+Stars in Silvanost, or Kalaman's Market Square, not just standing on the
+overworld tile. You can actually talk to them (and to NPCs inside zones,
+like the Inn's Otik and Tika, Haven's Seeker Guard, Darken Wood's
+Forestmaster, the Tower's Garrison Knight, Ice Wall's own young Knight,
+Silvanost's Warder, and Kalaman's City Watchman) — press `t`, grounded in
+the original DL1-3 adventure
 modules and, for the Heroes of the Lance, the Chronicles/Legends novels:
 real reactive dialogue based on your own race/class/alignment, branching
 topics to ask about, and real memory of whether you've spoken before, not

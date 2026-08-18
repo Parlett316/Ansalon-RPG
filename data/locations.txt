@@ -121,3 +121,12 @@ GLYPH V
 POS 312 231
 DESC The ancient elven homeland, far east across the continent, sealed off from the outside world since before the Kinslayer Wars. No human is known to have set foot here in living memory -- not because none have tried, but because none have been let in.
 END
+
+LOCATION kalaman
+NAME Kalaman
+REGION Estwilde
+TERRAIN coastal-town
+GLYPH K
+POS 262 73
+DESC A walled harbor city on Kalaman Bay, its open-air bazaar and fish market spilling into streets built for a bigger, safer age. White-winged ships ride at anchor in its harbor -- the last real port left to whoever still controls it.
+END

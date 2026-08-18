@@ -1,0 +1,36 @@
+# data/zones/kalaman.txt -- hand-authored walkable interior: Kalaman's
+# harbor district and market square (Milestone 39 -- Dragons of Spring
+# Dawning). The filename stem ("kalaman") is the zone id and MUST match
+# the LOCATION id in data/locations.txt for the Enter key to find it.
+# Grammar: docs/ZONE_NOTES.md
+NAME Kalaman
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..H...............................L...#
+#......................................#
+#.......................W..............#
+#......................................#
+#.........C............................#
+#......................................#
+#............................M.........#
+#......................................#
+#..........G...........................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI H "The Harbor" White-winged ships ride at anchor along a stone-walled quay, more of them idle than working -- a port that remembers being busier, and safer, than it is now.
+POI L "The Lord's Keep" A blunt stone hall overlooking the bazaar, banners of Kalaman snapping from its battlements. Its steps still smell faintly of trampled winter roses, though no one seems to remember why anyone would have carried flowers up them.
+POI W "A Stair to the City Wall" Stone steps climb to the wall-walk above, worn smooth in a straight line toward the northern approach. On a good day, children race each other up it for the view. On a bad one, the whole city stands here in silence, watching the plain.
+POI C "A Cartographer's Stall" A locked wooden stall crammed with rolled charts, its hinges cheap enough to worry any honest lock. A hand-lettered sign reads "CLOSED," optimistically.
+POI M "Market Square" An open-air bazaar spills across the square in gaily-colored booths -- vendors, games of chance, the occasional dancing bear when the crowds are thick enough to draw one. Even quiet, it never quite loses the smell of frying bacon and cheap wine.
+POI G "A City Watchman" He stands near the market's edge, one hand resting on a truncheon worn more from boredom than use, eyes moving over the crowd the way a man watches for pickpockets he already knows he won't catch.
+TALK G "Mind your purse in the market, stranger -- we get more than our share of light fingers when the bazaar's running. Rest of the city's honest enough. Mostly."
+TALK_AGAIN G "Still watching the crowd, still not catching whoever's been at the purses today. Some things don't change."
+TOPIC G "The War's Turn" The watchman's easy manner cools. "You'll have heard the news same as anyone -- a Golden General, dragonlances, silver and gold dragons driving the evil ones out of the sky. Good news, all of it. I'd feel better about it if I didn't keep noticing how many soldiers we're still burying."
+TIMELINE_ANCHOR M
+END

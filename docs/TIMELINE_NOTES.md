@@ -634,6 +634,47 @@ stay entirely in `timeline.txt`, same restraint already used for Ice
 Wall's and Silvanesti's "evergreen regardless of when a player reads it"
 zone text.
 
+## Kalaman (Milestone 39)
+
+The first *Dragons of Spring Dawning* content milestone, and the biggest
+single content pass to date: a new `LOCATION kalaman` (see
+`docs/MAP_NOTES.md`), a new zone (see `docs/ZONE_NOTES.md`), and
+`PRESENCE` windows for six of the eight Heroes — every one still alive and
+not already split off elsewhere at this point in the story (Sturm died at
+Milestone 38; Raistlin escapes the Blood Sea maelstrom via the dragon orb
+directly to Palanthas and is never physically at Kalaman in this arc, so
+he gets no window here). Sourced directly from a fresh `pdftotext -layout`
+extraction of `Dragons_of_Spring_Dawning_-_Margaret_Weis.pdf`, not from
+the earlier summary-level research pass alone.
+
+**Two day-windows, matching two distinct sourced story beats.**
+`kalaman 90 92` covers the Spring Dawning festival and the Knights of
+Solamnia's triumphal parade (lines 4714-4995) — Flint and Tasslehoff only,
+since they're the two Heroes present in the book at this point (having
+continued on from the Tower via Palanthas and the Vingaard Keep dragon
+battle, neither modeled as their own zones this milestone). `kalaman 100
+100` covers the reunion and the Dragon Highlord's ultimatum (lines
+8060-8362, 8438-8446) — all six: Tanis, Caramon, Goldmoon, and Riverwind
+(shipwrecked, sea-elf-rescued, and washed ashore north of the city — their
+first appearance since `silvanesti 25 30`; the Flotsam/Blood Sea/shipwreck
+chapters between the two stay unmodeled, same "don't invent to fill a gap"
+restraint as every prior time-skip in this file) plus Flint and Tasslehoff,
+now grieving both Sturm's death and the Golden General's capture at
+Dargaard Keep (referenced in dialogue only — the ambush itself isn't
+separately modeled, same restraint as Sancrist Isle/Southern Ergoth staying
+off-page). Day 100 is deliberately a single day, matching the "single noon"
+pattern Milestone 38 already established for Sturm's death, and is
+consistent with Flint's own book line that the groups were "parted in
+Tarsis months ago" (`tarsis 20 22`).
+
+**Kitiara ("the Dark Lady") and Laurana ("the Golden General") both stay
+unnamed.** Same off-stage-major-character precedent as every prior
+milestone (Alhana, Derek, Gunthar, and Kitiara herself already at
+Milestone 38) — both have extensive ongoing canon plot beyond this
+project's scope. This milestone also references, without naming as a
+tracked character, Berem (the "Green Gemstone Man" the ultimatum demands);
+he isn't a Hero of the Lance and isn't modeled.
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

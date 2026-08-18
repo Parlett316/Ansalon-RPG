@@ -284,6 +284,34 @@ this stays authoritative.
     warnings, no source changes), and the piped smoke test. See
     `docs/TIMELINE_NOTES.md`.
 
+39. Kalaman -- the first *Dragons of Spring Dawning* content, and the
+    biggest single content milestone to date: a new `LOCATION kalaman`
+    (`POS 262 73`, `REGION Estwilde`, placed by cropping the reference map
+    at full resolution and cross-checking against the already-known
+    High Clerist's Tower position -- see `docs/MAP_NOTES.md`), a new
+    Tarsis-scale zone (harbor, market square, a locked cartographer's
+    stall grounding a real Tasslehoff pickpocketing beat, a stair to the
+    city wall, the Lord's Keep, one generic City Watchman -- see
+    `docs/ZONE_NOTES.md`), and `data/timeline.txt` windows for six of the
+    eight Heroes across two sourced story beats: the Spring Dawning
+    festival (`kalaman 90 92`, Flint and Tasslehoff only) and the reunion
+    with Tanis/Caramon/Goldmoon/Riverwind under a Dragon Highlord's
+    ultimatum (`kalaman 100 100`, all six). Raistlin gets no window here --
+    he escapes to Palanthas via the dragon orb and is never physically at
+    Kalaman in this arc. The `("high_clerist_tower", "kalaman")` road
+    addition required regenerating `data/overworld.grid`, which wiped Ice
+    Wall's hand-painted glacier patch again (as documented, and already hit
+    once at Milestone 37) -- this time its 46 tile coordinates were
+    captured to a scratch file before regenerating and reapplied with a
+    byte-for-byte diff check afterward. The Dragon Highlord delivering the
+    ultimatum (Kitiara) and the captured Golden General (Laurana) both stay
+    unnamed, same off-stage-major-character precedent as Alhana/Derek/
+    Gunthar. Verified via a throwaway self-test, a visual check of the
+    regenerated grid (road connectivity, glacier patch intact), a clean
+    rebuild (zero new warnings, no `.cpp`/`.h` changes), and the piped smoke
+    test. See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
+    `docs/TIMELINE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -300,20 +328,11 @@ session's work.
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
 
-**Chosen next, per user direction (2026-08-18): *Dragons of Spring
-Dawning*, starting with Kalaman.** A research pass across the full novel
-(`pdftotext -layout` extraction of `Dragons_of_Spring_Dawning_-
-_Margaret_Weis.pdf`) found the book fragments the party far more than any
-prior arc -- Sturm is already dead, Flint dies partway through (at
-Godshome), and the Heroes split repeatedly across Flotsam, the sunken
-ruins of Istar, Palanthas, Vingaard Keep, Kalaman, Dargaard Keep, Godshome,
-and Neraka. Kalaman was chosen as the next walkable zone because it's the
-book's central hub (comparable scope to Tarsis) and avoids every location
-this engine genuinely can't represent yet: aerial dragon combat (Vingaard
-Keep, the Neraka endgame), underwater sequences (sunken Istar), and
-flight-only reach (Dargaard Keep). Palanthas (the Great Library, the
+**Continuing *Dragons of Spring Dawning* after Kalaman (Milestone 39):**
+per the research pass documented there, Palanthas (the Great Library, the
 cursed-but-visible Tower of High Sorcery), Godshome (small, self-contained
 -- Flint's death), and Neraka (the climax, fortress-zone idiom like Pax
-Tharkas/Ice Wall) are the natural follow-on candidates after Kalaman;
-Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and Sanction are
-recommended to stay flavor-only dialogue rather than walkable zones.
+Tharkas/Ice Wall) are the natural next candidates. Flotsam, Vingaard Keep,
+Dargaard Keep, sunken Istar, and Sanction are recommended to stay
+flavor-only dialogue rather than walkable zones -- see `docs/MILESTONES.md`
+Milestone 39 and `docs/TIMELINE_NOTES.md` for the full reasoning.
