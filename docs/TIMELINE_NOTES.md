@@ -577,6 +577,63 @@ holds generic, repeatable encounter types, not named story beats. This
 isn't a new restraint call, just a restatement of the same one Milestone
 36 already made for Feal-thas and the Thanoi.
 
+## Sturm's death (Milestone 38)
+
+The bridging event between *Dragons of Winter Night* (this project's
+existing content) and *Dragons of Spring Dawning* (the next content arc):
+Spring Dawning opens with Sturm already dead and buried beneath the
+Tower's ruins, but the timeline had no death event modeled — his schedule
+simply stopped at `high_clerist_tower 76 80`, "freshly vigiled and
+formally sworn," with no siege ever happening. Researched and sourced
+directly from `Dragons_of_Winter_Night_-_Margaret_Weis.pdf` (a fresh
+`pdftotext -layout` extraction, lines ~14800-15450), not from memory or
+from Spring Dawning's own backward references to it.
+
+**What the source says.** At dawn, Sturm climbs alone to the Tower's high
+wall specifically to draw the attacking dragons' attention away from the
+courtyard, where Laurana is readying the dragonlance-armed knights and
+Tasslehoff is preparing the dragon orb. He wounds the lead dragon and a
+second rider's wing with arrows, then meets the Dragon Highlord's killing
+dive with a formal knight's salute — returned in kind, gravely, before the
+Highlord's spear runs him through. His stand buys the exact seconds
+needed: the dragon orb's captured call lures the attacking dragons into
+two ambush chambers deeper in the Tower, where dragonlance-armed knights
+kill them at close range (Flint is the one who springs the portcullis trap
+on the first). The siege breaks; the army outside, leaderless in the
+moment, routs.
+
+**Added as a single-day `PRESENCE ... 81 81` window** at
+`high_clerist_tower` for Sturm, Flint, and Tasslehoff — one day, not a
+multi-day range like `ice_wall 38 42`, since the source describes the
+whole siege happening within one dawn. Sturm's window deliberately has
+**no `SAY`** — the first deliberate use of the existing "no SAY = not
+talkable" mechanic (previously just meant "not authored yet") to represent
+a character who is unavailable because he's dying in the scene being
+narrated. It's also the schedule's last-ever window for him: no further
+`PRESENCE` lines exist for `sturm` anywhere in the file, which is how the
+engine already represents "no longer encounterable" — no new state or
+mechanic was needed. Flint and Tasslehoff's day-81 windows carry real
+`SAY`/`SAY_AGAIN`/`TOPIC` content, a grief beat continuing each of their
+existing 76-80 windows.
+
+**The Dragon Highlord who kills him is deliberately unnamed** (he's
+Kitiara in the source text, revealed to Laurana afterward) — same
+off-stage-major-character precedent as Alhana Starbreeze at Silvanesti and
+Derek Crownguard/Lord Gunthar at the Tower itself: a character with
+extensive ongoing canon plot (Kitiara is a Dragon Highlord antagonist
+across all three Chronicles books) doesn't get named here. Laurana herself
+also stays unnamed throughout, for the same reason.
+
+**`data/zones/high_clerist_tower.txt` is untouched.** The Tower physically
+collapses in the source text, but zone content in this project is static
+and not day-gated (only `timeline.txt` `PRESENCE` text is) — a player can
+walk to the Tower's zone before day 76 with nothing preventing it, so a
+POI description couldn't accurately show a post-siege collapsed state
+without being wrong for every earlier visit. The siege and its aftermath
+stay entirely in `timeline.txt`, same restraint already used for Ice
+Wall's and Silvanesti's "evergreen regardless of when a player reads it"
+zone text.
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

@@ -4,33 +4,24 @@ Nothing in flight. All completed milestones are documented in the
 relevant `docs/*_NOTES.md` files and `README.md`'s Status paragraph — see
 `CLAUDE.md` for which doc covers which system.
 
-Most recent milestone: Milestone 37 (Silvanesti — the third and final
-Winter Night arc, completing the party split Milestone 35 started).
-Tanis, Raistlin, Caramon, Goldmoon, and Riverwind — griffon-carried away
-from Tarsis in the same dragon attack that sent Sturm/Flint/Tasslehoff to
-Ice Wall — finally get their own destination and timeline stop
-(`silvanesti 25 30`), instead of their schedules simply dead-ending at
-Tarsis. Unlike Ice Wall, this needed no new engine feature: checking the
-reference map found Silvanesti is bounded by a river (the Thon-Thalas),
-not open ocean, matching the source text's own on-foot ferry crossing —
-pure data again, same shape as Milestone 35. New `LOCATION silvanesti`
-(a fully-invented ~127-tile road east from Solace — the party actually
-arrives by griffon, so unlike every prior road there's no walkable route
-in the source material at all to lean on) and a new zone depicting
-Silvanost: the Ferry Landing, the Tower of the Stars (Lorac Caladon,
-trapped by a dragon orb, tormented by the green dragon Cyan Bloodbane),
-the nightmare-corrupted Twisted Gardens, and a generic Warder NPC
-(deliberately not Alhana Starbreeze by name — she has extensive ongoing
-canon plot, same reasoning that's kept Derek Crownguard and Gunthar
-off-stage). Regenerating the overworld grid for the new road silently
-wiped Milestone 36's hand-painted Ice Wall glacier patch — reapplied
-identically afterward, a live example of the caveat `docs/MAP_NOTES.md`
-already documented. Verified via clean rebuild (zero new warnings, no
-`.cpp`/`.h` changes), the piped smoke test, and a throwaway self-test. See
-`docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
+Most recent milestone: Milestone 38 (the siege of the High Clerist's Tower
+and Sturm's death) — the bridging event between *Dragons of Winter Night*
+(this project's existing content) and *Dragons of Spring Dawning* (the
+next arc), needed because Spring Dawning opens with Sturm already dead.
+Sourced directly from `Dragons_of_Winter_Night_-_Margaret_Weis.pdf`. Pure
+data change: a single-day `PRESENCE high_clerist_tower 81 81` window added
+for Sturm, Flint, and Tasslehoff in `data/timeline.txt`. Sturm's window has
+no `SAY` (the first deliberate use of "no SAY = not talkable" to represent
+a character dying in the narrated scene) and is his schedule's permanent
+last window. The Dragon Highlord who kills him (Kitiara, in the source)
+stays unnamed, same precedent as Alhana/Derek/Gunthar. Verified via a
+throwaway self-test, a clean rebuild (zero new warnings, no source
+changes), and the piped smoke test. See `docs/TIMELINE_NOTES.md`.
 
-Next step: nothing pending — ask the user what's next. All three Winter
-Night arcs have now shipped; `docs/MILESTONES.md`'s "NEXT UP" list has
-terrain-specific monster pools and more monsters as ready candidates, or
-starting fresh research into *Dragons of Spring Dawning* for the next
-story arc.
+Next step: per user direction (2026-08-18), a Spring Dawning research pass
+was already completed and Kalaman was chosen as the next walkable zone —
+see `docs/MILESTONES.md`'s "NEXT UP" for the full research summary
+(Kalaman's scope, and why Palanthas/Godshome/Neraka are the follow-on
+candidates while Flotsam/Vingaard Keep/Dargaard Keep/sunken Istar/Sanction
+stay flavor-only). Nothing has been built for Kalaman yet — that's the
+next session's starting point.

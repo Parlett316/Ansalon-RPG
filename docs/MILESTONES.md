@@ -259,6 +259,31 @@ this stays authoritative.
     test, and a throwaway self-test. See `docs/MAP_NOTES.md`,
     `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
 
+38. The siege of the High Clerist's Tower and Sturm's death -- the bridging
+    event between *Dragons of Winter Night* (this project's existing
+    content) and *Dragons of Spring Dawning* (the next arc), needed because
+    Spring Dawning opens with Sturm already dead but the timeline had no
+    death event modeled. Sourced directly from
+    `Dragons_of_Winter_Night_-_Margaret_Weis.pdf` (not from Spring Dawning's
+    own backward references to it, and not from memory): Sturm draws the
+    attacking dragons onto himself alone on the Tower's high wall, buying
+    Laurana and Tasslehoff the seconds needed to spring the dragon-orb
+    ambush that breaks the siege, and falls to a Dragon Highlord's spear.
+    Pure data again -- a single-day `PRESENCE high_clerist_tower 81 81`
+    window added for Sturm, Flint, and Tasslehoff in `data/timeline.txt`,
+    no `.cpp`/`.h`/zone changes. Sturm's window deliberately has no `SAY`,
+    the first deliberate use of the existing "no SAY = not talkable"
+    mechanic to represent a character unavailable because he's dying in the
+    scene, and it's also his schedule's permanent last window -- no new
+    "character is dead" state was needed, since having no further
+    `PRESENCE` entries already means "no longer encounterable." The Dragon
+    Highlord who kills him (Kitiara, in the source text) stays unnamed, same
+    off-stage-major-character precedent as Alhana/Derek/Gunthar. Verified
+    via a throwaway self-test asserting the day-81 window's contents and
+    that Sturm's schedule truly ends there, a clean rebuild (zero new
+    warnings, no source changes), and the piped smoke test. See
+    `docs/TIMELINE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -275,7 +300,20 @@ session's work.
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
 
-All three Winter Night arcs (Solamnia, Ice Wall, Silvanesti) have now
-shipped -- the natural next content candidate is *Dragons of Spring
-Dawning*, whenever that's wanted; needs its own research pass first, same
-as each Winter Night arc got.
+**Chosen next, per user direction (2026-08-18): *Dragons of Spring
+Dawning*, starting with Kalaman.** A research pass across the full novel
+(`pdftotext -layout` extraction of `Dragons_of_Spring_Dawning_-
+_Margaret_Weis.pdf`) found the book fragments the party far more than any
+prior arc -- Sturm is already dead, Flint dies partway through (at
+Godshome), and the Heroes split repeatedly across Flotsam, the sunken
+ruins of Istar, Palanthas, Vingaard Keep, Kalaman, Dargaard Keep, Godshome,
+and Neraka. Kalaman was chosen as the next walkable zone because it's the
+book's central hub (comparable scope to Tarsis) and avoids every location
+this engine genuinely can't represent yet: aerial dragon combat (Vingaard
+Keep, the Neraka endgame), underwater sequences (sunken Istar), and
+flight-only reach (Dargaard Keep). Palanthas (the Great Library, the
+cursed-but-visible Tower of High Sorcery), Godshome (small, self-contained
+-- Flint's death), and Neraka (the climax, fortress-zone idiom like Pax
+Tharkas/Ice Wall) are the natural follow-on candidates after Kalaman;
+Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and Sanction are
+recommended to stay flavor-only dialogue rather than walkable zones.
