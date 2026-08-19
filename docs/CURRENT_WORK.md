@@ -9,15 +9,13 @@ Most recent milestone: Milestone 42 (healing potions). See
 "Potions" / `docs/COMBAT_NOTES.md`'s "Player actions" section for
 sourcing.
 
-**Still needs a live human playthrough** — `_getch()` can't be piped (see
-`docs/GOTCHAS.md`), so the interactive keypress loop itself wasn't
-exercised by this session. Next time you're at the keyboard: buy a potion
-at any shop, drink it from the inventory screen (`i`, `Enter`) and confirm
-the new HP line updates, buy another, pick a fight and drink it mid-combat
-with `i`, confirm the round is consumed and the monster still gets its
-attack, confirm pressing `i` with no potions carried logs the right
-message without burning the round, and confirm selling a potion back at a
-shop works.
+**Partially confirmed live**: the user has seen the potion listed at a
+shop in-game. Not yet explicitly exercised: actually drinking one (either
+from the inventory screen, confirming the new HP line updates, or
+mid-combat with `i`, confirming it consumes the round and the monster
+still attacks), pressing `i` with no potions carried, and selling one
+back. Worth a real pass next time you're at the keyboard — `_getch()`
+can't be piped (see `docs/GOTCHAS.md`), so none of this can be scripted.
 
 Next step: nothing committed to yet. Backlog candidates (see
 `docs/MILESTONES.md`'s "NEXT UP"): terrain-specific monster pools, more
