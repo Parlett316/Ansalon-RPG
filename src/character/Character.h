@@ -60,12 +60,18 @@ struct Character {
     // fields above.
     std::vector<InventoryItem> inventory;
 
-    // Mage/Cleric only -- see Spellcasting.h. spellsCastToday resets to 0
-    // the moment it's checked on a new in-game day (hoursElapsed/24,
-    // -1 meaning "no day recorded yet"). No explicit rest/memorize action
-    // is modeled; slots just refill on day rollover.
+    // Mage/Cleric only -- see Spellcasting.h. spellsCastDay is the day
+    // (hoursElapsed/24, -1 meaning "never memorized") the character last
+    // memorized spells via game::GameLoop::handleRest -- no slots are
+    // available at all until spellsCastDay == the current day, regardless
+    // of level. spellsCastToday counts casts against that memorization,
+    // reset to 0 by character::memorizeSpells.
     int spellsCastToday = 0;
     long long spellsCastDay = -1;
+    // The day (same hoursElapsed/24 convention) the character last used
+    // the Rest action ('r') -- see game::GameLoop::handleRest. Gates Rest
+    // to once per in-game day so it can't be spammed for infinite healing.
+    long long lastRestDay = -1;
 };
 
 } // namespace character

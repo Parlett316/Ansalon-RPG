@@ -124,6 +124,13 @@ private:
     // reinterpreting North/South locally as "scroll" -- see
     // docs/ARCHITECTURE.md.
     void handleLog();
+    // Rest ('r') -- once per in-game day (Character::lastRestDay), advances
+    // hoursElapsed by 8 (an overnight rest), heals 1 hp (DMG p.74's base
+    // natural-healing rate, capped at maxHp), and -- for a real caster
+    // (character::maxSpellSlotsPerDay > 0) -- memorizes today's spells (see
+    // character::memorizeSpells). See docs/CHARACTER_NOTES.md's "Rest and
+    // spell memorization".
+    void handleRest();
     void showCharacterSheet();
     // Takes over rendering/input in its own loop until the fight ends
     // (victory, flee, or the player is knocked out) -- see

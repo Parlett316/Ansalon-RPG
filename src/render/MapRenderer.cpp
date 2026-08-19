@@ -428,11 +428,17 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
         int maxSlots = character::maxSpellSlotsPerDay(c);
         if (maxSlots == 0) {
             lines.push_back("Spells: cannot cast arcane magic");
-        } else {
-            int usedToday = c.spellsCastDay == currentDay ? c.spellsCastToday : 0;
+        } else if (c.spellsCastDay != currentDay) {
+            // Not memorized today -- see character::memorizeSpells /
+            // game::GameLoop::handleRest ('r').
             std::ostringstream spellLine;
-            spellLine << "Spells: " << character::knownSpellName(c.charClass) << " (" << (maxSlots - usedToday)
-                       << "/" << maxSlots << " remaining today)";
+            spellLine << "Spells: " << character::knownSpellName(c.charClass)
+                       << " (not memorized today -- rest to prepare)";
+            lines.push_back(spellLine.str());
+        } else {
+            std::ostringstream spellLine;
+            spellLine << "Spells: " << character::knownSpellName(c.charClass) << " ("
+                       << (maxSlots - c.spellsCastToday) << "/" << maxSlots << " remaining today)";
             lines.push_back(spellLine.str());
         }
     }

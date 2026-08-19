@@ -71,12 +71,14 @@ int maxSpellSlotsPerDay(const Character& character) {
            wisdomBonus1stLevelSpells(character.scores.wisdom);
 }
 
-bool hasSpellSlotAvailable(Character& character, long long currentDay) {
-    if (character.spellsCastDay != currentDay) {
-        character.spellsCastDay = currentDay;
-        character.spellsCastToday = 0;
-    }
-    return character.spellsCastToday < maxSpellSlotsPerDay(character);
+bool hasSpellSlotAvailable(const Character& character, long long currentDay) {
+    return character.spellsCastDay == currentDay &&
+           character.spellsCastToday < maxSpellSlotsPerDay(character);
+}
+
+void memorizeSpells(Character& character, long long currentDay) {
+    character.spellsCastDay = currentDay;
+    character.spellsCastToday = 0;
 }
 
 SpellCastResult castSpell(Character& character) {

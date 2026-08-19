@@ -134,6 +134,7 @@ void GameLoop::run() {
             case render::Key::Log:       handleLog(); break;
             case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
+            case render::Key::Rest:      handleRest(); break;
             case render::Key::Quit:      quit = true; break;
             case render::Key::Unknown:   break;
         }
@@ -186,6 +187,35 @@ void GameLoop::announceZoneTile() {
     } else if (state_.zoneX == zone->entryX() && state_.zoneY == zone->entryY()) {
         pushLog("You stand at the way back out.");
     }
+}
+
+void GameLoop::handleRest() {
+    character::Character& c = state_.character;
+    long long currentDay = state_.hoursElapsed / 24;
+    if (c.lastRestDay == currentDay) {
+        pushLog("You've already rested today.");
+        return;
+    }
+
+    state_.hoursElapsed += 8; // an overnight rest -- may cross into a new day
+    long long dayAfterRest = state_.hoursElapsed / 24;
+    c.lastRestDay = dayAfterRest;
+
+    int healed = std::min(1, c.maxHp - c.currentHp); // DMG p.74: 1 hp per day of rest
+    c.currentHp += healed;
+
+    std::string message = "You settle in and rest through the night.";
+    message += healed > 0 ? " You recover 1 hit point." : " You were already at full health.";
+
+    // Only a caster who can actually manage a slot (not a racially-blocked
+    // Mage, see character::maxSpellSlotsPerDay) gets the memorization
+    // flavor -- see character::memorizeSpells and docs/CHARACTER_NOTES.md.
+    if (character::maxSpellSlotsPerDay(c) > 0) {
+        character::memorizeSpells(c, dayAfterRest);
+        message += " You spend a quiet hour re-memorizing " +
+                    std::string(character::knownSpellName(c.charClass)) + ".";
+    }
+    pushLog(message);
 }
 
 void GameLoop::showCharacterSheet() {

@@ -22,11 +22,19 @@ const char* knownSpellName(ClassId id); // "" if canCastSpells is false
 // for non-casting classes.
 int maxSpellSlotsPerDay(const Character& character);
 
-// character.spellsCastToday resets to 0 if character.spellsCastDay !=
-// currentDay (the same hoursElapsed/24 "day" convention Timeline uses) --
-// this has that side effect, so call it right before checking/casting,
-// not just to peek at whether a slot is free.
-bool hasSpellSlotAvailable(Character& character, long long currentDay);
+// A pure query, no side effects: false unless character.spellsCastDay ==
+// currentDay (the same hoursElapsed/24 "day" convention Timeline uses),
+// i.e. the character has memorized spells today via memorizeSpells below
+// -- see docs/CHARACTER_NOTES.md's "Rest and spell memorization".
+bool hasSpellSlotAvailable(const Character& character, long long currentDay);
+
+// PHB p.107 (Wizard)/p.111 (Priest): a caster needs a restful night's
+// sleep before they can (re-)memorize their spells for the day. Sets
+// spellsCastDay = currentDay and spellsCastToday = 0. Called only from
+// game::GameLoop::handleRest ('r') -- rest is the sole precondition the
+// book requires; with one known spell per caster there's no selection
+// step to expose separately.
+void memorizeSpells(Character& character, long long currentDay);
 
 struct SpellCastResult {
     bool targetsMonster = false; // true: Magic Missile damages a monster; false: Cure Light Wounds heals the caster

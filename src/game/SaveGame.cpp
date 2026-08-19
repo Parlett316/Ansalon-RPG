@@ -114,6 +114,7 @@ void SaveGame::save(const GameState& state, const std::string& path) {
         }
     }
     file << "SPELLSTODAY " << c.spellsCastToday << " " << c.spellsCastDay << "\n";
+    file << "RESTDAY " << c.lastRestDay << "\n";
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
     file << "POS " << state.x << " " << state.y << "\n";
     file << "HOURS " << state.hoursElapsed << "\n";
@@ -295,6 +296,11 @@ GameState SaveGame::load(const std::string& path) {
             if (!(iss >> state.character.spellsCastToday >> state.character.spellsCastDay)) {
                 fail(path, lineNumber, "malformed SPELLSTODAY (expected: SPELLSTODAY count day)");
             }
+        } else if (keyword == "RESTDAY") {
+            // Optional -- a save written before Milestone 40 simply has no
+            // RESTDAY line, and Character::lastRestDay's default (-1, "never
+            // rested") is the correct value for it anyway.
+            if (!(iss >> state.character.lastRestDay)) fail(path, lineNumber, "malformed RESTDAY");
         } else if (keyword == "MODE") {
             if (rest == "ZONE") {
                 modeIsZone = true;

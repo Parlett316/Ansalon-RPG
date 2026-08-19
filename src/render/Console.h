@@ -20,6 +20,7 @@ enum class Key {
     Log,   // dedicated scrollable full-history log screen -- see game::GameLoop::handleLog
     Flee,  // retreat from combat -- see game::GameLoop::runCombat
     Cast,  // cast the character's one known spell in combat -- see game::GameLoop::runCombat
+    Rest,  // rest to heal and (re)memorize spells -- see game::GameLoop::handleRest
     Quit,
     Unknown,
 };
@@ -67,7 +68,7 @@ public:
     // game::GameLoop::runCombat), 'c' for the character sheet, 'p' to
     // browse/buy at a shop, 'i' for the inventory/equip screen, 'v' for
     // the scrollable full log-history screen, 'f' to flee combat, 'm' to
-    // cast in combat, 'q'/Esc to quit. See
+    // cast in combat, 'r' to rest, 'q'/Esc to quit. See
     // docs/GOTCHAS.md for the Windows arrow-key
     // decoding quirk.
     static Key readKey();

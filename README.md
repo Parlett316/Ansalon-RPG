@@ -87,7 +87,12 @@ mountains riskiest — resolved with real 2e attack/damage math (Enter to attack
 Cleric can also `m` to cast their one known spell — Magic Missile or Cure
 Light Wounds, real PHB slots-per-day by level); losing just knocks you out
 and sends you back to Solace, it isn't permadeath — see
-`docs/COMBAT_NOTES.md`. Winning fights earns Steel Pieces (Krynn's own
+`docs/COMBAT_NOTES.md`. Press `r` to rest, once per in-game day: it heals
+1 hit point (the DMG's real natural-healing rate) and, for a Mage or
+Cleric, re-memorizes their spell for the day — no slots are available at
+all until you have, sourced from the PHB's actual memorization/prayer
+rules — see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section. Winning
+fights earns Steel Pieces (Krynn's own
 post-Cataclysm currency, not gold) and experience, and that steel now has
 somewhere to go — press `p` at a shop (Solace's General Store, Haven's
 Market Stalls, or Tarsis's Old Sailor — all three sell the same catalog)

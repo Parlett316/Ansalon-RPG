@@ -103,9 +103,9 @@ public:
     // Renders the full character sheet as its own frame. GameLoop shows
     // this on demand ('c'), blocks for one keypress to dismiss it, then
     // resumes normal rendering -- see docs/ARCHITECTURE.md. `currentDay`
-    // (hoursElapsed/24) is only used to display remaining spell slots
-    // correctly without mutating `character` -- see
-    // character::hasSpellSlotAvailable.
+    // (hoursElapsed/24) is only used to display whether today's spells
+    // have been memorized yet (character::Character::spellsCastDay) and,
+    // if so, how many slots remain -- see character::memorizeSpells.
     static void drawCharacterSheet(const character::Character& character, long long currentDay);
 
     // Renders one combat frame: both combatants' HP/AC, a scrolling combat

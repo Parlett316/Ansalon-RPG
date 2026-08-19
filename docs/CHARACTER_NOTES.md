@@ -404,12 +404,48 @@ discipline as every other rules pass in this project:
   governs chance-to-learn-a-spell and max spell level for Wizards, not
   slot count, unlike Wisdom's role for Clerics. This asymmetry is
   deliberate, not a missing feature on the Mage side.
-- **No rest/memorization action is modeled.** Slots simply refill the
-  first time `hasSpellSlotAvailable` is checked on a new in-game day
-  (`hoursElapsed / 24`, the same day convention `timeline::Timeline`
-  uses) -- `Character::spellsCastToday`/`spellsCastDay` track this, reset
-  as a side effect of the check rather than by an explicit "pray" or
-  "study" command.
+- **Rest and spell memorization are real now (Milestone 40).** Pressing
+  `r` (`render::Key::Rest`, `GameLoop::handleRest`) rests once per
+  in-game day (`Character::lastRestDay`, same `hoursElapsed / 24` day
+  convention as everything else): it advances `hoursElapsed` by 8 (an
+  overnight rest) and heals 1 hp, capped at `maxHp` -- the DMG's base
+  natural-healing rate (2nd ed. DMG p.74, "Healing": "Characters heal
+  naturally at a rate of 1 hit point per day of rest. Rest is defined as
+  low activity -- nothing more strenuous than riding a horse or
+  traveling from one place to another"). **Not modeled**: the DMG's
+  higher "complete bed-rest" tier (3 hp/day for a full day of doing
+  nothing, plus a Constitution bonus per full week) -- that requires a
+  "no adventuring at all today" commitment this project has no way to
+  detect, and a bed/Inn-gated variant would need new zone grammar (a
+  `BED` POI flag) not built yet. Also not modeled: the DMG's food/water/
+  sleep prerequisite for healing at all -- this project has no hunger/
+  supply system, so Rest always assumes those are met.
+
+  For a Mage or Cleric, the same keypress also (re-)memorizes their one
+  known spell for the day, via `character::memorizeSpells`. Real 2e
+  requires a restful night's sleep *and then* time spent studying
+  (Wizard, PHB p.107, "Wizard Spells": "Memorization is not a thing that
+  happens immediately. The wizard must have a clear head gained from a
+  restful night's sleep and then has to spend time studying his spell
+  books. The amount of study time needed is 10 minutes per level of the
+  spell being memorized") or praying (Priest, PHB p.111, "Priest
+  Spells": "Priests must pray to obtain spells... The conditions for
+  praying are identical to those needed for the wizard's studying").
+  Since every caster in this project knows exactly one 1st-level spell,
+  that's a night's sleep plus 10 minutes -- i.e. exactly what one Rest
+  keypress already represents, with no actual *selection* to expose
+  through a second command (there's nothing to choose between). Folding
+  the book's two-step requirement into one action is a deliberate
+  simplification, not an oversight -- it would stop being honest the
+  moment this project ever gains a real spellbook with more than one
+  spell to pick from.
+
+  `character::hasSpellSlotAvailable` is now a pure query with no side
+  effects: it returns false unless `Character::spellsCastDay` equals the
+  day being asked about, i.e. **no slots are available at all until
+  memorization has happened that day**, regardless of class or level.
+  The old behavior -- slots silently refilling the first time anything
+  checked on a new day, with no player action involved -- is gone.
 - **Real enforcement, finally, of the racial arcane-magic block.** Kender
   (`raceInfo(Kender).canBeMage == false`) and the three subraces that
   can't be Mages (Kagonesti Elf, Hill Dwarf, Mountain Dwarf, via
@@ -607,10 +643,16 @@ stored in `GameState::character` and never reassigned after that; pressing
 - **Spellcasting past 1st level**: Mage and Cleric each know exactly one
   spell (see "Spellcasting" above) with real per-day slot counts; actual
   spell selection/spellbooks and spells above 1st level are still future
-  work. Elf/Half-Elf's sleep/charm magic resistance and Wizard Robe
-  spell-sphere restrictions remain unenforced since nothing currently
-  in the game triggers either (no sleep/charm spell exists, and the one
-  Mage spell isn't sphere-restricted).
+  work -- once a real spellbook exists, Rest's one-keypress-memorizes-
+  everything simplification (see "Spellcasting" above) needs to become a
+  real selection step. Elf/Half-Elf's sleep/charm magic resistance and
+  Wizard Robe spell-sphere restrictions remain unenforced since nothing
+  currently in the game triggers either (no sleep/charm spell exists,
+  and the one Mage spell isn't sphere-restricted).
+- **Bed-rest healing tier**: the DMG's faster 3 hp/day "complete bed-
+  rest" rate (see "Spellcasting" above) needs a way to tell "resting at
+  an Inn" apart from "resting anywhere" -- most naturally a new `BED`
+  zone-grammar POI flag (`docs/ZONE_NOTES.md`), not built yet.
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
   a carried inventory, sell-back, and three shops (Solace, Haven, Tarsis)
   all exist now (see "Equipment" above). Still missing: per-location

@@ -312,6 +312,30 @@ this stays authoritative.
     test. See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
     `docs/TIMELINE_NOTES.md`.
 
+40. Rest and spell memorization -- the first HP-recovery mechanic outside
+    combat healing/leveling, and the first explicit spell-memorization
+    action. A new `render::Key::Rest` (`'r'`/`'R'`, `GameLoop::handleRest`)
+    rests once per in-game day (`Character::lastRestDay`): advances
+    `hoursElapsed` by 8 and heals 1 hp capped at `maxHp` -- the 2nd ed. DMG's
+    base natural-healing rate (p.74, "Characters heal naturally at a rate
+    of 1 hit point per day of rest"), not its faster 3 hp/day
+    "complete bed-rest" tier (left for a future Inn-gated variant). For a
+    Mage or Cleric, the same keypress also (re-)memorizes their one known
+    spell via the new `character::memorizeSpells`, folding the PHB's
+    real two-step requirement -- a restful night's sleep (p.107, Wizard;
+    p.111, Priest: "identical to those needed for the wizard's studying")
+    then 10 minutes of study per spell level -- into one action, since
+    with only one known spell per caster there's nothing to actually
+    *select*. `character::hasSpellSlotAvailable` lost its old silent
+    auto-refill-on-a-new-day behavior and is now a pure query: no slots
+    are available at all until memorization has actually happened that
+    day. The character sheet's Spells line reflects this ("not memorized
+    today -- rest to prepare" vs. "N/N remaining today"). Verified via a
+    throwaway self-test (14 assertions covering Mage/Cleric/Fighter across
+    memorize/cast/day-rollover), a clean rebuild (zero new warnings), and
+    the piped smoke test. See `docs/CHARACTER_NOTES.md`'s "Spellcasting"
+    section for the full sourcing and scope cuts.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -327,6 +351,11 @@ session's work.
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
+3. **Bed-rest healing tier** — the DMG's faster 3 hp/day "complete
+   bed-rest" rate (Milestone 40 only implements the base 1 hp/day tier)
+   needs a way to tell "resting at an Inn" apart from "resting anywhere,"
+   most naturally a new `BED` zone-grammar POI flag. See
+   `docs/CHARACTER_NOTES.md`'s "Extending this later."
 
 **Continuing *Dragons of Spring Dawning* after Kalaman (Milestone 39):**
 per the research pass documented there, Palanthas (the Great Library, the
