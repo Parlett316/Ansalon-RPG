@@ -434,6 +434,13 @@ title/items/footer picker, now also used for topic menus) is a seventh
 per-context draw method (after `drawShopFrame`'s sixth, see "Equipment"
 above).
 
+**As of Milestone 43, Talk and Look are two separate reads of the same
+"who's present" data, not one.** Talk (`t`) still works exactly as
+described above. Look (`;`) gained its own, read-only
+`pickAndLook`/`LookCandidate` pair (see "Frameless overworld/zone layout
++ NPC 'Look'" below) that surfaces an NPC's full description on demand —
+the passive arrival log now only ever prints their name.
+
 ## Equipment
 
 New `character/Equipment.h/.cpp`, depending only on `character/`
@@ -786,6 +793,107 @@ got a real `hoursToCross` (2) now that it's sometimes traversable, but
 `data/monsters.txt` yet, and drawing a land creature into open water would
 read as a bug, not content. Revisit both if a future milestone adds sea
 monsters or wants the HUD to surface `hasBoat` directly.
+
+## Frameless overworld/zone layout + NPC "Look" (Milestone 43)
+
+Prompted by a second reference screenshot (a different terminal RPG,
+"Bob's game") the user asked to match: no outer box border, a single-line
+header instead of a 2-line HUD, rule dividers (`=`/`-`) instead of
+`+--+`/`| |`, and a labeled status panel (mode, current location,
+coordinates, stats, a headed action log) instead of a raw log tail
+sharing the frame with the HUD. Bundled with an unrelated but
+overlapping-scope request: an NPC's full description should no longer
+auto-print to the log on arrival — just their name — with the
+description now revealed on demand via Look (`;`), and Look should offer
+a picker when more than one NPC is present, mirroring `pickAndTalk`.
+
+**Scope boundary, stated plainly**: only `drawOverworldFrame` and
+`drawZoneFrame` changed shape. `drawCharacterSheet`/`drawCombatFrame`/
+`drawShopFrame`/`drawInventoryFrame`/`drawPickerFrame`/
+`drawDialogueFrame`/`drawLogFrame` (and the `writeBorder`/`writeBoxed`
+helpers they share) keep the Milestone 32 bordered-box look, unchanged —
+same "only the two frames the reference actually depicts" precedent
+Milestone 29 already established. Pressing `t`/`c`/`p`/`i`/`v` now pops a
+bordered box over what was just an edge-to-edge frame; accepted as
+consistent with that precedent, not revisited here.
+
+**The 2-line HUD (`writeHud`) is gone, split across two places instead of
+one.** `writeHeaderLine` (a new `MapRenderer.cpp` free function) builds a
+single line: the title on the left, `<name> (<class>)   HP [bar]
+cur/max   Day D, Hour H` right-aligned. AC/THAC0/Steel didn't disappear —
+they moved into the status panel (below), on two lines rather than one,
+because a single combined `"AC n   THAC0 n   Steel: n stl"` line measures
+~33 characters, wider than the panel's own minimum width; splitting it
+avoids silently truncating the steel figure on a small terminal.
+
+**`MapRenderer::buildStatusPanel`** replaces the old bare log panel with a
+fixed 12-row header (`MODE: EXPLORING`/`INDOORS`, blank, `Standing On:`,
+the location/zone name, blank, `Position: (x, y)`, blank, the AC/THAC0
+and Steel lines above, blank, `ACTION LOG:`, blank) followed by
+`buildLogPanel`'s scrolling tail filling whatever rows remain — 18 of 30
+at the preferred size, down from all 30 before. The full log is never
+lost (`handleLog`/`drawLogFrame`, the `'v'` full-history pager from
+Milestone 31, is unaffected and unchanged), just less of the live tail is
+visible at once; accepted as the direct, known cost of the richer panel.
+`MODE`/the standing-on value are colored (`colorLine`, a new helper: pads
+to width *then* wraps in an ANSI set/reset pair, so the result is still
+exactly `width` visible columns by construction, same contract the
+map-glyph rows already followed) — cyan for `MODE`, the same bright
+yellow already used for location/POI glyphs for the standing-on value, so
+the color is reused meaningfully rather than picked arbitrarily.
+
+**`buildLogPanel` gained a `"> "`/`"  "` prefix**, matching the
+reference's action-log convention: each raw entry wraps to `width - 2`
+(reserving the prefix columns) instead of `width`, the first physical
+line gets `"> "`, continuation lines get `"  "`. A literal empty entry
+(the blank-spacer lines `GameLoop::pushLog("")` already pushes between
+arrival blocks) stays a plain blank row with no prefix, special-cased
+before wrapping. `buildLogPanel` has exactly one caller family
+(`buildStatusPanel`, itself only called from the two restyled frames) —
+`drawLogFrame`'s full-history pager does its own separate wrapping and
+was confirmed unaffected.
+
+**Constants**: `kChromeRows` 7→4 (header + `=` rule + `-` rule + footer;
+the rules are the separators now, no more blank spacer rows).
+`kChromeColumns` 4→1 (was 2 border chars + 2 padding; kept at 1, not 0,
+as cheap insurance against an off-by-one in the detected terminal width —
+this project has already been bitten once by a console-sizing edge case,
+Milestone 33's `dwSize`-vs-`srWindow` bug). `kLogPanelGap` 2→3, now the
+width of the literal `" | "` divider drawn between map and status panel,
+not a bare gap. `kMinLogPanelWidth` 20→24 — the panel now has to fit real
+fixed content, not just wrapped prose: "High Clerist's Tower" (23 chars)
+and "Inn of the Last Home" (21 chars) both overflow a 20-column floor.
+`kAbsoluteMinColumns`/`kAbsoluteMinRows` recompute from these
+automatically, 70×23 → **72×20**.
+
+**NPC announce/Look, the other half of this milestone.**
+`announceOverworldTile`/`announceZoneTile` (Milestone 30) used to push a
+present NPC's full flavor text/description straight to the log
+(`name + ": " + text`). As of Milestone 43 that's just `name + " is
+here."` for anything that counts as an NPC — a present canon character
+(always), or a zone POI with non-empty `dialogue` (the same test
+`handleTalk` already uses to distinguish an NPC POI from scenery; a
+scenery POI, empty `dialogue`, is unaffected and still prints its full
+description immediately, since Look gives it no other way to be
+revealed). The withheld text resurfaces through a new
+`GameLoop::pickAndLook(candidates)`, the read-only sibling of
+`pickAndTalk` (`LookCandidate{name, description}` instead of
+`TalkCandidate{id, name, Speech}` — Look never touches
+`GameState::metCharacters` or grants anything): 1 candidate shows its
+description directly via `drawDialogueFrame`; 2+ run the identical
+nested-loop `drawPickerFrame("Look at whom?", ...)` picker `pickAndTalk`
+already established, just deciding what to *show* rather than who to
+*talk to*. `lookOverworld`/`lookZone` gather candidates the same way
+`handleTalk`'s two branches do (present canon characters via
+`Timeline::presentAt`, plus — zone only — the current POI and any
+`TIMELINE_ANCHOR` presence), but **deliberately unfiltered** by
+`window->dialogue.empty()` (unlike `handleTalk`'s own filter): Look
+should reveal a presence window's flavor text even for a window with no
+`SAY` line authored yet, matching how the old announce code iterated
+unfiltered too. Only when nobody's present do the two functions fall
+through to their pre-Milestone-43 behavior unchanged — the nearest-
+landmark compass search on the overworld, the "nothing else catches your
+eye" stub in a zone.
 
 ## Extension points for later milestones
 

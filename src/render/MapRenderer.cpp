@@ -75,44 +75,6 @@ std::vector<std::string> wrapText(const std::string& text, int width) {
     return lines;
 }
 
-// Wraps every raw log entry, takes the tail `height` physical lines (so
-// once the panel fills, the oldest lines scroll off the top -- most
-// recent always visible at the bottom, same convention as
-// drawCombatFrame's own log), right-pads each to `width`, and pads the
-// *end* with blank lines while there isn't yet `height` worth of content
-// -- so early in a session the log anchors at the top and grows
-// downward, matching the Caves of Qud reference this milestone is
-// modeled on (see docs/ARCHITECTURE.md).
-std::vector<std::string> buildLogPanel(const std::vector<std::string>& log, int width, int height) {
-    std::vector<std::string> wrapped;
-    for (const std::string& entry : log) {
-        for (std::string& line : wrapText(entry, width)) wrapped.push_back(std::move(line));
-    }
-    size_t start = wrapped.size() > static_cast<size_t>(height) ? wrapped.size() - static_cast<size_t>(height) : 0;
-    std::vector<std::string> panel(wrapped.begin() + static_cast<long>(start), wrapped.end());
-    for (std::string& line : panel) {
-        if (static_cast<int>(line.size()) < width) line.append(static_cast<size_t>(width) - line.size(), ' ');
-    }
-    while (static_cast<int>(panel.size()) < height) panel.push_back(std::string(static_cast<size_t>(width), ' '));
-    return panel;
-}
-
-// Shared 2-line HUD (name/day-hour/steel, HP bar/AC/THAC0) used by both
-// drawOverworldFrame and drawZoneFrame -- appends its lines (no trailing
-// blank line; callers add their own blank separator) to `lines`. Plain
-// text, no embedded ANSI codes, so callers can pad these with padPlain.
-void writeHud(std::vector<std::string>& lines, const character::Character& c, const game::GameState& state) {
-    std::ostringstream line1;
-    line1 << c.name << "   Day " << (state.hoursElapsed / 24) << ", hour " << (state.hoursElapsed % 24)
-          << "   Steel: " << c.steelPieces << " stl";
-    lines.push_back(line1.str());
-
-    std::ostringstream line2;
-    line2 << "HP " << hpBar(c.currentHp, c.maxHp, 24) << " " << c.currentHp << "/" << c.maxHp << "   AC "
-          << c.armorClass << "   THAC0 " << c.thac0;
-    lines.push_back(line2.str());
-}
-
 // Pads (or defensively truncates) a plain-text line to exactly `width`
 // visible columns. Only ever used on lines with no embedded ANSI color
 // codes -- measuring "visible width" through an escape sequence would
@@ -123,6 +85,113 @@ std::string padPlain(std::string line, int width) {
     if (static_cast<int>(line.size()) > width) line.resize(static_cast<size_t>(width));
     line.append(static_cast<size_t>(width) - line.size(), ' ');
     return line;
+}
+
+// Colors a plain-text line without disturbing its visible width: pads to
+// `width` first, then wraps the (now already-correct-width) text in an
+// ANSI set/reset pair. Same "already exactly `width` visible columns by
+// construction, never re-padded afterward" contract the map-row glyphs
+// follow -- see padPlain's own comment above for why that matters.
+std::string colorLine(const std::string& text, const char* ansiColor, int width) {
+    std::string padded = padPlain(text, width);
+    return std::string(ansiColor) + padded + "\x1b[0m";
+}
+
+// Wraps every raw log entry to `width - 2` (reserving 2 columns for a
+// "> "/"  " prefix -- see below), takes the tail `height` physical lines
+// (so once the panel fills, the oldest lines scroll off the top -- most
+// recent always visible at the bottom, same convention as
+// drawCombatFrame's own log), right-pads each to `width`, and pads the
+// *end* with blank lines while there isn't yet `height` worth of content
+// -- so early in a session the log anchors at the top and grows
+// downward, matching the Caves of Qud reference this milestone is
+// modeled on (see docs/ARCHITECTURE.md). As of Milestone 43, the first
+// physical line of each entry is prefixed "> " and any wrapped
+// continuation lines "  ", matching the reference layout's action-log
+// convention -- except a literal empty entry (the blank-spacer lines
+// GameLoop::pushLog("") pushes between arrival blocks), which stays a
+// plain blank line with no prefix.
+std::vector<std::string> buildLogPanel(const std::vector<std::string>& log, int width, int height) {
+    std::vector<std::string> wrapped;
+    for (const std::string& entry : log) {
+        if (entry.empty()) {
+            wrapped.push_back("");
+            continue;
+        }
+        int contentWidth = std::max(1, width - 2);
+        std::vector<std::string> entryLines = wrapText(entry, contentWidth);
+        for (size_t i = 0; i < entryLines.size(); ++i) {
+            wrapped.push_back((i == 0 ? "> " : "  ") + entryLines[i]);
+        }
+    }
+    size_t start = wrapped.size() > static_cast<size_t>(height) ? wrapped.size() - static_cast<size_t>(height) : 0;
+    std::vector<std::string> panel(wrapped.begin() + static_cast<long>(start), wrapped.end());
+    for (std::string& line : panel) {
+        if (static_cast<int>(line.size()) < width) line.append(static_cast<size_t>(width) - line.size(), ' ');
+    }
+    while (static_cast<int>(panel.size()) < height) panel.push_back(std::string(static_cast<size_t>(width), ' '));
+    return panel;
+}
+
+// Builds the one-line header shared by drawOverworldFrame/drawZoneFrame
+// (Milestone 43): the game's title on the left, and the character's
+// name/class/HP/day-hour right-aligned on the same line -- AC/THAC0/Steel
+// live in the status panel instead (see buildStatusPanel below), not
+// crammed onto this line. Plain text, no embedded ANSI codes.
+std::string writeHeaderLine(const character::Character& c, const game::GameState& state, int width) {
+    static const std::string kTitle = "Ansalon: Age of Despair";
+
+    std::ostringstream right;
+    right << c.name << " (" << character::classInfo(c.charClass).name << ")   HP "
+          << hpBar(c.currentHp, c.maxHp, 16) << " " << c.currentHp << "/" << c.maxHp << "   Day "
+          << (state.hoursElapsed / 24) << ", Hour " << (state.hoursElapsed % 24);
+    std::string rightStr = right.str();
+
+    int gap = width - static_cast<int>(kTitle.size()) - static_cast<int>(rightStr.size());
+    return kTitle + std::string(static_cast<size_t>(std::max(gap, 1)), ' ') + rightStr;
+}
+
+// Builds the status panel shown to the right of the map in
+// drawOverworldFrame/drawZoneFrame (Milestone 43): a fixed 12-row header
+// (mode, current location/zone, coordinates, and the AC/THAC0/Steel
+// figures moved out of the old 2-line HUD -- see writeHeaderLine above),
+// then the scrolling "> "-prefixed log tail (buildLogPanel) filling
+// whatever rows remain. Every returned line is already exactly `width`
+// visible columns, safe to merge with a map row with no further padding.
+std::vector<std::string> buildStatusPanel(const char* modeLabel, const std::string& standingOnName, int posX,
+                                           int posY, const character::Character& c,
+                                           const std::vector<std::string>& log, int width, int height) {
+    std::vector<std::string> lines;
+    lines.push_back(colorLine(std::string("MODE: ") + modeLabel, "\x1b[96m", width));
+    lines.push_back(padPlain("", width));
+    lines.push_back(padPlain("Standing On:", width));
+    lines.push_back(colorLine(standingOnName, "\x1b[93m", width));
+    lines.push_back(padPlain("", width));
+    std::ostringstream pos;
+    pos << "Position: (" << posX << ", " << posY << ")";
+    lines.push_back(padPlain(pos.str(), width));
+    lines.push_back(padPlain("", width));
+    std::ostringstream stats1;
+    stats1 << "AC " << c.armorClass << "   THAC0 " << c.thac0;
+    lines.push_back(padPlain(stats1.str(), width));
+    std::ostringstream stats2;
+    stats2 << "Steel: " << c.steelPieces << " stl";
+    lines.push_back(padPlain(stats2.str(), width));
+    lines.push_back(padPlain("", width));
+    lines.push_back(padPlain("ACTION LOG:", width));
+    lines.push_back(padPlain("", width));
+
+    int headerRows = static_cast<int>(lines.size());
+    std::vector<std::string> logTail = buildLogPanel(log, width, std::max(0, height - headerRows));
+    for (std::string& line : logTail) lines.push_back(std::move(line));
+
+    // Defensive: near MapRenderer::kAbsoluteMinRows the fixed header alone
+    // could reach or exceed `height` -- clamp/pad so this always returns
+    // exactly `height` rows, matching what the row-by-row merge in
+    // drawOverworldFrame/drawZoneFrame assumes.
+    if (static_cast<int>(lines.size()) > height) lines.resize(static_cast<size_t>(height));
+    while (static_cast<int>(lines.size()) < height) lines.push_back(padPlain("", width));
+    return lines;
 }
 
 // Wraps any line longer than kProseWrapWidth via wrapText above (dialogue
@@ -229,13 +298,17 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
 
     const int kContentWidth = kViewportWidth + kLogPanelGap + kLogPanelWidth;
 
-    std::vector<std::string> lines;
-    std::vector<std::string> hudLines;
-    writeHud(hudLines, state.character, state);
-    for (const std::string& hudLine : hudLines) lines.push_back(padPlain(hudLine, kContentWidth));
-    lines.push_back(padPlain("", kContentWidth));
+    const world::Location* here = world.locationAt(state.x, state.y);
+    std::string standingOn =
+        here != nullptr ? here->name : std::string(world::terrainFor(grid.terrainCodeAt(state.x, state.y)).name);
+    std::vector<std::string> statusPanel =
+        buildStatusPanel("EXPLORING", standingOn, state.x, state.y, state.character, log, kLogPanelWidth, kViewportHeight);
 
-    std::vector<std::string> logPanel = buildLogPanel(log, kLogPanelWidth, kViewportHeight);
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H"; // clear + cursor home (see Console::clearScreen -- same VT100 sequence)
+    out << padPlain(writeHeaderLine(state.character, state, kContentWidth), kContentWidth) << "\n";
+    out << std::string(static_cast<size_t>(kContentWidth), '=') << "\n";
+
     for (int row = 0; row < kViewportHeight; ++row) {
         int gy = top + row;
         std::ostringstream rowStream;
@@ -260,21 +333,17 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
             // after -- see docs/GOTCHAS.md on why (color bleed).
             rowStream << color << displayChar << "\x1b[0m";
         }
-        rowStream << std::string(static_cast<size_t>(kLogPanelGap), ' ') << logPanel[static_cast<size_t>(row)];
+        rowStream << " | " << statusPanel[static_cast<size_t>(row)];
         // Not padded via padPlain -- already exactly kContentWidth visible
-        // columns by construction (kViewportWidth glyphs + gap + a
-        // pre-padded kLogPanelWidth-wide log panel line).
-        lines.push_back(rowStream.str());
+        // columns by construction (kViewportWidth glyphs + the " | "
+        // divider + a pre-padded kLogPanelWidth-wide status panel line).
+        out << rowStream.str() << "\n";
     }
 
-    lines.push_back(padPlain("", kContentWidth));
-    lines.push_back(padPlain(
+    out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
+    out << padPlain(
         "Move: arrows/hjkl/yubn/wasd   ;=look around   t=talk   p=shop   v=log   Enter=step in   q=quit",
-        kContentWidth));
-
-    std::ostringstream out;
-    out << "\x1b[2J\x1b[H"; // clear + cursor home (see Console::clearScreen -- same VT100 sequence)
-    writeBorder(out, "Ansalon: Age of Despair", kContentWidth, lines);
+        kContentWidth) << "\n";
 
     // The whole frame is built as one string and written in a single
     // flush -- this matters far more here than in Milestone 1, since a
@@ -287,19 +356,20 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
                                  const std::vector<std::string>& log) {
     const int kContentWidth = kViewportWidth + kLogPanelGap + kLogPanelWidth;
 
-    std::vector<std::string> lines;
-    std::vector<std::string> hudLines;
-    writeHud(hudLines, state.character, state);
-    for (const std::string& hudLine : hudLines) lines.push_back(padPlain(hudLine, kContentWidth));
-    lines.push_back(padPlain("", kContentWidth));
+    std::vector<std::string> statusPanel = buildStatusPanel("INDOORS", zone.name(), state.zoneX, state.zoneY,
+                                                              state.character, log, kLogPanelWidth, kViewportHeight);
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    out << padPlain(writeHeaderLine(state.character, state, kContentWidth), kContentWidth) << "\n";
+    out << std::string(static_cast<size_t>(kContentWidth), '=') << "\n";
 
     // Always renders the full kViewportWidth/Height, not zone.width()/
     // height() -- a zone smaller than the viewport wall-pads out to fill
     // it (Zone::tileCodeAt/poiAt return '#'/nullptr for any out-of-bounds
     // coordinate, so this is safe -- see docs/GOTCHAS.md), which keeps the
-    // log panel's left edge at a stable screen column regardless of which
-    // zone is showing.
-    std::vector<std::string> logPanel = buildLogPanel(log, kLogPanelWidth, kViewportHeight);
+    // status panel's left edge at a stable screen column regardless of
+    // which zone is showing.
     for (int y = 0; y < kViewportHeight; ++y) {
         std::ostringstream rowStream;
         for (int x = 0; x < kViewportWidth; ++x) {
@@ -321,18 +391,14 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
             }
             rowStream << color << displayChar << "\x1b[0m";
         }
-        rowStream << std::string(static_cast<size_t>(kLogPanelGap), ' ') << logPanel[static_cast<size_t>(y)];
-        lines.push_back(rowStream.str());
+        rowStream << " | " << statusPanel[static_cast<size_t>(y)];
+        out << rowStream.str() << "\n";
     }
 
-    lines.push_back(padPlain("", kContentWidth));
-    lines.push_back(padPlain(
+    out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
+    out << padPlain(
         "Move: arrows/hjkl/yubn/wasd   ;=look   t=talk   p=shop   v=log   Enter=leave (from the '>' marker)   q=quit",
-        kContentWidth));
-
-    std::ostringstream out;
-    out << "\x1b[2J\x1b[H";
-    writeBorder(out, "Ansalon: Age of Despair", kContentWidth, lines);
+        kContentWidth) << "\n";
 
     std::cout << out.str();
 }

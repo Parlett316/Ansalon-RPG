@@ -21,20 +21,26 @@ times as you like, pick a race — Elf and Dwarf prompt a Dragonlance
 subrace — class, and alignment; qualifying Fighters can join the Knights
 of Solamnia, and Gnomes are always Tinkers) before dropping you into the
 world with a real character behind the `@`. Progress autosaves
-continuously. Styled after Caves of Qud's own screen: a compact top HUD
-(name, in-game day/hour, Steel, an ASCII HP bar, AC, THAC0) sits above a
-wide, side-by-side view — the walkable map on the left, a persistent,
-scrolling event log on the right narrating what's happened (blocked
-moves, look results, stepping in/out of a location, a short line after
-each fight, canon-character presence and location flavor when you
-arrive somewhere) rather than a single message that vanishes the next
-frame. That side panel only ever shows the most recent stretch — press
-`v` at any time for a full-screen, scrollable view of everything logged
-all session. Every screen in the game — not just this one — now renders
-inside a plain-ASCII `+`/`-`/`|` window border with its own title bar,
-so nothing floats loose against the raw terminal, and the whole frame
-sizes itself to your actual terminal window at launch rather than
-assuming a fixed size. The whole continent is a 480×320 tile grid,
+continuously. The overworld/zone screen is a wide, frameless, side-by-side
+view — no box border, just `=`/`-` rule dividers — a one-line header
+(name/class, an ASCII HP bar, in-game day/hour) above, the walkable map on
+the left, and a labeled status panel on the right (current mode, the
+location/zone you're standing in, your coordinates, AC/THAC0/Steel, then
+a headed, persistent, scrolling event log narrating what's happened:
+blocked moves, look results, stepping in/out of a location, a short line
+after each fight, and location flavor when you arrive somewhere) rather
+than a single message that vanishes the next frame. A present NPC only
+ever announces their name on arrival ("Tanis is here.") — press `;` to
+Look and see their full description (or, if more than one person is
+around, pick who to look at first). That panel only ever shows the most
+recent stretch of the log — press `v` at any time for a full-screen,
+scrollable view of everything logged all session. Every *other* screen in
+the game (character sheet, combat, shop, inventory, dialogue, pickers,
+the full log) still renders inside a plain-ASCII `+`/`-`/`|` window
+border with its own title bar, so nothing floats loose against the raw
+terminal; the whole frame sizes itself to your actual terminal window at
+launch rather than assuming a fixed size. The whole continent is a
+480×320 tile grid,
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
@@ -218,9 +224,11 @@ needed:
 - `q` or Esc — quit
 
 Walking into impassable terrain (open ocean, the Blood Sea, walls, trees) is
-blocked with a message. Standing exactly on a named location or a point of
-interest shows its description — and, if a canon character's schedule
-places them there on the current in-game day, a line describing them too.
+blocked with a message. Standing exactly on a named location or a
+non-NPC point of interest shows its description; an NPC (a canon
+character whose schedule places them there today, or a talkable zone POI)
+only announces their name — Look (`;`) shows their full description, and
+offers a picker to choose whom if more than one is present.
 Traveling away from named locations carries a chance of a random encounter,
 which takes over the screen: **Enter** attacks, **`m`** casts your one
 known spell if you're a Mage or Cleric (and you have a spell slot left
@@ -229,7 +237,7 @@ sends you back to Solace rather than ending the run. The game sizes
 itself to your terminal automatically at startup (queries the real
 visible console window, not just the scrollback buffer, and shrinks the
 map/log frame to fit — see `docs/ARCHITECTURE.md`); the absolute
-minimum is 70 columns × 23 rows, below which it prints a clear error
+minimum is 72 columns × 20 rows, below which it prints a clear error
 and exits rather than trying to render something broken. This adapts
 once at launch, not continuously — resizing your terminal window
 mid-session won't reflow the frame until you restart.

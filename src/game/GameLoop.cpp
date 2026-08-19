@@ -165,9 +165,11 @@ void GameLoop::announceOverworldTile() {
     if (here == nullptr) return; // plain terrain: the map glyph already shows it, no log spam per step
     pushLog("== " + here->name + " (" + here->region + ") ==");
     pushLog(here->description);
+    // Name only -- their full flavor text is shown via lookOverworld/
+    // pickAndLook on demand (';'), not dumped here. See Milestone 43.
     for (const timeline::Presence& presence :
          timeline_.presentAt(here->id, static_cast<int>(state_.hoursElapsed / 24))) {
-        pushLog(presence.character->name + ": " + presence.window->flavorText);
+        pushLog(presence.character->name + " is here.");
     }
     pushLog(""); // spacer so consecutive arrivals are visually separated in the log
 }
@@ -175,13 +177,21 @@ void GameLoop::announceOverworldTile() {
 void GameLoop::announceZoneTile() {
     const world::Zone* zone = zones_.getZone(state_.currentZoneId);
     if (const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY)) {
-        pushLog(poi->name + ": " + poi->description);
+        // An NPC POI (non-empty dialogue, same test handleTalk uses) only
+        // gets a name -- its description shows via lookZone/pickAndLook on
+        // demand instead. Scenery (empty dialogue) is unaffected: there's
+        // no other way to reveal it, so it still prints immediately.
+        if (poi->dialogue.empty()) {
+            pushLog(poi->name + ": " + poi->description);
+        } else {
+            pushLog(poi->name + " is here.");
+        }
         if (poi->code == zone->timelineAnchorPoi()) {
             const std::string& effectiveId =
                 zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
             for (const timeline::Presence& presence :
                  timeline_.presentAt(effectiveId, static_cast<int>(state_.hoursElapsed / 24))) {
-                pushLog(presence.character->name + ": " + presence.window->flavorText);
+                pushLog(presence.character->name + " is here.");
             }
         }
         pushLog("");
@@ -317,6 +327,25 @@ void GameLoop::tryMoveZone(int dx, int dy) {
 }
 
 void GameLoop::lookOverworld() {
+    // NPCs present at the player's own tile take priority over the
+    // landmark search below -- deliberately unfiltered by
+    // window->dialogue.empty() (unlike handleTalk's candidate filter),
+    // matching announceOverworldTile's own unfiltered iteration: Look
+    // should reveal a presence window's flavor text even if that window
+    // has no SAY line authored yet. See Milestone 43.
+    const world::Location* hereForLook = world_.locationAt(state_.x, state_.y);
+    if (hereForLook != nullptr) {
+        std::vector<LookCandidate> candidates;
+        for (const timeline::Presence& presence :
+             timeline_.presentAt(hereForLook->id, static_cast<int>(state_.hoursElapsed / 24))) {
+            candidates.push_back({presence.character->name, presence.window->flavorText});
+        }
+        if (!candidates.empty()) {
+            pickAndLook(candidates);
+            return;
+        }
+    }
+
     const world::Location* nearest = nullptr;
     int nearestDistSq = 0;
     for (const auto& loc : world_.allLocations()) {
@@ -340,11 +369,35 @@ void GameLoop::lookOverworld() {
 }
 
 void GameLoop::lookZone() {
-    // Deliberately minimal: unlike the overworld (a scrolling camera that
-    // hides everything outside the viewport, so "look around" has real work
-    // to do finding the nearest hidden landmark), a zone is always rendered
-    // in full -- every POI is already visible on screen. There's nothing
-    // for a "look" action to reveal that isn't already there.
+    // As of Milestone 43, an NPC present at the player's tile (the zone POI
+    // itself, and/or -- standing on the TIMELINE_ANCHOR -- any canon
+    // character the timeline places here today) is lookable, mirroring
+    // handleTalk's own zone-branch candidate gathering below, but
+    // unfiltered by dialogue-emptiness (see lookOverworld's comment on why).
+    const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+    const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
+    std::vector<LookCandidate> candidates;
+    if (poi != nullptr && !poi->dialogue.empty()) {
+        candidates.push_back({poi->name, poi->description});
+    }
+    if (poi != nullptr && poi->code == zone->timelineAnchorPoi()) {
+        const std::string& effectiveId =
+            zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
+        for (const timeline::Presence& presence :
+             timeline_.presentAt(effectiveId, static_cast<int>(state_.hoursElapsed / 24))) {
+            candidates.push_back({presence.character->name, presence.window->flavorText});
+        }
+    }
+    if (!candidates.empty()) {
+        pickAndLook(candidates);
+        return;
+    }
+
+    // Deliberately minimal otherwise: unlike the overworld (a scrolling
+    // camera that hides everything outside the viewport, so "look around"
+    // has real work to do finding the nearest hidden landmark), a zone is
+    // always rendered in full -- every POI is already visible on screen.
+    // There's nothing left for a "look" action to reveal.
     pushLog("Nothing else catches your eye here.");
 }
 
@@ -422,6 +475,40 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
         } else if (key == render::Key::Enter) {
             const TalkCandidate& c = candidates[selected];
             talkTo(c.id, c.name, c.speech, c.grantsBoat);
+            return;
+        } else if (key == render::Key::Quit) {
+            return;
+        }
+    }
+}
+
+void GameLoop::pickAndLook(const std::vector<LookCandidate>& candidates) {
+    // Callers (lookOverworld/lookZone) only invoke this once they've
+    // already confirmed candidates is non-empty.
+    if (candidates.size() == 1) {
+        const LookCandidate& c = candidates.front();
+        render::MapRenderer::drawDialogueFrame({{c.name, c.description}});
+        render::Console::readKey(); // block for one keypress to dismiss, any key
+        return;
+    }
+
+    // Same nested-loop, local North/South/Enter/Quit reinterpretation
+    // shape as pickAndTalk above.
+    std::vector<std::string> names;
+    for (const LookCandidate& c : candidates) names.push_back(c.name);
+    int selected = 0;
+    for (;;) {
+        render::MapRenderer::drawPickerFrame("Look at whom?", names, selected,
+                                              "up/down=select   Enter=look   q=cancel");
+        render::Key key = render::Console::readKey();
+        if (key == render::Key::North) {
+            selected = (selected - 1 + static_cast<int>(names.size())) % static_cast<int>(names.size());
+        } else if (key == render::Key::South) {
+            selected = (selected + 1) % static_cast<int>(names.size());
+        } else if (key == render::Key::Enter) {
+            const LookCandidate& c = candidates[selected];
+            render::MapRenderer::drawDialogueFrame({{c.name, c.description}});
+            render::Console::readKey();
             return;
         } else if (key == render::Key::Quit) {
             return;

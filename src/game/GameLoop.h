@@ -47,6 +47,17 @@ struct TalkCandidate {
     bool grantsBoat = false;
 };
 
+// A look-at-someone candidate -- read-only counterpart to TalkCandidate (no
+// id/Speech: Look never mutates GameState::metCharacters or grants
+// anything). `description` is exactly the text that no longer auto-prints
+// to the passive log for NPCs as of Milestone 43 (see
+// GameLoop::announceOverworldTile/announceZoneTile) -- Look is how a
+// player recovers it on demand.
+struct LookCandidate {
+    std::string name;
+    std::string description;
+};
+
 // Owns the render -> read-key -> update cycle. Movement is dispatched
 // directly from render::Key -- there is no verb/command parser (see
 // docs/ARCHITECTURE.md). As of Milestone 3, the loop has two modes
@@ -70,17 +81,28 @@ public:
 private:
     void tryMoveOverworld(int dx, int dy);
     void tryMoveZone(int dx, int dy);
-    // Pushes the current tile's "standing here" content (a Location's
-    // heading + description, or a zone POI's name + description, plus any
-    // canon-character presence/flavor lines) to log_ -- called once per
-    // arrival (movement, mode transitions, and the very first frame), not
-    // every render, so it behaves like any other logged event rather than
-    // an always-redrawn status block. See docs/ARCHITECTURE.md.
+    // Pushes the current tile's "standing here" content to log_ -- called
+    // once per arrival (movement, mode transitions, and the very first
+    // frame), not every render, so it behaves like any other logged event
+    // rather than an always-redrawn status block. See docs/ARCHITECTURE.md.
     // Deliberately silent on plain terrain / an empty zone tile -- the map
     // glyph already shows what's there, and logging every wilderness step
-    // would flood the panel.
+    // would flood the panel. As of Milestone 43, an NPC (a present canon
+    // character, or a zone POI with non-empty dialogue) only gets a
+    // one-line "<Name> is here." -- their full description/flavor text no
+    // longer auto-prints; see lookOverworld/lookZone below for where it
+    // moved. A Location's own heading/description and a scenery POI's
+    // description are unaffected.
     void announceOverworldTile();
     void announceZoneTile();
+    // Look (';'). As of Milestone 43, first checks for any NPC present at
+    // the player's current tile (a canon character via timeline::Timeline,
+    // or -- zone only -- a talkable POI/the zone's TIMELINE_ANCHOR
+    // presence) and, if any, hands off to pickAndLook to show their
+    // description. Only when nobody's present does this fall back to the
+    // original per-mode behavior: lookOverworld reports the compass
+    // direction of the nearest off-screen Location; lookZone (a zone has
+    // no camera, so nothing is ever off-screen) just says so.
     void lookOverworld();
     void lookZone();
     void handleEnter();
@@ -108,6 +130,12 @@ private:
     // sets GameState::hasBoat the first time such a candidate is talked to
     // -- Milestone 36's sea-travel mechanic, see docs/ZONE_NOTES.md.
     void talkTo(const std::string& id, const std::string& name, const Speech& speech, bool grantsBoat = false);
+    // Shared by lookOverworld/lookZone once they've gathered who's
+    // present, always called with a non-empty list: 1 candidate -> shows
+    // their description directly; 2+ -> a drawPickerFrame loop asking
+    // which one first (same nested-loop, locally-reinterpreted-Key shape
+    // as pickAndTalk above).
+    void pickAndLook(const std::vector<LookCandidate>& candidates);
     // Browse/buy at the shop POI the player is standing on (zones only) --
     // see character/Equipment.h. Takes over input in its own nested loop,
     // same architectural shape as runCombat, until the player leaves.

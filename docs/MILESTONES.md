@@ -392,6 +392,33 @@ this stays authoritative.
     rebuild (zero new warnings), and the piped smoke test. See
     `docs/CHARACTER_NOTES.md`'s "Potions" and `docs/COMBAT_NOTES.md`'s
     "Player actions" section for full sourcing.
+43. Frameless overworld/zone layout + NPC "Look" -- a visual restyle
+    (`drawOverworldFrame`/`drawZoneFrame` only) matching a reference
+    screenshot the user provided: no outer box border, a single-line
+    header (title left, name/class/HP bar/day-hour right) instead of the
+    old 2-line HUD, `=`/`-` rule dividers instead of `+--+`/`| |`, and a
+    labeled status panel (`MODE`, `Standing On:`, `Position:`, the
+    relocated AC/THAC0/Steel figures, then a headed `ACTION LOG:`) instead
+    of a bare log tail. `MapRenderer::buildStatusPanel`/`writeHeaderLine`/
+    `colorLine` are new; `writeHud` is gone. `buildLogPanel` now prefixes
+    each log entry `"> "` (continuation lines `"  "`). Layout constants
+    changed (`kChromeRows` 7->4, `kChromeColumns` 4->1, `kLogPanelGap`
+    2->3, `kMinLogPanelWidth` 20->24), moving the absolute minimum terminal
+    size from 70x23 to 72x20. Bundled with an unrelated but overlapping-
+    scope request: an NPC no longer auto-prints its full description on
+    arrival, just `"<Name> is here."` -- the description now shows via
+    Look (`;`), and Look offers a `drawPickerFrame` picker ("Look at
+    whom?") when more than one NPC is present, via a new
+    `GameLoop::pickAndLook`/`LookCandidate` pair mirroring `pickAndTalk`/
+    `TalkCandidate`. Scenery zone POIs (no `TALK` line) are unaffected --
+    still described immediately, since Look gives them no other reveal
+    path. Verified via a throwaway self-test capturing the restyled frame
+    at both a comfortable size and the new 72x20 floor (visually confirmed
+    the header/rules/status-panel/log-prefix alignment), a clean rebuild
+    (zero new warnings), and the piped smoke test. See
+    `docs/ARCHITECTURE.md`'s "Frameless overworld/zone layout + NPC
+    'Look'", `docs/ZONE_NOTES.md`'s "NPCs: POIs you can talk to", and
+    `docs/TIMELINE_NOTES.md`'s "How presence is shown".
 
 ## NEXT UP
 

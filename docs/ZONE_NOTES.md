@@ -168,6 +168,17 @@ under the ordinary standing-here description. `TALK` **must** reference a
 char that already has a `POI` declaration -- `ZoneLoader` fails fast if
 not, the same rule `PORTAL` already follows.
 
+**As of Milestone 43, having a `TALK` line changes what happens on
+arrival too, not just what `t` does.** A scenery POI (no `TALK` line)
+still prints its full `description` the moment the player steps onto it,
+same as always -- there's no other way to reveal it. An NPC POI (`TALK`
+present, i.e. `dialogue` non-empty) instead only announces `"<name> is
+here."`; its full `description` now shows via Look (`;`,
+`game::GameLoop::lookZone`/`pickAndLook`) instead of auto-printing. If
+more than one NPC/talkable thing is present at once, Look asks which one
+via the same picker `t` already uses for "Talk to whom?" -- see
+`docs/ARCHITECTURE.md`'s "Frameless overworld/zone layout + NPC 'Look'".
+
 `data/zones/solace_inn.txt`'s `O`/`Y` tiles (Otik Sandeth, Tika Waylan)
 are the first example: split out from the original shared `K "The Bar"`
 POI (which stays as ambient scenery, unchanged) so each has their own

@@ -78,9 +78,9 @@ typo becomes a real risk.
 `GameLoop::announceOverworldTile` calls `Timeline::presentAt(locationId,
 day)` (where `day = state.hoursElapsed / 24`, integer division, matching
 how the HUD already displays "Day N") only when the player has just
-arrived exactly on a `Location`. Every character present gets one line,
-`<Name>: <flavor text>`, pushed to the scrolling event log panel right
-after that location's own heading/description.
+arrived exactly on a `Location`. Every character present gets one line
+pushed to the scrolling event log panel right after that location's own
+heading/description.
 
 As of Milestone 30 this is a **logged event, not a redrawn status
 line** — pushed once per arrival (see `docs/ARCHITECTURE.md`), not
@@ -91,10 +91,19 @@ same way — it just no longer stays pinned on screen indefinitely while
 stationary, and can scroll off the log panel if enough other events
 happen first.
 
+**As of Milestone 43, that one line is just `"<Name> is here."`, not
+`<Name>: <flavor text>`.** The character's flavor text (the current
+`PresenceWindow::flavorText`) no longer auto-prints — it now shows on
+demand via Look (`;`, `GameLoop::lookOverworld`/`pickAndLook`), the same
+way a zone NPC's `description` does (see `docs/ZONE_NOTES.md`). If more
+than one character is present at once, Look asks which one first, via
+the identical picker `t` uses below for "Talk to whom?".
+
 ## Talking to a canon character
 
-The passive flavor line above is always-on scenery; pressing `t` (talk,
-`game::GameLoop::handleTalk`) is a deliberate action that shows the
+The flavor text (as of Milestone 43, shown via Look rather than
+auto-printed — see above) is one deliberate action; pressing `t` (talk,
+`game::GameLoop::handleTalk`) is a second, separate one that shows the
 current `PresenceWindow`'s dialogue in its own dedicated frame
 (`render::MapRenderer::drawDialogueFrame`) instead. **If more than one
 character is present at once** (all 8 Heroes of the Lance share a
@@ -114,10 +123,9 @@ there's exactly one implementation to keep correct.
 character the player has ever talked to. The *first* time, `talkTo`
 shows the character's greeting (their plain `SAY`, or the first matching
 `SAY_IF` — see below). *Every time after*, it shows `SAY_AGAIN` if one is
-authored, else falls back to a short generic recognition line. The
-passive flavor line is untouched by any of this — it stays
-persistent/always-on scenery regardless of whether the player has ever
-talked to that character.
+authored, else falls back to a short generic recognition line. Look's
+flavor text is untouched by any of this — it's available on demand
+regardless of whether the player has ever talked to that character.
 
 **Reactive dialogue and branching topics, as of Milestone 19.** Going
 "all in" on conversations per direct user request, using the newly-added

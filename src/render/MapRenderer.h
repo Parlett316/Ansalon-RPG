@@ -28,19 +28,27 @@ public:
     // the minimums above for a smaller console -- see docs/ARCHITECTURE.md.
     static constexpr int kPreferredViewportWidth = 78;
     static constexpr int kPreferredViewportHeight = 30;
-    static constexpr int kMinLogPanelWidth = 20;
+    // Must fit not just wrapped log prose but real fixed status-panel
+    // content -- the longest authored location/zone names ("High Clerist's
+    // Tower", "Inn of the Last Home") are 21-23 columns, so this floor sits
+    // just above that rather than being tuned for prose-wrap alone.
+    static constexpr int kMinLogPanelWidth = 24;
     static constexpr int kMaxLogPanelWidth = 60;
-    static constexpr int kLogPanelGap = 2; // small fixed visual gap, not console-size-dependent
-    // Non-map/log "chrome" every frame always has: border top, 2 HUD
-    // lines, 2 blank separators, footer, border bottom (rows); border +
-    // padding on both sides (columns).
-    static constexpr int kChromeRows = 7;
-    static constexpr int kChromeColumns = 4;
+    // Width of the literal " | " divider drawn between the map and the
+    // status panel (Milestone 43) -- not a bare gap anymore.
+    static constexpr int kLogPanelGap = 3;
+    // Non-map/log "chrome" every frame always has (Milestone 43): a
+    // one-line header, a '=' rule, a '-' rule, and a footer line (rows);
+    // one column of margin, kept as cheap insurance against an off-by-one
+    // in the detected terminal width rather than filling it exactly zero
+    // (columns).
+    static constexpr int kChromeRows = 4;
+    static constexpr int kChromeColumns = 1;
     // Below these, configureLayout refuses to run at all -- see
     // docs/ARCHITECTURE.md and main.cpp's fail-fast check.
     static constexpr int kAbsoluteMinColumns =
-        kMinViewportWidth + kLogPanelGap + kMinLogPanelWidth + kChromeColumns; // 70
-    static constexpr int kAbsoluteMinRows = kMinViewportHeight + kChromeRows; // 23
+        kMinViewportWidth + kLogPanelGap + kMinLogPanelWidth + kChromeColumns; // 72
+    static constexpr int kAbsoluteMinRows = kMinViewportHeight + kChromeRows; // 20
 
     // The ACTIVE layout in use this run. Default-initialized (in
     // MapRenderer.cpp) to the preferred values above, so anything that
@@ -76,25 +84,31 @@ public:
     // docs/ARCHITECTURE.md.
     static bool configureLayout(int columns, int rows);
 
-    // Renders one full overworld frame: a top HUD (name/day-hour/steel, HP
-    // bar/AC/THAC0), a scrolling colored viewport of the overworld grid
-    // centered on the player (clamped at map edges) with location glyphs
-    // and the player's '@' overlaid, and a scrolling event log panel
-    // beside it (see kLogPanelWidth above). `log` is GameLoop's persistent
-    // event history -- including, as of Milestone 30, the "standing here"
-    // Location description/timeline-presence text GameLoop pushes once on
-    // arrival (GameLoop::announceOverworldTile) rather than this function
-    // recomputing and redrawing it every frame -- oldest entries scroll
-    // off the top of the panel once it fills. See docs/ARCHITECTURE.md.
+    // Renders one full overworld frame (Milestone 43 layout: no outer box
+    // border): a one-line header (title, name/class, HP bar, day/hour), a
+    // '=' rule, then side by side a scrolling colored viewport of the
+    // overworld grid centered on the player (clamped at map edges) with
+    // location glyphs and the player's '@' overlaid, a " | " divider, and
+    // a status panel (MODE/Standing On/Position/AC/THAC0/Steel, then a
+    // scrolling "> "-prefixed event log tail -- see kLogPanelWidth above),
+    // a '-' rule, and the footer control hint. `log` is GameLoop's
+    // persistent event history -- including, as of Milestone 30, the
+    // "standing here" Location description/timeline-presence text
+    // GameLoop pushes once on arrival (GameLoop::announceOverworldTile)
+    // rather than this function recomputing and redrawing it every frame
+    // -- oldest entries scroll off the top of the panel once it fills.
+    // See docs/ARCHITECTURE.md.
     static void drawOverworldFrame(const world::OverworldGrid& grid, const world::World& world,
                                     const game::GameState& state, const std::vector<std::string>& log);
 
-    // Renders one full zone (interior) frame: the same top HUD and
-    // side-by-side log panel as drawOverworldFrame, the whole zone grid
-    // (wall-padded to kViewportWidth/Height if smaller -- see above), the
-    // entry/exit tile marked, and POI glyphs and the player's '@'
-    // overlaid. As of Milestone 30, a POI's name/description and any
-    // TIMELINE_ANCHOR presence are pushed to `log` once on arrival by
+    // Renders one full zone (interior) frame: the same Milestone 43
+    // header/rule/status-panel layout as drawOverworldFrame (see above),
+    // the whole zone grid (wall-padded to kViewportWidth/Height if smaller
+    // -- see above), the entry/exit tile marked, and POI glyphs and the
+    // player's '@' overlaid. "Standing On" is always the zone's own name
+    // (Zone::name()); the status panel's mode label reads "INDOORS". As of
+    // Milestone 30, a POI's name/description and any TIMELINE_ANCHOR
+    // presence are pushed to `log` once on arrival by
     // GameLoop::announceZoneTile rather than redrawn here every frame --
     // see docs/ARCHITECTURE.md.
     static void drawZoneFrame(const world::Zone& zone, const game::GameState& state,
