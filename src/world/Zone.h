@@ -47,6 +47,11 @@ struct PointOfInterest {
     // the zone file, same "must reference an already-declared POI with a
     // TALK line" validation as SHOP (see docs/ZONE_NOTES.md).
     bool isBoat = false;
+    // True if the player can press 'z' (bed rest) while standing on this
+    // tile to fully heal and advance 8 hours -- set via a BED line in the
+    // zone file, which must reference an already-declared POI char, same
+    // "no TALK prerequisite" rule as SHOP (see docs/ZONE_NOTES.md).
+    bool isBed = false;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in

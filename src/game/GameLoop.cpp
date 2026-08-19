@@ -135,6 +135,7 @@ void GameLoop::run() {
             case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
             case render::Key::Rest:      handleRest(); break;
+            case render::Key::BedRest:   handleBedRest(); break;
             case render::Key::Quit:      quit = true; break;
             case render::Key::Unknown:   break;
         }
@@ -210,6 +211,45 @@ void GameLoop::handleRest() {
     // Only a caster who can actually manage a slot (not a racially-blocked
     // Mage, see character::maxSpellSlotsPerDay) gets the memorization
     // flavor -- see character::memorizeSpells and docs/CHARACTER_NOTES.md.
+    if (character::maxSpellSlotsPerDay(c) > 0) {
+        character::memorizeSpells(c, dayAfterRest);
+        message += " You spend a quiet hour re-memorizing " +
+                    std::string(character::knownSpellName(c.charClass)) + ".";
+    }
+    pushLog(message);
+}
+
+void GameLoop::handleBedRest() {
+    if (state_.mode != Mode::Zone) {
+        pushLog("There's no bed here.");
+        return;
+    }
+    const world::Zone* zone = zones_.getZone(state_.currentZoneId);
+    const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
+    if (poi == nullptr || !poi->isBed) {
+        pushLog("There's no bed here.");
+        return;
+    }
+
+    character::Character& c = state_.character;
+    long long currentDay = state_.hoursElapsed / 24;
+    if (c.lastRestDay == currentDay) {
+        pushLog("You've already rested today.");
+        return;
+    }
+
+    state_.hoursElapsed += 8; // same overnight cost as ordinary Rest
+    long long dayAfterRest = state_.hoursElapsed / 24;
+    c.lastRestDay = dayAfterRest;
+
+    bool alreadyFull = c.currentHp >= c.maxHp;
+    c.currentHp = c.maxHp; // complete bed-rest: a real bed, a full night, fully healed
+
+    std::string message = "You spend the night resting soundly in a real bed.";
+    message += alreadyFull ? " You were already at full health." : " You wake fully healed.";
+
+    // Same caster memorization flavor as ordinary Rest -- see
+    // character::memorizeSpells and docs/CHARACTER_NOTES.md.
     if (character::maxSpellSlotsPerDay(c) > 0) {
         character::memorizeSpells(c, dayAfterRest);
         message += " You spend a quiet hour re-memorizing " +

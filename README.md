@@ -91,7 +91,10 @@ and sends you back to Solace, it isn't permadeath — see
 1 hit point (the DMG's real natural-healing rate) and, for a Mage or
 Cleric, re-memorizes their spell for the day — no slots are available at
 all until you have, sourced from the PHB's actual memorization/prayer
-rules — see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section. Winning
+rules — see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section. A real bed
+heals faster: press `z` on the Inn of the Last Home's upstairs landing to
+fully heal overnight instead, the same 8 hours as ordinary rest — see
+`docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" section. Winning
 fights earns Steel Pieces (Krynn's own
 post-Cataclysm currency, not gold) and experience, and that steel now has
 somewhere to go — press `p` at a shop (Solace's General Store, Haven's

@@ -412,14 +412,34 @@ discipline as every other rules pass in this project:
   natural-healing rate (2nd ed. DMG p.74, "Healing": "Characters heal
   naturally at a rate of 1 hit point per day of rest. Rest is defined as
   low activity -- nothing more strenuous than riding a horse or
-  traveling from one place to another"). **Not modeled**: the DMG's
-  higher "complete bed-rest" tier (3 hp/day for a full day of doing
-  nothing, plus a Constitution bonus per full week) -- that requires a
-  "no adventuring at all today" commitment this project has no way to
-  detect, and a bed/Inn-gated variant would need new zone grammar (a
-  `BED` POI flag) not built yet. Also not modeled: the DMG's food/water/
-  sleep prerequisite for healing at all -- this project has no hunger/
-  supply system, so Rest always assumes those are met.
+  traveling from one place to another"). Also not modeled: the DMG's
+  food/water/sleep prerequisite for healing at all -- this project has no
+  hunger/supply system, so Rest always assumes those are met.
+
+  **Complete bed rest, at an Inn, is real now (Milestone 41).** A new
+  `render::Key::BedRest` (`'z'`/`'Z'` -- not `'b'`, already `SouthWest` in
+  the `yubn` diagonal-movement scheme; `GameLoop::handleBedRest`) works
+  only while standing on a zone POI marked `BED <char>`
+  (`world::PointOfInterest::isBed`, parsed by `ZoneLoader` exactly like
+  `SHOP` -- no `TALK` prerequisite, see `docs/ZONE_NOTES.md`'s "Beds"
+  section). It shares `Character::lastRestDay` with ordinary Rest (one
+  overnight action per in-game day, whichever kind) and advances
+  `hoursElapsed` by the same 8 hours, but heals fully to `maxHp` instead
+  of 1 hp. This is a **deliberate simplification** of the DMG's literal
+  "complete bed-rest" rule (2nd ed. DMG p.74: "If a character has
+  complete bed-rest (doing nothing for an entire day), he can regain 3
+  hit points for the day. For each complete week of bed-rest, the
+  character can add any Constitution hit point bonus he may have to the
+  base of 21 points (3 points per day) he regained during that week.").
+  Taken literally, that's a multi-day-to-multi-week grind sitting in an
+  Inn room -- a poor fit for this project's timeline-driven pace, where
+  canon characters move on a real schedule (`docs/TIMELINE_NOTES.md`)
+  the player can walk past and miss. A single full-heal action was chosen
+  instead; the 3 hp/day and weekly-Constitution-bonus tiers are not
+  modeled, and this deviation from the sourced rule is intentional, not
+  an oversight. `data/zones/solace_inn.txt`'s existing `U "The Stairs Up"`
+  POI carries the new `BED U` line -- no other zone has an authored
+  Inn/lodging POI, so no other zone got one.
 
   For a Mage or Cleric, the same keypress also (re-)memorizes their one
   known spell for the day, via `character::memorizeSpells`. Real 2e
@@ -649,10 +669,6 @@ stored in `GameState::character` and never reassigned after that; pressing
   Wizard Robe spell-sphere restrictions remain unenforced since nothing
   currently in the game triggers either (no sleep/charm spell exists,
   and the one Mage spell isn't sphere-restricted).
-- **Bed-rest healing tier**: the DMG's faster 3 hp/day "complete bed-
-  rest" rate (see "Spellcasting" above) needs a way to tell "resting at
-  an Inn" apart from "resting anywhere" -- most naturally a new `BED`
-  zone-grammar POI flag (`docs/ZONE_NOTES.md`), not built yet.
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
   a carried inventory, sell-back, and three shops (Solace, Haven, Tarsis)
   all exist now (see "Equipment" above). Still missing: per-location

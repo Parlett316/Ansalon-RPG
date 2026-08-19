@@ -89,6 +89,9 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // Same "applied after the whole file is parsed" treatment as shopLines
     // above -- keyed by code, value is the line number BOAT appeared on.
     std::unordered_map<char, int> boatLines;
+    // Same "applied after the whole file is parsed" treatment as shopLines
+    // above -- keyed by code, value is the line number BED appeared on.
+    std::unordered_map<char, int> bedLines;
     // SAY_IF/TOPIC get the same "collected by POI char, applied after the
     // whole file is parsed" treatment as talkLines/shopLines above -- but
     // unlike those (one dialogue per POI), a POI can have zero or more of
@@ -201,6 +204,13 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed BOAT (expected: BOAT <char>)");
                 }
                 boatLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "BED") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed BED (expected: BED <char>)");
+                }
+                bedLines[codeToken[0]] = lineNumber;
             } else if (keyword == "SAY_IF") {
                 std::istringstream iss(rest);
                 std::string codeToken, condition;
@@ -257,7 +267,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             } else {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
-                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, "
+                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, BED, "
                          "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, or END)");
             }
         } else {
@@ -345,6 +355,16 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no TALK line to grant it through");
         }
         it->second.isBoat = true;
+    }
+    // Same rule for BED as SHOP: a bed POI still needs a name/description
+    // via POI, BED only marks it as also being able to fully heal there --
+    // no TALK prerequisite, since it's not talk-gated like BOAT.
+    for (const auto& [code, lineNum] : bedLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "BED '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.isBed = true;
     }
     // Same rule for SAY_IF: it must reference an already-declared POI --
     // but SAY_IF is reactive dialogue, so its POI must also already have a

@@ -335,6 +335,32 @@ this stays authoritative.
     memorize/cast/day-rollover), a clean rebuild (zero new warnings), and
     the piped smoke test. See `docs/CHARACTER_NOTES.md`'s "Spellcasting"
     section for the full sourcing and scope cuts.
+41. Inn-gated complete bed rest -- the faster healing tier Milestone 40
+    deferred. A new `render::Key::BedRest` (`'z'`/`'Z'`, not `'b'` --
+    already `SouthWest` in the `yubn` diagonal-movement scheme;
+    `GameLoop::handleBedRest`) works only standing on a zone POI newly
+    markable `BED <char>` (`world::PointOfInterest::isBed`, parsed in
+    `ZoneLoader` exactly like `SHOP`, no `TALK` prerequisite). Shares
+    `Character::lastRestDay` with ordinary Rest (one overnight action per
+    day, whichever kind), advances `hoursElapsed` by the same 8 hours, but
+    heals fully to `maxHp` instead of 1 hp. This is a deliberate
+    simplification of the 2nd ed. DMG's literal "complete bed-rest" rule
+    (p.74: 3 hp/day, plus a Constitution hit-point bonus per full week) --
+    taken literally that's a multi-day-to-multi-week grind, a poor fit for
+    a game that tracks canon characters moving on a real schedule the
+    player can walk past and miss (see `docs/TIMELINE_NOTES.md`); one
+    full-heal action at an Inn was chosen instead, deviation called out
+    explicitly rather than presented as a transcription. `data/zones/
+    solace_inn.txt`'s existing `U "The Stairs Up"` POI (already
+    flavor-texted as leading to private rooms, already noted as "not a
+    modeled zone yet") carries the new `BED U` line -- no other zone has an
+    authored Inn/lodging POI, so no other zone got one. Verified via a
+    clean rebuild (zero new warnings) and the piped smoke test (confirms
+    the new `BED` grammar still parses); no throwaway self-test, since
+    `handleBedRest` has no new pure/extractable logic beyond what the
+    build and a real playthrough already cover. See
+    `docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" and
+    `docs/ZONE_NOTES.md`'s "Beds" section.
 
 ## NEXT UP
 
@@ -351,11 +377,6 @@ session's work.
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
-3. **Bed-rest healing tier** — the DMG's faster 3 hp/day "complete
-   bed-rest" rate (Milestone 40 only implements the base 1 hp/day tier)
-   needs a way to tell "resting at an Inn" apart from "resting anywhere,"
-   most naturally a new `BED` zone-grammar POI flag. See
-   `docs/CHARACTER_NOTES.md`'s "Extending this later."
 
 **Continuing *Dragons of Spring Dawning* after Kalaman (Milestone 39):**
 per the research pass documented there, Palanthas (the Great Library, the

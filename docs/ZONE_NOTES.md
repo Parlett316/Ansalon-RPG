@@ -99,6 +99,13 @@ BOAT <char>                             optional, marks a POI as granting
                                         same "must already have a POI
                                         **and** a TALK line" rule as
                                         SAY_IF/TOPIC
+BED <char>                              optional, marks a POI as a bed --
+                                        pressing 'z' on that tile fully
+                                        heals and advances 8 hours (see
+                                        "Beds: POIs for complete bed-rest"
+                                        below); must reference a char
+                                        already declared via POI, same
+                                        rule as SHOP (no TALK required)
 TIMELINE_ANCHOR <char>                  optional, at most one -- marks a
                                         POI as where present canon
                                         characters are found/talkable
@@ -281,6 +288,32 @@ represents passage arranged by Derek Crownguard's knights (see
 `docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
 the Old Sailor's characterization untouched.
 
+## Beds: POIs for complete bed-rest (Milestone 41)
+
+`BED <char>` marks a POI as a bed the player can press `z` at to fully heal
+and advance 8 in-game hours (`game::GameLoop::handleBedRest`,
+`world::PointOfInterest::isBed`) -- the Inn-gated healing tier
+`docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" section deferred
+at Milestone 40. Same "layers an ability on top of an existing POI" pattern
+as `SHOP`, with the same no-`TALK`-prerequisite rule (unlike `BOAT`, which
+requires one): `BED` only marks an already-declared POI, it carries no
+payload of its own.
+
+`game::GameLoop::handleRest` (ordinary Rest, `'r'`) and `handleBedRest`
+(`'z'`) share `character::Character::lastRestDay` as the same "one
+overnight action per in-game day" gate -- a player can't use both in the
+same day, in either order. Bed rest costs the same 8 hours as ordinary
+Rest but heals fully to `maxHp` instead of 1 hp, a deliberate simplification
+of the DMG's literal "complete bed-rest" rule -- see `docs/CHARACTER_NOTES.md`
+for the full sourcing and why the literal multi-day/weekly-bonus version
+was dropped.
+
+As of Milestone 41, exactly one POI carries `BED`:
+`data/zones/solace_inn.txt`'s `U "The Stairs Up"` -- already flavor-texted
+as leading to the Inn's private rooms, and already noted (see "The Inn of
+the Last Home specifically" below) as "not a modeled zone yet." No other
+zone has an authored Inn/lodging POI, so no other zone got one.
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -337,9 +370,13 @@ Sandeth, Tika Waylan — each now their own talkable `O`/`Y` tile right at
 the bar, see "NPCs: POIs you can talk to" above), the great fireplace, a
 scarred corner table (an atmospheric nod to the setting without quoting
 any book scene directly), Otik's kitchen doorway, and a stair up to
-private rooms that aren't a modeled zone yet (described as flavor text
-only — future work, same pattern as other deliberately-deferred content
-in this project).
+private rooms that aren't a modeled zone of their own (the rooms
+themselves are described as flavor text only, same deliberately-deferred
+treatment as everywhere else this project describes-not-models an
+interior) — though as of Milestone 41 the stair's own tile is functional,
+not purely decorative: it carries `BED U`, letting the player press `z`
+there for complete bed-rest (see "Beds: POIs for complete bed-rest"
+above).
 
 As of Milestone 26, Otik and Tika each have a `SAY_IF`/`TOPIC` pair
 grounded directly in their real DAT dialogue (verified via `pdftotext`
@@ -535,5 +572,7 @@ this zone's `TIMELINE_ANCHOR` serves.
    matching `TALK <char> <dialogue...>` line (see "NPCs: POIs you can talk
    to" above). If a POI should be browsable/buyable, add a matching
    `SHOP <char>` line instead (see "Shops: POIs you can buy from" above).
+   If a POI is a bed, add a matching `BED <char>` line instead (see
+   "Beds: POIs for complete bed-rest" above).
 6. Build and check the load succeeds (a malformed zone file fails fast with
    a clear error at startup, not partway through play).

@@ -36,6 +36,7 @@ TALK Y Tika plants the tray on her hip and grins. "New face, or just one I haven
 TALK_AGAIN Y Tika breezes past with the tray, flashing you a quick grin over her shoulder. "You again! Table by the fire's yours if you want it -- you've earned regular status, whether you meant to or not."
 SAY_IF Y fighter Tika's quick, appraising glance settles somewhere around your weapon before it reaches your face. "You've got the look of someone who's actually used that, which is more than I can say for half the trouble that walks through that door. Good. I like knowing who I can holler for if a table gets rowdy."
 TOPIC Y "Strange Talk" Tika's grin fades, just for a moment. "There's talk going around I don't like the sound of -- armies massing somewhere north, and strange hooded men skulking around town with the High Theocrat, asking questions nobody's got good answers to. Otik tells me it's just talk, same as it's always been since the Cataclysm. Maybe he's right. I still don't like it."
+BED U
 TIMELINE_LOCATION solace
 TIMELINE_ANCHOR F
 END

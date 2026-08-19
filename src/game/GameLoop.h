@@ -131,6 +131,16 @@ private:
     // character::memorizeSpells). See docs/CHARACTER_NOTES.md's "Rest and
     // spell memorization".
     void handleRest();
+    // Bed Rest ('z') -- like Rest, gated to once per in-game day via
+    // Character::lastRestDay (the two share the same gate: one overnight
+    // action per day, whichever kind), but only usable standing on a zone
+    // POI marked BED (world::PointOfInterest::isBed). Advances hoursElapsed
+    // by 8, same as Rest, but heals fully to maxHp instead of 1 hp -- a
+    // deliberate simplification of the DMG's literal "complete bed-rest"
+    // tier (3 hp/day + a weekly Constitution bonus, DMG p.74) chosen for
+    // this project's timeline-driven pace. See docs/CHARACTER_NOTES.md and
+    // docs/ZONE_NOTES.md's "Beds" section.
+    void handleBedRest();
     void showCharacterSheet();
     // Takes over rendering/input in its own loop until the fight ends
     // (victory, flee, or the player is knocked out) -- see
