@@ -94,10 +94,11 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "SHIELD " << (c.hasShield ? 1 : 0) << "\n";
     file << "WEAPON " << c.weaponDamageSides << " " << c.weaponDamageBonus << " " << c.weaponName << "\n";
     // Carried (not-equipped) items -- see character/Equipment.h. Reuses the
-    // ARMOR/SHIELD/WEAPON keywords above for each entry's own line, but
-    // these are consumed by load() via a stateful counter, same trick
-    // ZONESTACK uses below, so there's no collision with the equipped-slot
-    // keywords above.
+    // ARMOR/SHIELD/WEAPON keywords above for each entry's own line (plus a
+    // POTION keyword with no equipped-slot counterpart, since potions are
+    // never equipped), but these are consumed by load() via a stateful
+    // counter, same trick ZONESTACK uses below, so there's no collision
+    // with the equipped-slot keywords above.
     file << "INVENTORY " << c.inventory.size() << "\n";
     for (const auto& item : c.inventory) {
         switch (item.kind) {
@@ -110,6 +111,9 @@ void SaveGame::save(const GameState& state, const std::string& path) {
             case character::ItemKind::Weapon:
                 file << "WEAPON " << item.weaponDamageSides << " " << item.weaponDamageBonus << " "
                      << item.weaponName << "\n";
+                break;
+            case character::ItemKind::Potion:
+                file << "POTION\n";
                 break;
         }
     }
@@ -191,6 +195,8 @@ GameState SaveGame::load(const std::string& path) {
                 item.armorId = parseEnumInt<character::ArmorId>(path, lineNumber, itemRest, "inventory ARMOR", 4);
             } else if (itemKeyword == "SHIELD") {
                 item.kind = character::ItemKind::Shield;
+            } else if (itemKeyword == "POTION") {
+                item.kind = character::ItemKind::Potion;
             } else if (itemKeyword == "WEAPON") {
                 item.kind = character::ItemKind::Weapon;
                 if (!(itemIss >> item.weaponDamageSides >> item.weaponDamageBonus)) {

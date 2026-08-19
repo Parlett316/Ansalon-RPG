@@ -361,6 +361,37 @@ this stays authoritative.
     build and a real playthrough already cover. See
     `docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" and
     `docs/ZONE_NOTES.md`'s "Beds" section.
+42. Healing potions -- on-demand healing, including mid-fight, beyond Rest/
+    Bed Rest's once-a-day limits. A new `ItemKind::Potion` (one real item,
+    Potion of Healing, `character::Equipment`), sold at every shop's
+    already-shared catalog: 2d4+2 hp (2nd ed. DMG p.142, clearly legible
+    in the scan) for 200 stl (the DMG's own Magical Items treasure table,
+    p.134, "Healing" row, 200gp, applied via the established Gold -> Steel
+    convention). Potion of Extra Healing was deliberately left out -- its
+    dice were present in the same scan but badly OCR-garbled and not
+    independently confirmable (`pdftoppm` isn't installed in this
+    environment, so page-image rendering wasn't available to double-check
+    it). **Lore framing, not a new mechanic**: Dragonlance canon has real
+    clerical healing magic gone from Krynn until Goldmoon's Disks of
+    Mishakal, early in *Dragons of Autumn Twilight*'s own timeline, so the
+    shop's potion is framed as a scavenged pre-Cataclysm relic rather than
+    a merchant's own brew -- the DMG item itself is unmodified. Stackable
+    (buying a second is allowed on purpose, unlike armor/weapons) and
+    sellable back at the usual invented half-price convention. Drinkable
+    two ways: `'i'` + `Enter` on a carried potion in the inventory screen
+    (which now also shows an `HP: current/max` line, previously absent, so
+    the effect is visible immediately), or `'i'` mid-combat
+    (`GameLoop::runCombat`, reinterpreted locally as "drink the first
+    potion carried" instead of opening the inventory screen -- the same
+    "local key reinterpretation" trick `handleShop` already uses for this
+    exact key elsewhere) as the round's action instead of attacking, same
+    shape as `Cast`. Verified via a throwaway self-test (21 assertions
+    covering heal-amount range, maxHp capping, invalid-index handling, the
+    shop catalog's index arithmetic for a class with a weapon upgrade and
+    one without, and resale value; deleted after passing), a clean
+    rebuild (zero new warnings), and the piped smoke test. See
+    `docs/CHARACTER_NOTES.md`'s "Potions" and `docs/COMBAT_NOTES.md`'s
+    "Player actions" section for full sourcing.
 
 ## NEXT UP
 

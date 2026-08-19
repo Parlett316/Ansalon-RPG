@@ -543,7 +543,14 @@ void GameLoop::handleInventory() {
             selected = inventory.empty() ? 0 : (selected + 1) % static_cast<int>(inventory.size());
         } else if (key == render::Key::Enter) {
             if (!inventory.empty()) {
-                character::equipInventoryItem(state_.character, selected);
+                // A Potion is drunk, not equipped -- everything else keeps
+                // the existing equip behavior. See character::drinkPotion.
+                if (inventory[static_cast<size_t>(selected)].kind == character::ItemKind::Potion) {
+                    character::PurchaseResult result = character::drinkPotion(state_.character, selected);
+                    pushLog(result.message);
+                } else {
+                    character::equipInventoryItem(state_.character, selected);
+                }
                 selected = 0; // the list just changed shape -- reset the cursor
             }
         } else if (key == render::Key::Quit) {
@@ -698,6 +705,15 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("You cast Cure Light Wounds and heal " + std::to_string(healed) + " hit points.");
         }
     };
+    // Drinks the first carried Potion of Healing (see
+    // character::firstPotionIndex/drinkPotion) as the round's action
+    // instead of attacking -- same "replaces playerAttacks() in the
+    // initiative-ordered exchange" shape as playerCasts above.
+    auto playerDrinksPotion = [&]() {
+        int potionIndex = character::firstPotionIndex(state_.character);
+        character::PurchaseResult result = character::drinkPotion(state_.character, potionIndex);
+        log.push_back(result.message);
+    };
 
     for (;;) {
         render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
@@ -712,6 +728,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
 
         bool casting = false;
+        bool drinking = false;
         if (key == render::Key::Cast) {
             if (!character::canCastSpells(state_.character.charClass)) {
                 log.push_back("You have no spell to cast.");
@@ -722,14 +739,25 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 continue;
             }
             casting = true;
+        } else if (key == render::Key::Inventory) {
+            // Reinterpreted locally as "drink a potion" -- same "local key
+            // reinterpretation instead of a new Key value" trick handleShop
+            // already uses for this exact key (buy/sell toggle there).
+            if (character::firstPotionIndex(state_.character) < 0) {
+                log.push_back("You have no potions.");
+                continue;
+            }
+            drinking = true;
         } else if (key != render::Key::Enter) {
             continue;
         }
 
         // PHB p.124: one d10 per side, lower goes first. Whoever acts
         // second is skipped if the first attacker already ended the fight.
-        std::function<void()> playerActs = casting ? std::function<void()>(playerCasts)
-                                                     : std::function<void()>(playerAttacks);
+        std::function<void()> playerActs =
+            casting ? std::function<void()>(playerCasts)
+            : drinking ? std::function<void()>(playerDrinksPotion)
+                       : std::function<void()>(playerAttacks);
         if (combat::playerActsFirst()) {
             playerActs();
             if (monsterHp > 0) monsterAttacks();

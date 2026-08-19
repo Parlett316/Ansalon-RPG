@@ -106,8 +106,14 @@ price. Purchases land in a real carried inventory rather than being worn
 automatically — press `i` outside a shop to see what you're carrying and
 equip it, which actually changes your AC and damage in the next fight,
 swapping whatever you had on back into your pack rather than losing it —
-see `docs/CHARACTER_NOTES.md`'s "Equipment" section. Enough experience
-means
+see `docs/CHARACTER_NOTES.md`'s "Equipment" section. Every shop also
+carries a Potion of Healing (2d4+2 hp, 200 stl, DMG-sourced and priced) —
+framed as a scavenged pre-Cataclysm relic rather than a merchant's own
+brew, since real clerical healing magic doesn't return to Krynn until
+Goldmoon's Disks of Mishakal early in the story; drink one from the
+inventory screen (`i`, `Enter`) or mid-fight (`i` again, spending your
+round on it instead of attacking) — see `docs/CHARACTER_NOTES.md`'s
+"Potions" section. Enough experience means
 real leveling — more hit points, a better THAC0, better saving throws, all
 sourced from the PHB's level-by-level tables (a Knight of the Crown gets a
 nod toward the Order of the Sword at 3rd level, and a Mage actually

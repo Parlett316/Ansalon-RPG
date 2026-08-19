@@ -227,7 +227,7 @@ terrain — terrain-specific monster pools (only spiders in forest, only
 draconians near a Highlord garrison, etc.) is a natural follow-up, not
 built yet.
 
-## Player actions: Attack, Cast, and Flee
+## Player actions: Attack, Cast, Drink a Potion, and Flee
 
 `render::Key::Flee` (`'f'`/`'F'`) ends the encounter immediately with a
 retreat message, no cost or risk modeled (no PHB-style "opportunity attack
@@ -250,6 +250,21 @@ caster and never touches the monster, but either way the monster still
 gets its own attack afterward per the usual initiative ordering. Thief,
 Fighter, and Tinker never see the `m=cast` option at all (`drawCombatFrame`
 only shows it for `canCastSpells` classes).
+
+**`render::Key::Inventory` (`'i'`), reinterpreted locally as "drink a
+potion" (Milestone 42)**, new alongside the Potion of Healing item (see
+`docs/CHARACTER_NOTES.md`'s "Potions"): same "swap a lambda in for
+`playerAttacks()`" shape as `Cast` above, drinking
+`character::firstPotionIndex`'s potion instead of casting a spell. No
+potion carried logs a message and doesn't consume the round, same
+forgiving pattern as an unavailable `Cast`. This is the same "local key
+reinterpretation instead of a new `Key` value" trick `handleShop` already
+uses for this exact key (there it toggles the buy/sell view) — outside
+combat `'i'` still opens the real inventory screen
+(`GameLoop::handleInventory`); only inside `runCombat`'s own nested loop
+does it mean "drink." `drawCombatFrame`'s footer only shows
+`i=drink potion` when one is actually carried, same "only hint what's
+usable" treatment `m=cast` already gets for non-casters.
 
 ## Victory: steel, then XP, then leveling
 

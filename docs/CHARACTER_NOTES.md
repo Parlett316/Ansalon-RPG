@@ -640,6 +640,61 @@ The save file's `GOLD` keyword became `STEEL`, but `SaveGame::load` still
 accepts a legacy `GOLD` line too (a save written before this milestone) —
 see `docs/GOTCHAS.md`.
 
+### Potions (Milestone 42)
+
+A new `ItemKind::Potion` (`character/Equipment.h`), alongside
+Armor/Shield/Weapon: exactly one real item, a Potion of Healing, sold at
+every shop's already-shared catalog (see "Three shops now, one shared
+catalog" above). Sourced from the actual scanned DMG
+(`pdftotext -layout`, page-image rendering unavailable in this
+environment — `pdftoppm` isn't installed): the effect, "the potion
+restores 2d4+2 hit points of damage," is clearly legible on p.142; the
+price, 200gp, comes from the separate Magical Items treasure table
+(p.134, "Healing" row, Table 88) and is applied as 200 Steel Pieces per
+this project's established Gold -> Steel convention. Potion of Extra
+Healing's own dice were present in the same scan but badly
+OCR-garbled ("JdB +3," almost certainly 3d8+3 by shape and by real 2e
+convention, but not independently confirmable without a page image) —
+deliberately left out rather than guessed at.
+
+**Lore framing, not a new mechanic.** Dragonlance canon establishes that
+real clerical healing magic is gone from Krynn after the Cataclysm and
+doesn't return until Goldmoon's Disks of Mishakal, early in *Dragons of
+Autumn Twilight*'s own timeline — an ordinary General Store stocking
+freshly-brewed magic healing would quietly contradict a setting detail
+this project has otherwise respected carefully (no orcs, Kender barred
+from Mage, etc.). Resolved by framing the shop's potion as a scavenged
+**pre-Cataclysm relic**, not a merchant's own brew — old magic surviving
+as found treasure needs no invented rule, just flavor text; the mechanics
+are the real, unmodified DMG item.
+
+**Buying and carrying**: unlike armor/weapons, a potion is stackable —
+`ShopItem::alreadyOwned` is always `false` for it, so buying a second (or
+third) is allowed on purpose. It's sellable back at the same invented
+half-price convention already used for mundane gear (100 stl).
+
+**Drinking**: two entry points, both via `character::drinkPotion`
+(returns `PurchaseResult`, the same `{success, message}` shape `sellItem`
+already reuses rather than a duplicate type) —
+- Outside combat, press `i` (`GameLoop::handleInventory`) and `Enter` on a
+  carried potion; the inventory screen now shows an `HP: current/max`
+  line so the effect is visible immediately (previously this screen
+  showed no HP at all).
+- Mid-combat, press `i` (`GameLoop::runCombat`) to drink the first potion
+  carried (`character::firstPotionIndex`) as the round's action instead
+  of attacking — the exact same "local key reinterpretation instead of a
+  new `Key` value" trick `handleShop` already uses for `'i'` (there it
+  toggles buy/sell; in combat it drinks). No potion carried logs "You
+  have no potions." and doesn't consume the round, same forgiving pattern
+  `Cast` already follows for "no spell available." `drawCombatFrame`'s
+  footer only shows `i=drink potion` when one is actually carried, same
+  "only hint what's usable" precedent `m=cast` already follows for
+  non-casters.
+
+Every carried potion is identical, so there's nothing to actually pick
+between multiple ones — same "nothing to select" simplification
+Spellcasting's one-known-spell already established.
+
 ## Where a character lives
 
 `CharacterCreator::run()` executes once, in `main.cpp`, before `GameState`

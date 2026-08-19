@@ -81,6 +81,7 @@ enum class ItemKind {
     Armor,
     Shield,
     Weapon,
+    Potion,
 };
 
 struct InventoryItem {
@@ -165,5 +166,34 @@ std::vector<SellItem> sellableItems(const Character& character);
 // (success/message) rather than a duplicate type. Does nothing if index is
 // out of range or the item isn't sellable -- check PurchaseResult::success.
 PurchaseResult sellItem(Character& character, int index);
+
+// Potion of Healing (2nd ed. DMG p.142, "Healing": "the potion restores
+// 2d4+2 hit points of damage") -- sold at every shop (see
+// docs/CHARACTER_NOTES.md's "Potions"), framed as a scavenged
+// pre-Cataclysm relic rather than a merchant's own brew: real clerical
+// healing magic doesn't return to Krynn until Goldmoon's Disks of
+// Mishakal, early in Dragons of Autumn Twilight's own timeline, so an
+// ordinary shop stocking freshly-made magic healing would contradict the
+// setting. Priced straight from the DMG's own Magical Items table (p.134,
+// "Healing" row, Value 200gp), applied as Steel Pieces per this project's
+// established Gold -> Steel convention.
+constexpr int kHealingPotionCostStl = 200;
+constexpr int kHealingPotionDiceCount = 2;
+constexpr int kHealingPotionDiceSides = 4;
+constexpr int kHealingPotionFlatBonus = 2;
+
+// -1 if the character carries no Potion, otherwise the character.inventory
+// index of the first one found -- lets GameLoop::runCombat drink "a"
+// potion with no picker UI, the same "nothing to actually select"
+// simplification Spellcasting's one-known-spell already established
+// (every carried potion is identical, so which one doesn't matter).
+int firstPotionIndex(const Character& character);
+
+// Removes character.inventory[index] and heals kHealingPotionDiceCount d
+// kHealingPotionDiceSides + kHealingPotionFlatBonus hit points, capped at
+// maxHp. Returns {false, ...} if index is out of range or isn't a Potion.
+// Reuses PurchaseResult's shape, same "generic action outcome" reuse
+// sellItem already established rather than a duplicate result type.
+PurchaseResult drinkPotion(Character& character, int index);
 
 } // namespace character

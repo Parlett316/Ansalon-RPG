@@ -474,13 +474,19 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
     for (size_t i = start; i < log.size(); ++i) lines.push_back(log[i]);
 
     lines.push_back("");
+    std::ostringstream footer;
+    footer << "Enter=attack";
     if (character::canCastSpells(character.charClass)) {
-        std::ostringstream footer;
-        footer << "Enter=attack   m=cast " << character::knownSpellName(character.charClass) << "   f=flee";
-        lines.push_back(footer.str());
-    } else {
-        lines.push_back("Enter=attack   f=flee");
+        footer << "   m=cast " << character::knownSpellName(character.charClass);
     }
+    // Only hinted when there's actually a potion to drink -- same "only
+    // show it when it's usable" precedent m=cast already follows for
+    // non-casters.
+    if (character::firstPotionIndex(character) >= 0) {
+        footer << "   i=drink potion";
+    }
+    footer << "   f=flee";
+    lines.push_back(footer.str());
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -544,6 +550,14 @@ void MapRenderer::drawShopFrame(const character::Character& character, const std
 void MapRenderer::drawInventoryFrame(const character::Character& character, int selectedIndex) {
     std::vector<std::string> lines;
 
+    // Shown mainly so drinking a potion here (see GameLoop::handleInventory)
+    // is visibly reflected the same way equipping already is via the
+    // Weapon:/Armor: lines below -- this screen has no separate message
+    // parameter the way drawShopFrame does.
+    std::ostringstream hpLine;
+    hpLine << "HP: " << character.currentHp << "/" << character.maxHp;
+    lines.push_back(hpLine.str());
+
     std::ostringstream weaponLine;
     weaponLine << "Weapon: " << character.weaponName;
     lines.push_back(weaponLine.str());
@@ -569,7 +583,7 @@ void MapRenderer::drawInventoryFrame(const character::Character& character, int 
     }
 
     lines.push_back("");
-    lines.push_back("up/down=select   Enter=equip   q=leave");
+    lines.push_back("up/down=select   Enter=equip/use   q=leave");
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";

@@ -1,6 +1,9 @@
 #include "character/Equipment.h"
 #include "character/Ability.h"
 #include "character/Character.h"
+#include "character/Dice.h"
+
+#include <algorithm>
 
 namespace character {
 
@@ -43,6 +46,8 @@ std::string inventoryItemLabel(const InventoryItem& item) {
         case ItemKind::Weapon:
             return item.weaponName + " (1d" + std::to_string(item.weaponDamageSides) +
                    (item.weaponDamageBonus > 0 ? "+" + std::to_string(item.weaponDamageBonus) : "") + ")";
+        case ItemKind::Potion:
+            return "Potion of Healing (2d4+2 hp)";
     }
     return "";
 }
@@ -86,6 +91,12 @@ bool equipInventoryItem(Character& character, int index) {
             character.inventory.push_back(std::move(old));
             break;
         }
+        case ItemKind::Potion:
+            // Not equippable -- GameLoop::handleInventory branches on
+            // ItemKind before ever calling here for a Potion; drinking is
+            // a different action (see drinkPotion below), unreachable here
+            // in practice.
+            break;
     }
     return true;
 }
@@ -171,6 +182,17 @@ std::vector<ShopItem> availableShopItems(const Character& character) {
         items.push_back(std::move(weapon));
     }
 
+    // Potion of Healing -- see Equipment.h for the pre-Cataclysm-relic
+    // framing. Stackable (alreadyOwned always false, unlike armor/weapons
+    // which block owning a duplicate) and open to every class (no
+    // canWearArmor-style restriction).
+    ShopItem potion;
+    potion.label = "Potion of Healing (2d4+2 hp)";
+    potion.costStl = kHealingPotionCostStl;
+    potion.alreadyOwned = false;
+    potion.buyable = true;
+    items.push_back(std::move(potion));
+
     return items;
 }
 
@@ -196,17 +218,25 @@ PurchaseResult purchaseItem(Character& character, int index) {
     // deliberate action via GameLoop::handleInventory ('i'). See
     // docs/CHARACTER_NOTES.md.
     int armorCount = static_cast<int>(kBuyableArmor.size());
+    const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass);
+    int weaponIndex = upgrade != nullptr ? armorCount + 1 : -1;
+    bool isPotion = false;
     if (index < armorCount) {
         character.inventory.push_back(InventoryItem{ItemKind::Armor, kBuyableArmor[index], "", 0, 0});
     } else if (index == armorCount) {
         character.inventory.push_back(InventoryItem{ItemKind::Shield, ArmorId::None, "", 0, 0});
-    } else {
-        const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass);
+    } else if (index == weaponIndex) {
         character.inventory.push_back(
             InventoryItem{ItemKind::Weapon, ArmorId::None, upgrade->name, upgrade->damageSides, upgrade->damageBonus});
+    } else {
+        // The one remaining catalog line -- the Potion of Healing, whether
+        // or not this class had a weapon-upgrade entry ahead of it.
+        character.inventory.push_back(InventoryItem{ItemKind::Potion, ArmorId::None, "", 0, 0});
+        isPotion = true;
     }
 
-    return {true, "Bought " + item.label + ". Press 'i' to equip it."};
+    return {true, "Bought " + item.label +
+                       (isPotion ? ". Press 'i' to drink it." : ". Press 'i' to equip it.")};
 }
 
 namespace {
@@ -230,6 +260,9 @@ int resaleValueStl(const Character& character, const InventoryItem& item, bool& 
             sellable = false;
             return 0;
         }
+        case ItemKind::Potion:
+            sellable = true;
+            return kHealingPotionCostStl / 2;
     }
     sellable = false;
     return 0;
@@ -262,6 +295,25 @@ PurchaseResult sellItem(Character& character, int index) {
     character.steelPieces += value;
 
     return {true, "Sold " + label + " for " + std::to_string(value) + " stl."};
+}
+
+int firstPotionIndex(const Character& character) {
+    for (size_t i = 0; i < character.inventory.size(); ++i) {
+        if (character.inventory[i].kind == ItemKind::Potion) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+PurchaseResult drinkPotion(Character& character, int index) {
+    if (index < 0 || index >= static_cast<int>(character.inventory.size()) ||
+        character.inventory[index].kind != ItemKind::Potion) {
+        return {false, "That's not a potion."};
+    }
+    character.inventory.erase(character.inventory.begin() + index);
+    int healed = std::max(0, std::min(roll(kHealingPotionDiceCount, kHealingPotionDiceSides) + kHealingPotionFlatBonus,
+                                       character.maxHp - character.currentHp));
+    character.currentHp += healed;
+    return {true, "You drink a Potion of Healing and recover " + std::to_string(healed) + " hit points."};
 }
 
 } // namespace character

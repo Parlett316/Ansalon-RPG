@@ -155,12 +155,13 @@ public:
                                const std::vector<character::SellItem>& sellItems, bool sellMode,
                                int selectedIndex, const std::string& message);
 
-    // Renders the carried-items screen: the three equipped slots (Armor/
-    // Shield/Weapon) at top, then a cursor list of character.inventory
-    // (label format matches ShopItem::label) with `selectedIndex` marked.
-    // GameLoop::handleInventory() takes over input itself while this is
-    // showing -- same nested-loop shape as drawShopFrame (North/South move
-    // the cursor, Enter equips, Quit leaves).
+    // Renders the carried-items screen: current HP, then the three equipped
+    // slots (Armor/Shield/Weapon) at top, then a cursor list of
+    // character.inventory (label format matches ShopItem::label) with
+    // `selectedIndex` marked. GameLoop::handleInventory() takes over input
+    // itself while this is showing -- same nested-loop shape as
+    // drawShopFrame (North/South move the cursor, Enter equips a
+    // gear item or drinks a Potion, Quit leaves).
     static void drawInventoryFrame(const character::Character& character, int selectedIndex);
 
     // Renders a dedicated, full-screen scrollable view of the *entire*
