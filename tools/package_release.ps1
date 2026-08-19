@@ -7,7 +7,7 @@
     playable build to someone who doesn't have this source tree. Builds the
     Release config, copies the exe plus the data it needs (as populated next
     to the exe by CMakeLists.txt's post-build step) into dist/AnsalonRPG/,
-    and zips that folder to dist/AnsalonRPG.zip. See CLAUDE.md's "Build
+    and zips that folder to dist/AnsalonRPG-v<N>.zip. See CLAUDE.md's "Build
     process" and docs/GOTCHAS.md for why the exe can locate its own data
     wherever it's unzipped (render::Console::executableDirectory()).
 
@@ -16,6 +16,12 @@
     no separate Visual C++ Redistributable install is needed. They do need
     a VT100-capable terminal (Windows 10+ Terminal or cmd/PowerShell both
     qualify) at least 80x24.
+
+    Each run bumps a build counter in tools/release_version.txt (checked
+    into git, so it persists and the increment shows up in `git diff`) and
+    stamps it into the zip name (dist/AnsalonRPG-v<N>.zip) and a VERSION.txt
+    dropped inside the package, so successive builds handed to the same
+    person are distinguishable.
 
 .EXAMPLE
     powershell -File tools\package_release.ps1
@@ -27,7 +33,16 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $repoRoot "build"
 $releaseDir = Join-Path $buildDir "Release"
 $stageDir = Join-Path $repoRoot "dist\AnsalonRPG"
-$zipPath = Join-Path $repoRoot "dist\AnsalonRPG.zip"
+
+$versionFile = Join-Path $PSScriptRoot "release_version.txt"
+$version = 0
+if (Test-Path $versionFile) {
+    $version = [int](Get-Content $versionFile -Raw).Trim()
+}
+$version++
+Set-Content -Path $versionFile -Value $version -NoNewline
+
+$zipPath = Join-Path $repoRoot "dist\AnsalonRPG-v$version.zip"
 
 Write-Host "Building Release..."
 $cmake = "C:\Program Files\CMake\bin\cmake.exe"
@@ -54,8 +69,10 @@ Copy-Item $dataSrc -Destination $dataDst -Recurse
 $preview = Join-Path $dataDst "overworld_preview.png"
 if (Test-Path $preview) { Remove-Item -Force $preview }
 
+Set-Content -Path (Join-Path $stageDir "VERSION.txt") -Value "AnsalonRPG build $version"
+
 Write-Host "Zipping $zipPath ..."
-if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+Get-ChildItem (Join-Path $repoRoot "dist") -Filter "AnsalonRPG-v*.zip" | Remove-Item -Force
 Compress-Archive -Path (Join-Path $stageDir "*") -DestinationPath $zipPath
 
-Write-Host "Done: $zipPath"
+Write-Host "Done: $zipPath (build $version)"
