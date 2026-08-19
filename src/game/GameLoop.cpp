@@ -830,6 +830,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
 
         if (key == render::Key::Flee) {
             log.push_back("You break off and retreat.");
+            log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
             render::Console::readKey();
             pushLog("You fled from the " + monster.name + ".");
@@ -893,6 +894,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You gain " + std::to_string(monster.xpValue) + " experience.");
                 character::applyPendingLevelUps(state_.character, log);
             }
+            log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log);
             render::Console::readKey();
             pushLog("You defeated the " + monster.name + ".");
@@ -909,6 +911,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 state_.x = town->x;
                 state_.y = town->y;
             }
+            log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
             render::Console::readKey();
             pushLog("You were knocked out by the " + monster.name + " and woke up back in " + townName + ".");
