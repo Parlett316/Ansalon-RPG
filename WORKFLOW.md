@@ -35,7 +35,7 @@ Read CLAUDE.md and docs/CURRENT_WORK.md. What's next?
 or, for milestone-specific work:
 
 ```
-Read docs/MILESTONES.md — what's next?
+
 ```
 
 **2. Work the task**
