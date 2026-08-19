@@ -130,3 +130,12 @@ GLYPH K
 POS 262 73
 DESC A walled harbor city on Kalaman Bay, its open-air bazaar and fish market spilling into streets built for a bigger, safer age. White-winged ships ride at anchor in its harbor -- the last real port left to whoever still controls it.
 END
+
+LOCATION palanthas
+NAME Palanthas
+REGION Solamnia
+TERRAIN walled-port-city
+GLYPH L
+POS 167 85
+DESC A wheel-shaped city of white marble ringing the Bay of Branchala, its dwarven-cut avenues radiating out from a central hub to the sea gates and the Old City Wall. The only deep-water port to survive the Cataclysm intact -- and, somewhere past its rooftops, a single black tower the whole city has learned not to look at.
+END

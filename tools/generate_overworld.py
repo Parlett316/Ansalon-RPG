@@ -116,6 +116,7 @@ ROAD_PAIRS = [
     ("solace", "high_clerist_tower"),
     ("solace", "silvanesti"),
     ("high_clerist_tower", "kalaman"),
+    ("high_clerist_tower", "palanthas"),
 ]
 
 
@@ -142,12 +143,19 @@ def load_location_positions() -> dict[str, tuple[int, int]]:
 
 
 def draw_line(grid: list[list[str]], x0: int, y0: int, x1: int, y1: int, char: str) -> None:
-    """Bresenham's line algorithm -- draws a road as a simple straight path
-    between two tile coordinates. Roads are a cosmetic/gameplay convenience
-    baked into terrain at generation time, not a precise routed path, so a
-    straight line (rather than pathfinding around mountains) is an
-    intentional simplification -- hand-edit data/overworld.grid afterward if
-    a road cuts through terrain it obviously shouldn't.
+    """Bresenham's line algorithm, adapted so every two consecutively-drawn
+    tiles are orthogonally (4-directionally) adjacent -- never diagonal-only.
+    Standard Bresenham can advance x and y in the same step, drawing two
+    tiles that only touch corner-to-corner; the game's arrow-key/WASD
+    movement is strictly 4-directional (src/render/Console.cpp), so a
+    diagonal-only road segment was a real player-facing dead end (see
+    docs/MAP_NOTES.md's road-connectivity fix). Whenever a step would move
+    both axes at once, the x-move and y-move are taken as two sequential
+    stamps (a 1-tile "staircase" corner) instead of one combined jump. The
+    error-term math and axis selection are untouched -- only stamp timing
+    changed -- so this still draws a straight-ish path, not a pathfinder
+    (hand-edit data/overworld.grid afterward if a road cuts through terrain
+    it obviously shouldn't).
     """
     dx = abs(x1 - x0)
     dy = -abs(y1 - y0)
@@ -155,18 +163,22 @@ def draw_line(grid: list[list[str]], x0: int, y0: int, x1: int, y1: int, char: s
     sy = 1 if y0 < y1 else -1
     err = dx + dy
     x, y = x0, y0
-    while True:
-        if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-            grid[y][x] = char
-        if x == x1 and y == y1:
-            break
+
+    def stamp(px: int, py: int) -> None:
+        if 0 <= py < len(grid) and 0 <= px < len(grid[0]):
+            grid[py][px] = char
+
+    stamp(x, y)
+    while x != x1 or y != y1:
         e2 = 2 * err
         if e2 >= dy:
             err += dy
             x += sx
+            stamp(x, y)
         if e2 <= dx:
             err += dx
             y += sy
+            stamp(x, y)
 
 
 def main() -> None:

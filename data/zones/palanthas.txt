@@ -1,0 +1,42 @@
+# data/zones/palanthas.txt -- hand-authored walkable interior: Palanthas's
+# library district and Old City streets (Milestone 44 -- Dragons of Spring
+# Dawning). The filename stem ("palanthas") is the zone id and MUST match
+# the LOCATION id in data/locations.txt for the Enter key to find it.
+# Grammar: docs/ZONE_NOTES.md
+NAME Palanthas
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#......................................#
+#.......H..............................#
+#...................P..................#
+#......................................#
+#......................................#
+#.............L........................#
+#..............................W.......#
+#......................................#
+#.....T.............K..................#
+#......................................#
+#.....O................................#
+#......................................#
+#......................................#
+########################################
+ENDGRID
+POI H "The Harbor" White-winged sails crowd a harbor deep enough for real ships of the line -- the one true port on this coast to survive the Cataclysm intact, dwarven-cut quays still holding true after all these centuries.
+POI P "The Lord's Palace" A palace of pale stone rises on high ground at the city's heart, its round map room said to hold the finest view in Palanthas -- save for one window, kept permanently curtained. Lord Amothus governs here: a well-meaning, easily-distracted man, these days much occupied with an army, its wounded, and a war he never expected to be fighting.
+POI L "The Great Library" Cool marble halls climb in silence behind a locked, glass-paned door, the realm of an order that admits almost no one. Past the vestibule a single lamp burns steady over a desk where history is being written down, one patient word at a time, by a man who has never once looked up in time to be thanked for it.
+POI W "The Old City Wall" Stone steps climb to the battlements, each block cut and fitted with a precision that speaks for itself -- dwarven work, unmistakably, holding up a wall that has stood since long before the Cataclysm without needing to be told how impressive that is.
+POI T "The Tower of High Sorcery" Black marble where the rest of the city is white, its minarets crumbled and its windows dark as empty eyesockets. An iron fence rings it entire, and something is still pinned to its gate that the whole city has agreed, by long unspoken consent, never to look at closely. No one has set foot inside in longer than anyone can remember.
+POI K "A Knight of the Watch" He stands his post with a soldier's stillness, eyes moving over the street the way a man watches weather he doesn't trust.
+POI O "The Shoikan Oak Grove" An ordinary-looking stand of ancient oaks stands at the heart of a street of handsome, empty buildings -- shops and homes kept spotless by a city too proud to let them fall to ruin, too frightened to move back in. The cold here has nothing to do with the season.
+TALK K "Halt and be known." The knight's eyes flick over you, unhurried -- a soldier's assessment, not a threat. "Palanthas keeps its gates open to travelers still, for now. Can't speak for how long. We're garrisoned three deep since the fighting at the Tower, and every wall in this city has eyes on it that didn't used to."
+TALK_AGAIN K "Still standing your post, I see." The knight offers the ghost of a nod. "Same as me. Palanthas holds. That's the whole of the news today, and most days lately."
+TOPIC K "A City Under Watch" "You'll have noticed the patrols. Word from the Tower's siege reached us fast, and faster still once the Golden General took up residence in the map room herself. Half the city thinks we're one dragon flight from disaster; the other half thinks she's already won the war for us. I try not to place bets either way. Just watch the sky, same as always."
+TALK L "You've come to see the library." The historian doesn't look up from his ledger, pen never slowing. "Nearly everyone who reaches these steps has. Very few are let past this room, fewer still ask why." A pause, precise as a held breath. "I am Astinus. I record what happens. I do not explain it, and I do not stop it. If you were hoping for either, you have climbed a great many stairs for nothing."
+TALK_AGAIN L Astinus's pen does not pause. "You again. History continues to happen whether or not you stand here watching me write it down. I'd suggest you go participate in some, rather than observe an old man doing the same."
+SAY_IF L mage Astinus's pen pauses, fractionally -- the smallest interruption his composure has shown all evening. "A student of the Art. I have written the Test of High Sorcery down more times than I care to remember, in more versions than most Orders would admit exist." His pen resumes. "Every one of them costs something. I find it curious how rarely anyone reads that part before taking the Test, and how completely they understand it after."
+TOPIC L "The Order of Aesthetics" "My Aesthetics keep this library, and keep it sealed," Astinus says, still writing. "Not from unkindness. Every page in this building is a moment that happened exactly once and cannot be allowed to happen differently in the retelling. I have, on rare occasion, made an exception." His pen stops, just briefly. "The exceptions are never comfortable ones."
+TOPIC L "A Young Mage, Once" Astinus's expression, such as it is, does not change. "A young man came to these steps once, dying by his own ambition, and I let him be carried inside against every rule my order keeps." He resumes writing. "I have not decided whether that was mercy or curiosity. I record history. I am supposed to be its most reliable witness, and on that particular night, I find my own account suspect." He does not elaborate further, and his tone makes clear he will not be asked to.
+TIMELINE_ANCHOR L
+END

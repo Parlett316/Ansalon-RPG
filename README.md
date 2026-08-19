@@ -44,7 +44,7 @@ launch rather than assuming a fixed size. The whole continent is a
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
-Silvanesti, Kalaman, ...) sit on that grid, most connected by roads baked
+Silvanesti, Kalaman, Palanthas, ...) sit on that grid, most connected by roads baked
 into the terrain — Ice Wall is the one exception, a sea-locked ruin
 reachable only by arranging passage and crossing open water (see below) —
 and every one of them now has a walkable interior (Enter to step in) —
@@ -60,20 +60,23 @@ on, first to a dragon-orb quest at Ice Wall Castle and then to the siege
 of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
 Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
 Silvanesti instead, into a second dragon-orb crisis of their own — and
-then, as *Dragons of Spring Dawning* opens, Flint and Tasslehoff reach
-Kalaman for its Spring Dawning festival before the rest of the surviving
-party (minus Raistlin, who splits off toward Palanthas) washes ashore
-after a shipwreck and reunites with them there, just as a Dragon
-Highlord's ultimatum arrives — see `docs/TIMELINE_NOTES.md`. Stepping
-inside a zone carries the encounter through too: find them gathered at
-the Inn's fireplace, Haven's market, Xak Tsaroth's old well, Qualinost's
-Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine entrance at
-Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the Tower of the
-Stars in Silvanost, or Kalaman's Market Square, not just standing on the
-overworld tile. You can actually talk to them (and to NPCs inside zones,
-like the Inn's Otik and Tika, Haven's Seeker Guard, Darken Wood's
-Forestmaster, the Tower's Garrison Knight, Ice Wall's own young Knight,
-Silvanost's Warder, and Kalaman's City Watchman) — press `t`, grounded in
+then, as *Dragons of Spring Dawning* opens, Flint and Tasslehoff travel on
+to Palanthas — witnessing, from the outside, the same night Raistlin's own
+dragon-orb escape from the Blood Sea maelstrom lands him half-dead on the
+Great Library's steps — before reaching Kalaman for its Spring Dawning
+festival, while the rest of the surviving party washes ashore after a
+shipwreck and reunites with them there, just as a Dragon Highlord's
+ultimatum arrives — see `docs/TIMELINE_NOTES.md`. Stepping inside a zone
+carries the encounter through too: find them gathered at the Inn's
+fireplace, Haven's market, Xak Tsaroth's old well, Qualinost's Hall of the
+Sky, Darken Wood's faded trail, the Tharkadan mine entrance at Pax
+Tharkas, Tarsis's old dock, the Tower's Muster Yard, the Tower of the
+Stars in Silvanost, Kalaman's Market Square, or Palanthas's Great Library,
+not just standing on the overworld tile. You can actually talk to them
+(and to NPCs inside zones, like the Inn's Otik and Tika, Haven's Seeker
+Guard, Darken Wood's Forestmaster, the Tower's Garrison Knight, Ice Wall's
+own young Knight, Silvanost's Warder, Kalaman's City Watchman, and
+Palanthas's Astinus and Knight of the Watch) — press `t`, grounded in
 the original DL1-3 adventure
 modules and, for the Heroes of the Lance, the Chronicles/Legends novels:
 real reactive dialogue based on your own race/class/alignment, branching

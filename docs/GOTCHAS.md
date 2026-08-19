@@ -299,4 +299,8 @@ you hit something surprising — that's the whole point of it existing.
   through terrain it "shouldn't" (e.g. a mountain) if the straight line
   between two locations happens to cross one. Hand-edit
   `data/overworld.grid` to fix specific cases; not worth a pathfinding-based
-  road generator for a handful of roads.
+  road generator for a handful of roads. `draw_line()` guarantees
+  consecutive road tiles are always 4-directionally adjacent, never
+  diagonal-only — see `docs/MAP_NOTES.md`'s "Road 4-connectivity fix" — so
+  this simplification no longer risks a walkability dead end, just an
+  occasionally-wrong-looking terrain crossing.

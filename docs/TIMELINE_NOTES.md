@@ -683,6 +683,62 @@ project's scope. This milestone also references, without naming as a
 tracked character, Berem (the "Green Gemstone Man" the ultimatum demands);
 he isn't a Hero of the Lance and isn't modeled.
 
+## Palanthas (Milestone 44)
+
+The second *Dragons of Spring Dawning* content milestone, and — unlike
+Kalaman — resolves a gap Milestone 39 left open rather than starting one:
+Raistlin escapes the Blood Sea maelstrom alone via the dragon orb
+("Caramon collapses... Raistlin was gone," confirmed Caramon does *not* go
+with him) with nowhere modeled for him to land until now. Sourced from a
+fresh `pdftotext -layout` extraction of `Dragons_of_Spring_Dawning_-_
+Margaret_Weis.pdf`, independently re-verified line-by-line against the
+live text before any dialogue was written (not from the earlier
+summary-level pass alone — same standard Milestone 39 set).
+
+**Three characters, one shared arrival scene.** The chapter immediately
+following Raistlin's escape opens on Astinus of Palanthas; Bertrem finds a
+dying mage on the Great Library's steps and Astinus has him carried inside
+— "no one has ever been admitted except those of our order." Raistlin
+searches forbidden spellbooks, triggers a magical explosion, and Astinus
+delivers the "I am the world... every tear shed, mine have flowed" speech
+before Raistlin invokes the dragon orb once more and collapses, apparently
+dead — left ambiguous on the page, not resolved until later books. The very
+same event is witnessed from outside: Tasslehoff, walking with Flint,
+glimpses "Raistlin" carried into the library. This is why all three
+characters' `PRESENCE palanthas` windows sit at the same location (the
+Great Library, also the zone's `TIMELINE_ANCHOR` — see `docs/ZONE_NOTES.md`)
+rather than being scattered across the zone's other sourced beats (the
+Shoikan Oak Grove, Lord Amothus's map room) that only Flint and Tasslehoff
+actually experience.
+
+**Raistlin's window (`palanthas 83 83`) has no `SAY`, deliberately mirroring
+Sturm's own `high_clerist_tower 81 81` death window.** `TimelineLoader`
+never requires `SAY` to follow a `PRESENCE` — this is an intentional,
+reusable device for "the scene is dramatic/final, not a conversation," not
+a gap to fill in later. His fate stays as ambiguous in this game as it is
+in the book: he silently drops out of both Talk and the announce log after
+day 83 (`!dialogue.empty()` filters him out of `handleTalk`'s candidates,
+same as Sturm), but the Look mechanic (Milestone 43) still surfaces his
+flavor text on that one day, since Look is deliberately unfiltered.
+
+**Flint and Tasslehoff's window (`palanthas 83 89`) fits the one open gap
+in their own schedule exactly**, confirmed against the live file rather
+than assumed: their prior window is `high_clerist_tower 81 81` (witnessing
+Sturm's death), their next is `kalaman 90 92` — days 82-89 are open. The
+in-scene line "She's still not over Sturm's death. It's only been a week,"
+said on the Old City Wall's battlements, dates that specific scene to
+≈day 88 — inside this window, not just adjacent to it. `TOPIC "A City Worth
+Seeing"` (Flint) and the Grove-visit content (Tasslehoff) are both drawn
+directly from that same battlements/map-room chapter stretch.
+
+**No window for Caramon, Tanis, Goldmoon, or Riverwind.** Confirmed by
+direct text search (not inference) that none of them are ever physically in
+Palanthas in this book — they're on the separate Flotsam/Blood Sea/
+sea-elf-rescue track that lands at Kalaman on day 100, already modeled.
+Caramon's own gap between `silvanesti 25 30` and `kalaman 100 100` stays
+unmodeled, same "don't invent to fill a gap" restraint as every prior
+time-skip in this file.
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

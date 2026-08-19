@@ -571,6 +571,61 @@ applied to two characters with active roles across the whole trilogy
 rather than one book. See `docs/TIMELINE_NOTES.md` for the two day-windows
 this zone's `TIMELINE_ANCHOR` serves.
 
+## Palanthas (Milestone 44)
+
+`data/zones/palanthas.txt` — a 40×16 slice of the wheel-shaped city (same
+scale as Kalaman), grounded in the actual Astinus/Shoikan-Grove/map-room
+chapters of *Dragons of Spring Dawning* (a fresh `pdftotext -layout`
+extraction, re-verified independently against the live text a second time
+before writing any dialogue). Seven POIs: the Harbor (`H`), the Lord's
+Palace (`P`, Amothus's map room), the Great Library (`L`), the Old City
+Wall (`W`), the Tower of High Sorcery (`T`), a Knight of the Watch (`K`),
+and the Shoikan Oak Grove (`O`).
+
+**Astinus is a permanent, timeline-independent `TALK` NPC** (like Otik/
+Tika), not gated to any day window — sourced directly ("he is not known to
+leave his Library in Palanthas," *Players Guide to the Dragonlance
+Campaign*) rather than invented. He's also the richest-voiced zone-native
+NPC so far (a `SAY_IF mage` reaction plus two `TOPIC`s), justified by how
+much real, quotable characterization the source material actually gives
+him (the novel's "I am the world" speech, the Player's Guide's "distant...
+reticent... restating the obvious" description) — more investment than the
+generic "unnamed sentinel" archetype (the Knight here, sixth use of that
+pattern after the Fortress Guard, the Tower/Ice Wall Knights, Silvanesti's
+Warder, and Kalaman's City Watchman) gets, deliberately, since there's no
+comparable individual voice to draw on for a generic guard.
+
+**The Library tile doubles as the zone's `TIMELINE_ANCHOR`, sharing a tile
+with Astinus's own `TALK` — not a conflict, and not a coincidence.**
+`Zone` has exactly one `timelineAnchorPoi` per zone (a hard constraint, not
+a style choice), and a POI's own `dialogue` and the anchor's
+`timeline_.presentAt(...)` results are two independent candidate sources
+that both feed `GameLoop::pickAndTalk`/`pickAndLook` — the same layering
+Kalaman's Market Square already established. Here it's also the *sourced*
+choice: Tasslehoff's witnessed beat in the book is watching Raistlin
+carried into this exact library, so the evergreen Astinus and the
+day-gated Heroes belong on the same tile because the text puts them there
+together, not because it was convenient.
+
+**The Tower of High Sorcery and the Shoikan Oak Grove are pure scenery** —
+no `TALK`, no `PORTAL`, no interior. Standing on the Tower's tile *is* the
+interaction (every POI tile is walkable by design, regardless of what it
+represents — see the Milestone-era bugfix in `docs/GOTCHAS.md`), matching
+this project's established "described, not modeled" treatment of
+unenterable structures (the Tower of the Stars, the High Clerist's Tower's
+own sealed interior). **The Lord's Palace is scenery too — Amothus is
+named directly in its description but never becomes a `TALK` NPC**, same
+precedent as Lorac Caladon/Feal-thas: named in flavor text without being
+made talkable, reserved for a character with neither the extensive ongoing
+canon plot that keeps Kitiara/Laurana/Alhana/Derek/Gunthar unnamed, nor a
+strong enough sourced voice sample to draw dialogue from (unlike Astinus).
+
+The airborne dragon battle and Bakaris's capture, later in this same book,
+are confirmed (by direct text search) to happen away from the city near
+Vingaard Keep — correctly out of scope here, same "don't invent to fill a
+gap, and don't drag in an off-site subplot" restraint as Dargaard Keep
+staying unmodeled at Kalaman.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

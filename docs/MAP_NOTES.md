@@ -232,6 +232,75 @@ reapplied afterward with a diff confirming byte-for-byte identical
 placement, rather than re-deriving the patch by eye. Worth doing the same
 capture-before-regenerate step for any future `ROAD_PAIRS` change.
 
+## Palanthas (Milestone 44)
+
+Placed the same "crop and cross-check against a known point" way Kalaman
+was, but with a calibrated-gridline overlay on the crop rather than raw
+pixel-by-eye reading, which surfaced something the Kalaman pass didn't
+catch: `high_clerist_tower`'s own recorded `POS 173 100` does **not** land
+exactly on the Tower's map icon — the icon itself reads at roughly
+(178,104), a consistent (+5,+4) bias between "recorded `POS`" and "map
+icon" in this corner of the reference image (`References/DragonLance_-_
+Continent_of_Ansalon_-_Age_of_Despair.jpg`, 10125×6750px,
+21.09375 px/grid-unit). Worth remembering for any future placement near
+here: cross-check against the Tower's *icon*, not its *recorded `POS`*, or
+the same bias will silently propagate.
+
+Palanthas's own icon read at raw grid ≈(171,90); applying the same bias
+correction landed on `(166,86)`, classified mountain (`A`) in
+`data/overworld.grid` — plausible on its own (Palanthas sits "almost
+surrounded by arms of the Vingaard Mountains" per the Atlas of the
+Dragonlance World, p.96), but not walkable. Checked the grid directly (not
+assumed) rather than guessing a nudge direction: `(167,85)`, one tile
+north, is grassland (`.`) — the shore of the Bay of Branchala on the
+reference map — so that's the final `POS`, same "nudge onto confirmed
+walkable terrain" precedent Kalaman/Ice Wall already set, and the smallest
+possible nudge (distance 1).
+
+**`("high_clerist_tower", "palanthas")` added to `ROAD_PAIRS`.** Same
+capture-before-regenerate procedure Milestone 39 established for Ice
+Wall's glacier patch — captured its 46 tile coordinates first this time
+too, regenerated, reapplied, diff-confirmed byte-for-byte identical
+afterward. The new road turned out cleaner than expected: a
+column-by-column check of the generated path (at the time, a continuous,
+unbroken diagonal from `(173,100)` to `(167,85)` — see "Road 4-connectivity
+fix" below for why that diagonal shape has since changed, confirmed tile by
+tile rather than assumed from the two endpoints) crosses ordinary
+mountain/hills/shallow-water/grassland the whole way and does **not** touch
+the nearby `!` Blood-Sea-classified pocket that sits a few tiles further
+west/south at roughly the same rows — worth knowing if a future placement
+in this same corner of the map needs to route around that pocket, since
+this road happened to clear it without any special handling.
+
+## Road 4-connectivity fix
+
+A player reported getting stuck at overworld tile `(174,106)`, unable to
+reach `high_clerist_tower` (`POS 173 100`) despite a road connecting them.
+Root cause: `draw_line()`'s Bresenham implementation could advance both `x`
+and `y` in the same step, so two consecutive drawn road tiles could end up
+only *diagonally* adjacent — but the game's movement is 4-directional for
+both arrow keys and WASD (`src/render/Console.cpp`); true diagonal movement
+exists only via the less-discoverable roguelike `y`/`u`/`b`/`n` keys. Any
+road whose endpoints weren't exactly horizontal/vertical/45° could contain
+diagonal-only jumps — the `high_clerist_tower`→`palanthas` road above,
+described at the time as "a continuous, unbroken diagonal," was exactly
+this trap.
+
+**Fix**: `draw_line()` now stamps a tile after each individual axis update
+instead of once per loop iteration, so a would-be diagonal step becomes two
+sequential orthogonal stamps (a 1-tile "staircase" corner) — the error-term
+math and axis selection are untouched, so roads are still straight-ish
+lines, not a pathfinder; they just pick up a tile or two extra at each
+staircase corner, harmless since roads have a flat `hoursToCross = 1`
+regardless of underlying terrain. `data/overworld.grid` was regenerated
+with the fix (Ice Wall's 46-tile glacier patch captured, reapplied, and
+diff-confirmed byte-for-byte identical afterward, same procedure as every
+prior regeneration), then every one of the 12 `ROAD_PAIRS` — plus the
+specific reported `(174,106)` tile — was reverified end-to-end reachable
+using a 4-directional-only BFS against the same passability rule
+`world::terrainFor` uses at runtime (a throwaway verification script, run
+once and deleted, per this project's self-test-then-delete convention).
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

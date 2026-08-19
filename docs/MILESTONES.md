@@ -419,6 +419,39 @@ this stays authoritative.
     `docs/ARCHITECTURE.md`'s "Frameless overworld/zone layout + NPC
     'Look'", `docs/ZONE_NOTES.md`'s "NPCs: POIs you can talk to", and
     `docs/TIMELINE_NOTES.md`'s "How presence is shown".
+44. Palanthas -- the second *Dragons of Spring Dawning* content milestone,
+    resolving a gap Milestone 39 left open: Raistlin escapes the Blood Sea
+    maelstrom alone via the dragon orb with nowhere modeled to land until
+    now. A new `LOCATION palanthas` (`POS 167 85`, `REGION Solamnia`,
+    placed by a calibrated-gridline crop cross-checked against the already-
+    placed `high_clerist_tower`, which surfaced a previously undocumented
+    (+5,+4) bias between that location's recorded `POS` and its actual map
+    icon -- see `docs/MAP_NOTES.md`), a new 40x16 zone (the Great Library,
+    the Tower of High Sorcery, the Shoikan Oak Grove, Lord Amothus's map
+    room, the Old City Wall, the Harbor, and a Knight of the Watch -- see
+    `docs/ZONE_NOTES.md`), and `data/timeline.txt` windows for three
+    characters sharing one sourced arrival scene: Raistlin
+    (`palanthas 83 83`, no `SAY`, deliberately mirroring Sturm's own death
+    window -- his on-page fate stays as ambiguous here as in the book) and
+    Flint/Tasslehoff (`palanthas 83 89`, filling the one open gap in their
+    existing schedule between the Tower and Kalaman). All three windows
+    anchor at the Great Library because the source text puts them there
+    together (Tasslehoff witnesses Raistlin carried in); Astinus is a
+    separate, permanent, timeline-independent NPC on that same tile,
+    sourced from both the novel and the Players Guide. Caramon, Tanis,
+    Goldmoon, and Riverwind get no window -- confirmed absent from
+    Palanthas by direct text search. The `("high_clerist_tower",
+    "palanthas")` road addition required regenerating `data/overworld.grid`
+    (Ice Wall's 46-tile glacier patch captured before regenerating and
+    diff-confirmed byte-for-byte identical afterward, same procedure
+    Milestone 39 established); the new road turned out to cross ordinary
+    terrain the whole way, clearing a nearby Blood-Sea-classified pocket
+    without needing any special handling. Verified via a throwaway
+    self-test (17 assertions covering location/zone loading and
+    `Timeline::presentAt` across the day-83/85/82/90 boundaries), a clean
+    rebuild (zero new warnings, no `.cpp`/`.h` changes -- pure data content,
+    same as Kalaman), and the piped smoke test. See `docs/MAP_NOTES.md`,
+    `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
 
 ## NEXT UP
 
@@ -436,11 +469,10 @@ session's work.
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
 
-**Continuing *Dragons of Spring Dawning* after Kalaman (Milestone 39):**
-per the research pass documented there, Palanthas (the Great Library, the
-cursed-but-visible Tower of High Sorcery), Godshome (small, self-contained
--- Flint's death), and Neraka (the climax, fortress-zone idiom like Pax
-Tharkas/Ice Wall) are the natural next candidates. Flotsam, Vingaard Keep,
-Dargaard Keep, sunken Istar, and Sanction are recommended to stay
-flavor-only dialogue rather than walkable zones -- see `docs/MILESTONES.md`
-Milestone 39 and `docs/TIMELINE_NOTES.md` for the full reasoning.
+**Continuing *Dragons of Spring Dawning* after Palanthas (Milestone 44):**
+Godshome (small, self-contained -- Flint's death) and Neraka (the climax,
+fortress-zone idiom like Pax Tharkas/Ice Wall) are the remaining natural
+candidates. Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and
+Sanction are recommended to stay flavor-only dialogue rather than walkable
+zones -- see `docs/MILESTONES.md` Milestone 39 and `docs/TIMELINE_NOTES.md`
+for the full reasoning.
