@@ -190,6 +190,14 @@ public:
     // GameLoop::handleLog's nested loop can keep adjusting it by a fixed
     // step across calls without duplicating the wrap/line-count math here.
     static int drawLogFrame(const std::vector<std::string>& log, int scrollOffset);
+
+    // Renders the '?' help screen: every command bound in
+    // render::Console::readKey, grouped by context (movement, overworld/
+    // zone actions, combat-only actions, other). Static content -- no
+    // parameters -- since the binding list itself doesn't depend on game
+    // state. GameLoop::showHelp() blocks for one keypress to dismiss it,
+    // same shape as drawCharacterSheet.
+    static void drawHelpFrame();
 };
 
 } // namespace render

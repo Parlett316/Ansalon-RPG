@@ -285,11 +285,15 @@ Combat state (monster HP, the log) is local to that loop, never touches
 encounter, an accepted trade-off given the death rule below.
 
 **Knocked out, not killed.** A direct user decision, chosen over
-permadeath: HP reaching 0 caps it at 1 and warps the player back to
-Solace. This is *why* combat could stay out of the save format at all —
-if death were permanent (or even just persistent partial damage across a
-crash mattered), losing an in-progress fight to a crash would be a much
-bigger deal.
+permadeath: HP reaching 0 fully heals the player and warps them to the
+**nearest town** (`GameLoop::nearestTown()`, straight-line distance to
+whichever `world::Location::isTown` entry is closest — see
+`docs/COMBAT_NOTES.md`'s "Death: knocked out, not killed" for the town
+list and why it's a curated subset, not every named location). This is
+*why* combat could stay out of the save format at all — if death were
+permanent (or even just persistent partial damage across a crash
+mattered), losing an in-progress fight to a crash would be a much bigger
+deal.
 
 `MapRenderer` gained a third per-context draw method, `drawCombatFrame`,
 alongside `drawOverworldFrame`/`drawZoneFrame` — same "one method per

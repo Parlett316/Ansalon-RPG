@@ -1,9 +1,25 @@
 # Current work
 
-Milestone 44 (Palanthas) is implemented and self-verified, but **not yet
-confirmed in a real, human-at-the-keyboard playthrough** — `_getch()` can't
-be piped (see `docs/GOTCHAS.md`), so none of the following could be
-scripted:
+Three small UX/rules fixes are implemented and self-verified, but **not
+yet confirmed in a real, human-at-the-keyboard playthrough** — `_getch()`
+can't be piped (see `docs/GOTCHAS.md`):
+
+- **Nearest-town death respawn**: getting knocked out (HP to 0) in combat
+  should now fully heal the player and send them to the nearest of Solace/
+  Haven/Kalaman/Tarsis/Palanthas (whichever is closest to where they fell),
+  not always Solace at 1 HP. Confirm the combat-log and side-log messages
+  name the right town, and that HP is actually full afterward. See
+  `docs/COMBAT_NOTES.md`'s "Death: knocked out, not killed".
+- **`?` help screen**: pressing `?` on the overworld or in a zone should
+  open a bordered screen listing every command, dismissed by any keypress.
+  Confirm it opens/closes cleanly and the listed bindings are accurate.
+
+Also done this pass, and verifiable headlessly (already confirmed via the
+piped character-creation smoke test): character names are now capped at
+20 characters, reprompting on anything longer.
+
+Milestone 44 (Palanthas) is also implemented and self-verified, but **not
+yet confirmed in a real, human-at-the-keyboard playthrough**:
 
 - Walk from the High Clerist's Tower to the new Palanthas tile and confirm
   the overworld announce reads correctly.
@@ -39,9 +55,10 @@ See `docs/MILESTONES.md` entry 44 and `docs/MAP_NOTES.md`/
 `docs/ZONE_NOTES.md`/`docs/TIMELINE_NOTES.md`'s "Palanthas (Milestone 44)"
 sections for the full writeup.
 
-Next step: have the user play for a bit and confirm the items above, per
-CLAUDE.md's session workflow. Once confirmed, clear this file back to
-"nothing in flight" and offer the next backlog menu from
-`docs/MILESTONES.md`'s "NEXT UP" (Godshome and Neraka are now the two
-remaining *Dragons of Spring Dawning* candidates, alongside
+Next step: have the user play for a bit and confirm all the items above
+(the nearest-town respawn and help screen, plus the still-pending
+Palanthas checklist), per CLAUDE.md's session workflow. Once confirmed,
+clear this file back to "nothing in flight" and offer the next backlog
+menu from `docs/MILESTONES.md`'s "NEXT UP" (Godshome and Neraka are now
+the two remaining *Dragons of Spring Dawning* candidates, alongside
 terrain-specific monster pools and more monsters).

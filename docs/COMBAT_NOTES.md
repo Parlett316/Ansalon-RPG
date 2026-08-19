@@ -206,10 +206,28 @@ HP + a log, for a feature whose whole failure mode (the user's own choice
 
 **User decision**, explicitly chosen over permadeath (which would have
 fit the Caves-of-Qud inspiration this project was originally built
-around): when the player's HP reaches 0, it's capped at 1 and they wake up
-back in Solace (`world_.getLocation("solace")`) rather than the run
+around): when the player's HP reaches 0, it's set to `maxHp` (a full heal,
+not just enough to stand) and they wake up at the **nearest town**
+(`GameLoop::nearestTown()`, straight-line tile distance from
+`world::Location::isTown` entries -- see below) rather than the run
 ending. There's no "you have died" screen, no save deletion, nothing
-punitive beyond the HP hit and the trip back to town.
+punitive beyond the trip back to civilization.
+
+**Which locations count as a "town"**: `world::Location` has a `bool
+isTown` flag, set via an optional `TOWN` line in a `data/locations.txt`
+block (see `docs/MAP_NOTES.md`). Five locations carry it -- Solace,
+Haven, Kalaman, Tarsis, Palanthas -- the ones already tagged with a
+civilian-settlement `TERRAIN` (forest-town/plains-town/coastal-town/dry-
+plains-city/walled-port-city). Fortresses (Pax Tharkas, High Clerist's
+Tower), ruins (Xak Tsaroth, Ice Wall), the nomadic Plains of Dust
+village, and the elven homelands (Qualinesti/Silvanesti -- Silvanesti is
+sealed to outsiders, a deliberate lore exclusion, not an oversight) are
+not towns for this purpose. `nearestTown()` picks whichever `isTown`
+location is closest by straight-line tile distance to where the player
+fell -- no pathfinding system exists in this project, same restraint
+already applied to `hoursToCross` being flat-per-tile -- falling back to
+Solace only if no town is found at all (defensive; can't happen with the
+current data).
 
 ## Encounters: a per-terrain chance while traveling
 

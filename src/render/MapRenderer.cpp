@@ -342,7 +342,7 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
 
     out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
     out << padPlain(
-        "Move: arrows/hjkl/yubn/wasd   ;=look around   t=talk   p=shop   v=log   Enter=step in   q=quit",
+        "Move: arrows/hjkl/yubn/wasd   ;=look around   t=talk   p=shop   v=log   Enter=step in   ?=help   q=quit",
         kContentWidth) << "\n";
 
     // The whole frame is built as one string and written in a single
@@ -397,7 +397,7 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
 
     out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
     out << padPlain(
-        "Move: arrows/hjkl/yubn/wasd   ;=look   t=talk   p=shop   v=log   Enter=leave (from the '>' marker)   q=quit",
+        "Move: arrows/hjkl/yubn/wasd   ;=look   t=talk   p=shop   v=log   Enter=leave (from the '>' marker)   ?=help   q=quit",
         kContentWidth) << "\n";
 
     std::cout << out.str();
@@ -726,6 +726,33 @@ int MapRenderer::drawLogFrame(const std::vector<std::string>& log, int scrollOff
 
     std::cout << out.str();
     return offset;
+}
+
+void MapRenderer::drawHelpFrame() {
+    std::vector<std::string> lines;
+
+    lines.push_back("Movement:");
+    lines.push_back("  arrows / hjkl / wasd = move   yubn = diagonals");
+    lines.push_back("");
+    lines.push_back("Overworld / zone:");
+    lines.push_back("  ; = look around        t = talk to someone here");
+    lines.push_back("  Enter = step in/out     c = character sheet");
+    lines.push_back("  p = shop (at a shop)    i = inventory / equip");
+    lines.push_back("  v = full event log      r = rest");
+    lines.push_back("  z = bed rest (at a bed) ? = this help screen");
+    lines.push_back("");
+    lines.push_back("Combat:");
+    lines.push_back("  Enter = attack          m = cast (if a caster)");
+    lines.push_back("  i = drink a potion      f = flee");
+    lines.push_back("");
+    lines.push_back("q / Esc = quit (or leave the current screen)");
+    lines.push_back("");
+    lines.push_back("(press any key to continue)");
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    writeBoxed(out, "Help", lines);
+    std::cout << out.str();
 }
 
 } // namespace render

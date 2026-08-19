@@ -8,6 +8,9 @@
 #   TERRAIN <tag>          free-form descriptive tag (informational; the walkable
 #                          terrain under the location comes from data/overworld.grid)
 #   GLYPH <char>           single ASCII character drawn on the overworld viewport
+#   TOWN                    (optional, no argument) marks this as a civilian settlement --
+#                          a knocked-out player respawns at the nearest TOWN location,
+#                          full-healed, instead of always Solace -- see docs/COMBAT_NOTES.md
 #   POS <x> <y>            tile coordinates on the SAME grid as data/overworld.grid
 #                          (480 wide x 320 tall -- see docs/MAP_NOTES.md for how
 #                          these were placed: approximate, from relative geography,
@@ -28,6 +31,7 @@ NAME Solace
 REGION Abanasinia
 TERRAIN forest-town
 GLYPH S
+TOWN
 POS 185 230
 DESC A town built high in the branches of ancient vallenwood trees, linked by swaying bridges and stairways. The Inn of the Last Home sits atop the tallest trunk, its chimney never quite cold.
 END
@@ -46,6 +50,7 @@ NAME Haven
 REGION Abanasinia
 TERRAIN plains-town
 GLYPH H
+TOWN
 POS 205 250
 DESC A modest farming town on the edge of the Abanasinia plains, its market square usually busy with wagons and rumor alike.
 END
@@ -91,6 +96,7 @@ NAME Tarsis
 REGION Kharolis
 TERRAIN dry-plains-city
 GLYPH T
+TOWN
 POS 170 300
 DESC A city stranded far from any sea, though its docks and rusting ship-hulks remain, half-buried in the dust. Old sailors still argue about which direction the water went.
 END
@@ -127,6 +133,7 @@ NAME Kalaman
 REGION Estwilde
 TERRAIN coastal-town
 GLYPH K
+TOWN
 POS 262 73
 DESC A walled harbor city on Kalaman Bay, its open-air bazaar and fish market spilling into streets built for a bigger, safer age. White-winged ships ride at anchor in its harbor -- the last real port left to whoever still controls it.
 END
@@ -136,6 +143,7 @@ NAME Palanthas
 REGION Solamnia
 TERRAIN walled-port-city
 GLYPH L
+TOWN
 POS 167 85
 DESC A wheel-shaped city of white marble ringing the Bay of Branchala, its dwarven-cut avenues radiating out from a central hub to the sea gates and the Old City Wall. The only deep-water port to survive the Cataclysm intact -- and, somewhere past its rooftops, a single black tower the whole city has learned not to look at.
 END

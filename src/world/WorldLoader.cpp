@@ -65,6 +65,8 @@ void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
             current.terrain = rest;
         } else if (keyword == "GLYPH") {
             current.glyph = rest.empty() ? '?' : rest[0];
+        } else if (keyword == "TOWN") {
+            current.isTown = true;
         } else if (keyword == "POS") {
             std::istringstream iss(rest);
             if (!(iss >> current.x >> current.y)) {

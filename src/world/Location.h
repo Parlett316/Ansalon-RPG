@@ -20,6 +20,8 @@ struct Location {
     int x = 0;
     int y = 0;
     std::string description;
+    bool isTown = false;   // civilian settlement a knocked-out player can wake up in --
+                            // see game::GameLoop::nearestTown and docs/COMBAT_NOTES.md
 };
 
 } // namespace world

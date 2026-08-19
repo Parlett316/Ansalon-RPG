@@ -26,11 +26,21 @@ REGION <text>           region name, rest of line (not read by game logic yet --
 TERRAIN <tag>            free-form descriptive tag, informational only (the actual
                         walkable terrain at this tile comes from overworld.grid)
 GLYPH <char>              single character drawn on the overworld viewport
+TOWN                       (optional, no argument) marks a civilian settlement --
+                          a knocked-out player respawns at the nearest TOWN
+                          location, full-healed, instead of always Solace; see
+                          docs/COMBAT_NOTES.md's "Death: knocked out, not killed"
 POS <x> <y>                two non-negative integers -- tile coordinates in the
                           SAME space as overworld.grid (see below for how chosen)
 DESC <text>              one-line description, rest of line
 END                      closes the block
 ```
+
+`TOWN` is set on exactly 5 of the 13 locations -- Solace, Haven, Kalaman,
+Tarsis, Palanthas -- the ones already carrying a civilian-settlement
+`TERRAIN` tag. Fortresses, ruins, the nomadic Plains of Dust village, and
+the (deliberately excluded, for lore reasons) elven homelands don't have
+it.
 
 Every field is single-line; `WorldLoader` throws a `file:line: message`
 error for anything malformed. There is no `CONNECT`/road field anymore —

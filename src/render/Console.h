@@ -24,6 +24,7 @@ enum class Key {
     Cast,  // cast the character's one known spell in combat -- see game::GameLoop::runCombat
     Rest,  // rest to heal and (re)memorize spells -- see game::GameLoop::handleRest
     BedRest, // fully heal at a bed POI -- see game::GameLoop::handleBedRest
+    Help,  // show the command help screen -- see game::GameLoop::showHelp
     Quit,
     Unknown,
 };

@@ -41,6 +41,16 @@ int promptChoice(const std::string& prompt, int minValue, int maxValue) {
     }
 }
 
+// Reprompts until the name fits, same "tolerate garbage input, reprompt on
+// anything else" shape as promptChoice above.
+std::string promptName() {
+    for (;;) {
+        std::string name = promptLine("What is your name, traveler? ");
+        if (name.size() <= 20) return name;
+        std::cout << "Names can be at most 20 characters -- please try again.\n";
+    }
+}
+
 bool promptYesNo(const std::string& prompt) {
     for (;;) {
         std::string line = promptLine(prompt);
@@ -72,7 +82,7 @@ Character CharacterCreator::run() {
     std::cout << "\n=== Character Creation (2nd Edition AD&D) ===\n\n";
 
     Character character;
-    character.name = promptLine("What is your name, traveler? ");
+    character.name = promptName();
 
     // Method I dice (3d6, straight down the line, fixed STR/DEX/CON/INT/
     // WIS/CHA order) with a house-rule reroll-the-whole-set option, per the

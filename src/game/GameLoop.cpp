@@ -136,6 +136,7 @@ void GameLoop::run() {
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
             case render::Key::Rest:      handleRest(); break;
             case render::Key::BedRest:   handleBedRest(); break;
+            case render::Key::Help:      showHelp(); break;
             case render::Key::Quit:      quit = true; break;
             case render::Key::Unknown:   break;
         }
@@ -271,6 +272,27 @@ void GameLoop::handleBedRest() {
 void GameLoop::showCharacterSheet() {
     render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
     render::Console::readKey(); // block for one keypress to dismiss, any key
+}
+
+void GameLoop::showHelp() {
+    render::MapRenderer::drawHelpFrame();
+    render::Console::readKey(); // block for one keypress to dismiss, any key
+}
+
+const world::Location* GameLoop::nearestTown() const {
+    const world::Location* best = nullptr;
+    long long bestDistSq = 0;
+    for (const world::Location& loc : world_.allLocations()) {
+        if (!loc.isTown) continue;
+        long long dx = loc.x - state_.x;
+        long long dy = loc.y - state_.y;
+        long long distSq = dx * dx + dy * dy;
+        if (best == nullptr || distSq < bestDistSq) {
+            best = &loc;
+            bestDistSq = distSq;
+        }
+    }
+    return best != nullptr ? best : world_.getLocation("solace");
 }
 
 void GameLoop::tryMoveOverworld(int dx, int dy) {
@@ -877,17 +899,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             return;
         }
         if (state_.character.currentHp <= 0) {
-            // Knocked out, not killed -- see docs/COMBAT_NOTES.md. Capped
-            // at 1 HP and warped back to Solace rather than a real death.
-            state_.character.currentHp = 1;
-            log.push_back("You are struck down... and wake up back in Solace, battered but alive.");
-            if (const world::Location* solace = world_.getLocation("solace")) {
-                state_.x = solace->x;
-                state_.y = solace->y;
+            // Knocked out, not killed -- see docs/COMBAT_NOTES.md. Full-healed
+            // and carried to the nearest town rather than a real death.
+            const world::Location* town = nearestTown();
+            const std::string townName = town != nullptr ? town->name : "town";
+            state_.character.currentHp = state_.character.maxHp;
+            log.push_back("You are struck down... and wake up back in " + townName + ", battered but alive.");
+            if (town != nullptr) {
+                state_.x = town->x;
+                state_.y = town->y;
             }
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
             render::Console::readKey();
-            pushLog("You were knocked out by the " + monster.name + " and woke up back in Solace.");
+            pushLog("You were knocked out by the " + monster.name + " and woke up back in " + townName + ".");
             return;
         }
     }

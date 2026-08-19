@@ -170,6 +170,17 @@ private:
     // docs/ZONE_NOTES.md's "Beds" section.
     void handleBedRest();
     void showCharacterSheet();
+    // Opens the '?' help screen listing every command, until one keypress
+    // dismisses it -- same one-keypress-blocks shape as showCharacterSheet.
+    void showHelp();
+    // Nearest world::Location with isTown set, by straight-line tile
+    // distance from state_.x/state_.y (no pathfinding system exists --
+    // same restraint as hoursToCross being flat-per-tile). Used by
+    // runCombat's knockout handling to send the player to the closest
+    // civilian settlement rather than always Solace -- see
+    // docs/COMBAT_NOTES.md. Falls back to "solace" if no town is found
+    // (defensive only; can't happen with the current data).
+    const world::Location* nearestTown() const;
     // Takes over rendering/input in its own loop until the fight ends
     // (victory, flee, or the player is knocked out) -- see
     // docs/ARCHITECTURE.md and docs/COMBAT_NOTES.md for why this is a

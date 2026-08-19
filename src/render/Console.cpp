@@ -128,6 +128,7 @@ Key Console::readKey() {
         case 'm': case 'M': return Key::Cast;
         case 'r': case 'R': return Key::Rest;
         case 'z': case 'Z': return Key::BedRest;
+        case '?': return Key::Help;
         case 'q': case 'Q': case 27: return Key::Quit; // 27 = Esc
         default: return Key::Unknown;
     }
@@ -159,6 +160,7 @@ Key Console::readKey() {
         case 'm': return Key::Cast;
         case 'r': return Key::Rest;
         case 'z': return Key::BedRest;
+        case '?': return Key::Help;
         case 'q': return Key::Quit;
         default: return Key::Unknown;
     }
