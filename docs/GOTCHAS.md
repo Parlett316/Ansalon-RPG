@@ -105,13 +105,19 @@ you hit something surprising — that's the whole point of it existing.
 
 ## Data / file handling
 
-- **`data/locations.txt` and `data/overworld.grid` are resolved via a
-  compile-time absolute path** (`ANSALON_DATA_DIR`, injected by
-  `CMakeLists.txt`), not relative to the executable or the caller's working
-  directory. Deliberate scope-limiting decision for a solo/dev-only project
-  — the game only works built from this exact source tree. Revisit with a
-  real relative-to-executable resolution if this is ever packaged for
-  someone else to run outside this source tree.
+- **`data/locations.txt` and `data/overworld.grid` are resolved relative to
+  the running executable** via `render::Console::executableDirectory()`
+  (`GetModuleFileNameA` on Windows, the one Windows-specific API this
+  needs, kept inside `render/Console.cpp` per `CLAUDE.md`) — `main.cpp`
+  looks for a `data/` folder next to the exe. This is what lets a build be
+  zipped up and shared (see `tools/package_release.ps1`); `CMakeLists.txt`'s
+  post-build step also copies `data/` next to the exe in `build/Debug`/
+  `build/Release` so the normal dev workflow needs no extra step. The old
+  compile-time absolute path (`ANSALON_DATA_DIR`, injected by
+  `CMakeLists.txt`) still exists as a fallback for when the executable's own
+  path can't be determined (non-Windows, or editor tooling that skips CMake
+  configuration) — see `ANSALON_SAVE_FILE` below for the equivalent for
+  `save.txt`.
 - **`WorldLoader` fails fast** (`file:line: message`) on any malformed line
   in `data/locations.txt`, so a hand-edit typo surfaces immediately at
   startup instead of as a confusing bug deep in gameplay. It does *not*
@@ -171,10 +177,13 @@ you hit something surprising — that's the whole point of it existing.
 
 ## Save/load (`game::SaveGame`)
 
-- **`save.txt` is resolved via a compile-time absolute path**
-  (`ANSALON_SAVE_FILE`, injected by `CMakeLists.txt`), same pattern and same
-  solo/dev-only limitation as `ANSALON_DATA_DIR` above. It's gitignored —
-  see `.gitignore`.
+- **`save.txt` is resolved next to the running executable**, same
+  `executableDirectory()`-based resolution as `data/` above (falling back to
+  the compile-time `ANSALON_SAVE_FILE` in the same rare cases). This changed
+  from "always the repo root" — running `build\Debug\ansalon_rpg.exe` now
+  reads/writes `build\Debug\save.txt`, not `<repo root>\save.txt`, and a
+  packaged build (`tools/package_release.ps1`) gets its own independent save
+  next to wherever it's unzipped. It's gitignored — see `.gitignore`.
 - **`RACE`/`CLASS`/`ALIGNMENT` are stored as raw enum ints**, not names
   (`static_cast<int>(character::RaceId)` etc.). This is a deliberate
   simplicity trade-off (no name↔enum reverse lookup needed anywhere else in

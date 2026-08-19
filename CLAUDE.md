@@ -82,9 +82,11 @@ cmake --build build --config Debug
 ```
 
 Executable lands at `build\Debug\ansalon_rpg.exe`. It locates
-`data/locations.txt` etc. via a compile-time absolute path
-(`ANSALON_DATA_DIR`) — run it from anywhere, but it only works built from
-this exact source tree (see `docs/GOTCHAS.md`).
+`data/locations.txt` etc. (and `save.txt`) next to itself at runtime — a
+CMake post-build step keeps `data/` populated in `build\Debug`/
+`build\Release` automatically, so this needs no extra step in normal dev
+use (see `docs/GOTCHAS.md`). To hand a runnable build to someone outside
+this source tree, run `tools/package_release.ps1` — see its header comment.
 
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.

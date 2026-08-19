@@ -75,6 +75,21 @@ WindowSize Console::currentWindowSize() {
 #endif
 }
 
+std::string Console::executableDirectory() {
+#ifdef _WIN32
+    char buffer[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    if (len == 0 || len == MAX_PATH) {
+        return ""; // failed or truncated -- caller falls back to the compile-time path
+    }
+    std::string path(buffer, len);
+    std::size_t slash = path.find_last_of("\\/");
+    return slash == std::string::npos ? "" : path.substr(0, slash);
+#else
+    return "";
+#endif
+}
+
 Key Console::readKey() {
 #ifdef _WIN32
     int c = _getch();

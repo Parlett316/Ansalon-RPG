@@ -204,9 +204,9 @@ because `GameState` had already been kept flat and serializable from the
 start (see the old note in "Extension points," now shipped) — there was no
 restructuring needed, just a format and a place to call it from.
 
-**Format**: a hand-rolled keyword-per-line text file (`save.txt`, path baked
-in via `ANSALON_SAVE_FILE`, same pattern/limitation as `ANSALON_DATA_DIR` —
-see `docs/GOTCHAS.md`), following the same `trim`/`splitKeyword`/fail-fast
+**Format**: a hand-rolled keyword-per-line text file (`save.txt`, resolved
+next to the running executable, same pattern as `data/` — see
+`docs/GOTCHAS.md`), following the same `trim`/`splitKeyword`/fail-fast
 idioms as `WorldLoader`/`ZoneLoader`. `character::RaceId`/`ClassId`/
 `Alignment` are stored as raw enum ints rather than names — see
 `docs/GOTCHAS.md` for the fragility that trades off against.

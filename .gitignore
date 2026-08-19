@@ -1,6 +1,9 @@
 # CMake build output
 build/
 
+# Staged/zipped output from tools/package_release.ps1
+dist/
+
 # Reference material -- the Ansalon map image, source rulebook PDFs (PHB,
 # DMG, Dragonlance sourcebooks/modules), and the Chronicles novels, all
 # copyrighted TSR/Wizards of the Coast (or Weis/Hickman) material kept

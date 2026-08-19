@@ -54,29 +54,40 @@ int main() {
         return 1;
     }
 
+    // Resolved relative to the running executable so a distributed build
+    // (see tools/package_release.ps1) finds its own data/ and save.txt
+    // wherever it's unzipped, instead of the compile-time source-tree path
+    // baked in below. Falls back to the compile-time ANSALON_DATA_DIR /
+    // ANSALON_SAVE_FILE only if the executable's own path can't be
+    // determined (non-Windows, or editor tooling that skips CMake
+    // configuration) -- see docs/GOTCHAS.md.
+    const std::string exeDir = render::Console::executableDirectory();
+    const std::string dataDir = exeDir.empty() ? ANSALON_DATA_DIR : exeDir + "/data";
+    const std::string savePath = exeDir.empty() ? ANSALON_SAVE_FILE : exeDir + "/save.txt";
+
     try {
         world::OverworldGrid grid =
-            world::OverworldGrid::loadFromFile(std::string(ANSALON_DATA_DIR) + "/overworld.grid");
+            world::OverworldGrid::loadFromFile(dataDir + "/overworld.grid");
 
         world::World world;
-        world::WorldLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/locations.txt", world);
+        world::WorldLoader::loadFromFile(dataDir + "/locations.txt", world);
 
         // Zones are loaded after World, deliberately: ZoneCatalog matches
         // zone files to locations by id, so it needs the location list
         // first -- see docs/ARCHITECTURE.md.
         world::ZoneCatalog zones =
-            world::ZoneCatalog::loadForWorld(world, std::string(ANSALON_DATA_DIR) + "/zones");
+            world::ZoneCatalog::loadForWorld(world, dataDir + "/zones");
 
         // Static content, same treatment as World/OverworldGrid/ZoneCatalog
         // above -- loaded fresh every run, never touched by GameState/save
         // data. See timeline::Timeline and docs/TIMELINE_NOTES.md.
         timeline::Timeline timeline;
-        timeline::TimelineLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/timeline.txt", timeline);
+        timeline::TimelineLoader::loadFromFile(dataDir + "/timeline.txt", timeline);
 
         // Static content too, same treatment -- see combat::MonsterCatalog
         // and docs/COMBAT_NOTES.md.
         combat::MonsterCatalog monsters;
-        combat::MonsterLoader::loadFromFile(std::string(ANSALON_DATA_DIR) + "/monsters.txt", monsters);
+        combat::MonsterLoader::loadFromFile(dataDir + "/monsters.txt", monsters);
 
         const world::Location* start = world.getLocation(kStartingLocationId);
         if (!start) {
@@ -91,8 +102,6 @@ int main() {
             std::cerr << "Starting location '" << kStartingLocationId << "' is outside the overworld grid.\n";
             return 1;
         }
-
-        const std::string savePath = ANSALON_SAVE_FILE;
 
         // If a save exists, offer to continue it -- plain std::cin/std::cout,
         // same "before GameLoop's raw-keypress world starts" interaction mode

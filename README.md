@@ -163,10 +163,10 @@ cmake -G "Visual Studio 18 2026" -A x64 -S . -B build
 cmake --build build --config Debug
 ```
 
-The built executable will be at `build\Debug\ansalon_rpg.exe`. Run it from
-any directory — it locates `data/locations.txt` and `data/overworld.grid`
-via an absolute path baked in at compile time (see the comment in
-`CMakeLists.txt` for why, and its limits).
+The built executable will be at `build\Debug\ansalon_rpg.exe`. It locates
+`data/locations.txt`, `data/overworld.grid`, etc. (and `save.txt`) next to
+itself — a post-build step keeps a `data/` copy there automatically, so
+this needs no extra step (see the comment in `CMakeLists.txt`).
 
 If you have a different Visual Studio version installed, list available
 generators with `cmake --help` and substitute the matching `-G` name.
@@ -180,6 +180,22 @@ PowerShell for VS 2026" (which pre-runs `vcvars64.bat` for you) and run:
 cmake -G Ninja -S . -B build
 cmake --build build
 ```
+
+### Sharing a build
+
+To hand a playable build to someone who doesn't have this source tree,
+run:
+
+```powershell
+powershell -File tools\package_release.ps1
+```
+
+This builds a Release exe and zips it with the data it needs into
+`dist\AnsalonRPG.zip`. The recipient just unzips and runs
+`ansalon_rpg.exe` — the MSVC runtime is statically linked, so no separate
+Visual C++ Redistributable install is needed, just Windows 10+ with a
+terminal at least 80x24 (Windows Terminal, or cmd/PowerShell — all
+support the VT100 sequences the game relies on for color).
 
 ## Playing
 

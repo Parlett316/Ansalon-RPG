@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace render {
 
 enum class Key {
@@ -74,6 +76,13 @@ public:
     // 'q'/Esc to quit. See docs/GOTCHAS.md for the Windows arrow-key
     // decoding quirk.
     static Key readKey();
+
+    // Directory containing the running executable (no trailing slash), used
+    // to locate data/ and save.txt next to a distributed build instead of a
+    // baked-in source-tree path -- see docs/GOTCHAS.md. Empty string if it
+    // can't be determined (non-Windows, where no real implementation exists
+    // yet -- same honesty precedent as readKey/currentWindowSize above).
+    static std::string executableDirectory();
 
 private:
 #ifdef _WIN32

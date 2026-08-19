@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
+cmake_policy(SET CMP0091 NEW) # must be set before project() for CMAKE_MSVC_RUNTIME_LIBRARY below to take effect
 project(AnsalonRPG CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # avoid MSVC-only extensions, so a future GCC/Clang build has nothing to trip over
+
+# Statically link the MSVC runtime so a distributed exe (see
+# tools/package_release.ps1) doesn't require the recipient to separately
+# install the Visual C++ Redistributable.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_executable(ansalon_rpg
     src/main.cpp
@@ -51,19 +57,24 @@ endif()
 # this file is already ready for a future GCC/Clang build.
 
 # The game loads data/locations.txt, data/overworld.grid, data/zones/*.txt,
-# data/timeline.txt, and data/monsters.txt at runtime.
-# Resolving that path relative to the *running executable* would need
-# platform-specific APIs (GetModuleFileName on Windows, /proc/self/exe on
-# Linux) that would leak platform code outside render/Console.cpp. Instead,
-# for this solo/dev-only project, we bake the absolute source-tree data
-# directory in at compile time: the built exe then finds its data regardless
-# of the caller's working directory. This is NOT how a distributed/installed
-# build should locate data -- revisit if this project is ever packaged for
-# someone else to run outside this exact source tree.
+# data/timeline.txt, and data/monsters.txt at runtime, plus save.txt.
+# main.cpp resolves both primarily via render::Console::executableDirectory()
+# (GetModuleFileName on Windows, the one platform-specific API this needs --
+# kept inside render/Console.cpp per CLAUDE.md) so a distributed build (see
+# tools/package_release.ps1) finds its own data next to itself wherever it's
+# unzipped. The definitions below are only the fallback for when that can't
+# be determined (non-Windows, or editor tooling that skips CMake
+# configuration) -- see docs/GOTCHAS.md.
 target_compile_definitions(ansalon_rpg PRIVATE
     ANSALON_DATA_DIR="${CMAKE_SOURCE_DIR}/data"
-    # Same reasoning/limitation as ANSALON_DATA_DIR above -- a single,
-    # baked-path savegame file, not relative to the executable. See
-    # docs/GOTCHAS.md.
     ANSALON_SAVE_FILE="${CMAKE_SOURCE_DIR}/save.txt"
+)
+
+# Keeps the dev workflow (running straight from build\<Config>\) working:
+# copies data/ next to the built exe after every build, in every config, so
+# the executable-relative resolution above finds it without a separate
+# install/package step during normal development.
+add_custom_command(TARGET ansalon_rpg POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:ansalon_rpg>/data"
 )
