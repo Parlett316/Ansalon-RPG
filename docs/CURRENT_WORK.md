@@ -1,22 +1,22 @@
 # Current work
 
-One small fix is implemented and self-verified, but **not yet confirmed
-in a real, human-at-the-keyboard playthrough** — combat can't be tested
-headlessly (see `docs/GOTCHAS.md`):
+Nothing in flight.
 
-- **"Press any key to continue." on combat end screens**: fleeing,
-  winning, and being knocked out each used to redraw the final combat
-  frame and silently block on a keypress with no visual cue one was
-  expected. All three (`GameLoop::runCombat`, `src/game/GameLoop.cpp`)
-  now push a "Press any key to continue." log line first. Confirm it
-  reads clearly in all three cases (flee, victory, knockout) and doesn't
-  look out of place in the log panel.
+The "Press any key to continue." combat end-screen prompt (flee, win,
+knockout) shipped and was confirmed in a real playthrough — all three
+cases read clearly.
 
-What's already done: a clean `/W4` rebuild (zero new warnings, only
-`GameLoop.cpp` touched) and the piped character-creation smoke test.
+Next: pick from `docs/MILESTONES.md`'s "NEXT UP":
 
-Next step: trigger a flee, a win, and a knockout in a real playthrough
-and confirm the new line. Once confirmed, clear this file back to
-"nothing in flight" and offer the next backlog menu from
-`docs/MILESTONES.md`'s "NEXT UP" (terrain-specific monster pools, more
-monsters, or continuing *Dragons of Spring Dawning* with Godshome/Neraka).
+1. **Terrain-specific monster pools** — encounter chance already varies
+   by terrain (Milestone 27); which monster you fight is still
+   uniform-random. See `docs/COMBAT_NOTES.md`'s "Extending this later."
+2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi, and other
+   untouched Monstrous Manual entries. Higher-tier draconians are
+   spellcasters/shapeshifters — real mechanics not modeled yet. See
+   `docs/COMBAT_NOTES.md`'s "Extending this later."
+3. **Continue *Dragons of Spring Dawning*** past Palanthas (Milestone 44):
+   Godshome (small, self-contained — Flint's death) or Neraka (the
+   climax, fortress-zone idiom like Pax Tharkas/Ice Wall).
+
+Or something else — ask the user before starting.
