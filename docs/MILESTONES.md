@@ -487,11 +487,60 @@ this stays authoritative.
     changes -- pure data content), and the piped smoke test. See
     `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
 
+46. Neraka -- the climax and denouement of *Dragons of Spring Dawning*,
+    compressed from the entire back half of the novel (infiltration,
+    Tanis's captivity with Kitiara, Caramon's solo trial in the dungeons,
+    Berem's final death, the Temple's destruction, the war's end, the
+    party's reunion -- `pdftotext -layout` lines ~10440-15532) into one
+    walkable zone and one multi-day `PRESENCE` window, the same
+    "restraint over completeness" compression already used for Pax
+    Tharkas, Ice Wall, and Godshome. A new `LOCATION neraka` (`POS 273
+    140`, `REGION Taman-Busuk`, ~6 grid-units east of Godshome, matching
+    the book's own geography -- see `docs/MAP_NOTES.md`) and a new,
+    fully-walled 40x16 zone (four POIs: the Temple of the Dark Queen, the
+    Dungeons, a talkable Deserting Guard reflecting the dragonarmies'
+    collapse, and the Temple Square -- the `TIMELINE_ANCHOR` -- see
+    `docs/ZONE_NOTES.md`). A `PRESENCE neraka 105 107` window (an
+    ordinary multi-day window, not the single-day "no SAY" device -- all
+    three survive) was added to Tanis, Caramon, and Tasslehoff, each
+    closing a thread seeded in an earlier milestone: Tanis's Godshome-era
+    "The Man Who Wouldn't Die" (Berem's death is now final and complete),
+    Caramon's Kalaman-era "The Brother He Can't Watch" (a real, direct
+    reunion with Raistlin in the dungeons -- described in Caramon's own
+    dialogue, not added as a `PRESENCE` entry to Raistlin's own schedule,
+    which stays exactly where Milestone 44 left it), and Tasslehoff's
+    grief over Flint from Godshome (a warm, invented-in-character story
+    about Flint waiting patiently by Reorx's forge). Kitiara, Laurana,
+    Ariakas, and Lord Soth stay off-stage, referenced only descriptively,
+    same precedent as every other major non-tracked character; "Fizban"
+    stays unnamed even though the source text explicitly confirms his
+    identity here, keeping this project's own established restraint
+    rather than retroactively naming a god the game has never named. The
+    `("godshome", "neraka")` road addition required regenerating
+    `data/overworld.grid`; Ice Wall's 46-tile glacier patch was captured
+    before regenerating and reapplied afterward, same procedure as every
+    prior `ROAD_PAIRS` change since Milestone 37. Verified via a
+    throwaway self-test (21 assertions covering location/zone loading,
+    `TIMELINE_ANCHOR` resolution, `Timeline::presentAt` across the
+    day-103/104/105-107/108 boundaries, and confirming Raistlin's and
+    Flint's schedules are untouched), a clean rebuild (zero new warnings,
+    no `.cpp`/`.h` changes -- pure data content), and the piped smoke
+    test. See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
+    `docs/TIMELINE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
+
+**Continuing *Dragons of Spring Dawning* after Neraka (Milestone 46):**
+the book's own final scene has the survivors talking about "going back to
+Solace" -- Solace is already a modeled `LOCATION` and the game's own
+starting town, so a closing `PRESENCE solace` window for Tanis, Caramon,
+and Tasslehoff is a clean, low-effort next candidate: no new zone or
+`LOCATION` needed, just new timeline dialogue for the war's actual end.
+See `docs/TIMELINE_NOTES.md`'s Neraka section.
 
 1. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
@@ -502,12 +551,3 @@ session's work.
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
-
-**Continuing *Dragons of Spring Dawning* after Godshome (Milestone 45):**
-Neraka (the climax, a fortress-zone idiom like Pax Tharkas/Ice Wall) is
-the natural next candidate -- Berem is now established as "the only road
-left into Neraka" (see `docs/TIMELINE_NOTES.md`'s Godshome section).
-Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and Sanction are
-recommended to stay flavor-only dialogue rather than walkable zones -- see
-`docs/MILESTONES.md` Milestone 39 and `docs/TIMELINE_NOTES.md` for the
-full reasoning.

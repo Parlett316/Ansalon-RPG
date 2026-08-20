@@ -156,3 +156,12 @@ GLYPH G
 POS 267 139
 DESC A hidden, barren bowl deep in the Khalkist Mountains, reached only through a narrow cleft in the rock -- not the ruined city that shares its name on the merchants' maps, but an older, holier place, said to have been sacred before there was ever a city to abandon. At its center stands a perfect ring of ancient standing stones.
 END
+
+LOCATION neraka
+NAME Neraka
+REGION Taman-Busuk
+TERRAIN temple-war-camp
+GLYPH N
+POS 273 140
+DESC A walled compound built around the black Temple of the Queen of Darkness, its spires lost in the shadow of flying citadels that never let the sun through. Camp-tents and gallows crowd every open space between the walls; the dragonarmies of half a continent are gathered here, and not one of them trusts the others.
+END

@@ -118,6 +118,7 @@ ROAD_PAIRS = [
     ("high_clerist_tower", "kalaman"),
     ("high_clerist_tower", "palanthas"),
     ("kalaman", "godshome"),
+    ("godshome", "neraka"),
 ]
 
 

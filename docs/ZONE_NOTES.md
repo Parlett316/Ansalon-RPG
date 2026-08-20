@@ -664,6 +664,47 @@ stay unnamed in this zone's text and in the Heroes' dialogue, same
 off-stage-major-character precedent as Kitiara/Laurana/Alhana/Derek/
 Gunthar — see `docs/TIMELINE_NOTES.md`.
 
+## Neraka (Milestone 46)
+
+`data/zones/neraka.txt` — a 40×16 grid with a **full `#` border**, unlike
+Godshome's open bowl, matching the source text's own "walled Temple
+compound" and the established Pax Tharkas/Ice Wall bordered-fortress
+idiom directly (same bottom-wall three-tile gap convention as both).
+Four POIs: the Temple of the Dark Queen (`T`, flavor-only, deliberately
+ambiguous about what happened inside — same restraint as Godshome's
+Circle of Standing Stones), the Dungeons (`D`, flavor-only), a Deserting
+Guard (`G`, the zone's one talkable NPC, `TALK`/`TALK_AGAIN`/one `TOPIC`,
+same shape as Pax Tharkas's Fortress Guard and Ice Wall's Young Knight),
+and the Temple Square (`S`, the `TIMELINE_ANCHOR`).
+
+**`TIMELINE_ANCHOR` is `S`, not `T` or `D`.** Unlike Godshome's `F`
+("Where Flint Fell" — literally where the scripted event happens), none
+of the three surviving tracked Heroes actually die or resolve anything
+at a single fixed spot inside Neraka; the anchor instead represents the
+aftermath/reunion scene the source text stages just outside the ruined
+walls (the campfire, the whole surviving party regrouping). `S`'s own
+POI description is deliberately evergreen — true whether a player visits
+before, during, or after the tracked Heroes' `105`–`107` window — same
+treatment as Godshome's `C` and every other evergreen-flavor POI in this
+project.
+
+**The Deserting Guard, not a fixed named NPC.** Every prior
+bordered-fortress zone (Pax Tharkas, Ice Wall) put its one talkable POI
+on whoever's currently holding the place; Neraka's guard is written as a
+soldier whose own chain of command is actively collapsing around him
+(grounded in the source's own "harried-looking draconian... probably a
+deserter" beat), giving a non-Hero-voiced window onto the dragonarmies'
+collapse without inventing a named Highlord or staging Kitiara/Ariakas
+directly.
+
+Kitiara, Laurana, Ariakas, and Lord Soth are all real presences in the
+source chapters covered here but stay entirely unnamed/off-stage in this
+zone's own text, same off-stage-major-character precedent as Godshome's
+Berem/Fizban — see `docs/TIMELINE_NOTES.md` for the full reasoning,
+including why Raistlin's own real reunion scene with Caramon here does
+**not** add a `PRESENCE neraka` entry to Raistlin's own `CHARACTER`
+block.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

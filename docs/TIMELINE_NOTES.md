@@ -806,6 +806,88 @@ isn't surfaced at all here, consistent with how ambiguous/unresolved
 source-text beats are already treated elsewhere in this file (Raistlin's
 own fate, Lorac Caladon's).
 
+## Neraka (Milestone 46)
+
+Not a single chapter like every prior stop — the source span covered
+(`pdftotext -layout` lines ~10440-15532) is the entire climax and ending
+of *Dragons of Spring Dawning*, roughly a third of the novel. Compressed
+into one multi-day `PRESENCE neraka 105 107` window per present Hero,
+same "restraint over completeness" idiom already used for Pax Tharkas/
+Ice Wall/Godshome, not a staged re-enactment.
+
+**Who's there.** Tanis, Caramon, and Tasslehoff (Tika and Berem too,
+neither tracked). Goldmoon and Riverwind do not appear anywhere in this
+span of the book — confirmed by a full-text search (0 and 1 incidental
+hits respectively between the Kalaman farewell and the book's epilogue);
+their own schedules stay exactly as Milestone 45 left them, at
+`kalaman 100 100`. Raistlin does have a real, direct scene here (see
+below) but does **not** get a `PRESENCE neraka` entry of his own — his
+tracked schedule stays at `palanthas 83 83`, Milestone 44's last entry,
+untouched.
+
+**The Raistlin-continuity note.** Caramon is genuinely reunited with
+Raistlin in the Temple dungeons in the source text (lines 12578-14778) —
+real magic, real dialogue, not a dream or vision, ending with Raistlin
+telling Caramon plainly their paths have split ("You cannot help Tanis.
+His fate is in his own hands," lines 14775-14776). This is rich,
+important material and directly closes Caramon's own Kalaman-era "The
+Brother He Can't Watch" `TOPIC`. Rather than adding a `PRESENCE neraka`
+entry to Raistlin's own `CHARACTER` block (which would extend his
+*trackable* schedule past where Milestone 44 deliberately ended it),
+Caramon's own `neraka` `TOPIC` describes the reunion directly — exactly
+the same technique already used everywhere in this file for major
+characters who are never themselves tracked (Tanis's dialogue has always
+described Kitiara this way, for instance). A player standing at
+Raistlin's own overworld icon still finds nothing past Palanthas; that
+silence describes what's trackable, not what happens to him off the
+board. Worth remembering for any future stop that might be tempted to
+extend a schedule that was deliberately closed out in an earlier
+milestone: describing an encounter in someone *else's* dialogue is always
+available without reopening the first character's own schedule.
+
+**Berem's death is final this time** (lines 13779-13810) — reunited with
+his dead sister in a vision, he throws himself onto a jeweled rock column
+and dies for good ("The Everman was dead"). This directly resolves
+Tanis's own Godshome-era `TOPIC "The Man Who Wouldn't Die"`, closed here
+by a new `TOPIC "The Man Who Finally Rested"`.
+
+**Tasslehoff nearly dies** in the dungeons and is saved by Raistlin's
+magic (lines 14143-14260). Afterward, the old man from Godshome ("Fizban"
+in the source text) has a quiet moment with him that **explicitly
+confirms his divine identity** ("Draco Paladin," line 14970) — Godshome's
+writeup called this "heavy foreshadowing... left exactly as ambiguous
+here as the source text leaves it," and the source text stops leaving it
+ambiguous in this chapter. This project keeps the restraint anyway: the
+old man stays unnamed in `data/timeline.txt`, same as every other
+reference to him so far, rather than retroactively naming a god the game
+has never named. The same scene has the old man tell an unprompted,
+warm, invented-in-character story about Flint waiting patiently under a
+tree by Reorx's forge (lines 14984-15014) — closed here by Tasslehoff's
+new `TOPIC "Flint's Tree"`, the single warmest piece of closure in the
+milestone.
+
+**Kitiara, Laurana, Ariakas, and Lord Soth** carry enormous plot weight
+in this span (the Crown of Power, Ariakas's fall, Kitiara's own
+confrontation with Lord Soth) but stay entirely off-stage, referenced
+only as much as Tanis's own reaction requires — his refusal of the Crown
+of Power for Laurana's sake (lines 13480-13499) is the one moment
+surfaced, via his own `SAY`, not restaged. Kitiara survives this book
+with her own fate left open (lines 14625-14638 are her last appearance,
+shaken but alive) — this project doesn't invent a resolution the source
+material doesn't cover here.
+
+**Multi-day window, not the "no SAY" device.** All three tracked Heroes
+survive Neraka, so `neraka 105 107` is an ordinary multi-day window like
+any other stop, not the single-day scripted-death pattern used for
+Sturm/Raistlin/Flint. Days 105-107 are a soft, disclosed-as-invented
+placement (a day's travel out of Godshome, then the infiltration/
+captivity/escape spanning a couple of days per the book's own structure).
+
+**The book's own final scene** has the survivors talking about "going
+back to Solace" (lines 15184-15201) — flagged in `docs/MILESTONES.md`'s
+NEXT UP as a clean, low-effort next candidate (existing `LOCATION`, no
+new zone needed), not built this milestone.
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

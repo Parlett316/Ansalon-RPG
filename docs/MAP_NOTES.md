@@ -319,6 +319,35 @@ Python set-equality check rather than a byte-for-byte file diff this
 time, same effective guarantee) — same procedure as every `ROAD_PAIRS`
 change since Milestone 37.
 
+## Neraka (Milestone 46)
+
+Cropped and gridded a wide region centered on Godshome's own coordinate
+(scratch files `crop_neraka_grid.png`/`crop_neraka_grid2.png`), same
+calibrated-gridline-overlay method as Kalaman/Palanthas/Godshome. Read
+Godshome's own icon back at approximately (268.5, 139.2) against its
+recorded `POS 267 139` first, as a cross-check — close enough to confirm
+this corner of the map still needs no pixel-bias correction, consistent
+with Milestone 45's finding.
+
+"Neraka" reads as a distinct labeled icon (a star-in-a-circle, the map's
+own symbol for the Temple) roughly 6 grid-units east and 1 unit south of
+Godshome, at approximately grid **(273, 140)** — matching the book's own
+geography exactly (the party is "this near to Neraka" almost immediately
+after leaving Godshome).
+
+Checked `data/overworld.grid` directly at that coordinate: `^` (hills,
+walkable) — not one of the region's many `!` (Blood Sea-misclassified)
+tiles. No nudge needed.
+
+**`("godshome", "neraka")` added to `ROAD_PAIRS`** — nearest
+already-modeled location, and by far the shortest road this project has
+drawn yet (~6 grid units), matching how close together the book places
+them. Ice Wall's 46-tile glacier patch was captured (this time as a full
+before/after row-range snapshot rather than a character-filtered set, to
+avoid the risk of a filter predicate silently missing part of the patch)
+and reapplied afterward, diff-confirmed byte-for-byte identical — same
+procedure as every `ROAD_PAIRS` change since Milestone 37.
+
 ## Road 4-connectivity fix
 
 A player reported getting stuck at overworld tile `(174,106)`, unable to
