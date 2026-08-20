@@ -313,8 +313,10 @@ carries no coin). Killing any of them called
 `count` -- `die(1, 0)` violates that distribution's own precondition
 (`min <= max`) and crashed the whole process with a debug assertion,
 every single time, for as long as those three monsters have existed in
-the roster. Reported by the user with a screenshot
-(`Bugs/errorinbattle.png`, now resolved) mid-fight against a Timber Wolf.
+the roster. Reported by the user via the crash dialog captured mid-fight
+against a Timber Wolf, kept here as a record now that it's resolved:
+
+![The MSVC debug assertion dialog interrupting a Timber Wolf fight, "invalid min and max arguments for uniform_int_distribution"](../Bugs/errorinbattle.png)
 
 Fixed at the root in `character::roll` (`character/Dice.cpp`): `count <=
 0` now returns `0` immediately, before constructing any distribution --
