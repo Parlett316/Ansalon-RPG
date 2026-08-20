@@ -943,6 +943,15 @@ already taken — see `docs/GOTCHAS.md`) opens `drawJournalFrame`, a
 one-keypress-block screen in the `showCharacterSheet`/`showHelp` shape,
 not a nested loop.
 
+**Follow-up, same milestone's playtest**: the user asked for a proactive
+"quest complete, go collect your reward" notification rather than having
+to guess and check the journal. `QuestStatus` gained a third,
+append-only-safe value (`ReadyToTurnIn`); see this document's "What's
+deliberately NOT abstracted yet" section above for why the fix
+(`GameLoop::checkQuestReadiness`, four fixed call sites) is not the event
+bus it might sound like, and `docs/QUEST_NOTES.md`'s "Proactive readiness
+notification" for the full mechanism.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can
@@ -1001,13 +1010,19 @@ shipped, not just what was planned.
 
 **Milestone 51's quest system is deliberately not an event bus, even
 though "a quest tracks progress toward things happening elsewhere" sounds
-like it wants one.** An objective is a pull, not a push: `objectiveMet`
-queries `visitedLocations`/`metCharacters`/`monsterKills` on demand
-(whenever a quest-giver POI is talked to), rather than every quest
-subscribing to "you moved" / "you talked to X" / "you killed Y" events and
-updating itself reactively. This is why there's no "Objective complete!"
-notification the instant something happens — see `docs/QUEST_NOTES.md`'s
-cut list — and it's a deliberate, not accidental, omission: adding one
-would mean building the exact event bus this section has said "not yet"
-to for 50 milestones running, for a payoff (a pop-up) this project doesn't
-need yet.
+like it wants one.** An objective is fundamentally a pull, not a push:
+`objectiveMet` queries `visitedLocations`/`metCharacters`/`monsterKills`
+on demand — there's no generic "you moved" / "you talked to X" / "you
+killed Y" event any quest can subscribe to. Real playtesting surfaced a
+real gap this created, though: with no push at all, the player had no way
+to know a quest had become turn-in-ready short of guessing and walking
+back to check. The fix (`GameLoop::checkQuestReadiness`, see
+`docs/QUEST_NOTES.md`'s "Proactive readiness notification") is a *poll at
+the small, fixed set of places state already changes* — the same three
+mutation points `visitedLocations`/`metCharacters`/`monsterKills`
+themselves live at, plus accepting a quest — not a new generic
+subscription mechanism. Four call sites, hand-written, each one line.
+Still not the event bus this section has said "not yet" to for 50+
+milestones running: nothing here lets a quest (or anything else) declare
+an arbitrary interest and get called back for it generically — the day
+something *does* need that, this paragraph is the place to update.

@@ -48,6 +48,12 @@ PROGRESS <text>                   required -- shown on any later talk while
                                   the quest is active but not yet finished
 COMPLETE <text>                   required -- shown on turn-in, immediately
                                   before rewards are dispensed
+GIVER <text>                      required -- free text naming who/where
+                                  to return to (e.g. "the Notice Board"),
+                                  used only in the "ready to turn in" log
+                                  line and journal note (see "Proactive
+                                  readiness notification" below) -- never
+                                  mechanically tied to a real zone POI
 REQUIRE <condition>                optional -- game::conditionMatches's
                                   vocabulary (good/evil, the 7 races, the 5
                                   classes, and knight -- see below); an
@@ -162,8 +168,8 @@ the ordinary greeting is done.
 |---|---|---|
 | absent (not started) | unmet | nothing — this quest-giver has nothing to say to this character |
 | absent (not started) | met or none | `OFFER` text, then an Accept/Decline picker |
-| `Active`, objectives unmet | — | `PROGRESS` text |
-| `Active`, all objectives met | — | `COMPLETE` text, rewards dispensed, status set to `Complete` |
+| `Active` | — | `PROGRESS` text |
+| `ReadyToTurnIn` | — | `COMPLETE` text, rewards dispensed, status set to `Complete` |
 | `Complete` | — | nothing extra — the ordinary greeting/again line already played |
 
 Accepting is the one place this goes beyond the `grantsBoat` precedent (a
@@ -172,6 +178,57 @@ commitment, so it gets an explicit Accept/Decline picker
 (`render::MapRenderer::drawPickerFrame`, same shape `pickAndTalk`/topic
 menus already use). Declining leaves nothing recorded — the quest is
 offered again next time the giver is talked to.
+
+Note `Active` here means *not yet ready* — by the time `talkTo` reaches
+`offerOrTurnInQuest`, `checkQuestReadiness` (see below) has already
+promoted anything actually finished to `ReadyToTurnIn`, so
+`offerOrTurnInQuest` itself never has to (and no longer does)
+recompute `allObjectivesMet` live.
+
+## Proactive readiness notification
+
+Added shortly after the engine first shipped, in response to real
+playtesting: turning in a quest used to require the player to guess they
+were done and go check by walking back to the giver, or open the journal
+speculatively. Now the moment every objective is satisfied, the game says
+so — a log line naming the quest and where to collect the reward, e.g.
+*"The Wolves on the Solace Road is ready to turn in -- return to the
+Notice Board to collect your reward."*
+
+This needed a third `QuestStatus` value, appended (not inserted) so old
+saves keep meaning what they meant:
+
+```cpp
+enum class QuestStatus {
+    Active = 0,
+    Complete = 1,
+    ReadyToTurnIn = 2,  // added after Active/Complete already shipped
+};
+```
+
+`GameLoop::checkQuestReadiness()` walks every `Active` entry in
+`GameState::quests`, checks `allObjectivesMet`, and promotes/logs once for
+any that just became satisfiable — status flipping away from `Active` is
+what makes this naturally one-shot; nothing re-checks an already-
+`ReadyToTurnIn` quest, so killing a fourth wolf after the third doesn't
+repeat the message. It's called from exactly **four** places, not a
+generic subscriber system: right after `visitedLocations.insert` in
+`tryMoveOverworld` (a `VISIT` objective), right after
+`metCharacters.insert` in `talkTo` (a `TALK` objective), right after
+`monsterKills[...] += 1` in `runCombat` (a `SLAY` objective), and right
+after accepting a quest in `offerOrTurnInQuest` (catching the "already did
+it before being asked" case from "Objectives are queries over existing
+state" above — without this fourth call, a quest accepted in an
+already-satisfied state would sit at `Active` forever, since nothing else
+would ever re-check it). See `docs/ARCHITECTURE.md`'s "Quest system"
+section for why this is a small, enumerable poll-at-known-mutation-points
+pattern rather than the event bus this project has deliberately never
+built.
+
+The journal reflects the new state too: a `ReadyToTurnIn` quest is
+grouped with active quests (not yet "Completed"), with a
+"Ready to turn in! Return to `<giver>`." note above its (now
+all-`[x]`) objective lines.
 
 Turning in is also the **first call site of `character::applyPendingLevelUps`
 outside `GameLoop::runCombat`** — a big XP reward can level the player up
@@ -208,7 +265,7 @@ Two new repeated keywords, one line per entry, no count prefix (unlike
 pairs, and packing pairs onto one line would need its own delimiter):
 
 ```
-QUEST <quest-id> <statusInt>    0 = Active, 1 = Complete
+QUEST <quest-id> <statusInt>    0 = Active, 1 = Complete, 2 = ReadyToTurnIn
 KILL <monster-id> <count>
 ```
 
@@ -231,11 +288,13 @@ nothing depends on a fixed ordering among quest statuses, so a third value
 could be added later without corrupting old saves the way reordering
 `RaceId` would.
 
-**No stage index in v1.** Two values plus absence (not-started) is exactly
-what the turn-in table above needs, and the save line (`QUEST <id> <int>`)
-is identical whether the int means "status" or "stage" — so widening to a
-multi-stage quest later costs nothing to defer, and taking it now would be
-generalizing before any authored quest needs it.
+**Still no arbitrary stage index.** `ReadyToTurnIn` (see "Proactive
+readiness notification" above) is a real third value, added when a real
+need showed up — proof the append-only design worked exactly as planned,
+not evidence the door is now open for a general stage counter. The save
+line (`QUEST <id> <int>`) would look identical either way, but a
+freestanding multi-stage quest is still deferred until something actually
+needs one.
 
 ## The `road_wolves` proof-of-concept quest
 
@@ -253,13 +312,20 @@ correctly at turn-in.
 Verified via a throwaway self-test (`QuestLoader` against this real file,
 plus save round-trip/backward-compat — see "Save format" above) and a
 piped character-creation smoke test (proves `QuestCatalog` loads alongside
-`World`/`ZoneCatalog`/`Timeline`/`MonsterCatalog` without throwing).
-**Not** verified via real interactive keypresses — this project's
-`_getch()`-based input can't be piped (`docs/GOTCHAS.md`), and no
-tmux/PTY driver exists for this Windows console app. The dialogue/picker/
-journal screens still need a human playtest: talk to the Notice Board,
-accept, check `g`, kill 3 wolves, talk again, confirm the reward and
-journal both update.
+`World`/`ZoneCatalog`/`Timeline`/`MonsterCatalog` without throwing) before
+ever reaching a human. Interactive keypresses genuinely can't be automated
+for this project (`_getch()` can't be piped, no tmux/PTY driver exists for
+this Windows console app — see `docs/GOTCHAS.md`), so that path was left
+explicitly unverified at first release. **The user then played through it
+for real**: their actual `save.txt` showed `MET solace:B` (talked to the
+board), `QUEST road_wolves 0` (accepted) with a kobold kill logged, and
+later `QUEST road_wolves 1` (turned in) with `KILL wolf 3` and the other
+five monster types tallied alongside it — the whole offer/accept/track/
+turn-in loop working exactly as designed, confirmed from the save file
+alone without needing to watch it happen. That same playtest also
+surfaced the request that became "Proactive readiness notification"
+above, and separately a real crash bug (unrelated to quests — see
+`docs/COMBAT_NOTES.md`'s "Bug fixed" section).
 
 ## Deliberately not in v1
 
@@ -276,10 +342,13 @@ journal both update.
   is the one defensible form — potions are parameterless, no lookup needed.
 - **Stage index, quest chains, prerequisites, abandonment, failable or
   timed quests, multiple quests per POI.**
-- **"Objective complete!" pop-ups on the moment something changes.** Would
-  need polling every active quest after every state mutation — exactly the
-  event bus `docs/ARCHITECTURE.md` says doesn't exist and shouldn't yet.
-  The journal is the source of truth; check it yourself.
+- **Per-objective "you just did the thing!" pop-ups** (as opposed to the
+  whole-quest "ready to turn in" notification, which *does* exist now —
+  see "Proactive readiness notification" above). Telling the player
+  exactly which objective advanced, mid-fight or mid-walk, would need
+  finer-grained hooks than the four call sites `checkQuestReadiness` uses;
+  not justified yet with only `VISIT`/`TALK`/`SLAY` and no multi-objective
+  authored quest to make the distinction matter.
 - **Journal scrolling, map markers, a HUD quest tracker.**
 - **Per-quest kill baselines** (see "Objectives are queries over existing
   state" above for why this was a deliberate non-goal, not an oversight).

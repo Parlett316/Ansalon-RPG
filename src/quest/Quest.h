@@ -63,6 +63,15 @@ struct Quest {
     std::string progressText; // talked to while accepted but unfinished
     std::string completeText; // shown on turn-in
 
+    // Free text naming who/where to return to (e.g. "the Notice Board") --
+    // used only in the "ready to turn in" notification/journal note (see
+    // game::GameLoop::checkQuestReadiness), never mechanically tied to a
+    // real zone POI. Required, not derived: deriving it would mean
+    // reverse-searching every zone's QUEST bindings for this id, and nothing
+    // stops a quest from having zero or more than one giver POI in the
+    // grammar even though every authored quest so far has exactly one.
+    std::string giver;
+
     // Optional gate on who this quest is even offered to, using the same
     // condition vocabulary as SAY_IF (game::conditionMatches). Empty means
     // "offer to everyone". Lets a quest belong to, say, a Knight of

@@ -163,6 +163,18 @@ private:
     // established). See docs/QUEST_NOTES.md for the full not-started /
     // active-unmet / active-met / complete state table.
     void offerOrTurnInQuest(const std::string& questId, const std::string& speakerName);
+    // Checked after every state change an objective can key off of --
+    // visiting a new overworld location, talking to someone, killing a
+    // monster, or accepting a quest that was already satisfiable -- rather
+    // than a generic subscriber/event-bus system (deliberately not built,
+    // see docs/ARCHITECTURE.md): there are only ever these four call
+    // sites, and it's cheap even if the check finds nothing every time.
+    // Promotes any still-Active quest whose objectives are all now met to
+    // QuestStatus::ReadyToTurnIn and pushes a one-time "ready to turn in"
+    // log line -- ReadyToTurnIn's very purpose is to make this a one-shot
+    // notification rather than repeating on every subsequent kill/visit/
+    // talk. See docs/QUEST_NOTES.md.
+    void checkQuestReadiness();
     // Shared by lookOverworld/lookZone once they've gathered who's
     // present, always called with a non-empty list: 1 candidate -> shows
     // their description directly; 2+ -> a drawPickerFrame loop asking

@@ -14,17 +14,24 @@ enum class Mode {
     Zone,
 };
 
-// A quest's turn-in state. Absence from GameState::quests is the third,
+// A quest's turn-in state. Absence from GameState::quests is the fourth,
 // implicit state ("not started") -- see quest/Quest.h. Stored as a raw
 // enum int in the save file (see game::SaveGame), same convention as
 // RACE/CLASS/ALIGNMENT, but append-only-safe: unlike those, nothing here
 // depends on a fixed ordering, so a future status can be added without
-// corrupting old saves. Deliberately just two values rather than a stage
-// index -- no authored quest needs more, and the save line widens for free
-// if one ever does (see docs/QUEST_NOTES.md).
+// corrupting old saves -- ReadyToTurnIn was added this way, after Active/
+// Complete already shipped (see docs/QUEST_NOTES.md).
 enum class QuestStatus {
     Active = 0,
     Complete = 1,
+    // Every objective is satisfied but the player hasn't talked to the
+    // giver again yet -- game::GameLoop::checkQuestReadiness sets this the
+    // moment it happens (right after a visit/talk/kill, or immediately on
+    // accepting an already-satisfied quest) and pushes the one-time
+    // "ready to turn in" log line; offerOrTurnInQuest reads it back to
+    // decide whether talking to the giver dispenses the reward. See
+    // docs/QUEST_NOTES.md.
+    ReadyToTurnIn = 2,
 };
 
 // Where to resume when leaving a zone that was entered via a PORTAL from

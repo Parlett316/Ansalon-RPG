@@ -357,11 +357,14 @@ GameState SaveGame::load(const std::string& path) {
             // Optional -- a save written before Milestone 51 simply has no
             // QUEST lines, and an empty state.quests (no quest started) is
             // the correct value for it anyway. Status is a raw enum int,
-            // same convention as RACE/CLASS/ALIGNMENT.
+            // same convention as RACE/CLASS/ALIGNMENT. 0/1/2 == Active/
+            // Complete/ReadyToTurnIn (ReadyToTurnIn added after this
+            // milestone shipped -- see GameState.h); accepted here from day
+            // one since QuestStatus is append-only-safe.
             std::string id;
             int statusValue = -1;
-            if (!(iss >> id >> statusValue) || (statusValue != 0 && statusValue != 1)) {
-                fail(path, lineNumber, "malformed QUEST (expected: QUEST <id> <0-or-1>)");
+            if (!(iss >> id >> statusValue) || statusValue < 0 || statusValue > 2) {
+                fail(path, lineNumber, "malformed QUEST (expected: QUEST <id> <0, 1, or 2>)");
             }
             state.quests[id] = static_cast<QuestStatus>(statusValue);
         } else if (keyword == "KILL") {

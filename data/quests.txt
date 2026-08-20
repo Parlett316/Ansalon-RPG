@@ -16,6 +16,7 @@ OFFER "Three wolves, bold as brass, worrying travelers on the south road," the n
 ACCEPT You memorize the particulars: the south road, and wolves bold enough to trouble it in daylight now.
 PROGRESS The notice is still pinned where you left it. The wolves, presumably, are still out there.
 COMPLETE Someone's pinned a fresh scrap beneath where the notice used to be: "Paid, with my thanks -- a grateful farmer." Tucked behind it, sure enough, is a small pouch of steel.
+GIVER the Notice Board
 SLAY wolf 3 Kill three timber wolves on the roads around Solace
 REWARD_STEEL 40
 REWARD_XP 90

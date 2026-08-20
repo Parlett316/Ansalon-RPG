@@ -151,10 +151,13 @@ undergoes the Test of High Sorcery and is Robed by alignment) — see
 `docs/CHARACTER_NOTES.md`. The world finally has things to actually do:
 press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
-reward. One ships so far — Solace's Notice Board, whose long-standing
-"armies on the move" flavor text turned out to be a hook for exactly this,
-offers a bounty to clear three timber wolves off the south road — see
-`docs/QUEST_NOTES.md` for the full design and how more get authored.
+reward — the moment every objective's actually done, the game says so
+itself ("...is ready to turn in -- return to..."), so you never have to
+guess or walk back speculatively. One ships so far — Solace's Notice
+Board, whose long-standing "armies on the move" flavor text turned out to
+be a hook for exactly this, offers a bounty to clear three timber wolves
+off the south road — see `docs/QUEST_NOTES.md` for the full design and
+how more get authored.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),

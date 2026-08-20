@@ -2,6 +2,31 @@
 
 Nothing in flight.
 
+Feature (post-Milestone 51): proactive "quest ready to turn in"
+notification, requested directly by the user after playtesting the quest
+engine ("it would be nice: Quest complete, return to Whoever to collect
+reward"). `QuestStatus` gained a third, append-only-safe value
+(`ReadyToTurnIn = 2`) between `Active` and `Complete`; a new
+`GameLoop::checkQuestReadiness()` promotes any `Active` quest to it (and
+pushes a one-time log line naming the quest and a new required `GIVER
+<text>` field, e.g. "The Wolves on the Solace Road is ready to turn in --
+return to the Notice Board to collect your reward") from exactly four
+places: after a new location is visited, after talking to someone, after
+a monster kill, and after accepting a quest (to catch the "already did it
+before being asked" edge case). `offerOrTurnInQuest` now branches on this
+status directly instead of recomputing `allObjectivesMet` live. The
+journal marks a ready quest with a "Ready to turn in!" note instead of
+waiting for it to move to the Completed section. `data/quests.txt`'s
+`road_wolves` got its `GIVER` line ("the Notice Board"). Verified via a
+throwaway self-test (`QuestLoader` requires and parses `GIVER`;
+`SaveGame` round-trips `ReadyToTurnIn` and still rejects out-of-range
+values) plus a scratch-copy load of the user's real, now-fully-completed
+`save.txt` (`QUEST road_wolves 1`, `KILL wolf 3` among others -- proof the
+whole offer/accept/track/turn-in loop already worked end to end in real
+play before this notification was added) and a clean `/W4` rebuild. See
+`docs/QUEST_NOTES.md`'s "Proactive readiness notification" section and
+`docs/ARCHITECTURE.md`'s "Quest system" follow-up note.
+
 Bug fix (post-Milestone 51): killing a monster with `STEEL 0 0 0` (Timber
 Wolf, Skeleton, Zombie -- animals/undead that carry no coin) crashed the
 whole game with a debug assertion in `<random>`. Root cause:

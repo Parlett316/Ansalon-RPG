@@ -87,6 +87,9 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
             current.progressText = rest;
         } else if (keyword == "COMPLETE") {
             current.completeText = rest;
+        } else if (keyword == "GIVER") {
+            if (rest.empty()) fail(path, lineNumber, "GIVER is missing its text");
+            current.giver = rest;
         } else if (keyword == "REQUIRE") {
             if (rest.empty()) fail(path, lineNumber, "REQUIRE is missing its condition");
             current.requirement = rest;
@@ -132,6 +135,7 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
             if (current.acceptText.empty()) fail(path, lineNumber, "quest is missing its ACCEPT text");
             if (current.progressText.empty()) fail(path, lineNumber, "quest is missing its PROGRESS text");
             if (current.completeText.empty()) fail(path, lineNumber, "quest is missing its COMPLETE text");
+            if (current.giver.empty()) fail(path, lineNumber, "quest is missing its GIVER text");
             if (current.objectives.empty()) {
                 fail(path, lineNumber, "quest has no objectives (need at least one VISIT/TALK/SLAY)");
             }

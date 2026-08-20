@@ -342,6 +342,7 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     const world::Location* here = world_.locationAt(nx, ny);
     if (here != nullptr) {
         state_.visitedLocations.insert(here->id);
+        checkQuestReadiness(); // a VISIT objective may have just been satisfied
     }
     announceOverworldTile();
 
@@ -586,6 +587,7 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     render::MapRenderer::drawDialogueFrame({{name, text}});
     render::Console::readKey(); // block for one keypress to dismiss, any key
     state_.metCharacters.insert(id);
+    checkQuestReadiness(); // a TALK objective may have just been satisfied
     if (candidate.grantsBoat && !state_.hasBoat) {
         state_.hasBoat = true;
         pushLog("You've arranged passage south. You can now cross open water.");
@@ -647,6 +649,12 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
                     render::MapRenderer::drawDialogueFrame({{speakerName, q->acceptText}});
                     render::Console::readKey();
                     pushLog("Quest accepted: " + q->name + ".");
+                    // Catches the "already did it before being asked" case
+                    // (see quest/Quest.h) -- without this, a quest accepted
+                    // in a state that already satisfies every objective
+                    // would sit at Active forever, since nothing else would
+                    // ever trigger a readiness check for it again.
+                    checkQuestReadiness();
                 }
                 return;
             } else if (key == render::Key::Quit) {
@@ -657,13 +665,17 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
 
     if (it->second == QuestStatus::Complete) return; // already turned in -- nothing more to say here
 
-    if (!allObjectivesMet(*q, state_)) {
+    if (it->second == QuestStatus::Active) {
+        // Not yet ready -- checkQuestReadiness (called after every visit/
+        // talk/kill) would already have promoted this to ReadyToTurnIn if
+        // every objective were met, so reaching here means it's genuinely
+        // not done yet.
         render::MapRenderer::drawDialogueFrame({{speakerName, q->progressText}});
         render::Console::readKey();
         return;
     }
 
-    // All objectives met -- turn in.
+    // ReadyToTurnIn -- turn in.
     render::MapRenderer::drawDialogueFrame({{speakerName, q->completeText}});
     render::Console::readKey();
     state_.character.steelPieces += q->rewardSteel;
@@ -682,6 +694,17 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
     pushLog(rewardMsg.str());
 }
 
+void GameLoop::checkQuestReadiness() {
+    for (auto& [questId, status] : state_.quests) {
+        if (status != QuestStatus::Active) continue;
+        const quest::Quest* q = quests_.find(questId);
+        if (q == nullptr) continue; // defensive -- main.cpp already validated every zone QUEST id at startup
+        if (!allObjectivesMet(*q, state_)) continue;
+        status = QuestStatus::ReadyToTurnIn;
+        pushLog(q->name + " is ready to turn in -- return to " + q->giver + " to collect your reward.");
+    }
+}
+
 void GameLoop::showJournal() {
     std::vector<render::MapRenderer::JournalEntry> entries;
     for (const auto& [questId, status] : state_.quests) {
@@ -691,8 +714,11 @@ void GameLoop::showJournal() {
         render::MapRenderer::JournalEntry entry;
         entry.title = q->name;
         entry.complete = status == QuestStatus::Complete;
+        if (status == QuestStatus::ReadyToTurnIn) {
+            entry.objectiveLines.push_back("Ready to turn in! Return to " + q->giver + ".");
+        }
         for (const auto& objective : q->objectives) {
-            bool met = entry.complete || objectiveMet(objective, state_);
+            bool met = entry.complete || status == QuestStatus::ReadyToTurnIn || objectiveMet(objective, state_);
             std::ostringstream line;
             line << (met ? "[x] " : "[ ] ") << objective.label;
             if (objective.kind == quest::ObjectiveKind::Slay && !met) {
@@ -1003,6 +1029,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             // SLAY objective is a query over this, the same way VISIT/TALK
             // query visitedLocations/metCharacters. See docs/QUEST_NOTES.md.
             state_.monsterKills[monster.id] += 1;
+            checkQuestReadiness(); // a SLAY objective may have just been satisfied
             int steel = std::max(0, character::roll(monster.steelDiceCount, monster.steelDiceSides) +
                                          monster.steelFlatBonus);
             state_.character.steelPieces += steel;
