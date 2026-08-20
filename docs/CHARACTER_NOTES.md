@@ -371,8 +371,11 @@ deferral as every other race/subrace ability-range cut in this document.
 
 **Flavor-only, not mechanical**: a Knight of the Crown reaching level 3
 gets a line about the Order of the Sword noticing them (Sword itself —
-requiring "a witnessed quest of heroism," DL Adventures p.19 — needs a
-quest system this project doesn't have). A Mage reaching level 3 actually
+requiring "a witnessed quest of heroism," DL Adventures p.19 — still needs
+real *content*: `docs/QUEST_NOTES.md`'s quest engine, as of Milestone 51,
+can express this gate now — a quest with `REQUIRE knight` is directly
+authorable — but no such quest has been written yet; that's Milestone
+52-or-later work, not this milestone's). A Mage reaching level 3 actually
 does get the mechanical Test of High Sorcery outcome (robe assigned by
 alignment, per the "Wizards of High Sorcery" section above) — that one
 isn't just flavor, since the alignment-to-robe mapping was already fully
@@ -731,9 +734,12 @@ stored in `GameState::character` and never reassigned after that; pressing
   encumbrance, and any item types beyond armor/shield/weapon (potions,
   scrolls, tools).
 - **Sword and Rose Knights, for real**: currently just a flavor line at
-  level 3 (see "Leveling / experience" above) — actual advancement needs
-  a quest system for Sword's "witnessed quest of heroism" requirement.
-  Rose's exact minimum-scores table was also only text-extracted, not
+  level 3 (see "Leveling / experience" above) — actual advancement needs a
+  real *quest* authored for Sword's "witnessed quest of heroism"
+  requirement, now that a quest engine exists to express it
+  (`docs/QUEST_NOTES.md`, Milestone 51's `REQUIRE knight` condition) but
+  hasn't been written yet. Rose's exact minimum-scores table was also only
+  text-extracted, not
   visually re-confirmed — see the research notes referenced in project
   memory.
 - **Wizard Robe mechanics, for real**: Robe assignment by alignment at

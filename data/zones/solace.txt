@@ -25,6 +25,9 @@ POI I "Inn of the Last Home" A broad stair spirals up the vallenwood trunk to a 
 PORTAL I solace_inn
 POI T "Vallenwood Tree" One of the great trees that hold Solace aloft. Rope bridges creak between its branches, high overhead.
 POI B "Notice Board" A weathered board nailed to a trunk, thick with layers of old notices. The newest ones speak of armies on the move in the east.
+TALK B You study the crowded board. Most of the notices are old news by now -- a lost dog, a lean-to for hire -- but one hand-lettered scrap looks fresher than the rest.
+TALK_AGAIN B The board hasn't changed since you last read it, except for whatever's freshly pinned up.
+QUEST B road_wolves
 POI G "General Store" A cluttered storefront built into a hollowed vallenwood limb, shelves crowded with rope, oil, dried rations, and traveling gear.
 SHOP G
 POI S "Flint's Smithy" A stocky dwarf hunches over the forge, muttering at a half-finished blade. He doesn't look up, but he's clearly listening.

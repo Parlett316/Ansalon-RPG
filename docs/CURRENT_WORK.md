@@ -2,48 +2,61 @@
 
 Nothing in flight.
 
-Milestone 50 (Kitiara) shipped: resolves the "Dragon Highlords" backlog
-item. The open design question (adversarial character on the friendly
-talk/topic picker, or retrospective dialogue inside an existing Hero's
-own `TOPIC`) was raised via `AskUserQuestion` and answered: retrospective
-dialogue, the same technique already used for Raistlin's Neraka reunion
-via Caramon. No new `CHARACTER kitiara` block, no new `PRESENCE`, no new
-`LOCATION` -- she never becomes directly talkable. Four content changes
-in `data/timeline.txt`, each re-sourced directly from a fresh
-`pdftotext -layout` extraction before writing anything: Tanis's new
-`TOPIC "The Crown of Power"` at `neraka 105 107`; Laurana's `TOPIC "What
-the Dragon Highlord Said"` at `high_clerist_tower 81 81` got a
-light-touch name edit (same technique as the Fizban/Laurana anonymous-tag
-fixes) plus a new second `TOPIC "The Dragonlance Returned"`; Caramon's
-new `TOPIC "His Sister"` at `neraka 105 107`. Kitiara is named throughout
--- the blanket "keep major recurring canon characters unnamed" precedent
-was already retired at Milestone 49, and every sourced scene has a
-tracked Hero saying or hearing her name directly in the source text.
-Tanis's existing `TOPIC "A Debt He Won't Name"` at `kalaman 100 100` was
-deliberately left untouched (an in-character refusal to name her, not a
-narrator placeholder). Ariakas and Lord Soth remain off-stage; Verminaard/
-Feal-thas/Fewmaster Toede's off-stage treatment was already confirmed
-correct by the Milestone 48/49 research pass. Full sourcing and reasoning
-in `docs/TIMELINE_NOTES.md`'s "Kitiara" section.
+Milestone 51 (quest system engine) shipped: the first version of a quest
+system, built as glue over systems that already existed rather than new
+machinery -- `VISIT`/`TALK` objectives are pure queries over
+`visitedLocations`/`metCharacters` (tracked since Milestones 3/18), and
+`SLAY` needed only one new lifetime kill tally. New `quest::Quest`/
+`QuestCatalog`/`QuestLoader` (`data/quests.txt`, its own fail-fast loader,
+zero in-project dependencies, same shape as `timeline::Timeline`). Zone
+files gained a `QUEST <char> <quest-id>` POI keyword (modelled on `PORTAL`,
+validated the same way `BOAT` is -- must already have a `TALK` line).
+`GameState` gained `quests` (id -> `QuestStatus`, Active/Complete, absence
+= not started) and `monsterKills`; both round-trip through the save file as
+new optional `QUEST`/`KILL` lines, written right after `BOAT` and before
+`ZONESTACK` per its documented ordering invariant. Turn-in flow lives in
+`GameLoop::offerOrTurnInQuest`, hooked into `talkTo` the same slot the
+`grantsBoat` precedent established; the journal is a new `g` key (`j`/`q`/
+`l` were all already taken) opening a one-keypress `drawJournalFrame`.
+`conditionMatches` gained a `knight` condition so `REQUIRE` can gate a
+quest to Knights of Solamnia. One proof-of-concept quest ships,
+`road_wolves` (kill 3 timber wolves), offered by Solace's Notice Board --
+its existing "armies on the move in the east" flavor text was the hook the
+zone docs had already called out for this. `DELIVER`/item objectives were
+explicitly deferred to Milestone 52 (a real quest-item subsystem, the
+riskiest thing to build near the user's real save) -- see the "Decided with
+the user" section of the approved plan and `docs/QUEST_NOTES.md`'s cut list.
 
-Verified via the piped character-creation smoke test (real `save.txt`
-moved aside and restored around the run, as always) -- pure data + prose
-edits, no new grammar, so no throwaway self-test or forced full rebuild
-was needed, same call as Milestones 47-49. Docs updated:
-`docs/TIMELINE_NOTES.md` (new "Kitiara" section + a touch-up to the
-Laurana section's forward pointer), `docs/MILESTONES.md` (new Milestone
-50 entry + NEXT UP renumbered now that "Dragon Highlords" is resolved),
-`README.md`'s Status paragraph. No `docs/ZONE_NOTES.md` changes needed --
-nothing there became inaccurate.
+Verified via: a throwaway self-test (`QuestLoader` against the real
+`data/quests.txt` plus a battery of malformed-input cases; `SaveGame`
+QUEST/KILL round-trip and backward compatibility against a
+pre-Milestone-51-shaped save) -- all passed, then deleted per the standard
+pattern. A second throwaway check loaded a scratch copy of the user's real
+`save.txt` under the new `SaveGame::load` and confirmed it still loads
+clean with empty `quests`/`monsterKills` maps. Clean `/W4` rebuild, zero
+new warnings, twice (once after the quest-loader self-test, once after a
+second throwaway real-save-load check -- both deleted before their
+respective final rebuilds). Piped character-creation smoke test passed
+(proves `QuestCatalog` loads alongside the other catalogs), real
+`save.txt` moved aside and restored around every test, as always.
+**Interactive UI verification (dialogue boxes, the Accept/Decline picker,
+the journal screen) was NOT done via real keypresses** -- this project's
+`_getch()`-based input can't be piped (see `docs/GOTCHAS.md`), and no
+tmux/PTY driver exists for this Windows console app, so the `run` skill's
+usual approach doesn't apply here either. That interactive path (talk to
+the Solace Notice Board, accept `road_wolves`, check `g`, kill 3 wolves,
+turn it in) still needs a real human playtest before calling the UI truly
+done -- flagging this clearly rather than claiming full verification.
 
-Next: `docs/MILESTONES.md`'s "NEXT UP" has two live options left:
+Docs updated: `docs/QUEST_NOTES.md` (new), `docs/ZONE_NOTES.md` (the
+`QUEST` keyword), `docs/ARCHITECTURE.md` (module map, dependency
+paragraph, "what's deliberately NOT abstracted yet", Milestone 51 section),
+`docs/GOTCHAS.md` (save ordering, `j`-is-South, the unvalidated met-id,
+the C4061 correction), `docs/CHARACTER_NOTES.md` (the `knight` condition),
+`docs/MILESTONES.md`, `README.md`, `CLAUDE.md`'s doc table.
 
-1. **Terrain-specific monster pools** -- encounter chance already varies
-   by terrain (Milestone 27); which monster you fight is still
-   uniform-random. See `docs/COMBAT_NOTES.md`'s "Extending this later."
-2. **More monsters** -- Bozak/Sivak/Aurak Draconians, Thanoi, and other
-   untouched Monstrous Manual entries. Higher-tier draconians are
-   spellcasters/shapeshifters -- real mechanics not modeled yet. See
-   `docs/COMBAT_NOTES.md`'s "Extending this later."
-
-Or something else -- ask the user before starting.
+Next: `docs/MILESTONES.md`'s "NEXT UP" now has three live options --
+Milestone 52 (real quest content: more quests from ordinary NPCs/Notice
+Board/Knight of the Sword, plus the deferred `DELIVER` objective kind),
+terrain-specific monster pools, and more monsters. Ask the user before
+starting any of them.

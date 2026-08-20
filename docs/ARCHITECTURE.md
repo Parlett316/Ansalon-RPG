@@ -25,6 +25,9 @@ world/     Location, World, WorldLoader,     -- overworld: named places (graph)
            ZoneCatalog                          scenes tied to overworld locations
 timeline/  Timeline, TimelineLoader           -- canon character schedule, queried
                                                   by location id + in-game day
+quest/     Quest, QuestCatalog,               -- hand-authored quests: offer/
+           QuestLoader                          accept/turn-in text, objectives,
+                                                  rewards (see docs/QUEST_NOTES.md)
 character/ Dice, Ability, Race, CharClass,    -- 2e AD&D rules content, the
            Alignment, Knighthood,                interactive creation wizard,
            WizardOrder, Leveling,                level-up math, spellcasting,
@@ -38,15 +41,21 @@ main.cpp                                      -- wires the above together
 ```
 
 The dependency direction is one-way: `game/` depends on `world/`,
-`timeline/`, `character/`, `combat/`, and `render/`; `render/` depends on
-`world/` (it needs to read terrain/location data to draw it), `timeline/`
-(to query who's present), `combat/` (`drawCombatFrame` takes a `Monster`),
-and `game/GameState` (it needs to know where the player is) but never
-mutates any of them; `combat/` depends only on `character/` (`Dice` for
-rolls, `Character`/`Ability` for the player side of an attack); `world/`,
-`timeline/`, and `character/` depend on nothing else in the project. This
-means those three, `combat/`, and `render/` can each be understood, tested,
-or reused in isolation without pulling in the whole game loop.
+`timeline/`, `quest/`, `character/`, `combat/`, and `render/`; `render/`
+depends on `world/` (it needs to read terrain/location data to draw it),
+`timeline/` (to query who's present), `combat/` (`drawCombatFrame` takes a
+`Monster`), and `game/GameState` (it needs to know where the player is)
+but never mutates any of them; `combat/` depends only on `character/`
+(`Dice` for rolls, `Character`/`Ability` for the player side of an
+attack); `world/`, `timeline/`, `quest/`, and `character/` depend on
+nothing else in the project. This means those four, `combat/`, and
+`render/` can each be understood, tested, or reused in isolation without
+pulling in the whole game loop. Notably, `render/` does **not** depend on
+`quest/` — `MapRenderer::drawJournalFrame` takes a fully-resolved
+`JournalEntry` (title, complete flag, pre-marked objective-line strings)
+built by `game::GameLoop`, the same "presentation stays ignorant of the
+domain type" split `drawDialogueFrame` already established for
+`timeline::PresenceWindow`/`world::PointOfInterest`.
 
 ## Why the world is TWO data structures, not one
 
@@ -899,6 +908,41 @@ through to their pre-Milestone-43 behavior unchanged — the nearest-
 landmark compass search on the overworld, the "nothing else catches your
 eye" stub in a zone.
 
+## Quest system (Milestone 51)
+
+The world had places, people, and monsters, but nothing that gave the
+player a goal — this milestone's answer, built as glue over what already
+existed rather than a new subsystem. Full design writeup, grammar, and the
+turn-in state table: `docs/QUEST_NOTES.md`. The short version, for how it
+fits the rest of this document's shape:
+
+A new `quest/` module (`Quest.h`/`Quest.cpp`/`QuestLoader.cpp`) joins
+`world/`/`timeline/`/`character/` as a fourth leaf with no in-project
+dependencies — static content, loaded fresh every run from
+`data/quests.txt`, never mutated. `game::GameState` gained two flat fields
+following the `hasBoat`/`metCharacters` precedent exactly: `quests` (id ->
+`QuestStatus`, absence meaning "not started") and `monsterKills` (a
+lifetime tally `GameLoop::runCombat` increments on every kill). Both round-
+trip through the save file as new optional lines, the same
+backward-compatible-by-default shape `BOAT` and `RESTDAY` established.
+
+The evaluation logic (`objectiveProgress`/`objectiveMet`/
+`allObjectivesMet`) lives in `game::GameLoop.cpp`, not `quest/` — the same
+split `game::conditionMatches` already established for `SAY_IF`: the
+static content type stays ignorant of `character::Character`/`GameState`,
+and `game/` is where the two actually meet. Turn-in itself hooks into
+`GameLoop::talkTo` in the exact slot the `grantsBoat` precedent (Milestone
+36) occupies — after `metCharacters.insert`, before the topic-picker loop
+— so a quest-giver POI's `QUEST <char> <quest-id>` behaves like one more
+layered ability on top of an existing `TALK`ed POI, the same shape
+`SHOP`/`BOAT`/`BED`/`TIMELINE_ANCHOR` already use (see
+`docs/ZONE_NOTES.md`).
+
+New UI: a `render::Key::Journal` bound to `'g'` (`'j'`/`'q'`/`'l'` were all
+already taken — see `docs/GOTCHAS.md`) opens `drawJournalFrame`, a
+one-keypress-block screen in the `showCharacterSheet`/`showHelp` shape,
+not a nested loop.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can
@@ -931,8 +975,17 @@ attach without reworking it:
   the zone-native NPCs have content authored so far (Otik, Tika, the
   Seeker Guard, the Forestmaster, the Fortress Guard). The condition
   vocabulary itself (`game::conditionMatches`) is still easy to extend if
-  a richer reaction is ever needed (e.g. a specific subrace, or
-  knight/robe status).
+  a richer reaction is ever needed (e.g. a specific subrace, or robe
+  status) — a `knight` condition was added this way at Milestone 51,
+  specifically so a Knight-of-the-Sword quest's `REQUIRE` wouldn't need a
+  grammar change later.
+- **Quests past `VISIT`/`TALK`/`SLAY`**: `DELIVER` (carry/hand over a
+  specific item) was scoped out of Milestone 51 because it needs a real
+  quest-item concept `character::InventoryItem` doesn't have yet — see
+  `docs/QUEST_NOTES.md`'s cut list. Item rewards beyond steel/XP are in
+  the same position. Real quest *content* beyond the one proof-of-concept
+  quest (`road_wolves`) is also open — see `docs/QUEST_NOTES.md`'s
+  "Extending this later".
 
 ## What's deliberately NOT abstracted yet
 
@@ -945,3 +998,16 @@ premature — the systems that would need them don't exist yet. When a
 milestone that actually needs one of these is built, revisit this
 document and update it to describe what
 shipped, not just what was planned.
+
+**Milestone 51's quest system is deliberately not an event bus, even
+though "a quest tracks progress toward things happening elsewhere" sounds
+like it wants one.** An objective is a pull, not a push: `objectiveMet`
+queries `visitedLocations`/`metCharacters`/`monsterKills` on demand
+(whenever a quest-giver POI is talked to), rather than every quest
+subscribing to "you moved" / "you talked to X" / "you killed Y" events and
+updating itself reactively. This is why there's no "Objective complete!"
+notification the instant something happens — see `docs/QUEST_NOTES.md`'s
+cut list — and it's a deliberate, not accidental, omission: adding one
+would mean building the exact event bus this section has said "not yet"
+to for 50 milestones running, for a payoff (a pop-up) this project doesn't
+need yet.

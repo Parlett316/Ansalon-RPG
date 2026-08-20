@@ -105,6 +105,10 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     char timelineAnchorCode = '\0';
     int timelineAnchorLine = -1;
     std::string timelineLocationId; // TIMELINE_LOCATION -- optional, no positional dependency
+    // QUEST -- same "applied after the whole file is parsed, must reference
+    // an already-declared POI with a TALK line" treatment as BOAT above.
+    // Value is {quest-id, the line number QUEST appeared on}.
+    std::unordered_map<char, std::pair<std::string, int>> questLines;
     int gridWidth = -1;
 
     // GRID/ENDGRID is a literal raw-text block embedded inside an otherwise
@@ -262,13 +266,20 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed TIMELINE_LOCATION (expected: TIMELINE_LOCATION <location-id>)");
                 }
                 timelineLocationId = rest;
+            } else if (keyword == "QUEST") {
+                std::istringstream iss(rest);
+                std::string codeToken, questId;
+                if (!(iss >> codeToken >> questId) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed QUEST (expected: QUEST <char> <quest-id>)");
+                }
+                questLines[codeToken[0]] = {questId, lineNumber};
             } else if (keyword == "END") {
                 state = State::Done;
             } else {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
                          "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, BED, "
-                         "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, or END)");
+                         "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -356,6 +367,23 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         }
         it->second.isBoat = true;
     }
+    // Same rule for QUEST as BOAT: it must reference an already-declared
+    // POI that also has a TALK line, since a quest is offered through
+    // talking to that POI (see game::GameLoop::handleTalk) -- without TALK
+    // it could parse cleanly but never actually be reachable in play.
+    // Whether the quest-id itself is real is validated later, in main.cpp,
+    // once quest::QuestCatalog has been loaded (ZoneLoader can't see it).
+    std::unordered_map<char, std::string> quests;
+    for (const auto& [code, idAndLine] : questLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, idAndLine.second, "QUEST '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, idAndLine.second, "QUEST '" + std::string(1, code) + "' has no TALK line to offer it through");
+        }
+        quests[code] = idAndLine.first;
+    }
     // Same rule for BED as SHOP: a bed POI still needs a name/description
     // via POI, BED only marks it as also being able to fully heal there --
     // no TALK prerequisite, since it's not talk-gated like BOAT.
@@ -412,7 +440,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     }
 
     return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois), std::move(portals),
-                timelineAnchorCode, std::move(timelineLocationId));
+                timelineAnchorCode, std::move(timelineLocationId), std::move(quests));
 }
 
 } // namespace world

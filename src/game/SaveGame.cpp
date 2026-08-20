@@ -133,6 +133,17 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     }
     file << "\n";
     file << "BOAT " << (state.hasBoat ? 1 : 0) << "\n";
+    // Quest progress and lifetime kill tallies -- one line per entry, no
+    // count prefix (unlike VISITED/MET, these are id+int pairs, not bare
+    // ids, so packing them onto one line would need its own delimiter).
+    // Must stay here, before ZONE/ZONESTACK -- load()'s ZONESTACK handling
+    // relies on it being written last with nothing after it (see below).
+    for (const auto& [id, status] : state.quests) {
+        file << "QUEST " << id << " " << static_cast<int>(status) << "\n";
+    }
+    for (const auto& [id, count] : state.monsterKills) {
+        file << "KILL " << id << " " << count << "\n";
+    }
     if (state.mode == Mode::Zone) {
         file << "ZONE " << state.currentZoneId << "\n";
         file << "ZONEPOS " << state.zoneX << " " << state.zoneY << "\n";
@@ -342,6 +353,25 @@ GameState SaveGame::load(const std::string& path) {
                 fail(path, lineNumber, "malformed BOAT (expected 0 or 1)");
             }
             state.hasBoat = value == 1;
+        } else if (keyword == "QUEST") {
+            // Optional -- a save written before Milestone 51 simply has no
+            // QUEST lines, and an empty state.quests (no quest started) is
+            // the correct value for it anyway. Status is a raw enum int,
+            // same convention as RACE/CLASS/ALIGNMENT.
+            std::string id;
+            int statusValue = -1;
+            if (!(iss >> id >> statusValue) || (statusValue != 0 && statusValue != 1)) {
+                fail(path, lineNumber, "malformed QUEST (expected: QUEST <id> <0-or-1>)");
+            }
+            state.quests[id] = static_cast<QuestStatus>(statusValue);
+        } else if (keyword == "KILL") {
+            // Optional, same backward-compat reasoning as QUEST above.
+            std::string id;
+            int count = -1;
+            if (!(iss >> id >> count) || count < 0) {
+                fail(path, lineNumber, "malformed KILL (expected: KILL <monster-id> <count>)");
+            }
+            state.monsterKills[id] = count;
         } else if (keyword == "ZONE") {
             state.currentZoneId = rest;
             haveZoneLine = true;

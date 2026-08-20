@@ -6,6 +6,8 @@
 #include "game/GameLoop.h"
 #include "game/GameState.h"
 #include "game/SaveGame.h"
+#include "quest/Quest.h"
+#include "quest/QuestLoader.h"
 #include "render/Console.h"
 #include "render/MapRenderer.h"
 #include "timeline/Timeline.h"
@@ -89,6 +91,29 @@ int main() {
         combat::MonsterCatalog monsters;
         combat::MonsterLoader::loadFromFile(dataDir + "/monsters.txt", monsters);
 
+        // Static content too, loaded after zones so every zone's QUEST ids
+        // can be cross-checked against it below (quest::QuestLoader itself
+        // can't see zones -- see docs/QUEST_NOTES.md).
+        quest::QuestCatalog quests;
+        quest::QuestLoader::loadFromFile(dataDir + "/quests.txt", quests);
+
+        // A zone's QUEST <char> <quest-id> line is validated by ZoneLoader
+        // only against its own POI/TALK grammar (it can't see
+        // quest::QuestCatalog) -- so a quest id that doesn't exist would
+        // otherwise fail silently at play time (offerOrTurnInQuest just
+        // returns). Cross-checked here, the established place for
+        // cross-loader validation (see the starting-location checks above).
+        for (const auto& [zoneId, zone] : zones.allZones()) {
+            for (const auto& [code, questId] : zone.quests()) {
+                if (quests.find(questId) == nullptr) {
+                    std::cerr << "Zone '" << zoneId << "' offers quest '" << questId
+                               << "' at POI '" << code << "', but no such quest is defined in "
+                               << dataDir << "/quests.txt.\n";
+                    return 1;
+                }
+            }
+        }
+
         const world::Location* start = world.getLocation(kStartingLocationId);
         if (!start) {
             std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";
@@ -143,7 +168,7 @@ int main() {
             state.visitedLocations.insert(start->id);
         }
 
-        game::GameLoop loop(world, grid, zones, timeline, monsters, std::move(state), savePath);
+        game::GameLoop loop(world, grid, zones, timeline, monsters, quests, std::move(state), savePath);
         loop.run();
     } catch (const std::exception& ex) {
         std::cerr << "Failed to start: " << ex.what() << "\n";

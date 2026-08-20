@@ -118,6 +118,12 @@ TIMELINE_LOCATION <location-id>         optional -- overrides which
                                         this zone's own filename/catalog
                                         id (see "Zone-interior
                                         encounters" below)
+QUEST <char> <quest-id>                 optional, at most one per POI --
+                                        marks a POI as a quest-giver (see
+                                        "Quests: POIs that offer them"
+                                        below); same "must already have a
+                                        POI **and** a TALK line" rule as
+                                        BOAT
 END
 ```
 
@@ -325,6 +331,32 @@ as leading to the Inn's private rooms, and already noted (see "The Inn of
 the Last Home specifically" below) as "not a modeled zone yet." No other
 zone has an authored Inn/lodging POI, so no other zone got one.
 
+## Quests: POIs that offer them (Milestone 51)
+
+`QUEST <char> <quest-id>` marks a POI as a quest-giver: talking to it
+offers, updates, or turns in the referenced `quest::Quest`
+(`data/quests.txt` — full grammar and design model in
+`docs/QUEST_NOTES.md`). Modelled on `PORTAL` rather than `SHOP`/`BOAT`/`BED`
+because, like `PORTAL`, it carries an id payload that needs cross-file
+validation — but unlike `PORTAL` (validated by `ZoneCatalog` against its
+own loaded zones), a quest id is validated in `main.cpp`, the first point
+both a loaded `ZoneCatalog` and a loaded `quest::QuestCatalog` exist
+together (`ZoneLoader` itself can't see `QuestCatalog` and shouldn't — see
+`docs/ARCHITECTURE.md`'s dependency direction). Same "must already have a
+POI **and** a TALK line" prerequisite as `BOAT`: a quest is offered through
+talking, so a POI with no `TALK` line could parse cleanly but never
+actually be reachable in play.
+
+At most one quest per POI in v1 — a deliberate scope cut, not a grammar
+limit that will obviously widen; see `docs/QUEST_NOTES.md`'s cut list.
+
+As of Milestone 51, exactly one POI carries `QUEST`:
+`data/zones/solace.txt`'s `B "Notice Board"` offers `road_wolves`. Its
+description ("armies on the move in the east") already existed as the
+"future timeline engine to eventually make literal" hook noted below —
+turned out to be the quest engine that made it literal, not the timeline
+one, but the same planted flavor either way.
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -360,13 +392,18 @@ the continent, which matters for the future timeline/encounter engine).
 
 `data/zones/solace.txt` is a 40×16 town square: two clusters of vallenwood
 trees framing the north edge and a tree-lined south edge with a gap at the
-entry road, two named vallenwood trees, a notice board (a small, deliberate
-nod to "rumors of war" flavor for the future timeline engine to eventually
-make literal), a general store, Flint Fireforge's smithy, and the door to
-the Inn of the Last Home (`PORTAL I solace_inn` — see above). Its layout is
-original — not a copy of any published map — consistent with the same
-non-infringing, inspired-by-canon approach used for location descriptions
-elsewhere in this project.
+entry road, two named vallenwood trees, a notice board, a general store,
+Flint Fireforge's smithy, and the door to the Inn of the Last Home
+(`PORTAL I solace_inn` — see above). Its layout is original — not a copy
+of any published map — consistent with the same non-infringing,
+inspired-by-canon approach used for location descriptions elsewhere in
+this project.
+
+The notice board (`POI B`) was originally authored as "a small, deliberate
+nod to 'rumors of war' flavor for the future timeline engine to eventually
+make literal" — as of Milestone 51 it's the game's first quest-giver
+(`QUEST B road_wolves`, see "Quests: POIs that offer them" above), reading
+the same "armies on the move in the east" description it always had.
 
 ## The Inn of the Last Home specifically
 
@@ -724,6 +761,9 @@ own real reunion scene with Caramon here does **not** add a
    to" above). If a POI should be browsable/buyable, add a matching
    `SHOP <char>` line instead (see "Shops: POIs you can buy from" above).
    If a POI is a bed, add a matching `BED <char>` line instead (see
-   "Beds: POIs for complete bed-rest" above).
+   "Beds: POIs for complete bed-rest" above). If a talkable POI should
+   offer a quest, add a matching `QUEST <char> <quest-id>` line, and make
+   sure that id exists in `data/quests.txt` (see "Quests: POIs that offer
+   them" above and `docs/QUEST_NOTES.md`).
 6. Build and check the load succeeds (a malformed zone file fails fast with
    a clear error at startup, not partway through play).

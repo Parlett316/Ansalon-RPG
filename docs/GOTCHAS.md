@@ -51,6 +51,15 @@ you hit something surprising — that's the whole point of it existing.
   the scan code to be silently consumed as if it were the *next* keypress,
   which manifests as movement feeling randomly "off by one input"). See the
   comment in `Console::readKey`.
+- **Every obvious single-letter key mnemonic is already taken.** By
+  Milestone 51, `hjkl`/`wasd`/`yubn` cover movement, and `t`/`p`/`i`/`v`/
+  `c`/`r`/`z`/`f`/`m`/`?`/`q` are all bound too — check
+  `render::Console::readKey`'s doc comment before assuming a letter is
+  free. The quest journal wanted `j` (for "journal") and couldn't have it
+  (`j` is already South); it landed on `g` instead, the same kind of
+  collision `z` (not `b`) resolved for bed rest at Milestone 41. When
+  adding a new key, pick the letter *last*, after confirming nothing else
+  already owns it.
 - **`_getch()`/`_kbhit()` read from the real console, not from redirected
   stdin.** Piping input into the game the way Milestone 1's `getline`-based
   loop could be tested (`echo ... | ansalon_rpg.exe` or `< file`) does
@@ -165,11 +174,25 @@ you hit something surprising — that's the whole point of it existing.
   reconsidering whether it's still needed.
 - **Adding a new `render::Key` value requires touching every `switch` over
   `Key`, not just the one that cares about it.** This project relies on
-  exhaustive `switch` coverage instead of a `default:` label (so a
-  genuinely unhandled case is a compile warning, not a silent no-op).
-  Adding `Key::Flee` needed a `case render::Key::Flee: break;` in the main
-  loop's `switch` in `GameLoop::run()` even though that switch does
-  nothing with it — `runCombat` has its own separate, narrower key check.
+  exhaustive `switch` coverage instead of a `default:` label so a
+  genuinely unhandled case is easy to spot in review. Adding `Key::Flee`
+  needed a `case render::Key::Flee: break;` in the main loop's `switch` in
+  `GameLoop::run()` even though that switch does nothing with it —
+  `runCombat` has its own separate, narrower key check.
+  **Correction (verified at Milestone 51, don't trust the old wording
+  above): this is NOT actually a compiler safety net.** MSVC's C4061/C4062
+  ("enumerator in switch of enum is not explicitly handled by a case
+  label") are real warnings, but they're off by default and **not** part
+  of `/W4` — only `/Wall` enables them, which this project doesn't use.
+  Confirmed empirically while adding `Key::Journal`: temporarily deleting
+  its `case` from `GameLoop::run()`'s switch and rebuilding under this
+  project's actual `/W4 /permissive-` flags produced zero warnings — the
+  key would have just silently done nothing. **Every switch over `Key`
+  genuinely has to be checked by hand** (there are three consumers:
+  `Console.cpp`'s two `readKey()` switches, both of which *do* have
+  `default:` and so also silently swallow anything unhandled, plus
+  `GameLoop::run()`'s dispatch switch) — verify a new key by actually
+  pressing it, not by trusting a clean build.
 - **Monster stats in `data/monsters.txt` are invented, not sourced** — see
   `docs/COMBAT_NOTES.md` for why (no Monstrous Compendium/Monster Manual
   in this project's reference library). Don't assume they're
@@ -215,6 +238,24 @@ you hit something surprising — that's the whole point of it existing.
   a TODO to remove later — the same "keep old saves loading" spirit as the
   raw-enum-int fragility above, just handled explicitly this time instead
   of left as an accepted risk.
+- **`ZONESTACK` must stay the last thing `save()` writes.** `load()`
+  consumes `ZONESTACK`'s N entry lines by counting, not by keyword — once
+  it's seen the `ZONESTACK <n>` line, the next `n` lines are read as raw
+  `<zoneId> <x> <y>` rows regardless of what they'd otherwise parse as.
+  Milestone 51's `QUEST`/`KILL` lines had to be inserted *before*
+  `ZONESTACK` (right after `BOAT`) for exactly this reason — putting them
+  after would have them silently swallowed as phantom zone-stack entries
+  (or worse, corrupt real ones) the moment the stack is non-empty. Any
+  future new save keyword needs the same check: does it land before
+  `ZONESTACK`, or does it break the count?
+- **A quest's `TALK <met-id>` objective isn't validated against real
+  character/NPC ids at load time.** `quest::QuestLoader` can't see
+  `data/timeline.txt` or `data/zones/*.txt` (same one-way dependency
+  direction as everything else — see `docs/ARCHITECTURE.md`), so a typo'd
+  or wrong met-id (it's `tanis`, not `"Tanis"`; `haven:G`, not `G` or
+  `"Seeker Guard"`) parses cleanly and the objective simply never
+  completes. Same silent-failure class as `TimelineLoader` not validating
+  a `PRESENCE` location id. See `docs/QUEST_NOTES.md`'s "The met-id trap."
 
 ## Zones (walkable interiors)
 

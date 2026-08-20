@@ -148,7 +148,13 @@ real leveling — more hit points, a better THAC0, better saving throws, all
 sourced from the PHB's level-by-level tables (a Knight of the Crown gets a
 nod toward the Order of the Sword at 3rd level, and a Mage actually
 undergoes the Test of High Sorcery and is Robed by alignment) — see
-`docs/CHARACTER_NOTES.md`.
+`docs/CHARACTER_NOTES.md`. The world finally has things to actually do:
+press `g` at any time to check your quest journal, and talk to a
+quest-giver to be offered one, track its progress, and turn it in for a
+reward. One ships so far — Solace's Notice Board, whose long-standing
+"armies on the move" flavor text turned out to be a hook for exactly this,
+offers a bounty to clear three timber wolves off the south road — see
+`docs/QUEST_NOTES.md` for the full design and how more get authored.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),
@@ -158,8 +164,9 @@ If you're picking this project up fresh (human or AI), read
 `docs/CHARACTER_NOTES.md` (which 2e rules are modeled, which are
 deliberately deferred, and an important accuracy caveat),
 `docs/TIMELINE_NOTES.md` (how the chance-encounter schedule is authored),
-and `docs/COMBAT_NOTES.md` (attack/damage math, and what's invented vs.
-sourced) before making changes.
+`docs/COMBAT_NOTES.md` (attack/damage math, and what's invented vs.
+sourced), and `docs/QUEST_NOTES.md` (quest grammar, objectives, the
+journal, turn-in flow) before making changes.
 
 ## Requirements
 
@@ -258,6 +265,11 @@ needed:
   session — arrivals, blocked moves, look results, combat outcomes —
   not just the live side panel's recent tail), up/down to scroll,
   `v`/`q` to return
+- `g` — view your quest journal (any key dismisses it). A talkable POI
+  marked as a quest-giver offers a quest the first time you talk to it
+  (Accept/Decline picker), shows a progress line on later visits, and
+  turns it in with a reward once its objectives are met — see
+  `docs/QUEST_NOTES.md`.
 - `;` — look around (overworld: names the nearest notable place and its
   direction; inside a zone: everything is already on screen, so there's
   nothing further to reveal)

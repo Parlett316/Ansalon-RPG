@@ -191,6 +191,24 @@ public:
     // step across calls without duplicating the wrap/line-count math here.
     static int drawLogFrame(const std::vector<std::string>& log, int scrollOffset);
 
+    // One quest's journal entry, adapted by GameLoop::showJournal from
+    // quest::Quest + game::GameState::quests/monsterKills -- MapRenderer
+    // never learns about quest:: itself (same decoupling as DialogueLine),
+    // and never decides what's complete. `objectiveLines` are pre-marked by
+    // the caller ("[x] ..." / "[ ] ... (2/3)").
+    struct JournalEntry {
+        std::string title;
+        bool complete = false;
+        std::vector<std::string> objectiveLines;
+    };
+
+    // Renders the quest journal ('g'): active quests first, then a
+    // "Completed" section, or "(no quests yet)" if `entries` is empty.
+    // GameLoop::showJournal() blocks for one keypress to dismiss it, same
+    // shape as drawCharacterSheet/drawHelpFrame -- no scrolling in v1 (see
+    // docs/QUEST_NOTES.md), same known limit as drawInventoryFrame today.
+    static void drawJournalFrame(const std::vector<JournalEntry>& entries);
+
     // Renders the '?' help screen: every command bound in
     // render::Console::readKey, grouped by context (movement, overworld/
     // zone actions, combat-only actions, other). Static content -- no

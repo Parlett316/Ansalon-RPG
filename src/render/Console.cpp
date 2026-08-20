@@ -124,6 +124,7 @@ Key Console::readKey() {
         case 'p': case 'P': return Key::Shop;
         case 'i': case 'I': return Key::Inventory;
         case 'v': case 'V': return Key::Log;
+        case 'g': case 'G': return Key::Journal;
         case 'f': case 'F': return Key::Flee;
         case 'm': case 'M': return Key::Cast;
         case 'r': case 'R': return Key::Rest;
@@ -156,6 +157,7 @@ Key Console::readKey() {
         case 'p': return Key::Shop;
         case 'i': return Key::Inventory;
         case 'v': return Key::Log;
+        case 'g': return Key::Journal;
         case 'f': return Key::Flee;
         case 'm': return Key::Cast;
         case 'r': return Key::Rest;

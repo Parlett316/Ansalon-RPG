@@ -728,6 +728,43 @@ int MapRenderer::drawLogFrame(const std::vector<std::string>& log, int scrollOff
     return offset;
 }
 
+void MapRenderer::drawJournalFrame(const std::vector<JournalEntry>& entries) {
+    std::vector<std::string> lines;
+
+    if (entries.empty()) {
+        lines.push_back("(no quests yet)");
+    } else {
+        bool anyActive = false;
+        for (const auto& entry : entries) {
+            if (entry.complete) continue;
+            anyActive = true;
+            lines.push_back(entry.title);
+            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back("  " + objectiveLine);
+            lines.push_back("");
+        }
+        if (!anyActive) lines.push_back("(no quests active)");
+
+        bool anyComplete = false;
+        for (const auto& entry : entries) {
+            if (!entry.complete) continue;
+            if (!anyComplete) {
+                lines.push_back("Completed:");
+                anyComplete = true;
+            }
+            lines.push_back(entry.title);
+            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back("  " + objectiveLine);
+            lines.push_back("");
+        }
+    }
+
+    lines.push_back("(press any key to continue)");
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    writeBoxed(out, "Journal", lines);
+    std::cout << out.str();
+}
+
 void MapRenderer::drawHelpFrame() {
     std::vector<std::string> lines;
 
@@ -738,8 +775,9 @@ void MapRenderer::drawHelpFrame() {
     lines.push_back("  ; = look around        t = talk to someone here");
     lines.push_back("  Enter = step in/out     c = character sheet");
     lines.push_back("  p = shop (at a shop)    i = inventory / equip");
-    lines.push_back("  v = full event log      r = rest");
-    lines.push_back("  z = bed rest (at a bed) ? = this help screen");
+    lines.push_back("  v = full event log      g = quest journal");
+    lines.push_back("  r = rest                z = bed rest (at a bed)");
+    lines.push_back("  ? = this help screen");
     lines.push_back("");
     lines.push_back("Combat:");
     lines.push_back("  Enter = attack          m = cast (if a caster)");

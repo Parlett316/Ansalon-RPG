@@ -1,0 +1,22 @@
+# data/quests.txt -- hand-authored quest definitions, one QUEST/END block
+# each. Bound to a quest-giver POI by a QUEST <char> <quest-id> line in a
+# zone file (see docs/ZONE_NOTES.md) -- that POI must already have a TALK
+# line, since a quest is offered/updated/turned in through talking to it.
+# Grammar and design model: docs/QUEST_NOTES.md.
+#
+# Milestone 51 ships this one quest as a proof of concept for the engine --
+# offer/accept/progress/turn-in, the journal, and a Slay objective (the one
+# kind that needed new persistent state, see docs/QUEST_NOTES.md). The real
+# content pass, with quest givers drawn from ordinary NPCs, the Notice
+# Board, and Knight of the Sword advancement, is Milestone 52.
+
+QUEST road_wolves
+NAME The Wolves on the Solace Road
+OFFER "Three wolves, bold as brass, worrying travelers on the south road," the notice reads, in a hand you don't recognize. "Whoever thins their numbers has the thanks of Solace -- and its steel."
+ACCEPT You memorize the particulars: the south road, and wolves bold enough to trouble it in daylight now.
+PROGRESS The notice is still pinned where you left it. The wolves, presumably, are still out there.
+COMPLETE Someone's pinned a fresh scrap beneath where the notice used to be: "Paid, with my thanks -- a grateful farmer." Tucked behind it, sure enough, is a small pouch of steel.
+SLAY wolf 3 Kill three timber wolves on the roads around Solace
+REWARD_STEEL 40
+REWARD_XP 90
+END

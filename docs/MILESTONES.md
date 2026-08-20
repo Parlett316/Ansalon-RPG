@@ -648,6 +648,42 @@ this stays authoritative.
     Verified via the piped smoke test; no throwaway self-test needed
     (pure data, no new grammar). See `docs/TIMELINE_NOTES.md`'s "Kitiara"
     section.
+51. Quest system (engine) -- the world had places, people, and monsters
+    but nothing to actually do; this milestone answers that with glue over
+    what already existed rather than a new subsystem. New `quest/` module
+    (`Quest`/`QuestCatalog`/`QuestLoader`, zero in-project dependencies,
+    same shape as `timeline::Timeline`) parses a new `data/quests.txt`.
+    `VISIT`/`TALK` objectives are pure queries over `visitedLocations`/
+    `metCharacters` (tracked since Milestones 3/18, no new state needed);
+    `SLAY` needed one new field, `GameState::monsterKills`, a lifetime
+    tally `runCombat` increments on every kill. Zone files gained a
+    `QUEST <char> <quest-id>` POI keyword, modelled on `PORTAL` (an id
+    payload needing cross-file validation) with `BOAT`'s "must already
+    have a TALK line" prerequisite; the quest id itself is cross-checked
+    against the loaded catalog in `main.cpp`. Turn-in hooks into
+    `GameLoop::talkTo` in the same slot the `grantsBoat` precedent
+    (Milestone 36) established. New `g` key (`j`/`q`/`l` were all already
+    taken) opens a one-keypress quest journal. `conditionMatches` gained a
+    `knight` condition so a future quest can gate on Knights of Solamnia
+    without a grammar change. One proof-of-concept quest ships,
+    `road_wolves` (kill 3 timber wolves, 40 steel + 90 XP), offered by
+    Solace's Notice Board -- its "armies on the move in the east" flavor
+    text, originally authored as a nod to a future rumor/quest engine,
+    turned out to be exactly that hook. Decided with the user before
+    building: quest givers are ordinary NPCs, the Notice Board, and Knight
+    of the Sword advancement (never the canon Heroes -- they're weather in
+    this project's pitch, not employers); `DELIVER`/item objectives and
+    item rewards were explicitly deferred (a real quest-item subsystem is
+    the riskiest thing to build near the user's real save). Verified via a
+    throwaway self-test (`QuestLoader` against the real data file plus
+    malformed-input cases; `SaveGame` `QUEST`/`KILL` round-trip and
+    backward compatibility) and the piped smoke test; a second throwaway
+    check confirmed the user's actual `save.txt` still loads clean with
+    empty quest/kill maps. **Interactive UI (dialogue boxes, the
+    Accept/Decline picker, the journal screen) was not verified via real
+    keypresses** -- no piping or tmux/PTY driver works for this project's
+    `_getch()`-based input on this box -- so that path still needs a human
+    playtest. See `docs/QUEST_NOTES.md`.
 
 ## NEXT UP
 
@@ -655,11 +691,16 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Terrain-specific monster pools** — encounter *chance* now varies by
+1. **Real quest content** — Milestone 51 shipped the engine plus one
+   proof-of-concept quest; the actual content pass (more quests from
+   ordinary NPCs, the Notice Board, and Knight of the Sword advancement,
+   plus the deferred `DELIVER` objective kind if a quest genuinely needs
+   it) is still open. See `docs/QUEST_NOTES.md`'s "Extending this later."
+2. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

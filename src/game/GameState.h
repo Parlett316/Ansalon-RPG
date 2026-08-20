@@ -3,6 +3,7 @@
 #include "character/Character.h"
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -11,6 +12,19 @@ namespace game {
 enum class Mode {
     Overworld,
     Zone,
+};
+
+// A quest's turn-in state. Absence from GameState::quests is the third,
+// implicit state ("not started") -- see quest/Quest.h. Stored as a raw
+// enum int in the save file (see game::SaveGame), same convention as
+// RACE/CLASS/ALIGNMENT, but append-only-safe: unlike those, nothing here
+// depends on a fixed ordering, so a future status can be added without
+// corrupting old saves. Deliberately just two values rather than a stage
+// index -- no authored quest needs more, and the save line widens for free
+// if one ever does (see docs/QUEST_NOTES.md).
+enum class QuestStatus {
+    Active = 0,
+    Complete = 1,
 };
 
 // Where to resume when leaving a zone that was entered via a PORTAL from
@@ -51,6 +65,16 @@ struct GameState {
     // crossableByBoat). Granted as a side effect of talking to a zone POI
     // marked BOAT (see world::PointOfInterest::isBoat), never revoked.
     bool hasBoat = false;
+    // Quest id -> current status. See quest::Quest/quest::QuestCatalog for
+    // the static quest definitions this indexes into, and
+    // game::GameLoop::offerOrTurnInQuest for how it's mutated.
+    std::unordered_map<std::string, QuestStatus> quests;
+    // Lifetime kills per combat::Monster::id, incremented in
+    // GameLoop::runCombat on every kill regardless of any quest. A SLAY
+    // objective is a query over this, the same way a VISIT/TALK objective
+    // queries visitedLocations/metCharacters above -- see
+    // docs/QUEST_NOTES.md. Never decremented.
+    std::unordered_map<std::string, int> monsterKills;
 
     std::string currentZoneId;
     int zoneX = 0;

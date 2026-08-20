@@ -84,13 +84,40 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     if (condition == "cleric") return c.charClass == character::ClassId::Cleric;
     if (condition == "thief") return c.charClass == character::ClassId::Thief;
     if (condition == "tinker") return c.charClass == character::ClassId::Tinker;
+    if (condition == "knight") return c.knightOrder != character::KnightOrder::None;
     return false;
+}
+
+int objectiveProgress(const quest::Objective& objective, const GameState& state) {
+    switch (objective.kind) {
+        case quest::ObjectiveKind::Visit:
+            return state.visitedLocations.count(objective.targetId) > 0 ? 1 : 0;
+        case quest::ObjectiveKind::Talk:
+            return state.metCharacters.count(objective.targetId) > 0 ? 1 : 0;
+        case quest::ObjectiveKind::Slay: {
+            auto it = state.monsterKills.find(objective.targetId);
+            return it == state.monsterKills.end() ? 0 : it->second;
+        }
+    }
+    return 0; // unreachable -- every ObjectiveKind is handled above
+}
+
+bool objectiveMet(const quest::Objective& objective, const GameState& state) {
+    return objectiveProgress(objective, state) >= objective.count;
+}
+
+bool allObjectivesMet(const quest::Quest& quest, const GameState& state) {
+    for (const auto& objective : quest.objectives) {
+        if (!objectiveMet(objective, state)) return false;
+    }
+    return true;
 }
 
 GameLoop::GameLoop(const world::World& world, const world::OverworldGrid& grid,
                     const world::ZoneCatalog& zones, const timeline::Timeline& timeline,
-                    const combat::MonsterCatalog& monsters, GameState initialState, std::string savePath)
-    : world_(world), grid_(grid), zones_(zones), timeline_(timeline), monsters_(monsters),
+                    const combat::MonsterCatalog& monsters, const quest::QuestCatalog& quests,
+                    GameState initialState, std::string savePath)
+    : world_(world), grid_(grid), zones_(zones), timeline_(timeline), monsters_(monsters), quests_(quests),
       state_(std::move(initialState)), savePath_(std::move(savePath)) {}
 
 void GameLoop::run() {
@@ -132,6 +159,7 @@ void GameLoop::run() {
             case render::Key::Shop:      handleShop(); break;
             case render::Key::Inventory: handleInventory(); break;
             case render::Key::Log:       handleLog(); break;
+            case render::Key::Journal:   showJournal(); break;
             case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
             case render::Key::Rest:      handleRest(); break;
@@ -443,8 +471,9 @@ void GameLoop::handleTalk() {
         const world::Zone* zone = zones_.getZone(state_.currentZoneId);
         const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
         if (poi != nullptr && !poi->dialogue.empty()) {
+            const std::string* questId = zone->questAt(state_.zoneX, state_.zoneY);
             candidates.push_back({state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
-                                   speechFromPoi(*poi), poi->isBoat});
+                                   speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string()});
         }
         // Zone-interior encounters (Milestone 23): standing on this zone's
         // TIMELINE_ANCHOR tile also makes any canon character the timeline
@@ -474,8 +503,7 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
         return;
     }
     if (candidates.size() == 1) {
-        const TalkCandidate& c = candidates.front();
-        talkTo(c.id, c.name, c.speech, c.grantsBoat);
+        talkTo(candidates.front());
         return;
     }
 
@@ -495,8 +523,7 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
         } else if (key == render::Key::South) {
             selected = (selected + 1) % static_cast<int>(names.size());
         } else if (key == render::Key::Enter) {
-            const TalkCandidate& c = candidates[selected];
-            talkTo(c.id, c.name, c.speech, c.grantsBoat);
+            talkTo(candidates[selected]);
             return;
         } else if (key == render::Key::Quit) {
             return;
@@ -538,7 +565,10 @@ void GameLoop::pickAndLook(const std::vector<LookCandidate>& candidates) {
     }
 }
 
-void GameLoop::talkTo(const std::string& id, const std::string& name, const Speech& speech, bool grantsBoat) {
+void GameLoop::talkTo(const TalkCandidate& candidate) {
+    const std::string& id = candidate.id;
+    const std::string& name = candidate.name;
+    const Speech& speech = candidate.speech;
     bool alreadyMet = state_.metCharacters.count(id) > 0;
     std::string text;
     if (alreadyMet) {
@@ -556,9 +586,12 @@ void GameLoop::talkTo(const std::string& id, const std::string& name, const Spee
     render::MapRenderer::drawDialogueFrame({{name, text}});
     render::Console::readKey(); // block for one keypress to dismiss, any key
     state_.metCharacters.insert(id);
-    if (grantsBoat && !state_.hasBoat) {
+    if (candidate.grantsBoat && !state_.hasBoat) {
         state_.hasBoat = true;
         pushLog("You've arranged passage south. You can now cross open water.");
+    }
+    if (!candidate.questId.empty()) {
+        offerOrTurnInQuest(candidate.questId, name);
     }
 
     if (!speech.topics.empty()) {
@@ -583,6 +616,95 @@ void GameLoop::talkTo(const std::string& id, const std::string& name, const Spee
             }
         }
     }
+}
+
+void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string& speakerName) {
+    const quest::Quest* q = quests_.find(questId);
+    if (q == nullptr) return; // defensive -- main.cpp already validated every zone QUEST id at startup
+
+    auto it = state_.quests.find(questId);
+    if (it == state_.quests.end()) {
+        // Not started -- REQUIRE (if any) gates whether this quest is even
+        // offered, same condition vocabulary as SAY_IF (see
+        // docs/QUEST_NOTES.md). An unmet REQUIRE means this POI has nothing
+        // to say about it -- the greeting shown just before this call is
+        // all the player sees.
+        if (!q->requirement.empty() && !conditionMatches(q->requirement, state_.character)) return;
+
+        render::MapRenderer::drawDialogueFrame({{speakerName, q->offerText}});
+        render::Console::readKey();
+
+        std::vector<std::string> labels = {"Accept", "Decline"};
+        int selected = 0;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame(q->name, labels, selected, "up/down=select   Enter=choose   q=cancel");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North || key == render::Key::South) {
+                selected = selected == 0 ? 1 : 0;
+            } else if (key == render::Key::Enter) {
+                if (selected == 0) {
+                    state_.quests[questId] = QuestStatus::Active;
+                    render::MapRenderer::drawDialogueFrame({{speakerName, q->acceptText}});
+                    render::Console::readKey();
+                    pushLog("Quest accepted: " + q->name + ".");
+                }
+                return;
+            } else if (key == render::Key::Quit) {
+                return; // declined -- re-offerable next time, nothing recorded
+            }
+        }
+    }
+
+    if (it->second == QuestStatus::Complete) return; // already turned in -- nothing more to say here
+
+    if (!allObjectivesMet(*q, state_)) {
+        render::MapRenderer::drawDialogueFrame({{speakerName, q->progressText}});
+        render::Console::readKey();
+        return;
+    }
+
+    // All objectives met -- turn in.
+    render::MapRenderer::drawDialogueFrame({{speakerName, q->completeText}});
+    render::Console::readKey();
+    state_.character.steelPieces += q->rewardSteel;
+    if (q->rewardXp > 0) {
+        state_.character.experience += q->rewardXp;
+        // First call site of applyPendingLevelUps outside runCombat -- a
+        // level-up can now happen mid-conversation. Its messages go to the
+        // persistent log_, not the dialogue frame that just closed.
+        character::applyPendingLevelUps(state_.character, log_);
+    }
+    state_.quests[questId] = QuestStatus::Complete;
+    std::ostringstream rewardMsg;
+    rewardMsg << "Quest complete: " << q->name << ".";
+    if (q->rewardSteel > 0) rewardMsg << " +" << q->rewardSteel << " steel.";
+    if (q->rewardXp > 0) rewardMsg << " +" << q->rewardXp << " XP.";
+    pushLog(rewardMsg.str());
+}
+
+void GameLoop::showJournal() {
+    std::vector<render::MapRenderer::JournalEntry> entries;
+    for (const auto& [questId, status] : state_.quests) {
+        const quest::Quest* q = quests_.find(questId);
+        if (q == nullptr) continue; // defensive -- shouldn't happen, main.cpp validates at startup
+
+        render::MapRenderer::JournalEntry entry;
+        entry.title = q->name;
+        entry.complete = status == QuestStatus::Complete;
+        for (const auto& objective : q->objectives) {
+            bool met = entry.complete || objectiveMet(objective, state_);
+            std::ostringstream line;
+            line << (met ? "[x] " : "[ ] ") << objective.label;
+            if (objective.kind == quest::ObjectiveKind::Slay && !met) {
+                line << " (" << objectiveProgress(objective, state_) << "/" << objective.count << ")";
+            }
+            entry.objectiveLines.push_back(line.str());
+        }
+        entries.push_back(std::move(entry));
+    }
+
+    render::MapRenderer::drawJournalFrame(entries);
+    render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
 void GameLoop::handleShop() {
@@ -877,6 +999,10 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
 
         if (monsterHp <= 0) {
+            // Lifetime kill tally, incremented regardless of any quest -- a
+            // SLAY objective is a query over this, the same way VISIT/TALK
+            // query visitedLocations/metCharacters. See docs/QUEST_NOTES.md.
+            state_.monsterKills[monster.id] += 1;
             int steel = std::max(0, character::roll(monster.steelDiceCount, monster.steelDiceSides) +
                                          monster.steelFlatBonus);
             state_.character.steelPieces += steel;

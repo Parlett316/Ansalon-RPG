@@ -61,10 +61,11 @@ Full player-facing feature list: `README.md`.
 | Overall structure, module boundaries, why things are split the way they are | `docs/ARCHITECTURE.md` |
 | Non-obvious traps, past bugs, platform quirks, file-format gotchas | `docs/GOTCHAS.md` |
 | The overworld grid, terrain generation, location placement | `docs/MAP_NOTES.md` |
-| Walkable zone interiors, POIs, TALK/SHOP/TIMELINE_ANCHOR grammar | `docs/ZONE_NOTES.md` |
+| Walkable zone interiors, POIs, TALK/SHOP/TIMELINE_ANCHOR/QUEST grammar | `docs/ZONE_NOTES.md` |
 | Race/class/leveling/spellcasting/equipment rules content | `docs/CHARACTER_NOTES.md` |
 | The canon-character chance-encounter schedule | `docs/TIMELINE_NOTES.md` |
 | Attack/damage math, monsters, victory/leveling flow | `docs/COMBAT_NOTES.md` |
+| Quest grammar, objectives, the journal, turn-in flow | `docs/QUEST_NOTES.md` |
 | What's shipped so far (numbered milestone history), what's next | `docs/MILESTONES.md` |
 
 Read `docs/ARCHITECTURE.md` and `docs/GOTCHAS.md` before touching

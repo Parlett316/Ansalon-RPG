@@ -23,6 +23,8 @@ add_executable(ansalon_rpg
     src/world/ZoneCatalog.cpp
     src/timeline/Timeline.cpp
     src/timeline/TimelineLoader.cpp
+    src/quest/Quest.cpp
+    src/quest/QuestLoader.cpp
     src/combat/Monster.cpp
     src/combat/MonsterLoader.cpp
     src/combat/Combat.cpp
@@ -57,7 +59,8 @@ endif()
 # this file is already ready for a future GCC/Clang build.
 
 # The game loads data/locations.txt, data/overworld.grid, data/zones/*.txt,
-# data/timeline.txt, and data/monsters.txt at runtime, plus save.txt.
+# data/timeline.txt, data/monsters.txt, and data/quests.txt at runtime, plus
+# save.txt.
 # main.cpp resolves both primarily via render::Console::executableDirectory()
 # (GetModuleFileName on Windows, the one platform-specific API this needs --
 # kept inside render/Console.cpp per CLAUDE.md) so a distributed build (see

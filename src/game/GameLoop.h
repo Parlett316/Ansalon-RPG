@@ -2,6 +2,7 @@
 
 #include "combat/Monster.h"
 #include "game/GameState.h"
+#include "quest/Quest.h"
 #include "timeline/Timeline.h"
 #include "world/OverworldGrid.h"
 #include "world/World.h"
@@ -30,6 +31,22 @@ struct Speech {
 // constructing a whole GameLoop.
 bool conditionMatches(const std::string& condition, const character::Character& character);
 
+// How far GameState satisfies one quest::Objective: kills so far for Slay
+// (capped display-side, never above Objective::count), else 1 if the
+// VISIT/TALK id is already in visitedLocations/metCharacters, else 0. Every
+// objective kind is a query over state the game already tracks (see
+// quest/Quest.h) -- these are free functions, not GameLoop members, for the
+// same "directly unit-testable without constructing a whole GameLoop"
+// reason as conditionMatches above.
+int objectiveProgress(const quest::Objective& objective, const GameState& state);
+// True once objectiveProgress reaches objective.count (1 for Visit/Talk).
+bool objectiveMet(const quest::Objective& objective, const GameState& state);
+// True once every objective in the quest is met -- deliberately not named
+// "questComplete": "objectives satisfied" and "turned in" (GameState::
+// quests holding QuestStatus::Complete) are different states, and a name
+// conflating them would eventually cause a bug. See offerOrTurnInQuest.
+bool allObjectivesMet(const quest::Quest& quest, const GameState& state);
+
 // One talkable candidate at the player's current tile -- either a zone
 // POI's own dialogue, or a canon character the timeline places there
 // today (overworld, or a zone's TIMELINE_ANCHOR tile -- see
@@ -45,6 +62,12 @@ struct TalkCandidate {
     // actually talked to. Always false for timeline (canon-character)
     // candidates. See Milestone 36 / docs/ZONE_NOTES.md.
     bool grantsBoat = false;
+    // Non-empty for a zone POI marked QUEST (world::Zone::questAt) -- the
+    // quest::Quest id talkTo() offers/updates/turns in via
+    // offerOrTurnInQuest. Always empty for timeline candidates, same
+    // restriction as grantsBoat (see docs/QUEST_NOTES.md: the canon Heroes
+    // are deliberately never quest givers). See Milestone 51.
+    std::string questId;
 };
 
 // A look-at-someone candidate -- read-only counterpart to TalkCandidate (no
@@ -71,10 +94,13 @@ public:
     // `timeline` is the canon-character schedule queried while rendering
     // the overworld -- see timeline::Timeline and docs/TIMELINE_NOTES.md.
     // `monsters` is the roster random encounters draw from -- see
-    // combat::MonsterCatalog and docs/COMBAT_NOTES.md.
+    // combat::MonsterCatalog and docs/COMBAT_NOTES.md. `quests` is the
+    // roster quest-giver POIs offer from -- see quest::QuestCatalog and
+    // docs/QUEST_NOTES.md.
     GameLoop(const world::World& world, const world::OverworldGrid& grid,
               const world::ZoneCatalog& zones, const timeline::Timeline& timeline,
-              const combat::MonsterCatalog& monsters, GameState initialState, std::string savePath);
+              const combat::MonsterCatalog& monsters, const quest::QuestCatalog& quests,
+              GameState initialState, std::string savePath);
 
     void run();
 
@@ -129,7 +155,14 @@ private:
     // only for a zone POI marked BOAT, see world::PointOfInterest::isBoat)
     // sets GameState::hasBoat the first time such a candidate is talked to
     // -- Milestone 36's sea-travel mechanic, see docs/ZONE_NOTES.md.
-    void talkTo(const std::string& id, const std::string& name, const Speech& speech, bool grantsBoat = false);
+    void talkTo(const TalkCandidate& candidate);
+    // Offers, updates, or turns in `questId` as part of talking to
+    // `speakerName` -- called from talkTo() when candidate.questId is
+    // non-empty, after metCharacters.insert but before the topic-picker
+    // loop (the same "talking mutates state" slot the grantsBoat precedent
+    // established). See docs/QUEST_NOTES.md for the full not-started /
+    // active-unmet / active-met / complete state table.
+    void offerOrTurnInQuest(const std::string& questId, const std::string& speakerName);
     // Shared by lookOverworld/lookZone once they've gathered who's
     // present, always called with a non-empty list: 1 candidate -> shows
     // their description directly; 2+ -> a drawPickerFrame loop asking
@@ -152,6 +185,12 @@ private:
     // reinterpreting North/South locally as "scroll" -- see
     // docs/ARCHITECTURE.md.
     void handleLog();
+    // Full-screen quest journal ('g') -- lists every quest in
+    // GameState::quests (active, then completed), each objective's
+    // progress via objectiveProgress. Same one-keypress-block shape as
+    // showCharacterSheet/showHelp, not a nested loop -- no scrolling in v1
+    // (see docs/QUEST_NOTES.md).
+    void showJournal();
     // Rest ('r') -- once per in-game day (Character::lastRestDay), advances
     // hoursElapsed by 8 (an overnight rest), heals 1 hp (DMG p.74's base
     // natural-healing rate, capped at maxHp), and -- for a real caster
@@ -196,6 +235,7 @@ private:
     const world::ZoneCatalog& zones_;
     const timeline::Timeline& timeline_;
     const combat::MonsterCatalog& monsters_;
+    const quest::QuestCatalog& quests_;
     GameState state_;
     std::string savePath_;
     // Persistent scrolling event log (movement-blocked messages, look

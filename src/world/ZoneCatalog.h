@@ -22,6 +22,11 @@ public:
     bool hasZone(const std::string& locationId) const;
     const Zone* getZone(const std::string& locationId) const;
 
+    // Every loaded zone, keyed by its catalog id -- for main.cpp to
+    // cross-validate each zone's QUEST ids against the loaded
+    // quest::QuestCatalog at startup (see docs/QUEST_NOTES.md).
+    const std::unordered_map<std::string, Zone>& allZones() const { return zones_; }
+
 private:
     std::unordered_map<std::string, Zone> zones_;
 };

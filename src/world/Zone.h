@@ -67,11 +67,12 @@ public:
     // Inn's own interior zone) -- see docs/ZONE_NOTES.md. `timelineAnchorPoi`
     // ('\0' for none) and `timelineLocationId` ("" to default to this
     // zone's own catalog id) are optional zone-interior-encounter fields --
-    // see docs/TIMELINE_NOTES.md.
+    // see docs/TIMELINE_NOTES.md. `quests` maps a POI char to the id of a
+    // quest::Quest it offers -- see docs/QUEST_NOTES.md.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
          std::unordered_map<char, PointOfInterest> pois,
          std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
-         std::string timelineLocationId);
+         std::string timelineLocationId, std::unordered_map<char, std::string> quests);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -96,6 +97,16 @@ public:
     // it isn't found any other way -- see ZoneCatalog::loadForWorld).
     const std::unordered_map<char, std::string>& portals() const { return portals_; }
 
+    // Returns the quest id offered at (x, y), or nullptr if the tile there
+    // isn't a quest-giver.
+    const std::string* questAt(int x, int y) const;
+
+    // Every quest declared in this zone, keyed by POI char -- for main.cpp
+    // to cross-validate each id against the loaded quest::QuestCatalog at
+    // startup (ZoneLoader can't see QuestCatalog and shouldn't -- see
+    // docs/QUEST_NOTES.md).
+    const std::unordered_map<char, std::string>& quests() const { return quests_; }
+
     // The POI char where canon-character presence is checked/talkable
     // inside this zone (see docs/TIMELINE_NOTES.md), or '\0' if this zone
     // has none authored.
@@ -116,6 +127,7 @@ private:
     std::unordered_map<char, std::string> portals_;
     char timelineAnchorPoi_ = '\0';
     std::string timelineLocationId_;
+    std::unordered_map<char, std::string> quests_;
 };
 
 } // namespace world
