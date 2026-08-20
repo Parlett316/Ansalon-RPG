@@ -684,6 +684,36 @@ this stays authoritative.
     keypresses** -- no piping or tmux/PTY driver works for this project's
     `_getch()`-based input on this box -- so that path still needs a human
     playtest. See `docs/QUEST_NOTES.md`.
+52. Quest system (real content) -- the follow-up content pass NEXT UP
+    named after Milestone 51: four more quests from ordinary NPCs, picked
+    to prove the objective kinds and `REQUIRE` vocabulary `road_wolves`
+    hadn't exercised yet rather than to pad out the quest count.
+    `inn_supply_run` (Otik, `solace_inn:O`, SLAY 3 goblins),
+    `word_for_the_tower` (the Garrison Knight, `high_clerist_tower:K`,
+    this project's first VISIT-only quest -- carry word to `palanthas`),
+    `bazaar_road_raiders` (the City Watchman, `kalaman:G`, SLAY 2
+    hobgoblins), and `kin_beyond_the_border` (the Silvanesti Warder,
+    `silvanesti:W`, this project's first TALK-only quest and first
+    `REQUIRE` other than `knight` -- `REQUIRE elf`, TALK `qualinesti:E`).
+    Every quest reframes a hook already present in that POI's own `TALK`/
+    `TOPIC` flavor text (stalled Vingaard supplies, a watchman worried
+    about more than pickpockets, Silvanesti's own "we shut the gate even
+    to our Qualinesti kin" line) rather than inventing new lore. Pure data
+    content -- zero `.cpp`/`.h` changes, since every objective kind and
+    `REQUIRE elf` already existed in the engine. Two backlog items were
+    deliberately left for a future milestone rather than bundled in: Knight
+    of the Sword advancement (real DL Adventures pp.18-19 research done
+    during planning -- needs a new `KnightOrder::Sword` value and a new
+    level-gated condition, bigger than a content-only pass) and `DELIVER`/
+    item objectives (none of these four quests needed one). Verified via a
+    throwaway `QuestLoader` self-test against the real, five-quest
+    `data/quests.txt`, a clean `/W4` rebuild, and the piped smoke test
+    (proves `main.cpp`'s cross-validation accepts all four new `QUEST
+    <char> <quest-id>` zone bindings). Interactive verification (accepting
+    each quest, confirming `REQUIRE elf` gates `kin_beyond_the_border`, the
+    "ready to turn in" notification firing for a VISIT/TALK quest for the
+    first time) still needs the user's own keyboard, same limitation
+    Milestone 51 flagged. See `docs/QUEST_NOTES.md`'s "Shipped quests".
 
 ## NEXT UP
 
@@ -691,16 +721,20 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Real quest content** — Milestone 51 shipped the engine plus one
-   proof-of-concept quest; the actual content pass (more quests from
-   ordinary NPCs, the Notice Board, and Knight of the Sword advancement,
-   plus the deferred `DELIVER` objective kind if a quest genuinely needs
-   it) is still open. See `docs/QUEST_NOTES.md`'s "Extending this later."
-2. **Terrain-specific monster pools** — encounter *chance* now varies by
+1. **Knight of the Sword advancement** — Milestone 52 shipped the
+   ordinary-NPC quest content pass but deliberately deferred this piece:
+   real DL Adventures pp.18-19 requirements (2nd-level Crown Knight,
+   sufficient XP for 3rd, a witnessed quest) need a new
+   `KnightOrder::Sword` value and a new level-gated condition, not just a
+   new `data/quests.txt` block. See `docs/QUEST_NOTES.md`'s "Extending
+   this later."
+2. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
+   has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
+3. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+4. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

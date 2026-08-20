@@ -296,9 +296,50 @@ line (`QUEST <id> <int>`) would look identical either way, but a
 freestanding multi-stage quest is still deferred until something actually
 needs one.
 
-## The `road_wolves` proof-of-concept quest
+## Shipped quests
 
-One quest ships with this milestone, to prove the pipeline end to end
+### Milestone 52: real content
+
+Four more quests, deliberately picked to prove the objective kinds and
+`REQUIRE` vocabulary `road_wolves` didn't exercise, not to pad out the
+count — see "What ships" in the approved Milestone 52 plan for the full
+reasoning:
+
+| Quest id | Giver (zone:POI) | Objective kind(s) | `REQUIRE` |
+|---|---|---|---|
+| `inn_supply_run` | Otik, `solace_inn:O` | `SLAY goblin` x3 | — |
+| `word_for_the_tower` | the Garrison Knight, `high_clerist_tower:K` | `VISIT palanthas` | — |
+| `bazaar_road_raiders` | the City Watchman, `kalaman:G` | `SLAY hobgoblin` x2 | — |
+| `kin_beyond_the_border` | the Silvanesti Warder, `silvanesti:W` | `TALK qualinesti:E` | `elf` |
+
+`word_for_the_tower` and `kin_beyond_the_border` are this project's first
+`VISIT`-only and `TALK`-only quests, played and turned in for real for the
+first time (M51's `road_wolves` was deliberately `SLAY`-only — see below).
+`kin_beyond_the_border` is also the first quest gated by a `REQUIRE`
+condition other than `knight`, reusing `game::conditionMatches`'s existing
+`elf` check with no engine changes. Every quest reframes a hook that
+already existed in that POI's `TALK`/`TOPIC` flavor text (the Tower's
+stalled Vingaard supplies, Kalaman's watchman worried about more than
+pickpockets, Silvanesti's own established "we shut the gate even to our
+Qualinesti kin" line from `TOPIC W "A Land That Keeps to Itself"`) rather
+than inventing new lore. `DELIVER`/item objectives and Knight-of-the-Sword
+advancement were both still out of scope for this pass — none of these
+four needed an item-possession objective, and Sword advancement is a
+big-enough unit of work (a new `KnightOrder` value, a new gating
+condition) to warrant its own milestone. Verified the same way as M51: a
+throwaway `QuestLoader` self-test against the real, five-quest
+`data/quests.txt`, a clean `/W4` rebuild (zero `.cpp`/`.h` changes — pure
+data content), and the piped character-creation smoke test (proves
+`main.cpp`'s cross-validation accepts all four new `QUEST <char>
+<quest-id>` zone bindings). Interactive verification — actually accepting
+each quest, confirming `REQUIRE elf` really gates `kin_beyond_the_border`,
+and watching the "ready to turn in" notification fire for a `VISIT`/`TALK`
+quest for the first time — still needs the user's own keyboard, the same
+`_getch()`-can't-be-piped limitation M51 flagged.
+
+### Milestone 51: the `road_wolves` proof of concept
+
+One quest shipped with the engine itself, to prove the pipeline end to end
 rather than land pure mechanism with nothing to point at:
 `data/quests.txt`'s `road_wolves`, offered by Solace's Notice Board
 (`data/zones/solace.txt`'s `POI B`, see `docs/ZONE_NOTES.md`) — kill 3
@@ -355,13 +396,27 @@ above, and separately a real crash bug (unrelated to quests — see
 
 ## Extending this later
 
-The natural next step (Milestone 52) is content, not engine: more quests
-from the three approved giver categories (ordinary NPCs, the Notice Board,
-Knight of the Sword advancement — `docs/CHARACTER_NOTES.md`'s "Sword and
-Rose Knights, for real" section has been waiting on exactly this since
-Milestone 10), plus the deferred `DELIVER` objective kind if a quest
-actually needs it rather than adding it speculatively. The `knight`
-condition already exists in `game::conditionMatches` (added this
-milestone specifically so a Knight-of-the-Sword quest wouldn't need a
-grammar change later) — `REQUIRE knight` on a quest is already usable
-today, just unused until real content picks it up.
+Milestone 52 shipped the ordinary-NPC content pass (see "Shipped quests"
+above) — VISIT, TALK, and a non-`knight` `REQUIRE` are all now proven live
+in real, played content, not just supported in principle. Two items from
+the original backlog are still open, deliberately deferred rather than
+bundled into that pass:
+
+- **Knight of the Sword advancement.** `docs/CHARACTER_NOTES.md`'s "Sword
+  and Rose Knights, for real" section has been waiting on this since
+  Milestone 10; real DL Adventures pp.18-19 research (page images,
+  confirmed during Milestone 52's planning) shows the real requirements —
+  2nd-level Crown Knight with enough XP for 3rd, a witnessed quest with
+  specific required elements. Mechanically this needs a new
+  `KnightOrder::Sword` value (append-only-safe, same precedent as
+  `QuestStatus::ReadyToTurnIn`) and a new gating condition (Crown + level
+  ≥ 3, beyond what the existing `knight` condition alone checks) — bigger
+  than a content-only pass should bundle in alongside unrelated quests.
+  The `knight` condition already exists in `game::conditionMatches`
+  (added at Milestone 51 specifically so a Knight-of-the-Sword quest
+  wouldn't need a grammar change later) — `REQUIRE knight` is usable
+  today, just not yet paired with a real Sword-advancement quest.
+- **`DELIVER`/item-possession objectives**, if a future quest concept
+  genuinely needs one rather than being addable with VISIT/TALK/SLAY (as
+  every quest shipped so far has been) — see "Deliberately not in v1"
+  above for what this would actually require.

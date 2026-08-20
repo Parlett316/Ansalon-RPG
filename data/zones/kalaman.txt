@@ -32,5 +32,6 @@ POI G "A City Watchman" He stands near the market's edge, one hand resting on a 
 TALK G "Mind your purse in the market, stranger -- we get more than our share of light fingers when the bazaar's running. Rest of the city's honest enough. Mostly."
 TALK_AGAIN G "Still watching the crowd, still not catching whoever's been at the purses today. Some things don't change."
 TOPIC G "The War's Turn" The watchman's easy manner cools. "You'll have heard the news same as anyone -- a Golden General, dragonlances, silver and gold dragons driving the evil ones out of the sky. Good news, all of it. I'd feel better about it if I didn't keep noticing how many soldiers we're still burying."
+QUEST G bazaar_road_raiders
 TIMELINE_ANCHOR M
 END

@@ -35,5 +35,6 @@ TALK_AGAIN K "Still standing, are we both. That's no small thing, up here, these
 SAY_IF K fighter The knight's formal posture eases, just slightly -- soldier recognizing soldier. "Then you'll understand why I'd rather trust a blade's read of this siege than a stranger's optimism. Whatever comes through that gate, I'm glad it won't only be knights meeting it."
 TOPIC K "The Knights' Trial" The knight's voice drops, careful. "You'll have heard by now -- Lord Derek Crownguard called one of ours a coward before the whole assembly at Sancrist, and very nearly made it stick. Lord Gunthar found a door the Measure left open and walked him through it before Derek could nail it shut." He shakes his head. "Split the Order clean in half, that trial did. Half of us are still deciding which half we're standing in."
 TOPIC K "Holding the Pass" The knight doesn't look away from the northern approach. "Palanthas stands or falls on whether this Tower does. That's not boast, it's arithmetic -- there's no other way through these mountains a dragonarmy could use. We hold it as long as we're able, and we don't discuss out loud what happens to Vingaard's people if we're not able long enough."
+QUEST K word_for_the_tower
 TIMELINE_ANCHOR Y
 END

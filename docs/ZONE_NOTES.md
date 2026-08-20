@@ -350,12 +350,21 @@ actually be reachable in play.
 At most one quest per POI in v1 — a deliberate scope cut, not a grammar
 limit that will obviously widen; see `docs/QUEST_NOTES.md`'s cut list.
 
-As of Milestone 51, exactly one POI carries `QUEST`:
-`data/zones/solace.txt`'s `B "Notice Board"` offers `road_wolves`. Its
+As of Milestone 51, exactly one POI carried `QUEST`:
+`data/zones/solace.txt`'s `B "Notice Board"`, offering `road_wolves`. Its
 description ("armies on the move in the east") already existed as the
 "future timeline engine to eventually make literal" hook noted below —
 turned out to be the quest engine that made it literal, not the timeline
 one, but the same planted flavor either way.
+
+Milestone 52 (the real content pass) added four more, each reframing a
+POI's already-existing `TALK` flavor rather than inventing a new hook from
+scratch — see `docs/QUEST_NOTES.md`'s "Shipped quests" for the full list:
+`data/zones/solace_inn.txt`'s `O` (Otik), `data/zones/high_clerist_tower.txt`'s
+`K` (the Garrison Knight), `data/zones/kalaman.txt`'s `G` (the City
+Watchman), and `data/zones/silvanesti.txt`'s `W` (the Silvanesti Warder) —
+the last of these also the first `QUEST` gated by a `REQUIRE` other than
+`knight` (`REQUIRE elf`).
 
 ## Portals: a zone can lead into another zone
 

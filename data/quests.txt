@@ -4,11 +4,14 @@
 # line, since a quest is offered/updated/turned in through talking to it.
 # Grammar and design model: docs/QUEST_NOTES.md.
 #
-# Milestone 51 ships this one quest as a proof of concept for the engine --
+# Milestone 51 shipped one quest as a proof of concept for the engine --
 # offer/accept/progress/turn-in, the journal, and a Slay objective (the one
-# kind that needed new persistent state, see docs/QUEST_NOTES.md). The real
-# content pass, with quest givers drawn from ordinary NPCs, the Notice
-# Board, and Knight of the Sword advancement, is Milestone 52.
+# kind that needed new persistent state, see docs/QUEST_NOTES.md). Milestone
+# 52 (below) is the real content pass: four more quests from ordinary NPCs,
+# deliberately covering VISIT and TALK objectives and a REQUIRE condition
+# other than knight for the first time -- see docs/QUEST_NOTES.md's
+# "Shipped quests" section. Knight of the Sword advancement and the DELIVER
+# objective kind are still deferred to their own future milestone.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -20,4 +23,53 @@ GIVER the Notice Board
 SLAY wolf 3 Kill three timber wolves on the roads around Solace
 REWARD_STEEL 40
 REWARD_XP 90
+END
+
+QUEST inn_supply_run
+NAME The Larder's Watch
+OFFER Otik nods toward the kitchen doorway, expression gone serious for once. "The hunters who keep this kitchen stocked won't walk the north trails anymore -- say there's goblins thick enough to smell it from the fire road. I can't cook what nobody'll bring me."
+ACCEPT You know the trails he means. If the goblins want them, they can have them once you're done arguing about it.
+PROGRESS Otik glances toward the empty hooks over the kitchen door where the game usually hangs. "Trails still quiet, from what I hear. Not the good kind of quiet."
+COMPLETE Otik actually stops wiping the bar when you tell him. "Well. Hunters'll be glad to hear it, and so am I -- can't fry what I don't have." He digs a pouch out from under the counter without being asked twice.
+GIVER Otik, at the Inn of the Last Home
+SLAY goblin 3 Clear the goblins off the trails north of Solace
+REWARD_STEEL 30
+REWARD_XP 70
+END
+
+QUEST word_for_the_tower
+NAME Word for the Tower
+OFFER The sentry doesn't lower his spear, but his voice drops out of its official register. "Vingaard's gone quiet and we don't know why. If you're headed toward Palanthas anyway -- and most people passing through here are -- tell them the Tower still holds. Somebody down there ought to know that, even if nobody's asked."
+ACCEPT You commit the message to memory, plain as he gave it: the Tower still holds.
+PROGRESS "Still holding," the sentry says, in case you'd forgotten what you're carrying. "Word out of Palanthas would be nice, if you hear any."
+COMPLETE "Palanthas heard it, did they." The sentry's shoulders ease, fractionally -- the closest thing to relief his posture allows. "Good. That's one less thing I have to wonder about tonight."
+GIVER the sentry at High Clerist's Tower
+VISIT palanthas Carry word of the Tower's situation to Palanthas
+REWARD_STEEL 30
+REWARD_XP 60
+END
+
+QUEST bazaar_road_raiders
+NAME Raiders on the Bazaar Road
+OFFER The Watchman doesn't take his eyes off the market crowd while he talks. "Pickpockets I can live with -- part of the job. Hobgoblins hitting the caravan road into the bazaar, that's a different problem, and one truncheon won't solve it. You look like you might carry something sharper."
+ACCEPT You take his meaning. Somebody's going to have to deal with the hobgoblins, and it isn't going to be the man with the truncheon.
+PROGRESS The Watchman's eyes are still on the crowd, not on you. "Caravans still coming in light-handed and late. Whatever you're doing out there, it isn't done yet."
+COMPLETE For the first time, the Watchman actually looks at you instead of the crowd. "Caravans came in on time and in full today. First time in weeks. I'll see you're paid for it, and gladly."
+GIVER the City Watchman in Kalaman
+SLAY hobgoblin 2 Drive the hobgoblins off the bazaar road
+REWARD_STEEL 45
+REWARD_XP 100
+END
+
+QUEST kin_beyond_the_border
+NAME Kin Beyond the Border
+OFFER The Warder studies you a moment longer than she studies most -- weighing something in your face that has nothing to do with whether you're a threat. "You are kin enough that I will ask instead of simply refusing you. Qualinesti sent no word before the dragonarmies came south, and none since. If you carry blood enough to be received there, carry this instead: word that Silvanesti still stands, sealed but standing."
+ACCEPT You understand the weight of what she's asking, even stripped of its careful phrasing: reach Qualinesti, find one of her own kind to hear it, and say that Silvanesti endures.
+PROGRESS The Warder inclines her head slightly, the barest acknowledgment. "The word is not yet carried. I have not asked you again, and I will not -- it is not the way of my people to press."
+COMPLETE "Then it is said, and heard." Something in the Warder's bearing loosens, almost imperceptibly. "That is enough. It was always going to have to be enough."
+GIVER the Silvanesti Warder
+REQUIRE elf
+TALK qualinesti:E Carry word to the Elven Sentinel in Qualinesti that Silvanesti still stands
+REWARD_STEEL 30
+REWARD_XP 60
 END

@@ -153,11 +153,13 @@ press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
 reward — the moment every objective's actually done, the game says so
 itself ("...is ready to turn in -- return to..."), so you never have to
-guess or walk back speculatively. One ships so far — Solace's Notice
-Board, whose long-standing "armies on the move" flavor text turned out to
-be a hook for exactly this, offers a bounty to clear three timber wolves
-off the south road — see `docs/QUEST_NOTES.md` for the full design and
-how more get authored.
+guess or walk back speculatively. Five ship so far — Solace's Notice
+Board offers a bounty to clear three timber wolves off the south road;
+Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
+Tower, and Kalaman's City Watchman each have their own reason to send you
+somewhere or against something; and the Silvanesti Warder will only speak
+of hers to a fellow Elf — see `docs/QUEST_NOTES.md` for the full design,
+what ships, and how more get authored.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),
