@@ -920,6 +920,67 @@ this stays authoritative.
     `_getch()` limitation flagged for every combat/quest milestone so far.
     See `docs/CHARACTER_NOTES.md`'s "Magic items".
 
+57. Terrain-specific monster pools -- the NEXT UP item the user picked to
+    build next. `combat::MonsterCatalog::randomMonster` had been uniform-
+    random regardless of terrain since encounters existed, even though
+    `encounterChancePercent` (Milestone 27) already varied *whether* an
+    encounter happens by terrain. Before writing code, re-sourced the real
+    2nd-edition Monstrous Manual "Climate/Terrain" field for all 11 roster
+    monsters via rendered page images (OCR text proved unreliable for this
+    book's multi-column shared stat tables) -- this overturned the premise
+    of the backlog note itself: almost every monster's real Climate/Terrain
+    is "Any land" or "Any non-arctic land," and **Giant Spider is explicitly
+    not forest-locked** in the book, contrary to the "spiders in forest"
+    example the note had speculated. Real hard differentiation turned out to
+    be thin: nothing in the roster is Arctic-flavored, Gnoll excludes desert
+    ("non-desert"), Bugbear leans subterranean, Timber Wolf is "non-
+    tropical." Asked the user how to proceed given how little the source
+    material actually supported the original pitch (`AskUserQuestion`); they
+    chose a hybrid: real Climate/Terrain as a hard exclusion only where the
+    book supports one, plus clearly-flagged *invented* flavor weighting on
+    top, informed by (not transcribed from) each monster's Habitat/Society
+    prose -- the same "tuned, not sourced" honesty `encounterChancePercent`
+    already gets. Two new optional `data/monsters.txt` grammar lines:
+    `EXCLUDE_TERRAIN <codes>` (only Gnoll uses it, excluding salt flat, this
+    project's closest terrain analog to desert) and `TERRAIN_BIAS <codes>`
+    (Goblin/Kobold lean hills+forest, Timber Wolf leans forest+grassland,
+    Giant Spider leans forest+bog, Bugbear leans hills+mountains, Gnoll leans
+    forest+hills+bog; Hobgoblin/Ogre/Baaz/Kapak/Ghoul/Skeleton/Zombie stay
+    deliberately uniform -- Ogre's own book text says "found anywhere," the
+    undead have no ecological terrain link, and Baaz/Kapak's real
+    differentiator is faction/location, which this terrain-code system can't
+    represent honestly). `combat::Monster` gained
+    `excludedTerrain`/`terrainBias` (`std::vector<char>`, both
+    `world::TerrainInfo::code` values, no new vocabulary needed);
+    `MonsterCatalog::randomMonster` changed signature to take the triggering
+    `char terrainCode`, builds an eligible list (excluding hard exclusions,
+    with a defensive uniform-roster fallback if that's ever empty -- can't
+    happen with current data), then does a weighted pick (`kBiasWeight = 3`)
+    using the same `character::roll` RNG primitive already used for dice
+    elsewhere -- no new randomness machinery. `GameLoop::tryMoveOverworld`
+    already had `terrain` in scope at the encounter-roll call site, so the
+    change was a one-line call-site update. Glacier deliberately has no
+    exclusions written for it even though nothing in the roster is
+    Arctic-flavored -- rather than hand-excluding all 13 monsters, this is
+    left as a documented, honest gap that falls back to the full uniform
+    pool, matching the project's existing "not invented to fill a gap"
+    restraint (e.g. Ocean's "no sea monsters yet" note in `Terrain.cpp`).
+    While re-sourcing, also found and fixed a real citation bug unrelated to
+    the terrain work: 9 of 11 monster page citations in `docs/COMBAT_NOTES.md`
+    were off by exactly +3, citing the PDF's internal page count instead of
+    the book's printed folio (visually confirmed against every page's actual
+    footer number) -- Bugbear's and Ogre's were already correct. Verified via
+    a throwaway self-test (`MonsterLoader` parses both new keywords from the
+    real 13-monster `data/monsters.txt` and fails fast on a malformed token;
+    3000 rolls confirm Gnoll never appears on excluded terrain; 12000 rolls
+    on hills confirm a biased monster (Bugbear) is picked roughly 3x as often
+    as an unbiased one (Hobgoblin), matching `kBiasWeight` almost exactly in
+    practice), a clean `/W4` rebuild (zero new warnings), and the piped smoke
+    test. Interactive verification (that terrain visibly changes which
+    monster shows up while playing) still needs the user's own keyboard, the
+    same `_getch()` limitation flagged for every combat milestone so far. See
+    `docs/COMBAT_NOTES.md`'s "Terrain-specific monster pools".
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -928,11 +989,7 @@ session's work.
 
 1. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
    has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
-2. **Terrain-specific monster pools** — encounter *chance* now varies by
-   terrain (Milestone 27), but which monster you fight is still
-   uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
-   "Extending this later."
-3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

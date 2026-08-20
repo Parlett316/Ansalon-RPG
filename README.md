@@ -113,7 +113,9 @@ skeletons, zombies, or Baaz/Kapak draconians, all sourced from a real
 2e Monster Manual and, for the
 Krynn-specific draconians, Dragonlance Adventures (no orcs, since Krynn
 has none) — the chance of one varies by terrain, roads safest and forest/
-mountains riskiest — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
+mountains riskiest, and which monster you draw leans toward that terrain too
+(Bugbears more common in hills and mountains, Gnolls never on salt flats,
+and so on) — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
 Cleric can also `m` to cast their one known spell — Magic Missile or Cure
 Light Wounds, real PHB slots-per-day by level); losing just knocks you out
 and sends you back to Solace, it isn't permadeath — see

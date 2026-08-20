@@ -37,6 +37,25 @@ void parseDiceTriple(const std::string& path, int lineNumber, const std::string&
     }
 }
 
+void parseTerrainCodes(const std::string& path, int lineNumber, const std::string& rest,
+                        const std::string& keyword, std::vector<char>& out) {
+    std::istringstream iss(rest);
+    std::string token;
+    bool any = false;
+    while (iss >> token) {
+        if (token.size() != 1) {
+            fail(path, lineNumber,
+                 "malformed " + keyword + " (expected space-separated single-character terrain codes, got '" +
+                     token + "')");
+        }
+        out.push_back(token[0]);
+        any = true;
+    }
+    if (!any) {
+        fail(path, lineNumber, "malformed " + keyword + " (expected at least one terrain code)");
+    }
+}
+
 } // namespace
 
 void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCatalog) {
@@ -86,6 +105,10 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
             if (!(iss >> current.xpValue)) fail(path, lineNumber, "malformed XP");
         } else if (keyword == "POISON") {
             current.poisonOnHit = true;
+        } else if (keyword == "EXCLUDE_TERRAIN") {
+            parseTerrainCodes(path, lineNumber, rest, "EXCLUDE_TERRAIN", current.excludedTerrain);
+        } else if (keyword == "TERRAIN_BIAS") {
+            parseTerrainCodes(path, lineNumber, rest, "TERRAIN_BIAS", current.terrainBias);
         } else if (keyword == "DESC") {
             current.description = rest;
         } else if (keyword == "END") {

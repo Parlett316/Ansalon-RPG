@@ -378,7 +378,7 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     // chance per move -- see docs/COMBAT_NOTES.md.
     if (here == nullptr && monsters_.size() > 0 &&
         character::roll(1, 100) <= terrain.encounterChancePercent) {
-        runCombat(monsters_.randomMonster());
+        runCombat(monsters_.randomMonster(terrain.code));
     }
 }
 

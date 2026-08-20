@@ -32,6 +32,14 @@ struct Monster {
     // save is handled (knocked out, not the book's literal "die").
     bool poisonOnHit = false;
 
+    // Terrain-specific encounter pools (see docs/COMBAT_NOTES.md). Both are
+    // world::TerrainInfo::code characters. excludedTerrain is a real, sourced
+    // Climate/Terrain hard restriction (only Gnoll has one); terrainBias is
+    // invented flavor weighting, not sourced -- same honesty as
+    // TerrainInfo::encounterChancePercent.
+    std::vector<char> excludedTerrain;
+    std::vector<char> terrainBias;
+
     int steelDiceCount = 0;
     int steelDiceSides = 0;
     int steelFlatBonus = 0;
@@ -49,8 +57,10 @@ class MonsterCatalog {
 public:
     void addMonster(Monster monster);
 
-    // Picks uniformly at random. Only call when size() > 0.
-    const Monster& randomMonster() const;
+    // Picks a monster weighted for the given terrain (see
+    // Monster::excludedTerrain/terrainBias and docs/COMBAT_NOTES.md). Only
+    // call when size() > 0.
+    const Monster& randomMonster(char terrainCode) const;
 
     size_t size() const { return monsters_.size(); }
 

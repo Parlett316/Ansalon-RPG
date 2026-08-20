@@ -44,13 +44,13 @@ models Krynn specifically, which has **no orcs** (a deliberate,
 long-standing Dragonlance lore point, not an oversight) — the roster below
 was chosen and checked with that constraint in mind.
 
-- **Goblin** (p.166): HD 1-1, AC 6, THAC0 20, 1d6 damage.
-- **Kobold** (p.217): HD 1/2 (1-4 hp), AC 7, THAC0 20, 1d4 damage.
-- **Hobgoblin** (p.194): HD 1+1, AC 5, THAC0 19. Damage is "by weapon" in
+- **Goblin** (p.163): HD 1-1, AC 6, THAC0 20, 1d6 damage.
+- **Kobold** (p.214): HD 1/2 (1-4 hp), AC 7, THAC0 20, 1d4 damage.
+- **Hobgoblin** (p.191): HD 1+1, AC 5, THAC0 19. Damage is "by weapon" in
   the book (no fixed die); 1d8 was picked as a reasonable stand-in given
   their typical loadout (polearm/morningstar/sword).
-- **Timber Wolf** ("Wolf," p.365): HD 3, AC 7, THAC0 18, damage 2-5 (1d4+1).
-- **Giant Spider** (p.329): HD 3+3, AC 4, THAC0 17, bite 1d8, **Type F
+- **Timber Wolf** ("Wolf," p.362): HD 3, AC 7, THAC0 18, damage 2-5 (1d4+1).
+- **Giant Spider** (p.326): HD 3+3, AC 4, THAC0 17, bite 1d8, **Type F
   poison** — "causes immediate death if the victim fails the saving
   throw," no save-roll modifier printed for the standard Giant Spider
   (visually confirmed, page text search). Now modeled — see "Saving
@@ -86,10 +86,10 @@ was chosen and checked with that constraint in mind.
   Left unmodeled (flavor-only), same restraint as the Baaz's unmodeled
   20% magic resistance. Its acid-pool-on-death trait is also not modeled
   (no environmental-hazard system for anyone yet).
-- **Gnoll** (p.161): HD 2, AC 5, THAC0 19, damage 2-8 (2d4) — "by weapon"
+- **Gnoll** (p.158): HD 2, AC 5, THAC0 19, damage 2-8 (2d4) — "by weapon"
   in the book, same monster-side-weapon simplification as Hobgoblin/
   Bugbear/Ogre. XP 35.
-- **Ghoul** (p.134): HD 2, AC 6, THAC0 19, XP 175. Real attack is three
+- **Ghoul** (p.131): HD 2, AC 6, THAC0 19, XP 175. Real attack is three
   hits (claw/claw/bite, 1-3/1-3/1-4-or-6 — the last die was genuinely
   ambiguous across both extractions of the scan, reading as either 1-4
   or 1-6 depending on which of the page's parallel monster columns is
@@ -98,14 +98,14 @@ was chosen and checked with that constraint in mind.
   (save vs. paralyzation or be unable to act) — left unmodeled, same
   restraint as the Kapak's paralysis-poison bite above (no status-effect
   system exists for anyone yet).
-- **Skeleton** (p.318, the base "Skeleton" column on that page — not the
+- **Skeleton** (p.315, the base "Skeleton" column on that page — not the
   Animal or Monster skeleton variants sharing it): HD 1, AC 7, THAC0 19,
   damage 1-6 (weapon), XP 65. Real Skeletons take half damage from
   edged/piercing weapons and are immune to sleep/charm/hold/cold/fear —
   no per-monster damage-type or immunity mechanic exists in this project
   (same restraint as Baaz's unmodeled magic resistance), so it's flavor
   text in `DESC` only.
-- **Zombie** (p.376, the base "Common" column — not the Monster/Ju-ju/
+- **Zombie** (p.373, the base "Common" column — not the Monster/Ju-ju/
   Lord/Sea variants sharing it): HD 2, AC 8, THAC0 19, damage 1-8, XP 65.
   Real Zombies are immune to sleep/charm/hold/death-magic/poison/cold,
   same flavor-only treatment as the Skeleton's immunities above.
@@ -125,6 +125,14 @@ monsters' printed THAC0 fits comfortably). Still real text from the
 actual scanned book, not memory — just missing the usual
 visual-confirmation step. Worth re-confirming against a rendered page
 image if that tooling becomes available later.
+
+**Citation correction (Milestone 57)**: while re-sourcing terrain data for
+this roster (see "Terrain-specific monster pools" below), 9 of the 11 page
+numbers above turned out to be off by exactly +3 — they cited the PDF
+viewer's own internal page count rather than the book's printed folio
+(visible at the bottom of each page). Re-confirmed against rendered page
+images showing the actual printed footer number and corrected in place
+above; Bugbear's and Ogre's citations were already correct.
 
 None of these have HP dice matching their HD 1:1 in a way this project can
 represent with a plain `NdM+flat` -- 2e's default monster Hit Die is d8,
@@ -240,10 +248,57 @@ filled in per terrain in `Terrain.cpp`'s `kTable` (roads safest at 2%,
 mountains/forest riskiest at 12%/11%; ocean/Blood Sea/uncharted are 0,
 though they're impassable anyway so it never gets checked). Like
 `hoursToCross`, these numbers are tuned for pacing, not sourced from
-anything. Monster *selection* is still uniform-random regardless of
-terrain — terrain-specific monster pools (only spiders in forest, only
-draconians near a Highlord garrison, etc.) is a natural follow-up, not
-built yet.
+anything. Monster *selection* is terrain-weighted as of Milestone 57 — see
+"Terrain-specific monster pools" below.
+
+## Terrain-specific monster pools
+
+`combat::MonsterCatalog::randomMonster(char terrainCode)` (Milestone 57)
+weights which monster gets picked by the terrain that triggered the
+encounter, instead of the flat uniform-random pick every earlier milestone
+used. Two separate, honestly-labeled data sources feed it, both as optional
+lines in a `data/monsters.txt` `MONSTER` block (grammar documented in that
+file's own header comment):
+
+- **`EXCLUDE_TERRAIN <codes>`** — a real, sourced Climate/Terrain hard
+  restriction. Re-checking every roster monster's actual Monstrous Manual
+  "Climate/Terrain" field (via rendered page images, not just OCR text,
+  which proved unreliable for this book's multi-column shared stat tables)
+  found it far more generic than expected: Goblin, Kobold, Hobgoblin, Giant
+  Spider, and Ogre are all simply "Any (non-arctic) land"; Ghoul, Skeleton,
+  and Zombie are "Any," full stop. **Giant Spider is explicitly not
+  forest-locked in the book** — the "spiders in forest" idea this section
+  used to speculate about doesn't hold up under the real text. Only one
+  monster has an exclusion worth encoding: Gnoll's real terrain is "Any
+  tropical to temperate, non-desert," so it carries `EXCLUDE_TERRAIN _`
+  (salt flat, this project's closest terrain analog to desert). Bugbear's
+  real terrain ("Any subterranean") and Timber Wolf's ("Non-tropical") don't
+  map cleanly onto this project's specific overworld terrain codes as a hard
+  exclusion, so they're expressed as bias instead (below). Baaz/Kapak
+  Draconian (Dragonlance Adventures, not the Monstrous Manual) have no
+  Climate/Terrain field at all — the book frames them as garrison
+  troops/infiltrators, a faction/location thing this terrain-code system
+  can't represent honestly, so they carry neither line and stay uniform.
+  **Known gap, left as a gap rather than invented away**: nothing in the
+  roster is Arctic-flavored, so glacier encounters fall back to the full
+  uniform pool (`MonsterCatalog::randomMonster`'s empty-eligible-list
+  fallback) rather than being hand-excluded monster-by-monster — same "not
+  invented to fill a gap" restraint as Ocean's "no sea monsters exist yet"
+  note in `Terrain.cpp`.
+- **`TERRAIN_BIAS <codes>`** — invented flavor weighting (a biased monster
+  is 3x as likely to be picked on that terrain as an unbiased one,
+  `combat::kBiasWeight` in `Monster.cpp`), informed by each monster's real
+  Habitat/Society prose but explicitly *not* claimed as sourced — the same
+  "tuned for pacing, not sourced" honesty `encounterChancePercent` above
+  already gets. Goblin/Kobold lean hills/forest (caves, ruins, mining
+  terrain); Timber Wolf leans forest/grassland; Giant Spider leans
+  forest/bog (web-spinner ambush terrain); Bugbear leans hills/mountains (a
+  proxy for its real "any subterranean"); Gnoll leans forest/hills/bog.
+  Hobgoblin, Ogre, Baaz, Kapak, Ghoul, Skeleton, and Zombie are left
+  deliberately uniform — Ogre's own book text says "found anywhere, from
+  deep caverns to mountaintops," the three undead have no ecological terrain
+  link, and Baaz/Kapak's real differentiator (faction/location) isn't one
+  this system can express without forcing it.
 
 ## Player actions: Attack, Cast, Drink a Potion, and Flee
 
@@ -370,10 +425,6 @@ either.
   higher-tier ones are spellcasters or shapeshifters, real mechanics this
   project doesn't model yet — plus other ordinary Monstrous Manual
   entries). Can be added the same way, one more sourced `MONSTER` block
-  at a time.
-- **Terrain-specific monster pools**: `combat::MonsterCatalog::randomMonster`
-  is still uniform-random regardless of which terrain triggered the
-  encounter, even though the chance of an encounter now varies by terrain
-  (see "Encounters" above) — pairing monster *type* to terrain (spiders in
-  forest, draconian patrols near Highlord-held ground) is a natural
-  follow-up, not built yet.
+  at a time. A new monster with real terrain flavor can also carry
+  `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines — see "Terrain-specific monster
+  pools" above.

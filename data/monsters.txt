@@ -27,6 +27,17 @@
 # POISON                   optional; a hit also forces a saving throw vs.
 #                          poison (see docs/COMBAT_NOTES.md) -- currently
 #                          only the Giant Spider has this
+# EXCLUDE_TERRAIN <codes>  optional; space-separated world::TerrainInfo codes
+#                          (see src/world/Terrain.cpp) this monster never
+#                          appears on -- a real, sourced Climate/Terrain
+#                          restriction, not gameplay tuning. Only Gnoll has
+#                          one (see docs/COMBAT_NOTES.md).
+# TERRAIN_BIAS <codes>     optional; space-separated terrain codes this
+#                          monster is more likely to appear on -- invented
+#                          flavor weighting informed by (not transcribed
+#                          from) the monster's real Habitat/Society text,
+#                          same "tuned, not sourced" honesty as
+#                          encounterChancePercent (see docs/COMBAT_NOTES.md).
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 
@@ -38,6 +49,7 @@ THAC0 20
 DAMAGE 1 6 0
 STEEL 1 6 0
 XP 15
+TERRAIN_BIAS ^ %
 DESC A skulking, yellow-eyed goblin lunges from the brush, crude spear already leveled.
 END
 
@@ -49,6 +61,7 @@ THAC0 20
 DAMAGE 1 4 0
 STEEL 1 4 0
 XP 7
+TERRAIN_BIAS ^ %
 DESC A scaly, dog-faced kobold darts out from behind a rock, yipping for reinforcements that may or may not come.
 END
 
@@ -71,6 +84,7 @@ THAC0 18
 DAMAGE 1 4 1
 STEEL 0 0 0
 XP 120
+TERRAIN_BIAS % .
 DESC A lean gray wolf circles once, hackles raised, before it charges.
 END
 
@@ -83,6 +97,7 @@ DAMAGE 1 8 0
 STEEL 1 8 0
 XP 420
 POISON
+TERRAIN_BIAS % *
 DESC A spider the size of a hound drops from the canopy on a line of silk, mandibles clicking.
 END
 
@@ -108,6 +123,7 @@ THAC0 17
 DAMAGE 2 4 0
 STEEL 2 6 0
 XP 120
+TERRAIN_BIAS ^ A
 DESC A hulking, hairy shape unfolds from the shadows of the treeline, grinning with a bear-trap mouth.
 END
 
@@ -144,6 +160,8 @@ THAC0 19
 DAMAGE 2 4 0
 STEEL 2 4 0
 XP 35
+TERRAIN_BIAS % ^ *
+EXCLUDE_TERRAIN _
 DESC A hyena-headed gnoll shoulders through the brush, jaws slack with a wet, laughing snarl.
 END
 

@@ -2,18 +2,21 @@
 
 Nothing in flight.
 
-Milestone 56 (Webnet and Brooch of Imog -- Mage-only combat items from
-DLA's "Magical Items of Krynn" chapter) just shipped: two new consumable/
-day-gated items, sold at every shop, used via the existing `'i'`-in-combat
-key. See `docs/MILESTONES.md`'s Milestone 56 entry and
-`docs/CHARACTER_NOTES.md`'s "Magic items" for the full design and sourcing.
+Milestone 57 (terrain-specific monster pools) just shipped: which monster a
+random encounter draws now varies by terrain, via a real, sourced
+Climate/Terrain hard exclusion (Gnoll only) plus clearly-flagged, invented
+flavor weighting on top. Also fixed a real page-citation bug found along the
+way (9 of 11 monster citations in `docs/COMBAT_NOTES.md` were off by +3).
+See `docs/MILESTONES.md`'s Milestone 57 entry and `docs/COMBAT_NOTES.md`'s
+"Terrain-specific monster pools" for the full design and sourcing.
 
-**Not yet verified**: real interactive playthrough (buying/using a Webnet
-and Brooch mid-fight, confirming the monster's attack is really skipped,
-confirming the Brooch's once-per-day gate) -- `_getch()` can't be piped,
-the same limitation flagged for every combat/quest milestone so far. Needs
-the user's own keyboard before calling the UI path fully done.
+**Not yet verified**: real interactive playthrough confirming terrain
+visibly changes which monster shows up (e.g. Bugbears feeling more common in
+hills/mountains, Gnolls never appearing on salt flat) -- `_getch()` can't be
+piped, the same limitation flagged for every combat milestone so far.
+Milestone 56's own interactive verification (buying/using a Webnet and
+Brooch mid-fight) is also still outstanding from last session.
 
 NEXT UP (`docs/MILESTONES.md`) now leads with the still-unused `DELIVER`
-objective kind, then terrain-specific monster pools, then more monsters.
-Ask the user before starting any of them.
+objective kind, then more monsters (Bozak/Sivak/Aurak Draconians, Thanoi,
+etc.). Ask the user before starting either.
