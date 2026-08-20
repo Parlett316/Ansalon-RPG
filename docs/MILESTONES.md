@@ -304,9 +304,10 @@ this stays authoritative.
     once at Milestone 37) -- this time its 46 tile coordinates were
     captured to a scratch file before regenerating and reapplied with a
     byte-for-byte diff check afterward. The Dragon Highlord delivering the
-    ultimatum (Kitiara) and the captured Golden General (Laurana) both stay
-    unnamed, same off-stage-major-character precedent as Alhana/Derek/
-    Gunthar. Verified via a throwaway self-test, a visual check of the
+    ultimatum (Kitiara) and the captured Golden General (Laurana) both
+    stayed unnamed at this milestone -- Laurana is named as of Milestone
+    49, including a `kalaman 90 92` window of her own; Kitiara remains
+    off-stage (see NEXT UP). Verified via a throwaway self-test, a visual check of the
     regenerated grid (road connectivity, glacier patch intact), a clean
     rebuild (zero new warnings, no `.cpp`/`.h` changes), and the piped smoke
     test. See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
@@ -476,8 +477,8 @@ this stays authoritative.
     established "no SAY = scripted death" device after Sturm and
     Raistlin, and his schedule's permanent last entry. The old mage who
     carries Flint's body away (Fizban, in the source text) and Berem both
-    stay unnamed, same off-stage-major-character precedent as Kitiara/
-    Laurana/Alhana/Derek/Gunthar. The `("kalaman", "godshome")` road
+    stayed unnamed at this milestone -- the old mage is named as of
+    Milestone 48. The `("kalaman", "godshome")` road
     addition required regenerating `data/overworld.grid`; Ice Wall's
     46-tile glacier patch was captured before regenerating and reapplied
     afterward, same procedure as every prior `ROAD_PAIRS` change since
@@ -511,11 +512,14 @@ this stays authoritative.
     which stays exactly where Milestone 44 left it), and Tasslehoff's
     grief over Flint from Godshome (a warm, invented-in-character story
     about Flint waiting patiently by Reorx's forge). Kitiara, Laurana,
-    Ariakas, and Lord Soth stay off-stage, referenced only descriptively,
-    same precedent as every other major non-tracked character; "Fizban"
-    stays unnamed even though the source text explicitly confirms his
-    identity here, keeping this project's own established restraint
-    rather than retroactively naming a god the game has never named. The
+    Ariakas, and Lord Soth stayed off-stage at this milestone, referenced
+    only descriptively -- Laurana is named as of Milestone 49, with her
+    own account of this same `neraka 105 107` window; Kitiara, Ariakas,
+    and Lord Soth remain off-stage (see NEXT UP). "Fizban" (named as of
+    Milestone 48) stayed unnamed here even though the source text
+    explicitly confirms his identity, keeping this project's own
+    established restraint rather than retroactively naming a god the game
+    had never named. The
     `("godshome", "neraka")` road addition required regenerating
     `data/overworld.grid`; Ice Wall's 46-tile glacier patch was captured
     before regenerating and reapplied afterward, same procedure as every
@@ -535,9 +539,10 @@ this stays authoritative.
     the climax) found that doesn't hold up: only Caramon (with Tika,
     untracked) is actually headed to Solace, to help rebuild; Tanis is
     confirmed returning to Kalaman instead, in the same scene as the
-    real ring-exchange/reconciliation beat with the unnamed elfwoman
-    (Laurana); Tasslehoff is peeling off to his own never-named kender
-    homeland, an off-page location this game doesn't model. None of it
+    real ring-exchange/reconciliation beat with the elfwoman -- unnamed
+    at this milestone, named as of Milestone 49 (Laurana); Tasslehoff is
+    peeling off to his own never-named kender homeland, an off-page
+    location this game doesn't model. None of it
     happens anywhere but the Neraka ridge itself -- all still spoken
     future intent the same night the Temple explodes -- so no new
     `PRESENCE` window or `LOCATION` was added. Instead, three new
@@ -545,8 +550,9 @@ this stays authoritative.
     window: Tanis's "A Ring of Gold and Steel", Caramon's "Going Home",
     and Tasslehoff's "A Hero's Welcome" (which folds in a retrospective
     of his whole tracked arc -- the Ice Wall dragon orb, the Tower
-    siege, the Neraka rescue -- via the elfwoman's own unnamed
-    dialogue). Tanis's private knowledge that the "Dragon Highlord" the
+    siege, the Neraka rescue -- via the elfwoman's own unnamed dialogue
+    at the time; Laurana's own account of the same window followed in
+    Milestone 49). Tanis's private knowledge that the "Dragon Highlord" the
     kenders killed was actually the cowardly Fewmaster Toede was left
     out deliberately -- it's his own aside about a scene he isn't part
     of, and doesn't cleanly attach to any one character's own `TOPIC`.
@@ -555,6 +561,64 @@ this stays authoritative.
     throwaway self-test needed since no new grammar, `PRESENCE`
     boundary, or zone/location was introduced. See
     `docs/TIMELINE_NOTES.md`'s "The ridge farewell" section.
+48. Fizban -- the first canon character added beyond the 8 Heroes of the
+    Lance, reversing this project's long-standing "keep major recurring
+    canon characters unnamed" precedent at the user's explicit request. A
+    research pass across all three Chronicles novels first scoped Fizban,
+    Laurana, and the Dragon Highlords together (see
+    `docs/TIMELINE_NOTES.md`'s "Fizban" section for the full findings);
+    Fizban was picked to build first since his arc is small and clean --
+    real, talkable, on-page presence at two locations this game already
+    has scheduled windows for (`qualinesti 7 9`, the Speaker's feast where
+    he's entrusted with the Disks; `pax_tharkas 10 12`, where he's the
+    central actor of the fortress's chain-room climax) -- plus naming him
+    at the two places he was already present but unnamed
+    (`godshome 103 103`, `neraka 105 107`). New `CHARACTER fizban` block,
+    pure data, no new `LOCATION`. One existing-content edit: Tasslehoff's
+    `godshome` `SAY` line named him ("a strange old man" -> "Fizban"),
+    since he'd have known Fizban by name since day 7. His apparent death
+    at Pax Tharkas (a botched featherfall spell) is real on-page content
+    but deliberately *not* the established "no SAY = permanently gone"
+    device -- unlike Sturm/Raistlin/Flint, his story genuinely continues
+    past that window. His true identity stays exactly as unnamed/
+    ambiguous as every prior milestone left it -- this names the
+    character "Fizban," not the "Draco Paladin" reveal the source text
+    itself makes explicit at Neraka. Verified via clean rebuild (zero new
+    warnings) and the piped smoke test; no throwaway self-test needed
+    (pure data, no new grammar). See `docs/TIMELINE_NOTES.md`.
+49. Laurana -- the largest single character addition this project has
+    made, at the user's explicit request: nine `PRESENCE` windows (
+    `qualinesti 7 9`, `pax_tharkas 10 12`, `tarsis 20 22`,
+    `ice_wall 38 42`, `high_clerist_tower 76 80` and `81 81`,
+    `palanthas 83 89`, `kalaman 90 92`, `neraka 105 107`), all at
+    locations/day-ranges already modeled -- pure data, no new `LOCATION`.
+    Also confirms Milestone 48's reversal wasn't a one-off: the "keep
+    major recurring canon characters unnamed" precedent is now retired
+    as a blanket rule (see `docs/TIMELINE_NOTES.md`'s "Named vs.
+    off-stage canon characters"). Re-verified the Ice Wall roster
+    directly against a fresh `Dragons_of_Winter_Night` extraction before
+    touching it: "The Song of the Ice Reaver" names her among the party
+    outright and gives her the window's central beat (frozen wolf-magic
+    holds every swordsman still except her; she takes up the Ice Reaver
+    and kills Feal-thas herself) -- Milestone 36's existing roster was
+    correct, just incomplete, nothing needed correcting. Her schedule
+    follows the Ice Wall/Tower sub-group (Sturm/Flint/Tasslehoff), not
+    the Silvanesti sub-group, confirmed by the same song. Her
+    `high_clerist_tower 81 81` window gets a real `SAY`, not the
+    established "no SAY" device -- she survives the day Sturm dies and
+    carries the rest of the war, unlike the three characters that device
+    is reserved for. One already-shipped scene (the Neraka ring-exchange,
+    Milestone 47) gets a second, named account of the same window rather
+    than a rewrite of the original; two anonymous speaker tags standing
+    in for her ("a golden-haired elfwoman") were updated in place to read
+    "Laurana," same light touch as Milestone 48's Tasslehoff edit --
+    plain pronouns elsewhere were deliberately left alone. Her captivity
+    at Flotsam/Dargaard Keep between `kalaman 90 92` and `neraka 105 107`
+    has no existing `LOCATION` and stays unmodeled, same "don't invent to
+    fill a gap" restraint as ever. Verified via a clean rebuild (zero new
+    warnings) and the piped smoke test; no throwaway self-test needed
+    (pure data, no new grammar). See `docs/TIMELINE_NOTES.md`'s "Laurana"
+    section.
 
 ## NEXT UP
 
@@ -562,11 +626,26 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Terrain-specific monster pools** — encounter *chance* now varies by
+1. **Dragon Highlords** — mostly validates the existing restraint: Verminaard,
+   Feal-thas, and Fewmaster Toede all confirmed to have no real
+   talk-shaped on-page material, so the existing off-stage treatment was
+   correct and needs no change. Kitiara is the one exception — genuine
+   face-to-face dialogue with Tanis lands inside the existing
+   `neraka 105 107` window, and Milestone 49 (Laurana) added two more
+   scenes that put her on-page in someone else's dialogue
+   (`high_clerist_tower 81 81`, `neraka 105 107` again) — but before
+   writing anything, this needs a design decision the research didn't
+   resolve: whether an adversarial character belongs on the same friendly
+   talk/topic picker the 8 Heroes use, or should stay retrospective
+   dialogue inside an existing Hero's own `TOPIC` (the technique already
+   used for Raistlin's Neraka reunion via Caramon, and for Kitiara's own
+   Sturm-kill via Sturm's and now Laurana's no-SAY-adjacent windows).
+   Raise this via `AskUserQuestion` before scoping content.
+2. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

@@ -70,7 +70,17 @@ ultimatum arrives — and then Tanis, Caramon, Flint, and Tasslehoff travel
 on together into the hidden mountain hollow of Godshome, where Flint dies
 of a sudden, peaceful heart failure, and then Tanis, Caramon, and
 Tasslehoff carry on into the walled Temple compound of Neraka itself for
-the war's climax and ending — see `docs/TIMELINE_NOTES.md`.
+the war's climax and ending — see `docs/TIMELINE_NOTES.md`. Fizban, the
+eccentric old wizard, is the first canon character named and made
+talkable beyond the eight Heroes themselves — travels with the party
+from Qualinesti through the siege of Pax Tharkas, then resurfaces, still
+unidentified as anything more than "Fizban," at both Godshome and Neraka.
+Laurana is the second and largest: introduced as the Speaker of the
+Suns's daughter at Qualinesti, she proves herself in the fighting at Pax
+Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
+forces the dragon orb to its limit and delivers Sturm's eulogy the day
+he dies at the High Clerist Tower, and rises to command the war itself
+as the Golden General before a final captivity and reunion at Neraka.
 Stepping inside a zone carries the encounter through too: find them
 gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
 Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine

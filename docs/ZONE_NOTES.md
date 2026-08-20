@@ -565,11 +565,11 @@ story beats happen here or pass through it), and one generic talkable
 City Watchman (`G`, fourth use of the "unnamed sentinel" pattern after the
 Fortress Guard, the Tower/Ice Wall Knights, and Silvanesti's Warder). The
 Dragon Highlord who delivers the ultimatum ("the Dark Lady," i.e. Kitiara)
-and the Golden General (Laurana) both stay unnamed throughout — same
-off-stage-major-character precedent as Alhana/Derek/Gunthar, now also
-applied to two characters with active roles across the whole trilogy
-rather than one book. See `docs/TIMELINE_NOTES.md` for the two day-windows
-this zone's `TIMELINE_ANCHOR` serves.
+and the Golden General (Laurana) both stayed unnamed throughout this
+zone's text at the time it was written — Laurana is named as of
+Milestone 49 (see `docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon
+characters"); Kitiara remains off-stage. See `docs/TIMELINE_NOTES.md` for
+the two day-windows this zone's `TIMELINE_ANCHOR` serves.
 
 ## Palanthas (Milestone 44)
 
@@ -617,8 +617,11 @@ own sealed interior). **The Lord's Palace is scenery too — Amothus is
 named directly in its description but never becomes a `TALK` NPC**, same
 precedent as Lorac Caladon/Feal-thas: named in flavor text without being
 made talkable, reserved for a character with neither the extensive ongoing
-canon plot that keeps Kitiara/Laurana/Alhana/Derek/Gunthar unnamed, nor a
-strong enough sourced voice sample to draw dialogue from (unlike Astinus).
+canon plot that (at the time this zone was written) kept Kitiara, Laurana,
+Alhana, Derek, and Gunthar off-stage, nor a strong enough sourced voice
+sample to draw dialogue from (unlike Astinus). Laurana is named as of
+Milestone 49, though as a schedule-tracked `data/timeline.txt` character,
+not a zone-native NPC like Amothus — a different axis than this paragraph.
 
 The airborne dragon battle and Bakaris's capture, later in this same book,
 are confirmed (by direct text search) to happen away from the city near
@@ -660,9 +663,10 @@ built; it exists only as one flavor beat in `data/timeline.txt`'s
 dialogue, not a second `LOCATION`.
 
 Berem and Fizban (the old mage) are both present in the source scene but
-stay unnamed in this zone's text and in the Heroes' dialogue, same
-off-stage-major-character precedent as Kitiara/Laurana/Alhana/Derek/
-Gunthar — see `docs/TIMELINE_NOTES.md`.
+stayed unnamed in this zone's text and in the Heroes' dialogue at the
+time this zone was written — Fizban is named as of Milestone 48 (see
+`docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters"); Berem
+never gets his own `CHARACTER` block.
 
 ## Neraka (Milestone 46)
 
@@ -698,12 +702,14 @@ collapse without inventing a named Highlord or staging Kitiara/Ariakas
 directly.
 
 Kitiara, Laurana, Ariakas, and Lord Soth are all real presences in the
-source chapters covered here but stay entirely unnamed/off-stage in this
-zone's own text, same off-stage-major-character precedent as Godshome's
-Berem/Fizban — see `docs/TIMELINE_NOTES.md` for the full reasoning,
-including why Raistlin's own real reunion scene with Caramon here does
-**not** add a `PRESENCE neraka` entry to Raistlin's own `CHARACTER`
-block.
+source chapters covered here but stayed entirely unnamed/off-stage in
+this zone's own text at the time it was written. Laurana is named as of
+Milestone 49, with real dialogue at this same `neraka 105 107` window
+(see `docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters");
+Kitiara, Ariakas, and Lord Soth remain off-stage. See
+`docs/TIMELINE_NOTES.md` for the full reasoning, including why Raistlin's
+own real reunion scene with Caramon here does **not** add a
+`PRESENCE neraka` entry to Raistlin's own `CHARACTER` block.
 
 ## Adding a new zone
 
