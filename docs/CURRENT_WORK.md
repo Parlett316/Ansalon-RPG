@@ -2,11 +2,12 @@
 
 Nothing in flight.
 
-Milestone 45 (Godshome — Flint's death) shipped: a new `LOCATION
-godshome`, a small three-POI zone, and a single-day `PRESENCE godshome
-103 103` window for Tanis, Caramon, Flint, and Tasslehoff (Flint's has no
-`SAY` — his schedule's last entry). Verified via a throwaway self-test,
-clean rebuild, and the piped smoke test; docs updated.
+Milestone 45 (Godshome — Flint's death) shipped and is committed
+(`7920260`): a new `LOCATION godshome`, a small three-POI zone, and a
+single-day `PRESENCE godshome 103 103` window for Tanis, Caramon, Flint,
+and Tasslehoff (Flint's has no `SAY` — his schedule's last entry).
+Verified via a throwaway self-test, clean rebuild, and the piped smoke
+test; docs updated.
 
 Next: pick from `docs/MILESTONES.md`'s "NEXT UP":
 
