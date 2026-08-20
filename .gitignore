@@ -26,8 +26,9 @@ save.txt
 *.user
 
 # Claude Code local tool state (scheduled-task locks, etc.) -- not project
-# data.
-.claude/
+# data. Agent definitions under .claude/agents/ ARE tracked project config.
+.claude/*
+!.claude/agents/
 
 # Scratch pdftotext dumps and self-test artifacts left at repo root by past
 # research/verification sessions -- not meant to be committed (some contain
