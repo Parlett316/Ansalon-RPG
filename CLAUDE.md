@@ -72,6 +72,13 @@ Read `docs/ARCHITECTURE.md` and `docs/GOTCHAS.md` before touching
 anything outside a single, well-contained file — most non-obvious traps
 are already documented there.
 
+## Cost Management
+
+- Do not spawn subagents for routine content work (dialouge, monsters, shops timeline, milestone updates).
+- Read files directly for those.
+- Subagents are only for project-wide searches, architecture reviews, and multi-file crash debugging.
+- When a subagent IS used, run it on the cheapest capable model (Haiku), reserving the main model for decisions and code.
+
 ## Build process
 
 From a plain PowerShell (no need to run `vcvarsall.bat` — the VS

@@ -29,7 +29,11 @@ in hours-long conversations.
 **1. Start of session — cheap rehydration**
 
 ```
-Read CLAUDE.md and docs/CURRENT_WORK.md. What's next?
+Read CLAUDE.md and docs/CURRENT_WORK.md, and docs/MILESTONES.md.
+
+Do not spawn subagents unless you hit something that needs project-wide investigation.  If you do, run them on Haiku.
+
+What's next?
 ```
 
 or, for milestone-specific work:
