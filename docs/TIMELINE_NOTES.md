@@ -888,6 +888,53 @@ back to Solace" (lines 15184-15201) — flagged in `docs/MILESTONES.md`'s
 NEXT UP as a clean, low-effort next candidate (existing `LOCATION`, no
 new zone needed), not built this milestone.
 
+## The ridge farewell (Milestone 47)
+
+`docs/MILESTONES.md`'s NEXT UP menu pitched a closing `PRESENCE solace`
+window for Tanis, Caramon, and Tasslehoff, based on a summary-level
+read of the Neraka span: "the book's own final scene has the survivors
+talking about 'going back to Solace.'" Re-reading the actual scene
+(`.research/dosd_full.txt` lines ~15165-15290 — the ridge above the
+ruined Temple, immediately after the climax) before planning anything
+found that pitch doesn't hold up as stated, so the scope changed before
+any code or content was written.
+
+**Only Caramon is actually going to Solace.** He and Tika (untracked)
+tell Tanis directly: "We're going back to Solace, Tanis... They'll need
+me in Solace, to help rebuild" — contrasted against what he's just seen
+of Silvanesti's ruin. Tanis is *not* going to Solace: Tika confirms "we
+know you'll be returning to Kalaman." Tasslehoff isn't either — he's
+peeling off to visit his own kender homeland, never named on the page
+and not a location this game models, the same "stays off-page" treatment
+already given to Sancrist Isle and Southern Ergoth (not "don't invent to
+fill a gap" — there's simply no on-page arrival to describe).
+
+**No new `PRESENCE` or `LOCATION` was added.** All of this — Caramon's
+decision, Tanis's Kalaman plan, the real ring-exchange/reconciliation
+scene with the elfwoman (Laurana, kept unnamed per this file's standing
+precedent for major off-stage canon characters — see Kitiara, Alhana
+Starbreeze, Derek Crownguard, Lord Gunthar), Tasslehoff's homeland
+plan — is still spoken future intent on the ridge at Neraka, the same
+night the Temple explodes. Tanis's existing `neraka` `PRESENCE` flavor
+text ("watching the sky go back to being only sky") already depicts the
+very end of this same continuous scene. Instead, three new `TOPIC`
+lines were added inside the existing `PRESENCE neraka 105 107` window:
+Tanis's `"A Ring of Gold and Steel"`, Caramon's `"Going Home"` (Caramon's
+existing `SAY_AGAIN` already teased "talk going around the fire is
+we're finally headed home to Solace" -- this fills in the *why*), and
+Tasslehoff's `"A Hero's Welcome"` (which folds in the elfwoman's
+retrospective of his whole tracked arc -- the Ice Wall dragon orb, the
+Tower siege, the Neraka rescue -- via her own unnamed dialogue, not a
+new character).
+
+**Deliberately left out: Tanis's private knowledge that the "Dragon
+Highlord" the kender mob killed was actually the cowardly Fewmaster
+Toede** (source lines ~15236-15238) — a fun bit of dramatic irony, but
+it's Tanis's own aside about a scene he isn't part of, and every
+`TOPIC` in this file so far is either a character's own words or
+narration about *that* character. Left out rather than force-fit, same
+restraint call as Riverwind never getting a `SAY_IF`.
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

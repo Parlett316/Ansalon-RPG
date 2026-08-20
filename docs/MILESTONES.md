@@ -527,20 +527,40 @@ this stays authoritative.
     no `.cpp`/`.h` changes -- pure data content), and the piped smoke
     test. See `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`,
     `docs/TIMELINE_NOTES.md`.
+47. The ridge farewell -- Milestone 46's own NEXT UP entry pitched a
+    closing `PRESENCE solace` window for Tanis, Caramon, and Tasslehoff,
+    based on a summary-level read ("the survivors talk about going back
+    to Solace"). Re-reading the actual scene (`.research/dosd_full.txt`
+    lines ~15165-15290, the ridge above the ruined Temple right after
+    the climax) found that doesn't hold up: only Caramon (with Tika,
+    untracked) is actually headed to Solace, to help rebuild; Tanis is
+    confirmed returning to Kalaman instead, in the same scene as the
+    real ring-exchange/reconciliation beat with the unnamed elfwoman
+    (Laurana); Tasslehoff is peeling off to his own never-named kender
+    homeland, an off-page location this game doesn't model. None of it
+    happens anywhere but the Neraka ridge itself -- all still spoken
+    future intent the same night the Temple explodes -- so no new
+    `PRESENCE` window or `LOCATION` was added. Instead, three new
+    `TOPIC` entries went into the existing `PRESENCE neraka 105 107`
+    window: Tanis's "A Ring of Gold and Steel", Caramon's "Going Home",
+    and Tasslehoff's "A Hero's Welcome" (which folds in a retrospective
+    of his whole tracked arc -- the Ice Wall dragon orb, the Tower
+    siege, the Neraka rescue -- via the elfwoman's own unnamed
+    dialogue). Tanis's private knowledge that the "Dragon Highlord" the
+    kenders killed was actually the cowardly Fewmaster Toede was left
+    out deliberately -- it's his own aside about a scene he isn't part
+    of, and doesn't cleanly attach to any one character's own `TOPIC`.
+    Pure data content, no `.cpp`/`.h` changes: verified via a clean
+    rebuild (zero new warnings) and the piped smoke test only, no
+    throwaway self-test needed since no new grammar, `PRESENCE`
+    boundary, or zone/location was introduced. See
+    `docs/TIMELINE_NOTES.md`'s "The ridge farewell" section.
 
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
-
-**Continuing *Dragons of Spring Dawning* after Neraka (Milestone 46):**
-the book's own final scene has the survivors talking about "going back to
-Solace" -- Solace is already a modeled `LOCATION` and the game's own
-starting town, so a closing `PRESENCE solace` window for Tanis, Caramon,
-and Tasslehoff is a clean, low-effort next candidate: no new zone or
-`LOCATION` needed, just new timeline dialogue for the war's actual end.
-See `docs/TIMELINE_NOTES.md`'s Neraka section.
 
 1. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
