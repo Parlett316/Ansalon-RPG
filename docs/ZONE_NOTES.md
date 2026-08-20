@@ -373,6 +373,15 @@ Milestone 53 added a fifth, `data/zones/high_clerist_tower.txt`'s new POI
 inventing new lore; see `docs/QUEST_NOTES.md`'s "Shipped quests" for the
 full writeup.
 
+The Dragonlance magical items milestone added a sixth,
+`data/zones/high_clerist_tower.txt`'s new POI `L` ("A Knight of the
+Circle"), offering `solamnic_armor` — a third POI at the same zone (after
+`K` and `S`, both already spoken for), placed near the existing Muster
+Yard/Sword Knight cluster. This is also this project's first `QUEST`
+whose turn-in grants an item (`REWARD_SOLAMNIC_ARMOR`) rather than steel/
+XP/a rank — see `docs/QUEST_NOTES.md`'s "Shipped quests" and
+`docs/CHARACTER_NOTES.md`'s "Magic items".
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -563,6 +572,14 @@ Milestone 53 added a second talkable Knight, `S` ("A Sword Knight"), next
 to the Muster Yard -- see "Quests: POIs that offer them" above and
 `docs/QUEST_NOTES.md`'s "Shipped quests" for why `K` couldn't carry a
 second `QUEST` line.
+
+The Dragonlance magical items milestone added a third, `L` ("A Knight of
+the Circle"), for the same reason -- `K` and `S` were both already
+spoken for. Placed on the same row as `Y`/`S`, a few tiles east, still
+inside the Muster Yard's open ground rather than off in its own corner --
+this Knight's whole reason for being there is the Circle convening on
+that same ground. Offers `solamnic_armor`; see "Quests: POIs that offer
+them" above and `docs/QUEST_NOTES.md`'s "Shipped quests".
 
 ## Ice Wall Castle (Milestone 36)
 

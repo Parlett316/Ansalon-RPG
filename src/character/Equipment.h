@@ -22,12 +22,15 @@ struct Character;
 // applied here as Steel Pieces, Krynn's real currency, see
 // docs/CHARACTER_NOTES.md's "Gold -> Steel" note) -- Plate Mail and
 // heavier are priced far beyond any level-1 starting steel and aren't
-// offered yet.
+// offered yet. SolamnicArmor is NOT one of these -- it's a quest reward
+// (docs/QUEST_NOTES.md's solamnic_armor), never sold, deliberately absent
+// from kBuyableArmor below.
 enum class ArmorId {
     None,
     Leather,
     ChainMail,
     SplintMail,
+    SolamnicArmor,
 };
 
 struct ArmorInfo {
@@ -74,6 +77,31 @@ struct WeaponUpgrade {
 // not a gap).
 const WeaponUpgrade* weaponUpgradeFor(ClassId classId);
 
+// A "+1" enchanted weapon, one per class, sold alongside the mundane
+// upgrade above -- see docs/CHARACTER_NOTES.md's "Magic items" section.
+// Sourced from the 2nd ed. DMG's "Magical Item Tables," Table 109 (Attack
+// Roll Adjustment, p.140, visually confirmed): a "+1" weapon carries XP
+// Value 400 (Sword) or 500 (Other Weapon), reused directly as the Steel
+// Piece price -- same "reuse the DMG number as the price" convention
+// already used for the Potion of Healing (kHealingPotionCostStl below),
+// flagged here too since Table 109 gives an XP crafting cost, not a
+// separate market-value column the way the Potion's own table does.
+// magicBonus applies to BOTH the attack roll and damage (real 2e
+// convention) -- see combat::resolvePlayerAttack. Unlike weaponUpgradeFor,
+// this is never nullptr: every class gets one, including Mage and Tinker,
+// who have no mundane upgrade at all (their first-ever weapon upgrade,
+// via magic rather than smithing).
+struct MagicWeapon {
+    const char* name;
+    int damageSides;
+    int damageBonus; // the class's own mundane weapon bonus, if any (e.g.
+                      // the Cleric's flail) -- stacks with magicBonus below
+    int magicBonus;   // +1 to both the attack roll and damage
+    int costStl;
+};
+
+const MagicWeapon& magicWeaponFor(ClassId classId);
+
 // A carried, not-currently-equipped item -- see Character::inventory below.
 // Only the fields relevant to `kind` are meaningful; the others stay at
 // their default.
@@ -90,6 +118,7 @@ struct InventoryItem {
     std::string weaponName;              // valid when kind == Weapon
     int weaponDamageSides = 0;           // valid when kind == Weapon
     int weaponDamageBonus = 0;           // valid when kind == Weapon
+    int weaponMagicBonus = 0;            // valid when kind == Weapon
 };
 
 // Human-readable label for a carried item, same format as ShopItem::label
@@ -134,9 +163,10 @@ struct PurchaseResult {
 
 // Applies buying availableShopItems(character)[index]: deducts steel,
 // updates equippedArmor/hasShield/weaponName/weaponDamageSides/
-// weaponDamageBonus, and calls recomputeArmorClass. Does nothing to the
-// character if the purchase is rejected (insufficient steel, class can't
-// use the item, or already owned) -- check PurchaseResult::success.
+// weaponDamageBonus/weaponMagicBonus, and calls recomputeArmorClass. Does
+// nothing to the character if the purchase is rejected (insufficient
+// steel, class can't use the item, or already owned) -- check
+// PurchaseResult::success.
 PurchaseResult purchaseItem(Character& character, int index);
 
 // One line in the shop's "sell" view -- see sellableItems below.
@@ -154,11 +184,13 @@ struct SellItem {
 // rule for mundane equipment (checked the actual PHB/DMG text -- see
 // docs/CHARACTER_NOTES.md's "Selling gear back"), so the value here is a
 // deliberately flagged, invented convention: half of the item's real shop
-// price (armorInfo/kShieldCostStl/WeaponUpgrade::costStl), floored. A
-// starting weapon (the class's original dagger/mace/shortsword/longsword/
-// wrench, which can land in inventory after an upgrade is equipped) was
-// never sold in any shop and has no established price, so it is marked
-// unsellable rather than assigned an invented number.
+// price (armorInfo/kShieldCostStl/WeaponUpgrade::costStl/MagicWeapon::costStl),
+// floored. A starting weapon (the class's original dagger/mace/shortsword/
+// longsword/wrench, which can land in inventory after an upgrade is
+// equipped) and SolamnicArmor (a quest reward, never sold -- see
+// docs/QUEST_NOTES.md's solamnic_armor) were never sold in any shop and
+// have no established price, so both are marked unsellable rather than
+// assigned an invented number.
 std::vector<SellItem> sellableItems(const Character& character);
 
 // Applies selling character.inventory[index]: removes it from inventory

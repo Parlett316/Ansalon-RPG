@@ -2,59 +2,74 @@
 
 Nothing in flight.
 
-Milestone 53 (Knight of the Sword advancement) just shipped: a new
-`character::KnightOrder::Sword` value, `meetsKnightOfSwordRequirements`
-(Str12/Int9/Wis13/Dex9/Con10), and `game::conditionMatches`'s new
-`sword_eligible` token (Crown + level>=3 + those minimums) -- this
-project's first compound, non-single-word `REQUIRE` condition. Real DL
-Adventures pp.17-19 requirements, reconfirmed via rendered page images
-this session, which turned up a genuine 1987 book erratum: p.18's Sword
-minimums box is printed with a "Rose Knight Minimum Scores" header,
-contradicted by the correctly-labeled Rose box on p.19 with different
-values -- see `docs/CHARACTER_NOTES.md`'s "Knights of Solamnia" section
-("Sourcing note: a book erratum").
+The Dragonlance magical items milestone just shipped: real magic items,
+sourced from *Dragonlance Adventures* (TSR 2021)'s own "Magical Items of
+Krynn" chapter (pp.91-99, visually confirmed via rendered page images)
+and the 2nd ed. DMG's "Magical Item Tables" (also page-image confirmed).
+Asked the user how items should be obtained before building anything --
+the answer was both a shop item and a quest reward, so this ships exactly
+one of each, no generic item subsystem underneath.
 
-The real quest, `named_in_fact` ("In Fact as Well as Blood"), is given by
-a new POI (`S`, "A Sword Knight") at High Clerist's Tower's Muster Yard --
-reframing that POI's own pre-existing "names a new Knight in fact as well
-as blood" flavor line, since the Garrison Knight POI already carries
-`word_for_the_tower` and v1 allows only one quest per POI. This project's
-first quest to mix two objective kinds: `VISIT plains_of_dust` (the book's
-500-mile/30-day journey) and `SLAY baaz 1` (its single combat, satisfied
-narratively for free by this project's existing "knocked out, not killed"
-combat framing). The book's other four required elements (three tests of
-wisdom, one of generosity, one of compassion, restoring something lost)
-have no trackable state, so they're narrated in the `COMPLETE` text
-instead, the same treatment Milestone 47's ridge farewell gave untracked
-lore. A new bare `REWARD_KNIGHT_SWORD` quest-file flag promotes
-`knightOrder` on turn-in. `SaveGame.cpp`'s `KNIGHTORDER` bound moved from
-2 to 3 values (append-only-safe -- old saves' 0/1 stay valid).
+A "+1" enchanted weapon per class (`character::magicWeaponFor`, new
+`Character::weaponMagicBonus` field wired into `combat::
+resolvePlayerAttack`'s to-hit and damage, priced from DMG Table 109:
+400stl sword-family, 500stl other), sold at every shop alongside the
+existing mundane upgrade -- Mage and Tinker, who had no mundane upgrade
+at all, get their first-ever weapon upgrade this way. Solamnic Armor
+(`character::ArmorId::SolamnicArmor`, AC 0, sourced directly from DLA
+p.93-94) is a new quest reward, `data/quests.txt`'s `solamnic_armor` --
+this project's first item-granting quest reward, via a new
+`REWARD_SOLAMNIC_ARMOR` bare flag mirroring `REWARD_KNIGHT_SWORD`'s exact
+shape (not a generic string-driven item mapping, which `docs/
+QUEST_NOTES.md` had already deliberately rejected). Gated by a new
+`sword_knight` condition (currently *is* a Sword Knight) since the book
+ties this to the title "Lord," which this project doesn't model. Offered
+by a new POI, `data/zones/high_clerist_tower.txt`'s `L` ("A Knight of the
+Circle") -- `K` and `S` there already carry a quest each. The chapter's
+unique, canon-owned artifacts (Wyrmslayer, Staff of Magius, the Hammer of
+Kharas, the Dragonlances themselves) were deliberately left out of player
+reach, same restraint as every off-stage major canon character/event in
+this project.
 
-Verified via a throwaway self-test (ability-score boundary cases,
-`QuestLoader` parsing the new reward flag and its fail-fast
-trailing-argument case against the real six-quest `data/quests.txt`), a
-clean `/W4` rebuild (zero new warnings), a direct check that the user's
-real `save.txt` (a level-1 Human Fighter) still loads cleanly under the
-new `KNIGHTORDER` bound, and the standard piped character-creation smoke
-test (both real `save.txt` copies -- repo root and `build/Debug/` --
-moved aside and restored around it). Docs updated: `docs/CHARACTER_NOTES.md`
-("Knights of Solamnia" rewritten for Crown+Sword, the erratum note, the
-Rose/healing-abilities backlog trimmed), `docs/QUEST_NOTES.md` ("Shipped
-quests", grammar table, "Extending this later"), `docs/ZONE_NOTES.md` (new
-POI, both the quest-POI list and the zone's own writeup), `docs/MILESTONES.md`
-(new entry + NEXT UP now leads with Order of the Rose), `README.md` Status
-paragraph.
+`SaveGame.cpp` touches: `ArmorId`'s bound widened 4->5 (append-only-safe).
+The equipped/inventory weapon line migrated from `WEAPON sides bonus
+name` to `MAGICWEAPON sides bonus magicBonus name` (the old format's
+greedy to-end-of-line name couldn't take a new field without corrupting
+it) -- `load()` still accepts the legacy `WEAPON` keyword too, same
+migration shape as `GOLD`->`STEEL`.
 
-**Not yet verified**: real interactive playthrough (actually reaching
-level 3 as a Crown Knight, confirming the Sword Knight only offers the
-quest once `sword_eligible` is true, completing the VISIT+SLAY mix, and
-confirming the character sheet shows "Knight of the Sword") -- `_getch()`
-can't be piped, the same limitation flagged for Milestones 51 and 52.
-Needs the user's own keyboard before calling the UI path fully done.
+Verified via a throwaway self-test (shop-catalog shape/index arithmetic
+per class, purchase/equip/sell round-trip including newly-unsellable
+`SolamnicArmor`, `resolvePlayerAttack`'s magic-bonus wiring -- both a
+deterministic damage check and a statistical to-hit check, `QuestLoader`
+against the real seven-quest `data/quests.txt` including
+`REWARD_SOLAMNIC_ARMOR`'s fail-fast case, and a save round-trip covering
+`MAGICWEAPON`, legacy `WEAPON`, and the widened `ARMOR` bound), a clean
+`/W4` rebuild, a direct check that the user's real `save.txt` (a level-1
+Human Fighter) still loads cleanly under the new save format (both before
+moving it aside and after restoring it), and the standard piped
+character-creation smoke test.
+
+**Not yet verified**: real interactive playthrough (buying/equipping the
+magic weapon and seeing the to-hit/damage difference in a real fight;
+reaching Sword rank and completing `solamnic_armor` to receive Solamnic
+Armor) -- `_getch()` can't be piped, the same limitation flagged for
+every quest milestone so far. Needs the user's own keyboard before
+calling the UI path fully done.
+
+Docs updated: `docs/CHARACTER_NOTES.md` (new "Magic items" section, a
+cross-reference note in "Knights of Solamnia", the "Extending this later"
+Equipment bullet), `docs/QUEST_NOTES.md` (grammar table's `REWARD_*` row
+and `REQUIRE` vocabulary, "Shipped quests", "Deliberately not in v1"'s
+item-rewards bullet reworded rather than reversed, "Extending this
+later"), `docs/ZONE_NOTES.md` (the new POI, both the quest-POI list and
+the High Clerist's Tower zone writeup), `docs/MILESTONES.md` (new entry +
+NEXT UP reordered/expanded), `README.md` Status paragraph.
 
 NEXT UP (`docs/MILESTONES.md`) now leads with Order of the Rose
-advancement (the natural follow-up now that the Sword pattern exists --
-real p.19 requirements already researched, see `docs/CHARACTER_NOTES.md`'s
-"Rose Knights, for real") and the still-unused `DELIVER` objective kind,
-followed by terrain-specific monster pools and more monsters. Ask the user
-before starting any of them.
+advancement (unchanged by this milestone -- `solamnic_armor` deliberately
+gates on the already-shipped Sword rank instead of waiting on Rose), then
+more of the DLA magic items chapter (Rods/Staves/Wands, Crystals and
+Gems, Miscellaneous Magic -- real, sourced, unused), then the
+still-unused `DELIVER` objective kind, terrain-specific monster pools,
+and more monsters. Ask the user before starting any of them.

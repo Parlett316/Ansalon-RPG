@@ -56,9 +56,9 @@ GIVER <text>                      required -- free text naming who/where
                                   mechanically tied to a real zone POI
 REQUIRE <condition>                optional -- game::conditionMatches's
                                   vocabulary (good/evil, the 7 races, the 5
-                                  classes, knight, and the compound
-                                  sword_eligible -- see below); an unmet
-                                  REQUIRE means this quest-giver has
+                                  classes, knight, sword_knight, and the
+                                  compound sword_eligible -- see below); an
+                                  unmet REQUIRE means this quest-giver has
                                   nothing to say about this quest at all to
                                   this character, checked fresh on every
                                   talk, not just at first offer
@@ -75,6 +75,16 @@ REWARD_KNIGHT_SWORD                optional, bare flag (no argument) --
                                   see "Knight of the Sword advancement"
                                   below. As of Milestone 53, exactly one
                                   quest (named_in_fact) carries it.
+REWARD_SOLAMNIC_ARMOR              optional, bare flag (no argument) --
+                                  grants a character::ArmorId::SolamnicArmor
+                                  plus an ordinary Shield item on turn-in;
+                                  see "Dragonlance magical items" below.
+                                  As of that milestone, exactly one quest
+                                  (solamnic_armor) carries it. Same "named,
+                                  specific, compile-time flag" shape as
+                                  REWARD_KNIGHT_SWORD above, not a generic
+                                  item-reward mapping -- see "Deliberately
+                                  not in v1" below.
 END
 ```
 
@@ -305,6 +315,52 @@ needs one.
 
 ## Shipped quests
 
+### Dragonlance magical items: `solamnic_armor`
+
+The follow-up to Milestone 53's Sword advancement, and this project's
+first item-granting quest reward. Offered by a new POI at
+`data/zones/high_clerist_tower.txt` — "A Knight of the Circle" (`L`),
+placed near the existing Muster Yard (`Y`)/Sword Knight (`S`) cluster,
+since `K` and `S` already carry a quest each and v1 allows only one per
+POI. Gated by `REQUIRE sword_knight` (`c.knightOrder ==
+character::KnightOrder::Sword`, a new single-fact token distinct from the
+existing `knight` token, which also matches Crown) — the source book
+(*Dragonlance Adventures*, TSR 2021, p.93) actually gates Solamnic Armor
+on the title "Lord," which this project doesn't model, so this is scoped
+to the already-shipped Sword rank instead: the Circle recognizing service
+already proven, not a new rank tier. One `TALK high_clerist_tower:K`
+objective (the Garrison Knight vouching for the candidate) — reuses an id
+the player has almost certainly already recorded via `word_for_the_tower`
+or ordinary exploration, so, per "Objectives are queries over existing
+state" above, this quest can very plausibly be instantly completable the
+moment it's accepted; the `OFFER`/`ACCEPT`/`PROGRESS` text is written to
+read fine either way, same discipline `road_wolves` established. Turning
+it in sets `REWARD_SOLAMNIC_ARMOR`, granting `character::ArmorId::
+SolamnicArmor` (AC 0, sourced directly from the book, see
+`docs/CHARACTER_NOTES.md`'s "Magic items") plus an ordinary Shield item —
+a deliberate simplification of the book's separate "shield +1" (this
+engine's shield has no enchantment tiers of its own). Reward: 40 steel,
+100 XP. The same milestone also added a "+1" magic weapon per class, sold
+at every shop alongside the mundane upgrade — pure equipment, no quest
+involved; see `docs/CHARACTER_NOTES.md`'s "Magic items" for the full
+sourcing (DLA's own "Magical Items of Krynn" chapter, DMG Table 109) and
+why the chapter's unique named artifacts (Wyrmslayer, Staff of Magius,
+the Hammer of Kharas) stay out of player reach. Verified via a throwaway
+self-test (`magicWeaponFor` per class, shop-catalog shape/index
+arithmetic, purchase/equip/sell round-trip including the newly-unsellable
+`SolamnicArmor`, `resolvePlayerAttack`'s to-hit/damage magic-bonus wiring,
+`QuestLoader` against the real seven-quest `data/quests.txt` including
+`REWARD_SOLAMNIC_ARMOR`'s fail-fast trailing-argument case, and a save
+round-trip covering the new `MAGICWEAPON` format, the legacy `WEAPON`
+format still loading with `magicBonus == 0`, and the widened `ARMOR`
+bound), a clean `/W4` rebuild, a direct check that the user's real
+`save.txt` still loads cleanly under the new `ARMOR` bound and the
+`WEAPON`/`MAGICWEAPON` dual-format parsing, and the standard piped smoke
+test. Interactive verification (buying/equipping the magic weapon and
+seeing the combat difference; reaching Sword and completing
+`solamnic_armor` for the armor) still needs the user's own keyboard, the
+same `_getch()` limitation flagged for every quest milestone so far.
+
 ### Milestone 53: Knight of the Sword advancement
 
 `named_in_fact` ("In Fact as Well as Blood"), offered by a new POI at
@@ -439,10 +495,14 @@ above, and separately a real crash bug (unrelated to quests — see
   slot), and a change to the save's `INVENTORY` block. A whole item
   subsystem hiding inside "one more objective kind," and the riskiest
   thing to build near the user's real save — deferred to Milestone 52.
-- **Item rewards.** Mapping a data string to a concrete `InventoryItem`
-  needs a name<->enum reverse lookup this project's raw-int save design
-  deliberately avoids everywhere else. If wanted later, `REWARD_POTION <n>`
-  is the one defensible form — potions are parameterless, no lookup needed.
+- **A *generic* item-reward mapping.** Mapping an arbitrary data string to
+  a concrete `InventoryItem` needs a name<->enum reverse lookup this
+  project's raw-int save design deliberately avoids everywhere else. Still
+  true — but `REWARD_SOLAMNIC_ARMOR` (see "Dragonlance magical items"
+  below) shows the narrower, defensible form: a single named, compile-time
+  bare flag, exactly like `REWARD_KNIGHT_SWORD`, not a string-driven
+  mapping. Extend this way (one more named flag) rather than reopening a
+  generic `REWARD_ITEM <string>` keyword.
 - **Stage index, quest chains, prerequisites, abandonment, failable or
   timed quests, multiple quests per POI.**
 - **Per-objective "you just did the thing!" pop-ups** (as opposed to the
@@ -458,11 +518,12 @@ above, and separately a real crash bug (unrelated to quests — see
 
 ## Extending this later
 
-Milestone 52 shipped the ordinary-NPC content pass and Milestone 53
-shipped Knight of the Sword advancement (see "Shipped quests" above) —
-VISIT, TALK, a mixed-kind quest, and REQUIRE conditions beyond `knight`
-are all now proven live in real, played content. One item from the
-original backlog is still open:
+Milestone 52 shipped the ordinary-NPC content pass, Milestone 53 shipped
+Knight of the Sword advancement, and the Dragonlance magical items
+milestone shipped `solamnic_armor` (see "Shipped quests" above) — VISIT,
+TALK, a mixed-kind quest, REQUIRE conditions beyond `knight`, and now an
+item-granting reward are all proven live in real, played content. Two
+items from the original backlog are still open:
 
 - **`DELIVER`/item-possession objectives**, if a future quest concept
   genuinely needs one rather than being addable with VISIT/TALK/SLAY (as
@@ -471,4 +532,11 @@ original backlog is still open:
 - **Order of the Rose advancement**, the natural follow-up to Sword now
   that the pattern exists — see `docs/CHARACTER_NOTES.md`'s "Rose Knights,
   for real" for the real, already-researched XP/ability-score
-  requirements.
+  requirements. Not entangled with `solamnic_armor` above, which
+  deliberately gates on the already-shipped Sword rank instead of waiting
+  on Rose.
+- **More of DLA's "Magical Items of Krynn" chapter** (Rods/Staves/Wands,
+  Crystals and Gems, Miscellaneous Magic) is real, sourced, and
+  unused — see `docs/CHARACTER_NOTES.md`'s "Magic items" for what's
+  already sourced and why the chapter's unique named artifacts
+  specifically stay out of scope regardless.

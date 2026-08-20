@@ -15,6 +15,9 @@ struct AttackOutcome {
 // a natural 1 always misses, checked against the UNMODIFIED die roll, "regardless
 // of any modifiers." Damage is floored at 1 on a hit (a near-universal
 // convention, not itself re-verified this pass -- see docs/COMBAT_NOTES.md).
+// character::Character::weaponMagicBonus (a "+1" enchanted weapon, see
+// character/Equipment.h's MagicWeapon) adds to both the to-hit total and
+// the damage roll -- real 2e convention, applied on top of Strength.
 AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster);
 AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character);
 

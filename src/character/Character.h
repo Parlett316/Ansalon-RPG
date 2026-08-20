@@ -54,6 +54,12 @@ struct Character {
     std::string weaponName;
     int weaponDamageSides = 4;
     int weaponDamageBonus = 0;
+    // +1 to both the attack roll and damage -- a real magical enchantment,
+    // distinct from weaponDamageBonus above (a mundane weapon's own base
+    // damage die bonus, e.g. the Cleric's Footman's Flail, which carries no
+    // to-hit bonus). See character::magicWeaponFor and
+    // combat::resolvePlayerAttack.
+    int weaponMagicBonus = 0;
     // Carried, not-currently-equipped items -- bought via the General
     // Store, worn via GameLoop::handleInventory ('i'). See Equipment.h's
     // equipInventoryItem for how items move between here and the equipped

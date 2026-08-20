@@ -258,7 +258,10 @@ Every Knight starts in the **Order of the Crown** (p.17: "every candidate
 ... must first enter the Knighthood as a squire of the Order of the
 Crown"). Advancing into the **Order of the Sword** is real as of Milestone
 53 — a `character::KnightOrder::Sword` value plus the `named_in_fact` quest
-(`docs/QUEST_NOTES.md`), see below. The **Order of the Rose** still requires
+(`docs/QUEST_NOTES.md`), see below. A Sword Knight can also now earn
+**Solamnic Armor** (`data/quests.txt`'s `solamnic_armor`) — see "Magic
+items" above; it doesn't advance `knightOrder` further, it's equipment,
+not a rank. The **Order of the Rose** still requires
 XP thresholds and a witnessed quest (p.19–20) this project doesn't model —
 deferred the same way Sword was until this milestone, not yet content this
 project has scoped.
@@ -734,6 +737,67 @@ Every carried potion is identical, so there's nothing to actually pick
 between multiple ones — same "nothing to select" simplification
 Spellcasting's one-known-spell already established.
 
+### Magic items
+
+Two items, sourced from *Dragonlance Adventures* (TSR 2021)'s own
+"Magical Items of Krynn" chapter (pp.91-99, visually confirmed via
+rendered page images) and the 2nd ed. DMG's "Magical Item Tables" —
+picked deliberately over the chapter's unique, canon-owned artifacts
+(Wyrmslayer, Staff of Magius, the Hammer of Kharas, the Dragonlances
+themselves), which stay off-limits to the player character for the same
+reason Alhana/Derek/Gunthar stay off-stage and Sturm's/Raistlin's/Flint's
+own story beats aren't replayable — see `docs/QUEST_NOTES.md`'s "Shipped
+quests" for the design discussion.
+
+**A "+1" enchanted weapon**, one per class, sold at every shop alongside
+the mundane upgrade (`character::magicWeaponFor(ClassId)`, same shape as
+`weaponUpgradeFor` but never `nullptr`). Sourced from the DMG's Table 109
+(Attack Roll Adjustment, p.140, visually confirmed): a "+1" weapon carries
+XP Value 400 (Sword) or 500 (Other Weapon) — reused directly as the Steel
+Piece price, the same "reuse the DMG number as the price" convention
+Milestone 42 used for the Potion, flagged here too since Table 109 gives
+an XP crafting cost rather than a separate market-value column. The magic
+bonus applies to **both** the attack roll and damage (real 2e convention),
+which needed a genuinely new field — `Character::weaponMagicBonus`,
+distinct from `weaponDamageBonus` (a mundane weapon's own base damage die
+bonus, e.g. the Cleric's Footman's Flail, which carries no to-hit bonus of
+its own) — since nothing in `combat::resolvePlayerAttack` previously read
+anything but Strength for to-hit. Mage and Tinker, who have no mundane
+weapon upgrade at all (`weaponUpgradeFor` returns `nullptr` for both —
+see "Equipment" above), get their *first* weapon upgrade this way, via
+magic rather than smithing — Ensorcelled Dagger and Ensorcelled Wrench
+respectively.
+
+**Solamnic Armor**, a quest reward (`data/quests.txt`'s `solamnic_armor`,
+see `docs/QUEST_NOTES.md`), sourced directly from DLA p.93-94 (visually
+confirmed): *"Solamnic armor is equal to AC 0 (plate +1 and shield +1).
+It is only granted to those Knights who have demonstrated the finest
+qualities of Knighthood... only available at a Circle of Knights."* The
+book gates this on the title "Lord," a rank this project doesn't model
+(only Crown/Sword exist — see "Knights of Solamnia" above); scoped
+instead to already being a Knight of the Sword
+(`game::conditionMatches`'s new `sword_knight` token, distinct from the
+existing `knight` token which also matches Crown), framed as the Circle
+recognizing service already proven. A new `ArmorId::SolamnicArmor`
+(`armorClass = 0`, matching the book's number exactly, never sold —
+absent from `kBuyableArmor`) plus an ordinary, already-existing Shield
+item granted alongside it — a **deliberate simplification** of the book's
+separate "shield +1": this engine's shield is a flat boolean bonus with no
+enchantment tiers of its own, and modeling a distinct "+1 shield" would
+double the new surface area for one extra point of AC. Marked unsellable
+in `resaleValueStl` (same reasoning as a starting weapon that was never
+bought: no established price, since it was never for sale).
+
+`SaveGame.cpp` touches: `ArmorId`'s bound widened 4→5 (`SolamnicArmor` is
+ordinal 4, append-only-safe, same precedent as `KnightOrder` 2→3 at
+Milestone 53). The equipped/inventory weapon line moved from `WEAPON
+sides bonus name` to `MAGICWEAPON sides bonus magicBonus name` — a new
+field couldn't be inserted into the old format without corrupting it
+(`name` is a greedy to-end-of-line read), so `save()` now writes
+`MAGICWEAPON` unconditionally and `load()` accepts both it and the legacy
+`WEAPON` keyword (`magicBonus` defaults to 0), the same "old keyword still
+read, new keyword is what's written" migration as `GOLD`→`STEEL`.
+
 ## Where a character lives
 
 `CharacterCreator::run()` executes once, in `main.cpp`, before `GameState`
@@ -764,11 +828,15 @@ stored in `GameState::character` and never reassigned after that; pressing
   currently in the game triggers either (no sleep/charm spell exists,
   and the one Mage spell isn't sphere-restricted).
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
-  a carried inventory, sell-back, and three shops (Solace, Haven, Tarsis)
-  all exist now (see "Equipment" above). Still missing: per-location
-  wares (every shop sells the identical catalog), armor weight/
-  encumbrance, and any item types beyond armor/shield/weapon (potions,
-  scrolls, tools).
+  a carried inventory, sell-back, three shops (Solace, Haven, Tarsis), a
+  Potion, and a "+1" magic weapon/Solamnic Armor all exist now (see
+  "Equipment" and "Magic items" above). Still missing: per-location wares
+  (every shop sells the identical catalog), armor weight/encumbrance, and
+  any item types beyond armor/shield/weapon/potion (scrolls, tools). The
+  DLA magic items chapter has real, sourced content for more of these
+  (Rods/Staves/Wands, Crystals and Gems, Miscellaneous Magic) if wanted
+  later — see "Magic items" above for why the chapter's unique named
+  artifacts specifically stay out of scope.
 - **Rose Knights, for real**: Sword shipped at Milestone 53 (see "Knights
   of Solamnia" above); Rose still needs its own XP threshold, ability
   minimums (Str 15/Int 10/Wis 13/Dex 12/Con 15 — visually confirmed on

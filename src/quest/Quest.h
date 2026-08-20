@@ -89,6 +89,13 @@ struct Quest {
     // game::GameLoop::offerOrTurnInQuest and docs/QUEST_NOTES.md. A bare
     // flag, not a reward amount, since a title isn't a quantity.
     bool rewardKnightSword = false;
+    // True if turning this quest in grants Solamnic Armor (a
+    // character::ArmorId::SolamnicArmor plus an ordinary Shield item, see
+    // game::GameLoop::offerOrTurnInQuest) -- same "named, specific,
+    // compile-time flag" shape as rewardKnightSword above, not a generic
+    // item-reward mapping (see docs/QUEST_NOTES.md's "Deliberately not in
+    // v1" for why that's still out of scope).
+    bool rewardSolamnicArmor = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and

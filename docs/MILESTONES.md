@@ -753,6 +753,62 @@ this stays authoritative.
     keyboard. See `docs/CHARACTER_NOTES.md`'s "Knights of Solamnia" and
     `docs/QUEST_NOTES.md`'s "Shipped quests".
 
+54. Dragonlance magical items -- introduces real magic items to the game
+    world, sourced from *Dragonlance Adventures* (TSR 2021)'s own
+    "Magical Items of Krynn" chapter (pp.91-99, visually confirmed via
+    rendered page images, `pdftoppm`) and the 2nd ed. DMG's "Magical Item
+    Tables." Asked the user how items should be obtained before building
+    anything; the answer was both a shop item and a quest reward, so this
+    ships exactly one of each rather than a generic item subsystem. A
+    "+1" enchanted weapon per class (`character::magicWeaponFor`, DMG
+    Table 109 pricing: 400stl for a sword, 500 for other weapon types),
+    sold at every shop alongside the existing mundane upgrade -- the
+    first thing in this project to add a to-hit bonus distinct from
+    Strength, needing a new `Character::weaponMagicBonus` field threaded
+    through `combat::resolvePlayerAttack`. Mage and Tinker, who have no
+    mundane weapon upgrade at all, get their first-ever upgrade this way,
+    via magic rather than smithing. Solamnic Armor (`ArmorId::
+    SolamnicArmor`, AC 0, sourced directly from DLA p.93-94: "equal to AC
+    0 (plate +1 and shield +1)... only granted to those Knights who have
+    demonstrated the finest qualities of Knighthood") is a new quest
+    reward, `data/quests.txt`'s `solamnic_armor` -- this project's first
+    item-granting quest reward, via a new `REWARD_SOLAMNIC_ARMOR`
+    compile-time flag mirroring `REWARD_KNIGHT_SWORD`'s exact shape
+    rather than reopening the generic item-reward mapping
+    `docs/QUEST_NOTES.md` had already deliberately rejected. Gated by a
+    new `sword_knight` condition (currently *is* a Sword Knight, distinct
+    from `sword_eligible`'s advancement check) since the book ties this to
+    the title "Lord," a rank this project doesn't model -- scoped instead
+    to the already-shipped Sword rank. Offered by a new POI, `data/zones/
+    high_clerist_tower.txt`'s `L` ("A Knight of the Circle"), since `K`
+    and `S` already carry a quest each. The chapter's unique, canon-owned
+    artifacts (Wyrmslayer, Staff of Magius, the Hammer of Kharas, the
+    Dragonlances themselves) are deliberately *not* made player-obtainable
+    -- same restraint that's kept Alhana/Derek/Gunthar off-stage and
+    Sturm's/Raistlin's/Flint's own story beats unreplayable by the player
+    character; Solamnic Armor was chosen specifically because the book
+    frames it as a replicable rank grant, not a one-of-a-kind relic.
+    `SaveGame.cpp` touches: `ArmorId`'s bound widened 4->5 (append-only-
+    safe, same precedent as `KnightOrder` at Milestone 53), and the
+    equipped/inventory weapon line migrated from `WEAPON sides bonus
+    name` to `MAGICWEAPON sides bonus magicBonus name` (a new field
+    couldn't be inserted into the old greedy-to-end-of-line format
+    without corrupting it) -- `save()` now writes `MAGICWEAPON`
+    unconditionally, `load()` accepts both it and the legacy `WEAPON`
+    keyword, the same migration shape as `GOLD`->`STEEL`. Verified via a
+    throwaway self-test (shop-catalog shape/index arithmetic, purchase/
+    equip/sell round-trip including newly-unsellable `SolamnicArmor`,
+    `resolvePlayerAttack`'s magic-bonus wiring, `QuestLoader` against the
+    real seven-quest `data/quests.txt`, and a save round-trip covering
+    `MAGICWEAPON`/legacy `WEAPON`/the widened `ARMOR` bound), a clean
+    `/W4` rebuild, a direct check that the user's real `save.txt` still
+    loads cleanly under the new save format, and the standard piped smoke
+    test. Interactive verification (buying/equipping the magic weapon,
+    reaching Sword and completing `solamnic_armor`) still needs the
+    user's own keyboard, the same `_getch()` limitation flagged for every
+    quest milestone so far. See `docs/CHARACTER_NOTES.md`'s "Magic
+    items", `docs/QUEST_NOTES.md`'s "Shipped quests", `docs/ZONE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -764,13 +820,20 @@ session's work.
    levels as a Sword Knight, sufficient hit points for 4th, ability
    minimums Str15/Int10/Wis13/Dex12/Con15, a witnessed quest) already
    researched. See `docs/CHARACTER_NOTES.md`'s "Rose Knights, for real."
-2. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
+   Not entangled with `solamnic_armor` (above), which deliberately gates
+   on the already-shipped Sword rank instead.
+2. **More Dragonlance magical items** — DLA's "Magical Items of Krynn"
+   chapter has real, sourced content still unused (Rods/Staves/Wands,
+   Crystals and Gems, Miscellaneous Magic). See `docs/CHARACTER_NOTES.md`'s
+   "Magic items" for what's already sourced and why the chapter's unique
+   named artifacts stay out of scope regardless.
+3. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
    has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
-3. **Terrain-specific monster pools** — encounter *chance* now varies by
+4. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-4. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+5. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

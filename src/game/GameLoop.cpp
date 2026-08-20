@@ -85,6 +85,13 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     if (condition == "thief") return c.charClass == character::ClassId::Thief;
     if (condition == "tinker") return c.charClass == character::ClassId::Tinker;
     if (condition == "knight") return c.knightOrder != character::KnightOrder::None;
+    // Distinct from "knight" above: true only for a Knight who has already
+    // reached the Sword (not merely Crown) -- gates solamnic_armor
+    // (docs/QUEST_NOTES.md), which the source book ties to a rank this
+    // project doesn't model ("Lord") and is instead scoped to the
+    // already-shipped Sword rank. See docs/CHARACTER_NOTES.md's "Magic
+    // items".
+    if (condition == "sword_knight") return c.knightOrder == character::KnightOrder::Sword;
     // Compound eligibility check for Order of the Sword advancement, not a
     // single fact like the tokens above (see docs/QUEST_NOTES.md) -- true
     // once a Knight of the Crown has reached level 3 (this project's
@@ -706,6 +713,17 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
     if (q->rewardKnightSword) {
         state_.character.knightOrder = character::KnightOrder::Sword;
         pushLog("You are named a Knight of the Sword.");
+    }
+    if (q->rewardSolamnicArmor) {
+        // See character::ArmorId::SolamnicArmor and docs/CHARACTER_NOTES.md's
+        // "Magic items" -- an ordinary Shield accompanies it, a deliberate
+        // simplification of the book's separate "shield +1" (this engine's
+        // shield has no enchantment tiers of its own).
+        state_.character.inventory.push_back(
+            character::InventoryItem{character::ItemKind::Armor, character::ArmorId::SolamnicArmor, "", 0, 0});
+        state_.character.inventory.push_back(
+            character::InventoryItem{character::ItemKind::Shield, character::ArmorId::None, "", 0, 0});
+        pushLog("You are granted Solamnic Armor and a Knight's shield. Press 'i' to equip them.");
     }
 }
 

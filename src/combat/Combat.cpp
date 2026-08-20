@@ -17,7 +17,7 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
     } else if (naturalRoll == 1) {
         hit = false;
     } else {
-        hit = (naturalRoll + strToHit) >= (character.thac0 - monster.armorClass);
+        hit = (naturalRoll + strToHit + character.weaponMagicBonus) >= (character.thac0 - monster.armorClass);
     }
 
     AttackOutcome outcome;
@@ -26,7 +26,7 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
         int strDamage = character::strengthDamageAdjustment(character.scores.strength,
                                                               character.exceptionalStrengthPercentile);
         outcome.damage = std::max(1, character::roll(1, character.weaponDamageSides) +
-                                          character.weaponDamageBonus + strDamage);
+                                          character.weaponDamageBonus + strDamage + character.weaponMagicBonus);
     }
     return outcome;
 }

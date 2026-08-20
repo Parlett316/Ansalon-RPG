@@ -92,13 +92,19 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "STEEL " << c.steelPieces << "\n";
     file << "ARMOR " << static_cast<int>(c.equippedArmor) << "\n";
     file << "SHIELD " << (c.hasShield ? 1 : 0) << "\n";
-    file << "WEAPON " << c.weaponDamageSides << " " << c.weaponDamageBonus << " " << c.weaponName << "\n";
+    // MAGICWEAPON, not WEAPON -- see load() below. Written unconditionally
+    // (even when weaponMagicBonus == 0) so save() has exactly one weapon
+    // line format to produce; the legacy WEAPON keyword is still accepted
+    // on load (magicBonus defaults to 0), same "old keyword still read,
+    // new keyword is what's written" migration as GOLD -> STEEL.
+    file << "MAGICWEAPON " << c.weaponDamageSides << " " << c.weaponDamageBonus << " " << c.weaponMagicBonus
+         << " " << c.weaponName << "\n";
     // Carried (not-equipped) items -- see character/Equipment.h. Reuses the
-    // ARMOR/SHIELD/WEAPON keywords above for each entry's own line (plus a
-    // POTION keyword with no equipped-slot counterpart, since potions are
-    // never equipped), but these are consumed by load() via a stateful
-    // counter, same trick ZONESTACK uses below, so there's no collision
-    // with the equipped-slot keywords above.
+    // ARMOR/SHIELD/MAGICWEAPON keywords above for each entry's own line
+    // (plus a POTION keyword with no equipped-slot counterpart, since
+    // potions are never equipped), but these are consumed by load() via a
+    // stateful counter, same trick ZONESTACK uses below, so there's no
+    // collision with the equipped-slot keywords above.
     file << "INVENTORY " << c.inventory.size() << "\n";
     for (const auto& item : c.inventory) {
         switch (item.kind) {
@@ -109,8 +115,8 @@ void SaveGame::save(const GameState& state, const std::string& path) {
                 file << "SHIELD\n";
                 break;
             case character::ItemKind::Weapon:
-                file << "WEAPON " << item.weaponDamageSides << " " << item.weaponDamageBonus << " "
-                     << item.weaponName << "\n";
+                file << "MAGICWEAPON " << item.weaponDamageSides << " " << item.weaponDamageBonus << " "
+                     << item.weaponMagicBonus << " " << item.weaponName << "\n";
                 break;
             case character::ItemKind::Potion:
                 file << "POTION\n";
@@ -203,15 +209,26 @@ GameState SaveGame::load(const std::string& path) {
             character::InventoryItem item;
             if (itemKeyword == "ARMOR") {
                 item.kind = character::ItemKind::Armor;
-                item.armorId = parseEnumInt<character::ArmorId>(path, lineNumber, itemRest, "inventory ARMOR", 4);
+                item.armorId = parseEnumInt<character::ArmorId>(path, lineNumber, itemRest, "inventory ARMOR", 5);
             } else if (itemKeyword == "SHIELD") {
                 item.kind = character::ItemKind::Shield;
             } else if (itemKeyword == "POTION") {
                 item.kind = character::ItemKind::Potion;
             } else if (itemKeyword == "WEAPON") {
+                // Legacy pre-magic-weapon keyword -- see the top-level WEAPON
+                // handler below for why this is still accepted read-only.
                 item.kind = character::ItemKind::Weapon;
                 if (!(itemIss >> item.weaponDamageSides >> item.weaponDamageBonus)) {
                     fail(path, lineNumber, "malformed inventory WEAPON entry (expected: WEAPON sides bonus name...)");
+                }
+                std::string name;
+                std::getline(itemIss, name);
+                item.weaponName = trim(name);
+            } else if (itemKeyword == "MAGICWEAPON") {
+                item.kind = character::ItemKind::Weapon;
+                if (!(itemIss >> item.weaponDamageSides >> item.weaponDamageBonus >> item.weaponMagicBonus)) {
+                    fail(path, lineNumber,
+                         "malformed inventory MAGICWEAPON entry (expected: MAGICWEAPON sides bonus magicBonus name...)");
                 }
                 std::string name;
                 std::getline(itemIss, name);
@@ -289,9 +306,10 @@ GameState SaveGame::load(const std::string& path) {
             // old save keeps loading; the next autosave rewrites it as STEEL.
             if (!(iss >> state.character.steelPieces)) fail(path, lineNumber, "malformed GOLD");
         } else if (keyword == "ARMOR") {
-            // 4 ArmorId values: None, Leather, ChainMail, SplintMail -- see character/Equipment.h.
+            // 5 ArmorId values: None, Leather, ChainMail, SplintMail,
+            // SolamnicArmor -- see character/Equipment.h.
             state.character.equippedArmor =
-                parseEnumInt<character::ArmorId>(path, lineNumber, rest, "ARMOR", 4);
+                parseEnumInt<character::ArmorId>(path, lineNumber, rest, "ARMOR", 5);
         } else if (keyword == "SHIELD") {
             int value = -1;
             if (!(iss >> value) || (value != 0 && value != 1)) {
@@ -299,8 +317,22 @@ GameState SaveGame::load(const std::string& path) {
             }
             state.character.hasShield = value == 1;
         } else if (keyword == "WEAPON") {
+            // Legacy pre-magic-weapon keyword (see docs/GOTCHAS.md) --
+            // save() never writes this anymore (MAGICWEAPON below), but a
+            // save file written before magic weapons existed still has it;
+            // weaponMagicBonus simply keeps its default (0), the correct
+            // value for a weapon that predates this field.
             if (!(iss >> state.character.weaponDamageSides >> state.character.weaponDamageBonus)) {
                 fail(path, lineNumber, "malformed WEAPON (expected: WEAPON damageSides damageBonus name...)");
+            }
+            std::string weaponName;
+            std::getline(iss, weaponName);
+            state.character.weaponName = trim(weaponName);
+        } else if (keyword == "MAGICWEAPON") {
+            if (!(iss >> state.character.weaponDamageSides >> state.character.weaponDamageBonus >>
+                  state.character.weaponMagicBonus)) {
+                fail(path, lineNumber,
+                     "malformed MAGICWEAPON (expected: MAGICWEAPON damageSides damageBonus magicBonus name...)");
             }
             std::string weaponName;
             std::getline(iss, weaponName);

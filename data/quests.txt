@@ -12,8 +12,11 @@
 # other than knight for the first time -- see docs/QUEST_NOTES.md's
 # "Shipped quests" section. Milestone 53 (below) is Knight of the Sword
 # advancement -- REQUIRE sword_eligible, this project's first quest to mix
-# two objective kinds, and REWARD_KNIGHT_SWORD. The DELIVER objective kind
-# is still deferred to its own future milestone.
+# two objective kinds, and REWARD_KNIGHT_SWORD. The Dragonlance magical
+# items milestone (below) adds solamnic_armor -- REQUIRE sword_knight (a
+# Sword Knight specifically, distinct from sword_eligible above) and
+# REWARD_SOLAMNIC_ARMOR, this project's first item-granting quest reward.
+# The DELIVER objective kind is still deferred to its own future milestone.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -89,4 +92,18 @@ SLAY baaz 1 Meet a draconian in single combat and come home standing
 REWARD_STEEL 60
 REWARD_XP 150
 REWARD_KNIGHT_SWORD
+END
+
+QUEST solamnic_armor
+NAME A Circle of Knights
+OFFER The Knight of the Circle doesn't raise his voice, but doesn't need to. "Sword-rank is your own doing. What the Circle wants, before it does anything more for you, is a fellow Knight's word standing alongside it -- not just my own sense of you. If the Garrison Knight can speak to what he's seen, I'll carry it to the Circle myself."
+ACCEPT You understand what's being asked -- not a new task exactly, just the Garrison Knight's word standing beside your own, wherever that word already stands.
+PROGRESS The Knight of the Circle is still waiting on the Garrison Knight's account of you. Whether that's already given or still to come, he hasn't said.
+COMPLETE The old knight listens to what the Garrison Knight has to say about you -- not much, in as few words as the man ever uses, but enough. "That's the kind of account the Circle trusts," he says, and for the first time something like approval crosses his face. He produces a set of plate, tooled with three orders' worth of markings, and a shield to match. "Wear it as it was meant. You've earned that much."
+GIVER the Knight of the Circle at High Clerist's Tower
+REQUIRE sword_knight
+TALK high_clerist_tower:K Have the Garrison Knight vouch for you before the Circle
+REWARD_STEEL 40
+REWARD_XP 100
+REWARD_SOLAMNIC_ARMOR
 END

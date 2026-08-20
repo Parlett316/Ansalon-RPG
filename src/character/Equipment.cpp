@@ -12,11 +12,17 @@ namespace {
 // Table 46 (Armor Class Ratings, p.99) for the AC column, Table 47
 // (Armor, p.92) for cost -- both visually confirmed against the rendered
 // PHB page, not OCR text (this scan's OCR badly garbles table columns).
-constexpr std::array<ArmorInfo, 4> kArmorTable = {{
+// SolamnicArmor's AC 0 is instead from Dragonlance Adventures (TSR 2021)
+// p.93-94, visually confirmed: "Solamnic armor is equal to AC 0 (plate +1
+// and shield +1)" -- a quest reward (see docs/QUEST_NOTES.md's
+// solamnic_armor), cost 0 since it's never sold or sellable (see
+// resaleValueStl below).
+constexpr std::array<ArmorInfo, 5> kArmorTable = {{
     {ArmorId::None, "No Armor", 10, 0},
     {ArmorId::Leather, "Leather Armor", 8, 5},
     {ArmorId::ChainMail, "Chain Mail", 5, 75},
     {ArmorId::SplintMail, "Splint Mail", 4, 80},
+    {ArmorId::SolamnicArmor, "Solamnic Armor", 0, 0},
 }};
 
 // Table 44 (Weapons, p.94), visually confirmed: Two-Handed Sword 1d10/50stl
@@ -25,6 +31,16 @@ constexpr std::array<ArmorInfo, 4> kArmorTable = {{
 const WeaponUpgrade kFighterUpgrade{"Two-Handed Sword", 10, 0, 50};
 const WeaponUpgrade kClericUpgrade{"Footman's Flail", 6, 1, 15};
 const WeaponUpgrade kThiefUpgrade{"Long Sword", 8, 0, 15};
+
+// "+1" enchanted weapons -- see Equipment.h's MagicWeapon for sourcing
+// (DMG Table 109, p.140: Sword +1 = 400stl, Other Weapon +1 = 500stl).
+// Mage's and Tinker's base weapon (dagger/wrench, CharClass.cpp) carries no
+// mundane upgrade at all, so these are their first-ever weapon upgrade.
+const MagicWeapon kFighterMagicWeapon{"Ensorcelled Two-Handed Sword", 10, 0, 1, 400};
+const MagicWeapon kClericMagicWeapon{"Ensorcelled Footman's Flail", 6, 1, 1, 500};
+const MagicWeapon kThiefMagicWeapon{"Ensorcelled Long Sword", 8, 0, 1, 400};
+const MagicWeapon kMageMagicWeapon{"Ensorcelled Dagger", 4, 0, 1, 500};
+const MagicWeapon kTinkerMagicWeapon{"Ensorcelled Wrench", 4, 0, 1, 500};
 
 } // namespace
 
@@ -43,9 +59,15 @@ std::string inventoryItemLabel(const InventoryItem& item) {
         }
         case ItemKind::Shield:
             return "Shield (-1 AC)";
-        case ItemKind::Weapon:
-            return item.weaponName + " (1d" + std::to_string(item.weaponDamageSides) +
-                   (item.weaponDamageBonus > 0 ? "+" + std::to_string(item.weaponDamageBonus) : "") + ")";
+        case ItemKind::Weapon: {
+            int totalDamageBonus = item.weaponDamageBonus + item.weaponMagicBonus;
+            std::string label = item.weaponName + " (1d" + std::to_string(item.weaponDamageSides) +
+                                 (totalDamageBonus > 0 ? "+" + std::to_string(totalDamageBonus) : "") + ")";
+            if (item.weaponMagicBonus > 0) {
+                label += ", +" + std::to_string(item.weaponMagicBonus) + " to hit";
+            }
+            return label;
+        }
         case ItemKind::Potion:
             return "Potion of Healing (2d4+2 hp)";
     }
@@ -84,10 +106,12 @@ bool equipInventoryItem(Character& character, int index) {
         }
         case ItemKind::Weapon: {
             InventoryItem old{ItemKind::Weapon, ArmorId::None, character.weaponName,
-                               character.weaponDamageSides, character.weaponDamageBonus};
+                               character.weaponDamageSides, character.weaponDamageBonus,
+                               character.weaponMagicBonus};
             character.weaponName = item.weaponName;
             character.weaponDamageSides = item.weaponDamageSides;
             character.weaponDamageBonus = item.weaponDamageBonus;
+            character.weaponMagicBonus = item.weaponMagicBonus;
             character.inventory.push_back(std::move(old));
             break;
         }
@@ -114,6 +138,17 @@ const WeaponUpgrade* weaponUpgradeFor(ClassId classId) {
         case ClassId::Tinker: return nullptr;
     }
     return nullptr;
+}
+
+const MagicWeapon& magicWeaponFor(ClassId classId) {
+    switch (classId) {
+        case ClassId::Fighter: return kFighterMagicWeapon;
+        case ClassId::Cleric: return kClericMagicWeapon;
+        case ClassId::Thief: return kThiefMagicWeapon;
+        case ClassId::Mage: return kMageMagicWeapon;
+        case ClassId::Tinker: return kTinkerMagicWeapon;
+    }
+    return kFighterMagicWeapon; // unreachable given ClassId only has the values above
 }
 
 void recomputeArmorClass(Character& character) {
@@ -182,6 +217,22 @@ std::vector<ShopItem> availableShopItems(const Character& character) {
         items.push_back(std::move(weapon));
     }
 
+    // The class's "+1" enchanted weapon -- see Equipment.h's MagicWeapon.
+    // Unlike weaponUpgradeFor, this is never absent: every class (including
+    // Mage/Tinker, who have no mundane upgrade above) gets one.
+    {
+        const MagicWeapon& magic = magicWeaponFor(character.charClass);
+        int totalDamageBonus = magic.damageBonus + magic.magicBonus;
+        ShopItem weapon;
+        weapon.label = std::string(magic.name) + " (1d" + std::to_string(magic.damageSides) +
+                        (totalDamageBonus > 0 ? "+" + std::to_string(totalDamageBonus) : "") +
+                        ", +" + std::to_string(magic.magicBonus) + " to hit)";
+        weapon.costStl = magic.costStl;
+        weapon.alreadyOwned = ownsWeapon(character, magic.name);
+        weapon.buyable = !weapon.alreadyOwned;
+        items.push_back(std::move(weapon));
+    }
+
     // Potion of Healing -- see Equipment.h for the pre-Cataclysm-relic
     // framing. Stackable (alreadyOwned always false, unlike armor/weapons
     // which block owning a duplicate) and open to every class (no
@@ -220,6 +271,9 @@ PurchaseResult purchaseItem(Character& character, int index) {
     int armorCount = static_cast<int>(kBuyableArmor.size());
     const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass);
     int weaponIndex = upgrade != nullptr ? armorCount + 1 : -1;
+    // The magic weapon line always follows the (optional) mundane upgrade
+    // line -- see availableShopItems.
+    int magicWeaponIndex = upgrade != nullptr ? armorCount + 2 : armorCount + 1;
     bool isPotion = false;
     if (index < armorCount) {
         character.inventory.push_back(InventoryItem{ItemKind::Armor, kBuyableArmor[index], "", 0, 0});
@@ -228,6 +282,10 @@ PurchaseResult purchaseItem(Character& character, int index) {
     } else if (index == weaponIndex) {
         character.inventory.push_back(
             InventoryItem{ItemKind::Weapon, ArmorId::None, upgrade->name, upgrade->damageSides, upgrade->damageBonus});
+    } else if (index == magicWeaponIndex) {
+        const MagicWeapon& magic = magicWeaponFor(character.charClass);
+        character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, magic.name,
+                                                      magic.damageSides, magic.damageBonus, magic.magicBonus});
     } else {
         // The one remaining catalog line -- the Potion of Healing, whether
         // or not this class had a weapon-upgrade entry ahead of it.
@@ -246,6 +304,13 @@ namespace {
 int resaleValueStl(const Character& character, const InventoryItem& item, bool& sellable) {
     switch (item.kind) {
         case ItemKind::Armor:
+            // SolamnicArmor was never sold (a quest reward -- see
+            // docs/QUEST_NOTES.md's solamnic_armor), so it has no
+            // established price, same reasoning as a starting weapon below.
+            if (item.armorId == ArmorId::SolamnicArmor) {
+                sellable = false;
+                return 0;
+            }
             sellable = true;
             return armorInfo(item.armorId).costStl / 2;
         case ItemKind::Shield:
@@ -256,6 +321,11 @@ int resaleValueStl(const Character& character, const InventoryItem& item, bool& 
             if (upgrade != nullptr && item.weaponName == upgrade->name) {
                 sellable = true;
                 return upgrade->costStl / 2;
+            }
+            const MagicWeapon& magic = magicWeaponFor(character.charClass);
+            if (item.weaponName == magic.name) {
+                sellable = true;
+                return magic.costStl / 2;
             }
             sellable = false;
             return 0;
