@@ -110,6 +110,8 @@ enum class ItemKind {
     Shield,
     Weapon,
     Potion,
+    Webnet,
+    BroochOfImog,
 };
 
 struct InventoryItem {
@@ -227,5 +229,47 @@ int firstPotionIndex(const Character& character);
 // Reuses PurchaseResult's shape, same "generic action outcome" reuse
 // sellItem already established rather than a duplicate result type.
 PurchaseResult drinkPotion(Character& character, int index);
+
+// Webnet and Brooch of Imog (Dragonlance Adventures p.93/p.92, visually
+// confirmed via rendered page images) -- see docs/CHARACTER_NOTES.md's
+// "Magic items" section. Both items are Mage-only per their own text
+// ("This item is only useful to a magic-user"). Neither has a printed
+// Steel Piece price in the source, unlike the Potion/magic weapons above
+// (reused from the DMG's own tables) -- these two numbers are invented
+// and flagged, calibrated relative to the Potion (200stl, one-shot) and a
+// "+1" weapon (400-500stl, permanent).
+constexpr int kWebnetCostStl = 150;
+constexpr int kBroochOfImogCostStl = 500;
+
+// -1 if the character carries no Webnet, otherwise the character.inventory
+// index of the first one found -- same "nothing to actually select"
+// simplification as firstPotionIndex.
+int firstWebnetIndex(const Character& character);
+
+// -1 if the character carries no Brooch of Imog, otherwise the
+// character.inventory index of the first one found.
+int firstBroochIndex(const Character& character);
+
+// True if the character owns a Brooch of Imog AND hasn't already used its
+// daily charge today -- same day-gate shape as
+// Spellcasting.h's hasSpellSlotAvailable, keyed off Character::lastBroochUseDay
+// (see Character.h) the same way Rest keys off lastRestDay.
+bool broochAvailableToday(const Character& character, long long today);
+
+// Removes character.inventory[index] (consumed, one-shot -- see docs/
+// CHARACTER_NOTES.md). Returns {false, ...} if index is out of range or
+// isn't a Webnet. Deliberately does NOT touch any "does the monster's next
+// attack land" state -- that's game::GameLoop::runCombat's own local flag,
+// the same division of labor drinkPotion already has between the HP math
+// it owns and the combat log lines GameLoop owns.
+PurchaseResult useWebnet(Character& character, int index);
+
+// Sets character.lastBroochUseDay = today (does NOT remove anything from
+// inventory -- the Brooch is worn/carried, not consumed). Returns
+// {false, ...} if the character doesn't own one or broochAvailableToday
+// is already false. Like useWebnet, does not itself decide whether the
+// monster's attacks land this fight -- GameLoop::runCombat's own local
+// flag handles that.
+PurchaseResult activateBrooch(Character& character, long long today);
 
 } // namespace character

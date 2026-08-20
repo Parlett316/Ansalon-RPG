@@ -848,9 +848,16 @@ void GameLoop::handleInventory() {
             if (!inventory.empty()) {
                 // A Potion is drunk, not equipped -- everything else keeps
                 // the existing equip behavior. See character::drinkPotion.
-                if (inventory[static_cast<size_t>(selected)].kind == character::ItemKind::Potion) {
+                // Webnet/Brooch of Imog are combat-only (see
+                // GameLoop::runCombat) -- neither drinkable nor equippable
+                // here, so Enter just explains that instead of silently
+                // no-opping through equipInventoryItem.
+                character::ItemKind kind = inventory[static_cast<size_t>(selected)].kind;
+                if (kind == character::ItemKind::Potion) {
                     character::PurchaseResult result = character::drinkPotion(state_.character, selected);
                     pushLog(result.message);
+                } else if (kind == character::ItemKind::Webnet || kind == character::ItemKind::BroochOfImog) {
+                    pushLog("That can only be used in combat.");
                 } else {
                     character::equipInventoryItem(state_.character, selected);
                 }
@@ -967,7 +974,25 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("You miss the " + monster.name + ".");
         }
     };
+    // Webnet (consumed, blocks one attack) and Brooch of Imog (reusable
+    // once/day, blocks the rest of this fight) -- see
+    // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
+    // "Magic items". Purely local to this one runCombat call, same as
+    // monsterHp/log above -- "does an attack land this fight" never needs
+    // to survive to the save file, only the Brooch's daily charge does
+    // (Character::lastBroochUseDay).
+    bool blockNextMonsterAttack = false;
+    bool globeActive = false;
     auto monsterAttacks = [&]() {
+        if (globeActive) {
+            log.push_back("The globe of invulnerability absorbs the blow!");
+            return;
+        }
+        if (blockNextMonsterAttack) {
+            blockNextMonsterAttack = false;
+            log.push_back("The Webnet holds the " + monster.name + " fast -- it can't attack!");
+            return;
+        }
         combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character);
         if (outcome.hit) {
             state_.character.currentHp -= outcome.damage;
@@ -1017,15 +1042,30 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         character::PurchaseResult result = character::drinkPotion(state_.character, potionIndex);
         log.push_back(result.message);
     };
+    // Same "replaces playerAttacks() for the round" shape as
+    // playerDrinksPotion above. On success, sets the local flag
+    // monsterAttacks() checks -- see character::useWebnet/activateBrooch
+    // for what each function itself does and doesn't own.
+    auto playerUsesWebnet = [&]() {
+        int webnetIndex = character::firstWebnetIndex(state_.character);
+        character::PurchaseResult result = character::useWebnet(state_.character, webnetIndex);
+        log.push_back(result.message);
+        if (result.success) blockNextMonsterAttack = true;
+    };
+    auto playerActivatesBrooch = [&]() {
+        character::PurchaseResult result = character::activateBrooch(state_.character, state_.hoursElapsed / 24);
+        log.push_back(result.message);
+        if (result.success) globeActive = true;
+    };
 
     for (;;) {
-        render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+        render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
         render::Key key = render::Console::readKey();
 
         if (key == render::Key::Flee) {
             log.push_back("You break off and retreat.");
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
             render::Console::readKey();
             pushLog("You fled from the " + monster.name + ".");
             return;
@@ -1033,6 +1073,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
 
         bool casting = false;
         bool drinking = false;
+        bool usingWebnet = false;
+        bool activatingBrooch = false;
         if (key == render::Key::Cast) {
             if (!character::canCastSpells(state_.character.charClass)) {
                 log.push_back("You have no spell to cast.");
@@ -1044,14 +1086,23 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             }
             casting = true;
         } else if (key == render::Key::Inventory) {
-            // Reinterpreted locally as "drink a potion" -- same "local key
-            // reinterpretation instead of a new Key value" trick handleShop
-            // already uses for this exact key (buy/sell toggle there).
-            if (character::firstPotionIndex(state_.character) < 0) {
-                log.push_back("You have no potions.");
+            // Reinterpreted locally as "use a consumable" -- same "local
+            // key reinterpretation instead of a new Key value" trick
+            // handleShop already uses for this exact key (buy/sell toggle
+            // there). Potion takes priority (unchanged behavior), then
+            // Webnet, then Brooch of Imog -- same "first one found, nothing
+            // to actually pick between" simplification already established
+            // for potions themselves.
+            if (character::firstPotionIndex(state_.character) >= 0) {
+                drinking = true;
+            } else if (character::firstWebnetIndex(state_.character) >= 0) {
+                usingWebnet = true;
+            } else if (character::broochAvailableToday(state_.character, state_.hoursElapsed / 24)) {
+                activatingBrooch = true;
+            } else {
+                log.push_back("You have nothing to use.");
                 continue;
             }
-            drinking = true;
         } else if (key != render::Key::Enter) {
             continue;
         }
@@ -1061,6 +1112,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         std::function<void()> playerActs =
             casting ? std::function<void()>(playerCasts)
             : drinking ? std::function<void()>(playerDrinksPotion)
+            : usingWebnet ? std::function<void()>(playerUsesWebnet)
+            : activatingBrooch ? std::function<void()>(playerActivatesBrooch)
                        : std::function<void()>(playerAttacks);
         if (combat::playerActsFirst()) {
             playerActs();
@@ -1094,7 +1147,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 character::applyPendingLevelUps(state_.character, log);
             }
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log);
+            render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log, state_.hoursElapsed / 24);
             render::Console::readKey();
             pushLog("You defeated the " + monster.name + ".");
             return;
@@ -1111,7 +1164,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 state_.y = town->y;
             }
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log);
+            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
             render::Console::readKey();
             pushLog("You were knocked out by the " + monster.name + " and woke up back in " + townName + ".");
             return;

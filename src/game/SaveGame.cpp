@@ -121,10 +121,17 @@ void SaveGame::save(const GameState& state, const std::string& path) {
             case character::ItemKind::Potion:
                 file << "POTION\n";
                 break;
+            case character::ItemKind::Webnet:
+                file << "WEBNET\n";
+                break;
+            case character::ItemKind::BroochOfImog:
+                file << "BROOCH\n";
+                break;
         }
     }
     file << "SPELLSTODAY " << c.spellsCastToday << " " << c.spellsCastDay << "\n";
     file << "RESTDAY " << c.lastRestDay << "\n";
+    file << "BROOCHDAY " << c.lastBroochUseDay << "\n";
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
     file << "POS " << state.x << " " << state.y << "\n";
     file << "HOURS " << state.hoursElapsed << "\n";
@@ -214,6 +221,10 @@ GameState SaveGame::load(const std::string& path) {
                 item.kind = character::ItemKind::Shield;
             } else if (itemKeyword == "POTION") {
                 item.kind = character::ItemKind::Potion;
+            } else if (itemKeyword == "WEBNET") {
+                item.kind = character::ItemKind::Webnet;
+            } else if (itemKeyword == "BROOCH") {
+                item.kind = character::ItemKind::BroochOfImog;
             } else if (itemKeyword == "WEAPON") {
                 // Legacy pre-magic-weapon keyword -- see the top-level WEAPON
                 // handler below for why this is still accepted read-only.
@@ -350,6 +361,12 @@ GameState SaveGame::load(const std::string& path) {
             // RESTDAY line, and Character::lastRestDay's default (-1, "never
             // rested") is the correct value for it anyway.
             if (!(iss >> state.character.lastRestDay)) fail(path, lineNumber, "malformed RESTDAY");
+        } else if (keyword == "BROOCHDAY") {
+            // Optional -- a save written before this milestone simply has
+            // no BROOCHDAY line, and Character::lastBroochUseDay's default
+            // (-1, "never used") is the correct value for it anyway, same
+            // backward-compatibility shape as RESTDAY above.
+            if (!(iss >> state.character.lastBroochUseDay)) fail(path, lineNumber, "malformed BROOCHDAY");
         } else if (keyword == "MODE") {
             if (rest == "ZONE") {
                 modeIsZone = true;

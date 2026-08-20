@@ -828,6 +828,60 @@ field couldn't be inserted into the old format without corrupting it
 `WEAPON` keyword (`magicBonus` defaults to 0), the same "old keyword still
 read, new keyword is what's written" migration as `GOLD`→`STEEL`.
 
+**Webnet and Brooch of Imog** (Milestone 56), two Mage-only combat items
+sourced from *Dragonlance Adventures* p.93 (Miscellaneous Magic) and p.92
+(Crystals and Gems), both visually confirmed via rendered page images
+(book pages, not PDF pages — the DLA scan carries a confirmed +1 PDF-page
+offset against its own printed page numbers). Picked over the rest of the
+"Magical Items of Krynn" chapter specifically because they're the only two
+entries whose real book effect maps onto a numeric combat outcome this
+engine already has (an attack landing or not) without inventing a new
+subsystem (charges, creature command/charm, translation flags, a plot-key
+mechanic) just to place one item — see NEXT UP below for what was found
+and left out.
+
+Both are Mage-only per their own DLA text ("This item is only useful to a
+magic-user") and sold at every shop alongside the existing catalog
+(`character::availableShopItems`, listed-but-greyed-out for other classes,
+same precedent as armor for a Mage). Neither has a book-printed Steel
+Piece price (unlike the Potion/magic weapons above, reused from the DMG's
+own tables) — `kWebnetCostStl` (150) and `kBroochOfImogCostStl` (500) are
+invented, flagged in `character/Equipment.h`, calibrated relative to the
+Potion (200stl, one-shot) and a "+1" weapon (400-500stl, permanent).
+
+*Webnet*: "when worn by a mage who knows the command word, the webnet can
+be cast... it instantly grows to a 10-foot-diameter net of entrapment."
+Consumed on use (`character::useWebnet`, stackable like the Potion —
+buying a second is allowed on purpose); negates the monster's *next*
+attack. Used via the same `'i'`-in-combat local-key-reinterpretation
+`GameLoop::runCombat` already uses for drinking a potion, now a priority
+chain: potion first (unchanged), then Webnet, then Brooch of Imog.
+
+*Brooch of Imog*: "can be used once per day to create a *minor globe of
+invulnerability*. The globe lasts for 10 rounds." Unlike the Webnet, this
+is **not** consumed (worn/carried, blocked from a duplicate purchase like
+armor/weapons — a second one would grant nothing, since the daily charge
+is tracked per-character) and gated to once per real in-game day exactly
+like `Character::lastRestDay` already gates Rest — a new
+`Character::lastBroochUseDay` field, same shape
+(`character::broochAvailableToday`/`activateBrooch`). Activating it
+negates **all** the monster's remaining attacks for the rest of the
+current fight — a deliberate, flagged simplification of "10 rounds": this
+engine has no round-duration tracker outside a single `runCombat` call,
+and fights are short enough that "the rest of this fight" and "10 rounds"
+are functionally the same thing.
+
+Both effects ("does the monster's next attack land") are resolved as
+plain **local variables inside `GameLoop::runCombat`**
+(`blockNextMonsterAttack`/`globeActive`), exactly like `monsterHp` and the
+combat log already are — nothing about whether an attack lands this fight
+needs to survive to the save file, only whether the Brooch's daily charge
+has been spent does. `SaveGame.cpp` touches: a new `BROOCHDAY` line
+(optional on load, defaults to -1 — same backward-compatibility shape
+`RESTDAY` already has, re-verified directly against the user's real save)
+and two new bare-keyword inventory lines, `WEBNET`/`BROOCH`, alongside the
+existing `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON` ones.
+
 ## Where a character lives
 
 `CharacterCreator::run()` executes once, in `main.cpp`, before `GameState`
@@ -859,14 +913,24 @@ stored in `GameState::character` and never reassigned after that; pressing
   and the one Mage spell isn't sphere-restricted).
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
   a carried inventory, sell-back, three shops (Solace, Haven, Tarsis), a
-  Potion, and a "+1" magic weapon/Solamnic Armor all exist now (see
-  "Equipment" and "Magic items" above). Still missing: per-location wares
-  (every shop sells the identical catalog), armor weight/encumbrance, and
-  any item types beyond armor/shield/weapon/potion (scrolls, tools). The
-  DLA magic items chapter has real, sourced content for more of these
-  (Rods/Staves/Wands, Crystals and Gems, Miscellaneous Magic) if wanted
-  later — see "Magic items" above for why the chapter's unique named
-  artifacts specifically stay out of scope.
+  Potion, a "+1" magic weapon/Solamnic Armor, and (Milestone 56) a Webnet/
+  Brooch of Imog all exist now (see "Equipment" and "Magic items" above).
+  Still missing: per-location wares (every shop sells the identical
+  catalog) and armor weight/encumbrance. Milestone 56 read the rest of
+  DLA's "Magical Items of Krynn" chapter closely (Rods/Staves/Wands,
+  Crystals and Gems, Miscellaneous Magic, Armor and Shields, Weapons) and
+  found almost everything left needs a subsystem this engine doesn't have
+  yet: charges (Staff of Striking/Curing), creature command/charm (Golden
+  Circlet), a translation flag (Glasses of Arcanist), environmental wind
+  control (Flute of Wind Dancing), or a plot-key/door mechanic (Keys of
+  Quinarost) — plus Armor and Shields/Weapons' remaining entries are
+  either already shipped (Solamnic Armor), antagonist-only (Dragonarmor),
+  a whole quest's goal in their own right (Plate of Solamnus, alignment-
+  scaled), or unique named artifacts (Dragonlance, Mantooth, Nightbringer,
+  Wyrmsbane, Wyrmslayer, Shield of Huma), out of scope for the same reason
+  as the chapter's other artifacts (see "Magic items" above). None of
+  these are being built just to place one item — see CLAUDE.md's "no
+  premature abstraction."
 - **Sword Knight's real healing/foresight/clerical-spell abilities and
   weekly fasting/meditation ritual** (p.18-19): not modeled, same
   "flavor-only, needs a fuller spell system" treatment already given to

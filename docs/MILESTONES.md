@@ -863,24 +863,76 @@ this stays authoritative.
     quest milestone so far. See `docs/CHARACTER_NOTES.md`'s "Knights of
     Solamnia" and `docs/QUEST_NOTES.md`'s "Shipped quests".
 
+56. Webnet and Brooch of Imog -- the NEXT UP item Milestone 55 pointed at
+    (DLA's "Magical Items of Krynn" chapter), continuing Milestone 54's
+    magic-item work. Re-reading the actual chapter (rendered page images,
+    book pp.91-94, a confirmed +1 PDF-page offset) found it thinner than
+    expected: almost every entry needs a subsystem this engine doesn't
+    have yet -- charges, creature command/charm, translation flags, a
+    plot-key/door mechanic -- and inventing one just to place a single
+    item would be the "premature abstraction" CLAUDE.md warns against.
+    Asked the user how to scope it; they chose to build one small,
+    genuinely reusable subsystem rather than drop the milestone or
+    cherry-pick a single item. Two items share the same shape and both
+    solve it honestly: **Webnet** (p.93, Miscellaneous Magic, Mage-only
+    per its own text) is consumed on use and negates the monster's next
+    attack; **Brooch of Imog** (p.92, Crystals and Gems, also Mage-only)
+    is not consumed, gated to once per real in-game day exactly like
+    `Character::lastRestDay` already gates Rest (a new
+    `Character::lastBroochUseDay`), and negates *all* the monster's
+    remaining attacks for the rest of the current fight -- a deliberate,
+    flagged simplification of the book's "10 rounds" (this engine has no
+    round-duration tracker outside a single `runCombat` call, and fights
+    are short enough that "this fight" and "10 rounds" are functionally
+    the same thing). Both "does the monster's next attack land" effects
+    are resolved as plain local variables inside `GameLoop::runCombat`,
+    exactly like `monsterHp` and the combat log already are -- only the
+    Brooch's daily charge needs to survive to the save file. Sold at every
+    shop, Mage-only (`character::availableShopItems`), at two invented,
+    explicitly flagged prices (neither item has a book-printed Steel Piece
+    value, unlike the Potion/magic weapons' DMG-table reuse): 150stl and
+    500stl. Used via the same `'i'`-in-combat local-key-reinterpretation
+    `GameLoop::runCombat` already uses for drinking a potion, now a
+    priority chain (potion, then Webnet, then Brooch). `SaveGame.cpp`
+    touches: a new `BROOCHDAY` line (optional on load, defaulting to -1,
+    same backward-compatibility shape `RESTDAY` already has) and two new
+    bare-keyword inventory lines, `WEBNET`/`BROOCH`. The rest of the DLA
+    chapter (Rods/Staves/Wands' Staff of Striking/Curing and Diviner of
+    Life, Crystals and Gems' remaining three entries, Miscellaneous
+    Magic's remaining three, and all of Armor and Shields/Weapons beyond
+    the already-shipped Solamnic Armor) was deliberately left out --
+    either needs an unbuilt subsystem, is antagonist-only, is a whole
+    quest's own goal (Plate of Solamnus), or is a unique named artifact
+    (Dragonlance, Mantooth, Nightbringer, Wyrmsbane, Wyrmslayer, Shield of
+    Huma), same restraint as every other named-artifact exclusion since
+    Milestone 54. Verified via a throwaway self-test (shop
+    eligibility per class, purchase/sell round-trip including the
+    stackable-Webnet-vs-single-Brooch distinction, `useWebnet`'s index
+    validation, `activateBrooch`'s day-gate across two different days, and
+    a `SaveGame` round-trip covering `BROOCHDAY`/`WEBNET`/`BROOCH` plus
+    loading an old save with the `BROOCHDAY` line stripped out), a clean
+    `/W4` rebuild, a direct check that the user's real `save.txt` (the
+    executable-relative `build\Debug\save.txt`) still loads cleanly under
+    the new format, and the standard piped smoke test. Interactive
+    verification (buying/using a Webnet and Brooch mid-fight, confirming
+    the monster's attack is really skipped, confirming the Brooch's
+    once-per-day gate live) still needs the user's own keyboard, the same
+    `_getch()` limitation flagged for every combat/quest milestone so far.
+    See `docs/CHARACTER_NOTES.md`'s "Magic items".
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **More Dragonlance magical items** — DLA's "Magical Items of Krynn"
-   chapter has real, sourced content still unused (Rods/Staves/Wands,
-   Crystals and Gems, Miscellaneous Magic). See `docs/CHARACTER_NOTES.md`'s
-   "Magic items" for what's already sourced and why the chapter's unique
-   named artifacts stay out of scope regardless.
-2. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
+1. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
    has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
-3. **Terrain-specific monster pools** — encounter *chance* now varies by
+2. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-4. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

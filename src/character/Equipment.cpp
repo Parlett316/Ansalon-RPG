@@ -70,6 +70,10 @@ std::string inventoryItemLabel(const InventoryItem& item) {
         }
         case ItemKind::Potion:
             return "Potion of Healing (2d4+2 hp)";
+        case ItemKind::Webnet:
+            return "Webnet";
+        case ItemKind::BroochOfImog:
+            return "Brooch of Imog";
     }
     return "";
 }
@@ -116,10 +120,12 @@ bool equipInventoryItem(Character& character, int index) {
             break;
         }
         case ItemKind::Potion:
+        case ItemKind::Webnet:
+        case ItemKind::BroochOfImog:
             // Not equippable -- GameLoop::handleInventory branches on
-            // ItemKind before ever calling here for a Potion; drinking is
-            // a different action (see drinkPotion below), unreachable here
-            // in practice.
+            // ItemKind before ever calling here for these; using them is a
+            // different action (see drinkPotion/useWebnet/activateBrooch
+            // below), unreachable here in practice.
             break;
     }
     return true;
@@ -184,6 +190,18 @@ bool ownsWeapon(const Character& character, const std::string& name) {
     return false;
 }
 
+// Unlike the Webnet/Potion (consumed on use, so buying duplicates is
+// meaningful), a Brooch of Imog is never destroyed -- a second one would
+// grant nothing, since the daily charge is tracked per-character (see
+// Character::lastBroochUseDay), not per-item. Blocked from a duplicate
+// purchase the same way armor/shield/weapons already are.
+bool ownsBrooch(const Character& character) {
+    for (const auto& item : character.inventory) {
+        if (item.kind == ItemKind::BroochOfImog) return true;
+    }
+    return false;
+}
+
 } // namespace
 
 std::vector<ShopItem> availableShopItems(const Character& character) {
@@ -244,6 +262,26 @@ std::vector<ShopItem> availableShopItems(const Character& character) {
     potion.buyable = true;
     items.push_back(std::move(potion));
 
+    // Webnet and Brooch of Imog -- Mage-only per their own DLA text (see
+    // Equipment.h), always listed (buyable=false for other classes) same
+    // "show it, but grey it out" precedent as armor/shield for a Mage.
+    // Stackable like the Potion above -- alreadyOwned always false.
+    bool isMage = character.charClass == ClassId::Mage;
+
+    ShopItem webnet;
+    webnet.label = "Webnet (negates the foe's next attack)";
+    webnet.costStl = kWebnetCostStl;
+    webnet.alreadyOwned = false;
+    webnet.buyable = isMage;
+    items.push_back(std::move(webnet));
+
+    ShopItem brooch;
+    brooch.label = "Brooch of Imog (blocks all attacks for the rest of a fight, once/day)";
+    brooch.costStl = kBroochOfImogCostStl;
+    brooch.alreadyOwned = ownsBrooch(character);
+    brooch.buyable = isMage && !brooch.alreadyOwned;
+    items.push_back(std::move(brooch));
+
     return items;
 }
 
@@ -274,6 +312,11 @@ PurchaseResult purchaseItem(Character& character, int index) {
     // The magic weapon line always follows the (optional) mundane upgrade
     // line -- see availableShopItems.
     int magicWeaponIndex = upgrade != nullptr ? armorCount + 2 : armorCount + 1;
+    // Potion, Webnet, and Brooch of Imog are always the final three lines,
+    // in that fixed order -- see availableShopItems.
+    int potionIndex = magicWeaponIndex + 1;
+    int webnetIndex = potionIndex + 1;
+    int broochIndex = potionIndex + 2;
     bool isPotion = false;
     if (index < armorCount) {
         character.inventory.push_back(InventoryItem{ItemKind::Armor, kBuyableArmor[index], "", 0, 0});
@@ -286,15 +329,23 @@ PurchaseResult purchaseItem(Character& character, int index) {
         const MagicWeapon& magic = magicWeaponFor(character.charClass);
         character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, magic.name,
                                                       magic.damageSides, magic.damageBonus, magic.magicBonus});
+    } else if (index == webnetIndex) {
+        character.inventory.push_back(InventoryItem{ItemKind::Webnet, ArmorId::None, "", 0, 0});
+    } else if (index == broochIndex) {
+        character.inventory.push_back(InventoryItem{ItemKind::BroochOfImog, ArmorId::None, "", 0, 0});
     } else {
-        // The one remaining catalog line -- the Potion of Healing, whether
-        // or not this class had a weapon-upgrade entry ahead of it.
+        // The one remaining catalog line -- the Potion of Healing.
         character.inventory.push_back(InventoryItem{ItemKind::Potion, ArmorId::None, "", 0, 0});
         isPotion = true;
     }
 
-    return {true, "Bought " + item.label +
-                       (isPotion ? ". Press 'i' to drink it." : ". Press 'i' to equip it.")};
+    std::string hint = ". Press 'i' to equip it.";
+    if (isPotion) {
+        hint = ". Press 'i' to drink it.";
+    } else if (index == webnetIndex || index == broochIndex) {
+        hint = ". Press 'i' in combat to use it.";
+    }
+    return {true, "Bought " + item.label + hint};
 }
 
 namespace {
@@ -333,6 +384,12 @@ int resaleValueStl(const Character& character, const InventoryItem& item, bool& 
         case ItemKind::Potion:
             sellable = true;
             return kHealingPotionCostStl / 2;
+        case ItemKind::Webnet:
+            sellable = true;
+            return kWebnetCostStl / 2;
+        case ItemKind::BroochOfImog:
+            sellable = true;
+            return kBroochOfImogCostStl / 2;
     }
     sellable = false;
     return 0;
@@ -384,6 +441,41 @@ PurchaseResult drinkPotion(Character& character, int index) {
                                        character.maxHp - character.currentHp));
     character.currentHp += healed;
     return {true, "You drink a Potion of Healing and recover " + std::to_string(healed) + " hit points."};
+}
+
+int firstWebnetIndex(const Character& character) {
+    for (size_t i = 0; i < character.inventory.size(); ++i) {
+        if (character.inventory[i].kind == ItemKind::Webnet) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+int firstBroochIndex(const Character& character) {
+    for (size_t i = 0; i < character.inventory.size(); ++i) {
+        if (character.inventory[i].kind == ItemKind::BroochOfImog) return static_cast<int>(i);
+    }
+    return -1;
+}
+
+bool broochAvailableToday(const Character& character, long long today) {
+    return firstBroochIndex(character) >= 0 && character.lastBroochUseDay != today;
+}
+
+PurchaseResult useWebnet(Character& character, int index) {
+    if (index < 0 || index >= static_cast<int>(character.inventory.size()) ||
+        character.inventory[index].kind != ItemKind::Webnet) {
+        return {false, "That's not a webnet."};
+    }
+    character.inventory.erase(character.inventory.begin() + index);
+    return {true, "You cast the Webnet -- it snares your foe in a net of entrapment!"};
+}
+
+PurchaseResult activateBrooch(Character& character, long long today) {
+    if (!broochAvailableToday(character, today)) {
+        return {false, "The Brooch of Imog's power is already spent for today."};
+    }
+    character.lastBroochUseDay = today;
+    return {true, "You speak the Brooch of Imog's command word -- a minor globe of invulnerability surrounds you!"};
 }
 
 } // namespace character

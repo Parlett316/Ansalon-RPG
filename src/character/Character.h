@@ -78,6 +78,10 @@ struct Character {
     // the Rest action ('r') -- see game::GameLoop::handleRest. Gates Rest
     // to once per in-game day so it can't be spammed for infinite healing.
     long long lastRestDay = -1;
+    // The day the character last activated a Brooch of Imog (see
+    // character::activateBrooch/broochAvailableToday and
+    // GameLoop::runCombat) -- same once-per-day gate shape as lastRestDay.
+    long long lastBroochUseDay = -1;
 };
 
 } // namespace character

@@ -127,9 +127,12 @@ public:
     // and the available actions. `monsterHp` is tracked by
     // GameLoop::runCombat, not the Monster struct itself (which is static
     // content shared by every encounter with that monster type) -- see
-    // docs/COMBAT_NOTES.md.
+    // docs/COMBAT_NOTES.md. `currentDay` (hoursElapsed/24, same convention
+    // as drawCharacterSheet above) is only used to decide whether the
+    // footer hints "i=use brooch" -- see character::broochAvailableToday.
     static void drawCombatFrame(const character::Character& character, const combat::Monster& monster,
-                                 int monsterHp, int monsterMaxHp, const std::vector<std::string>& log);
+                                 int monsterHp, int monsterMaxHp, const std::vector<std::string>& log,
+                                 long long currentDay);
 
     struct DialogueLine {
         std::string speaker;

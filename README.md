@@ -148,7 +148,10 @@ per class (an Ensorcelled version of your class's own upgrade weapon, or,
 for a Mage or Tinker who has no mundane upgrade at all, their first
 weapon upgrade of any kind) — sourced from the DMG's magic-item tables
 and Dragonlance Adventures' own "Magical Items of Krynn" chapter, and the
-first thing in the game to add a real to-hit bonus beyond Strength — see
+first thing in the game to add a real to-hit bonus beyond Strength. A Mage
+can also buy a Webnet (negates a foe's next attack) or a Brooch of Imog
+(blocks every attack for the rest of a fight, once per day) — both used
+the same way as drinking a potion mid-combat — see
 `docs/CHARACTER_NOTES.md`'s "Magic items" section. Enough experience means
 real leveling — more hit points, a better THAC0, better saving throws, all
 sourced from the PHB's level-by-level tables (a Knight of the Crown gets a

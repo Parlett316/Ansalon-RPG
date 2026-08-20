@@ -519,7 +519,8 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
 }
 
 void MapRenderer::drawCombatFrame(const character::Character& character, const combat::Monster& monster,
-                                   int monsterHp, int monsterMaxHp, const std::vector<std::string>& log) {
+                                   int monsterHp, int monsterMaxHp, const std::vector<std::string>& log,
+                                   long long currentDay) {
     std::vector<std::string> lines;
 
     std::ostringstream playerLine;
@@ -545,11 +546,17 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
     if (character::canCastSpells(character.charClass)) {
         footer << "   m=cast " << character::knownSpellName(character.charClass);
     }
-    // Only hinted when there's actually a potion to drink -- same "only
-    // show it when it's usable" precedent m=cast already follows for
-    // non-casters.
+    // Only hinted when there's actually something for 'i' to do -- same
+    // "only show it when it's usable" precedent m=cast already follows for
+    // non-casters. Potion takes priority, then Webnet, then Brooch of
+    // Imog -- same fixed priority GameLoop::runCombat's own key handling
+    // uses, so the hint always matches what pressing 'i' will actually do.
     if (character::firstPotionIndex(character) >= 0) {
         footer << "   i=drink potion";
+    } else if (character::firstWebnetIndex(character) >= 0) {
+        footer << "   i=use webnet";
+    } else if (character::broochAvailableToday(character, currentDay)) {
+        footer << "   i=use brooch";
     }
     footer << "   f=flee";
     lines.push_back(footer.str());
