@@ -129,6 +129,9 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
             if (!(iss >> current.rewardXp)) {
                 fail(path, lineNumber, "malformed REWARD_XP (expected: REWARD_XP <n>)");
             }
+        } else if (keyword == "REWARD_KNIGHT_SWORD") {
+            if (!rest.empty()) fail(path, lineNumber, "REWARD_KNIGHT_SWORD takes no argument");
+            current.rewardKnightSword = true;
         } else if (keyword == "END") {
             if (current.name.empty()) fail(path, lineNumber, "quest is missing its NAME");
             if (current.offerText.empty()) fail(path, lineNumber, "quest is missing its OFFER text");

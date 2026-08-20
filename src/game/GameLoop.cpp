@@ -85,6 +85,17 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     if (condition == "thief") return c.charClass == character::ClassId::Thief;
     if (condition == "tinker") return c.charClass == character::ClassId::Tinker;
     if (condition == "knight") return c.knightOrder != character::KnightOrder::None;
+    // Compound eligibility check for Order of the Sword advancement, not a
+    // single fact like the tokens above (see docs/QUEST_NOTES.md) -- true
+    // once a Knight of the Crown has reached level 3 (this project's
+    // Fighter-XP-chassis stand-in for the book's "2nd level with enough
+    // XP banked for 3rd", the same threshold Leveling.cpp's own Crown
+    // flavor message already fires on) and meets the Sword's ability
+    // score minimums (character::Knighthood.h).
+    if (condition == "sword_eligible") {
+        return c.knightOrder == character::KnightOrder::Crown && c.level >= 3 &&
+               character::meetsKnightOfSwordRequirements(c.scores);
+    }
     return false;
 }
 
@@ -692,6 +703,10 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
     if (q->rewardSteel > 0) rewardMsg << " +" << q->rewardSteel << " steel.";
     if (q->rewardXp > 0) rewardMsg << " +" << q->rewardXp << " XP.";
     pushLog(rewardMsg.str());
+    if (q->rewardKnightSword) {
+        state_.character.knightOrder = character::KnightOrder::Sword;
+        pushLog("You are named a Knight of the Sword.");
+    }
 }
 
 void GameLoop::checkQuestReadiness() {

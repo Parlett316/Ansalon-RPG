@@ -366,6 +366,13 @@ Watchman), and `data/zones/silvanesti.txt`'s `W` (the Silvanesti Warder) —
 the last of these also the first `QUEST` gated by a `REQUIRE` other than
 `knight` (`REQUIRE elf`).
 
+Milestone 53 added a fifth, `data/zones/high_clerist_tower.txt`'s new POI
+`S` ("A Sword Knight") — placed next to `K` since `K` already carries
+`word_for_the_tower` and v1 allows only one `QUEST` per POI (see below).
+`S` reframes the zone's own Muster Yard (`Y`) flavor text rather than
+inventing new lore; see `docs/QUEST_NOTES.md`'s "Shipped quests" for the
+full writeup.
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -551,6 +558,11 @@ NPC, same reasoning `pax_tharkas.txt`'s deliberately unaffiliated
 Knights' Trial (Sturm's real vindication scene, and the Gunthar/Derek
 factional split it caused) as retrospective dialogue, since Sancrist
 Isle itself isn't modeled — see `docs/TIMELINE_NOTES.md` for why.
+
+Milestone 53 added a second talkable Knight, `S` ("A Sword Knight"), next
+to the Muster Yard -- see "Quests: POIs that offer them" above and
+`docs/QUEST_NOTES.md`'s "Shipped quests" for why `K` couldn't carry a
+second `QUEST` line.
 
 ## Ice Wall Castle (Milestone 36)
 

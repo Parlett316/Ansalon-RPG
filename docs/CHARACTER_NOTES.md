@@ -252,15 +252,16 @@ Complexity and Mishap tables themselves, printed pp.118–119 — weren't even
 rendered/transcribed in the research pass that found this). Worth building
 eventually as its own feature, not bolted onto character creation.
 
-### Knights of Solamnia — Order of the Crown only
+### Knights of Solamnia — Crown and Sword
 
 Every Knight starts in the **Order of the Crown** (p.17: "every candidate
 ... must first enter the Knighthood as a squire of the Order of the
-Crown"); advancing into the Order of the Sword and then the Order of the
-Rose requires XP thresholds and a witnessed quest (p.18–20) that this
-project can't model yet — there's no leveling/XP system at all, only
-level-1 character creation, so Sword and Rose are cleanly out of scope
-rather than half-implemented.
+Crown"). Advancing into the **Order of the Sword** is real as of Milestone
+53 — a `character::KnightOrder::Sword` value plus the `named_in_fact` quest
+(`docs/QUEST_NOTES.md`), see below. The **Order of the Rose** still requires
+XP thresholds and a witnessed quest (p.19–20) this project doesn't model —
+deferred the same way Sword was until this milestone, not yet content this
+project has scoped.
 
 **Entry requirements for Knight of the Crown** (p.18, "Game Data",
 visually confirmed on the rendered page): ability minimums **Strength 10,
@@ -270,6 +271,41 @@ minimum), and alignment must be **Good** (Lawful, Neutral, or Chaotic Good
 law/chaos one). Implemented in `character::meetsKnightOfCrownRequirements`
 (`Knighthood.h/.cpp`), offered as a yes/no prompt in `CharacterCreator`
 immediately after alignment is chosen, only to Fighters.
+
+**Entry requirements for Knight of the Sword** (p.18, "Knights of the
+Sword / Game Data", visually confirmed on the rendered page — see
+"Sourcing note: a book erratum" below): the candidate must be a Knight of
+the Crown who has "risen to 2d level ... and [has] sufficient experience
+points to gain 3d level," and must meet ability minimums **Strength 12,
+Intelligence 9, Wisdom 13, Dexterity 9, Constitution 10** (again no
+Charisma minimum) — every minimum equal to or higher than Crown's, so not
+every Crown Knight automatically qualifies. Implemented in
+`character::meetsKnightOfSwordRequirements` (scores only — `knightOrder ==
+Crown` already implies the Crown race gate was passed) and
+`game::conditionMatches`'s `sword_eligible` token (`knightOrder==Crown &&
+level>=3 && meetsKnightOfSwordRequirements(scores)`). `level>=3` stands in
+for "2nd-level Crown with enough XP banked for 3rd": this project runs
+Knights on the Fighter XP chassis rather than the book's separate Crown
+Knight XP table (see "Flavor-only, not mechanical" below), and level 3 is
+exactly where the existing Crown/Sword flavor line already fires. The
+book's further "witnessed quest" requirement (a journey of ≥500 miles/30
+days, three tests of wisdom, one of generosity, one of compassion, the
+restoration of something lost, and single combat with an evil opponent)
+is `data/quests.txt`'s `named_in_fact` quest — see `docs/QUEST_NOTES.md`
+for how each element maps (or doesn't) onto real objective state.
+
+**Sourcing note: a book erratum.** DL Adventures p.18 prints a "Game Data"
+minimums box for the Sword directly under the sentence "the candidate must
+also have the listed minimums ... to qualify for the Order of the Sword"
+— but that box's own header reads "**Rose** Knight Minimum Scores," with
+values (Str 12/Int 9/Wis 13/Dex 9/Con 10) that don't match the *other*,
+correctly-headed "Rose Knight Minimum Scores" box printed on p.19 (Str
+15/Int 10/Wis 13/Dex 12/Con 15). Confirmed via rendered page images
+(`pdftoppm`, not just `pdftotext` OCR, which could otherwise read as a
+column-alignment artifact rather than the book's own real mislabel) that
+this is a genuine 1987 printing error, not an OCR misread. The p.18 box's
+values are used above as the real Sword minimums; p.19's values remain the
+real Rose minimums, for whenever Rose is implemented.
 
 **Deliberate simplification**: the book actually builds Knights of
 Solamnia on the **Cavalier** class (Unearthed Arcana), not Fighter — this
@@ -369,17 +405,17 @@ adding a second would mean restructuring it, deferred since level 7 is
 far off given the XP costs above. Demihuman level limits — same standing
 deferral as every other race/subrace ability-range cut in this document.
 
-**Flavor-only, not mechanical**: a Knight of the Crown reaching level 3
-gets a line about the Order of the Sword noticing them (Sword itself —
-requiring "a witnessed quest of heroism," DL Adventures p.19 — still needs
-real *content*: `docs/QUEST_NOTES.md`'s quest engine, as of Milestone 51,
-can express this gate now — a quest with `REQUIRE knight` is directly
-authorable — but no such quest has been written yet; that's Milestone
-52-or-later work, not this milestone's). A Mage reaching level 3 actually
-does get the mechanical Test of High Sorcery outcome (robe assigned by
-alignment, per the "Wizards of High Sorcery" section above) — that one
-isn't just flavor, since the alignment-to-robe mapping was already fully
-sourced and needed no quest-like narrative gate to apply.
+**Flavor, then (as of Milestone 53) real**: a Knight of the Crown reaching
+level 3 still gets a foreshadowing line about the Order of the Sword
+noticing them (`Leveling.cpp`) — that line no longer stands alone, though:
+level 3 is also the exact moment `sword_eligible` can start being true (see
+"Knights of Solamnia" above), so the Muster Yard's Sword Knight at High
+Clerist's Tower has something to actually offer once the player next talks
+to him. A Mage reaching level 3 gets the mechanical Test of High Sorcery
+outcome the same way (robe assigned by alignment, per the "Wizards of High
+Sorcery" section above) — sourced and applied directly, no quest gate
+needed since the alignment-to-robe mapping doesn't depend on a narrative
+test.
 
 ## Spellcasting
 
@@ -733,15 +769,17 @@ stored in `GameState::character` and never reassigned after that; pressing
   wares (every shop sells the identical catalog), armor weight/
   encumbrance, and any item types beyond armor/shield/weapon (potions,
   scrolls, tools).
-- **Sword and Rose Knights, for real**: currently just a flavor line at
-  level 3 (see "Leveling / experience" above) — actual advancement needs a
-  real *quest* authored for Sword's "witnessed quest of heroism"
-  requirement, now that a quest engine exists to express it
-  (`docs/QUEST_NOTES.md`, Milestone 51's `REQUIRE knight` condition) but
-  hasn't been written yet. Rose's exact minimum-scores table was also only
-  text-extracted, not
-  visually re-confirmed — see the research notes referenced in project
-  memory.
+- **Rose Knights, for real**: Sword shipped at Milestone 53 (see "Knights
+  of Solamnia" above); Rose still needs its own XP threshold, ability
+  minimums (Str 15/Int 10/Wis 13/Dex 12/Con 15 — visually confirmed on
+  p.19 during Milestone 53's research, see "Sourcing note: a book erratum"
+  above), and witnessed-quest content, the same shape of work Sword just
+  went through.
+- **Sword Knight's real healing/foresight/clerical-spell abilities and
+  weekly fasting/meditation ritual** (p.19-20): not modeled, same
+  "flavor-only, needs a fuller spell system" treatment already given to
+  Wizard Robe spell-sphere restrictions below — this project's Sword
+  Knights get the title only, not the book's limited-cleric powers.
 - **Wizard Robe mechanics, for real**: Robe assignment by alignment at
   3rd level is implemented (see "Leveling / experience" above); robe-based
   spell-sphere restrictions and moon-phase (Solinari/Lunitari/Nuitari)

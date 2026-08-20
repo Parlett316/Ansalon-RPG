@@ -56,8 +56,9 @@ GIVER <text>                      required -- free text naming who/where
                                   mechanically tied to a real zone POI
 REQUIRE <condition>                optional -- game::conditionMatches's
                                   vocabulary (good/evil, the 7 races, the 5
-                                  classes, and knight -- see below); an
-                                  unmet REQUIRE means this quest-giver has
+                                  classes, knight, and the compound
+                                  sword_eligible -- see below); an unmet
+                                  REQUIRE means this quest-giver has
                                   nothing to say about this quest at all to
                                   this character, checked fresh on every
                                   talk, not just at first offer
@@ -68,6 +69,12 @@ SLAY <monster-id> <count> <label> shown in the journal, hand-written rather
                                   over existing state" below)
 REWARD_STEEL <n>                  optional, default 0
 REWARD_XP <n>                     optional, default 0
+REWARD_KNIGHT_SWORD                optional, bare flag (no argument) --
+                                  promotes the character to
+                                  character::KnightOrder::Sword on turn-in;
+                                  see "Knight of the Sword advancement"
+                                  below. As of Milestone 53, exactly one
+                                  quest (named_in_fact) carries it.
 END
 ```
 
@@ -298,6 +305,61 @@ needs one.
 
 ## Shipped quests
 
+### Milestone 53: Knight of the Sword advancement
+
+`named_in_fact` ("In Fact as Well as Blood"), offered by a new POI at
+`data/zones/high_clerist_tower.txt` — "A Sword Knight" (`S`), placed next
+to the existing Muster Yard (`Y`, a `TIMELINE_ANCHOR`) whose own flavor
+text already read "the Order still gathers whenever it has cause to name a
+new Knight in fact as well as blood" (written well before this milestone)
+— reframing an existing hook again, same discipline Milestone 52
+established, not inventing a location from nothing. `K` ("A Garrison
+Knight") already carries `word_for_the_tower`, and v1 allows only one
+quest per POI, so this needed its own giver rather than reusing `K`.
+
+Gated by `REQUIRE sword_eligible` (`docs/CHARACTER_NOTES.md`'s "Knights of
+Solamnia" section has the full sourcing) — this project's first `REQUIRE`
+condition that isn't a single-word fact lookup, since eligibility is a
+compound check (Crown + level + ability scores) with no existing
+single-token analog. Objectives are `VISIT plains_of_dust` (the farthest
+mapped location from the Tower, standing in for the book's "journey of no
+less than 500 miles and 30 days") and `SLAY baaz 1` (a Baaz Draconian,
+already flavored in `data/monsters.txt` as "a draconian, blade drawn"
+blocking the path — a natural single-combat duel, and this project's
+combat is already "knocked out, not killed"
+(`docs/COMBAT_NOTES.md`), which happens to satisfy the book's "victorious
+... without necessarily killing" clause for free). This is this project's
+first quest to mix two different objective kinds in one quest, proving the
+grammar table's "any mix" claim in real content for the first time (every
+Milestone 52 quest was single-objective).
+
+The book's other four required quest elements (three tests of wisdom, one
+of generosity, one of compassion, restoration of something lost) have no
+corresponding trackable state — nothing in `GameState` counts "a test of
+generosity" — so rather than inventing fake counters with no other use,
+they're narrated in the `COMPLETE` text as things the Council is told
+happened along the road, the same "narrated, not tracked" treatment
+Milestone 47's "ridge farewell" gave lore beats with no mechanical hook.
+
+Turning it in sets `REWARD_KNIGHT_SWORD` (`character.knightOrder =
+KnightOrder::Sword`), which `character::knightOrderName` and the character
+sheet (`MapRenderer.cpp`) already display generically — no renderer
+change needed. Reward: 60 steel, 150 XP (above Milestone 52's 30-45/60-100
+range — the real reward is the title). `SaveGame.cpp`'s `KNIGHTORDER`
+bound moved from 2 to 3 values, append-only-safe (old saves' 0/1 stay
+valid). Verified via a throwaway self-test (ability-score boundary cases
+for `meetsKnightOfSwordRequirements`, and `QuestLoader` parsing the real
+six-quest `data/quests.txt` including `REWARD_KNIGHT_SWORD` and its
+fail-fast trailing-argument case), a clean `/W4` rebuild, and the piped
+smoke test — plus, since this milestone touches the save format, a direct
+check that the user's real `save.txt` (a level-1 Human Fighter) still
+loads cleanly under the new `KNIGHTORDER` bound before the standard
+move-aside/restore smoke test. Interactive verification — actually
+reaching level 3 as a Crown Knight, confirming the Sword Knight only
+offers the quest once eligible, and completing the `VISIT`+`SLAY` mix —
+still needs the user's own keyboard, the same `_getch()` limitation
+flagged for Milestones 51 and 52.
+
 ### Milestone 52: real content
 
 Four more quests, deliberately picked to prove the objective kinds and
@@ -396,27 +458,17 @@ above, and separately a real crash bug (unrelated to quests — see
 
 ## Extending this later
 
-Milestone 52 shipped the ordinary-NPC content pass (see "Shipped quests"
-above) — VISIT, TALK, and a non-`knight` `REQUIRE` are all now proven live
-in real, played content, not just supported in principle. Two items from
-the original backlog are still open, deliberately deferred rather than
-bundled into that pass:
+Milestone 52 shipped the ordinary-NPC content pass and Milestone 53
+shipped Knight of the Sword advancement (see "Shipped quests" above) —
+VISIT, TALK, a mixed-kind quest, and REQUIRE conditions beyond `knight`
+are all now proven live in real, played content. One item from the
+original backlog is still open:
 
-- **Knight of the Sword advancement.** `docs/CHARACTER_NOTES.md`'s "Sword
-  and Rose Knights, for real" section has been waiting on this since
-  Milestone 10; real DL Adventures pp.18-19 research (page images,
-  confirmed during Milestone 52's planning) shows the real requirements —
-  2nd-level Crown Knight with enough XP for 3rd, a witnessed quest with
-  specific required elements. Mechanically this needs a new
-  `KnightOrder::Sword` value (append-only-safe, same precedent as
-  `QuestStatus::ReadyToTurnIn`) and a new gating condition (Crown + level
-  ≥ 3, beyond what the existing `knight` condition alone checks) — bigger
-  than a content-only pass should bundle in alongside unrelated quests.
-  The `knight` condition already exists in `game::conditionMatches`
-  (added at Milestone 51 specifically so a Knight-of-the-Sword quest
-  wouldn't need a grammar change later) — `REQUIRE knight` is usable
-  today, just not yet paired with a real Sword-advancement quest.
 - **`DELIVER`/item-possession objectives**, if a future quest concept
   genuinely needs one rather than being addable with VISIT/TALK/SLAY (as
   every quest shipped so far has been) — see "Deliberately not in v1"
   above for what this would actually require.
+- **Order of the Rose advancement**, the natural follow-up to Sword now
+  that the pattern exists — see `docs/CHARACTER_NOTES.md`'s "Rose Knights,
+  for real" for the real, already-researched XP/ability-score
+  requirements.

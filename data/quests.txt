@@ -10,8 +10,10 @@
 # 52 (below) is the real content pass: four more quests from ordinary NPCs,
 # deliberately covering VISIT and TALK objectives and a REQUIRE condition
 # other than knight for the first time -- see docs/QUEST_NOTES.md's
-# "Shipped quests" section. Knight of the Sword advancement and the DELIVER
-# objective kind are still deferred to their own future milestone.
+# "Shipped quests" section. Milestone 53 (below) is Knight of the Sword
+# advancement -- REQUIRE sword_eligible, this project's first quest to mix
+# two objective kinds, and REWARD_KNIGHT_SWORD. The DELIVER objective kind
+# is still deferred to its own future milestone.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -72,4 +74,19 @@ REQUIRE elf
 TALK qualinesti:E Carry word to the Elven Sentinel in Qualinesti that Silvanesti still stands
 REWARD_STEEL 30
 REWARD_XP 60
+END
+
+QUEST named_in_fact
+NAME In Fact as Well as Blood
+OFFER "The Crown's insignia won't carry you the rest of the way, and you know it as well as I do." The Sword Knight's voice doesn't rise, but it doesn't invite argument either. "Prove yourself past it and I'll carry your name to the Council myself. Walk to the far plains and back on your own two feet -- thirty days there and back is no idle errand -- and somewhere on that road, meet a draconian blade to blade and come home standing. The tale of the rest, I'll ask for myself, when you're back."
+ACCEPT You understand what he isn't spelling out: the road itself is the test, not just the fighting at the end of it. Whatever else it asks of you between here and the Plains of Dust, you'll know it when it comes.
+PROGRESS The Sword Knight studies the horizon rather than you. "The road's still there. So is the duel, if you haven't found it yet. Neither one shortens for waiting."
+COMPLETE The Sword Knight listens to the whole of it without interrupting -- the miles, the draconian's blade turned against you and answered, and, worked in almost as an afterthought, the rest: three strangers whose worries you took seriously enough to solve, a beggar's portion you didn't grudge, a debt of kindness you paid without being asked, something broken you set right before you thought to mention it. When you finish, he's quiet a moment. "That's a council hearing I don't expect to lose." He extends a hand, Crown-scarred like his own. "Then it's decided in fact, same as it was in blood. Welcome to the Sword."
+GIVER the Sword Knight at High Clerist's Tower
+REQUIRE sword_eligible
+VISIT plains_of_dust Make the long road south to the Plains of Dust and back
+SLAY baaz 1 Meet a draconian in single combat and come home standing
+REWARD_STEEL 60
+REWARD_XP 150
+REWARD_KNIGHT_SWORD
 END

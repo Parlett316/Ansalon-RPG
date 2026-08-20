@@ -19,7 +19,7 @@ GRID
 #......................................#
 #...........................B..........#
 #......................................#
-#..........Y...........................#
+#..........Y..S........................#
 #......................................#
 #......................................#
 #......................................#
@@ -30,11 +30,15 @@ POI D "The Sealed Inner Doors" Twin steel doors, barred from within, mark the on
 POI B "A Stair to the Battlements" Stone steps climb into the dark toward the parapet above, where the wind never quite stops and the pass below is visible for miles in every direction that matters. No one goes up without a reason. Most nights, at least one knight finds one anyway.
 POI K "A Garrison Knight" He stands his post with a Solamnic formality that hasn't cracked yet, though the hollows under his eyes suggest it's costing him something to hold.
 POI Y "The Muster Yard" A wide stretch of open ground where the garrison forms up at dawn, and where the Order still gathers whenever it has cause to name a new Knight in fact as well as blood. Whether that cause comes often or rarely seems to depend entirely on which years you ask about.
+POI S "A Sword Knight" A knight past his own Order of the Crown watches the Muster Yard the way a man watches ground he's buried friends on, sword-belt scarred where insignia has been unpicked and resewn more than once. He doesn't miss much.
 TALK K "Stand where I can see you, and state your business." He doesn't lower his spear, exactly, but he doesn't raise it either. "Supplies from Vingaard stopped coming weeks ago. We've gotten particular about visitors since."
 TALK_AGAIN K "Still standing, are we both. That's no small thing, up here, these days."
+TALK S He looks you over without hurry -- boots, sword-wear, the particular set of shoulders that says whether you've actually bled for anything yet. Whatever he sees, he keeps to himself for now.
+TALK_AGAIN S The Sword Knight gives you the same unhurried appraisal as before. He hasn't decided anything he's willing to say out loud.
 SAY_IF K fighter The knight's formal posture eases, just slightly -- soldier recognizing soldier. "Then you'll understand why I'd rather trust a blade's read of this siege than a stranger's optimism. Whatever comes through that gate, I'm glad it won't only be knights meeting it."
 TOPIC K "The Knights' Trial" The knight's voice drops, careful. "You'll have heard by now -- Lord Derek Crownguard called one of ours a coward before the whole assembly at Sancrist, and very nearly made it stick. Lord Gunthar found a door the Measure left open and walked him through it before Derek could nail it shut." He shakes his head. "Split the Order clean in half, that trial did. Half of us are still deciding which half we're standing in."
 TOPIC K "Holding the Pass" The knight doesn't look away from the northern approach. "Palanthas stands or falls on whether this Tower does. That's not boast, it's arithmetic -- there's no other way through these mountains a dragonarmy could use. We hold it as long as we're able, and we don't discuss out loud what happens to Vingaard's people if we're not able long enough."
 QUEST K word_for_the_tower
+QUEST S named_in_fact
 TIMELINE_ANCHOR Y
 END

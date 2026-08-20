@@ -714,6 +714,44 @@ this stays authoritative.
     "ready to turn in" notification firing for a VISIT/TALK quest for the
     first time) still needs the user's own keyboard, same limitation
     Milestone 51 flagged. See `docs/QUEST_NOTES.md`'s "Shipped quests".
+53. Knight of the Sword advancement -- the NEXT UP item Milestone 52
+    deliberately deferred. Real DL Adventures pp.17-19 requirements,
+    reconfirmed via rendered page images rather than trusting `pdftotext`
+    OCR alone: this session's re-render turned up a genuine 1987 book
+    erratum (p.18's Sword minimums box is printed with a "Rose Knight
+    Minimum Scores" header, contradicted by the correctly-labeled Rose box
+    on p.19 with different values). A new `character::KnightOrder::Sword`
+    value (append-only-safe), `character::meetsKnightOfSwordRequirements`
+    (Str12/Int9/Wis13/Dex9/Con10), and a new `game::conditionMatches`
+    token, `sword_eligible` (Crown + level>=3 + those minimums) -- this
+    project's first compound, non-single-word `REQUIRE` condition. The
+    real quest, `named_in_fact`, is given by a new POI (`S`, "A Sword
+    Knight") at High Clerist's Tower's Muster Yard -- reframing that POI's
+    own pre-existing "names a new Knight in fact as well as blood" flavor
+    line rather than inventing a new hook, since the existing Garrison
+    Knight POI already carries `word_for_the_tower` and v1 allows only one
+    quest per POI. This project's first quest to mix two objective kinds
+    (`VISIT plains_of_dust` for the book's 500-mile/30-day journey,
+    `SLAY baaz 1` for its single combat against an evil opponent -- Baaz
+    Draconians are already flavored as a blade-drawn duelist, and this
+    project's combat is already "knocked out, not killed", which happens
+    to satisfy the book's "victorious ... without necessarily killing"
+    clause for free); the book's other four required elements (three tests
+    of wisdom, one of generosity, one of compassion, restoring something
+    lost) have no corresponding trackable state, so they're narrated in the
+    `COMPLETE` text instead, the same "narrated, not tracked" treatment
+    Milestone 47's ridge farewell gave untracked lore. Turning the quest in
+    sets a new bare `REWARD_KNIGHT_SWORD` quest-file flag, promoting
+    `knightOrder` to Sword; `SaveGame.cpp`'s `KNIGHTORDER` bound moved from
+    2 to 3 values (append-only-safe). Verified via a throwaway self-test
+    (ability-score boundaries, `QuestLoader` parsing the new reward flag
+    and its fail-fast trailing-argument case), a clean `/W4` rebuild, a
+    direct check that the user's real save still loads under the new
+    `KNIGHTORDER` bound, and the standard piped smoke test. Interactive
+    verification (reaching level 3 as a Crown Knight, confirming the quest
+    gate, completing the VISIT+SLAY mix) still needs the user's own
+    keyboard. See `docs/CHARACTER_NOTES.md`'s "Knights of Solamnia" and
+    `docs/QUEST_NOTES.md`'s "Shipped quests".
 
 ## NEXT UP
 
@@ -721,13 +759,11 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Knight of the Sword advancement** — Milestone 52 shipped the
-   ordinary-NPC quest content pass but deliberately deferred this piece:
-   real DL Adventures pp.18-19 requirements (2nd-level Crown Knight,
-   sufficient XP for 3rd, a witnessed quest) need a new
-   `KnightOrder::Sword` value and a new level-gated condition, not just a
-   new `data/quests.txt` block. See `docs/QUEST_NOTES.md`'s "Extending
-   this later."
+1. **Order of the Rose advancement** — the natural follow-up to Milestone
+   53's Sword advancement: real DL Adventures p.19 requirements (two
+   levels as a Sword Knight, sufficient hit points for 4th, ability
+   minimums Str15/Int10/Wis13/Dex12/Con15, a witnessed quest) already
+   researched. See `docs/CHARACTER_NOTES.md`'s "Rose Knights, for real."
 2. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
    has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
 3. **Terrain-specific monster pools** — encounter *chance* now varies by

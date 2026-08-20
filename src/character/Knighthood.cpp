@@ -5,6 +5,7 @@ namespace character {
 const char* knightOrderName(KnightOrder order) {
     switch (order) {
         case KnightOrder::Crown: return "Knight of the Crown";
+        case KnightOrder::Sword: return "Knight of the Sword";
         case KnightOrder::None: return "";
     }
     return "";
@@ -31,6 +32,11 @@ bool meetsKnightOfCrownRequirements(RaceId race, SubraceId /*subrace*/, const Ab
 
     return scores.strength >= 10 && scores.intelligence >= 7 && scores.wisdom >= 10 &&
            scores.dexterity >= 8 && scores.constitution >= 10;
+}
+
+bool meetsKnightOfSwordRequirements(const AbilityScores& scores) {
+    return scores.strength >= 12 && scores.intelligence >= 9 && scores.wisdom >= 13 &&
+           scores.dexterity >= 9 && scores.constitution >= 10;
 }
 
 } // namespace character

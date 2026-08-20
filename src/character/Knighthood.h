@@ -7,13 +7,14 @@
 namespace character {
 
 // Knights of Solamnia (Dragonlance Adventures, TSR 2021, p.14-20). Every
-// Knight starts in the Order of the Crown; advancing into the Order of the
-// Sword and then the Order of the Rose requires XP thresholds and a
-// witnessed quest this project doesn't model, since there's no leveling
-// system yet -- see docs/CHARACTER_NOTES.md.
+// Knight starts in the Order of the Crown; the Order of the Rose still
+// requires a witnessed quest and XP thresholds this project doesn't model
+// -- see docs/CHARACTER_NOTES.md. Sword is append-only after Crown, same
+// precedent as quest::QuestStatus::ReadyToTurnIn.
 enum class KnightOrder {
     None,
     Crown,
+    Sword,
 };
 
 const char* knightOrderName(KnightOrder order);
@@ -31,5 +32,16 @@ const char* knightOrderName(KnightOrder order);
 // to "a Fighter who qualifies" -- see docs/CHARACTER_NOTES.md).
 bool meetsKnightOfCrownRequirements(RaceId race, SubraceId subrace, const AbilityScores& scores,
                                      Alignment alignment);
+
+// True if these ability scores meet the Order of the Sword's minimums:
+// STR 12, INT 9, WIS 13, DEX 9, CON 10 (no CHA minimum) -- per the book's
+// Sword "Game Data" minimums box (p.18). That box is printed with a
+// "Rose Knight Minimum Scores" header, a genuine erratum confirmed by
+// cross-checking p.19's separate, correctly-labeled (and differently
+// valued) Rose box -- see docs/CHARACTER_NOTES.md and docs/QUEST_NOTES.md.
+// No race/class param: unlike Crown, this is only ever checked on a
+// character who already has knightOrder == Crown, which already passed
+// the Crown race gate.
+bool meetsKnightOfSwordRequirements(const AbilityScores& scores);
 
 } // namespace character

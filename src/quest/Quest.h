@@ -84,6 +84,11 @@ struct Quest {
 
     int rewardSteel = 0;
     int rewardXp = 0;
+    // True if turning this quest in promotes the character to Knight of
+    // the Sword (character::KnightOrder::Sword) -- see
+    // game::GameLoop::offerOrTurnInQuest and docs/QUEST_NOTES.md. A bare
+    // flag, not a reward amount, since a title isn't a quantity.
+    bool rewardKnightSword = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and
