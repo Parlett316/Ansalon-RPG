@@ -16,6 +16,9 @@
 # items milestone (below) adds solamnic_armor -- REQUIRE sword_knight (a
 # Sword Knight specifically, distinct from sword_eligible above) and
 # REWARD_SOLAMNIC_ARMOR, this project's first item-granting quest reward.
+# The Order of the Rose milestone (below) adds measure_of_roses -- REQUIRE
+# rose_eligible (Solamnia's highest rank, same compound-condition shape as
+# sword_eligible) and REWARD_KNIGHT_ROSE.
 # The DELIVER objective kind is still deferred to its own future milestone.
 
 QUEST road_wolves
@@ -106,4 +109,19 @@ TALK high_clerist_tower:K Have the Garrison Knight vouch for you before the Circ
 REWARD_STEEL 40
 REWARD_XP 100
 REWARD_SOLAMNIC_ARMOR
+END
+
+QUEST measure_of_roses
+NAME The Measure of Roses
+OFFER "The Sword's a title the Order hands out for courage. What the Rose asks for is patience -- and I don't just mean yours." Something about her formality is drawn tighter than the Sword Knight's own, like she's measuring not just the candidate but the whole shape of the request. "Walk the same road again, if you're willing. Thirty days out to the far plains and back, same as before -- and somewhere on it, put down something worse than a draconian. An ogre won't ask you to spare it. See that you don't need it to."
+ACCEPT You understand this isn't the same test dressed up twice, whatever the road has in common with the last one. The Rose doesn't care how the fight ends so much as how you get there -- and how you leave everything else along the way.
+PROGRESS The road's the same road. Whether you've walked all of it again, she couldn't say from here.
+COMPLETE The Rose Knight listens the way the Sword Knight never quite managed -- unhurried, unreadable, weighing each part of it separately before she weighs the whole. The ogre first: point taken, blade turned rather than driven home, the same discipline the Order asks of every duel. Then the rest, in no order she seems to care about -- a question you answered honestly when a lie would have served you better, three times you gave more than you were asked, three times you stayed when leaving would have cost you nothing, and somewhere on the road home, something broken that you took the trouble to mend. When you finish, she's quiet long enough that you wonder if she's finished listening. "The Sword proves a Knight can fight," she says at last. "The Rose proves one can be trusted not to, when it isn't the answer." She sets a rose-worked circlet in your hands, plain silver beneath the ornament. "Wear it. You've made the case yourself, same as every one of us had to."
+GIVER the Rose Knight at High Clerist's Tower
+REQUIRE rose_eligible
+VISIT plains_of_dust Walk the long road to the Plains of Dust and back a second time
+SLAY ogre 1 Meet an ogre in single combat and come home standing
+REWARD_STEEL 100
+REWARD_XP 250
+REWARD_KNIGHT_ROSE
 END

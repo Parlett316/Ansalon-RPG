@@ -382,6 +382,13 @@ whose turn-in grants an item (`REWARD_SOLAMNIC_ARMOR`) rather than steel/
 XP/a rank — see `docs/QUEST_NOTES.md`'s "Shipped quests" and
 `docs/CHARACTER_NOTES.md`'s "Magic items".
 
+The Order of the Rose milestone added a seventh,
+`data/zones/high_clerist_tower.txt`'s new POI `R` ("A Rose Knight"),
+offering `measure_of_roses` — a fourth POI at the same zone (`K`/`S`/`L`
+all already spoken for), same Muster Yard row. Completes the Crown->
+Sword->Rose chain; see `docs/QUEST_NOTES.md`'s "Shipped quests" and
+`docs/CHARACTER_NOTES.md`'s "Knights of Solamnia".
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -580,6 +587,13 @@ inside the Muster Yard's open ground rather than off in its own corner --
 this Knight's whole reason for being there is the Circle convening on
 that same ground. Offers `solamnic_armor`; see "Quests: POIs that offer
 them" above and `docs/QUEST_NOTES.md`'s "Shipped quests".
+
+The Order of the Rose milestone added a fourth, `R` ("A Rose Knight"), same
+row again, same reasoning -- `K`/`S`/`L` were all already spoken for, and
+the Muster Yard is already established as where the Order convenes. Offers
+`measure_of_roses`, the capstone of the Crown->Sword->Rose chain; see
+"Quests: POIs that offer them" above and `docs/QUEST_NOTES.md`'s "Shipped
+quests".
 
 ## Ice Wall Castle (Milestone 36)
 

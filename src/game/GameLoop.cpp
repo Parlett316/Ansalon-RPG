@@ -103,6 +103,15 @@ bool conditionMatches(const std::string& condition, const character::Character& 
         return c.knightOrder == character::KnightOrder::Crown && c.level >= 3 &&
                character::meetsKnightOfSwordRequirements(c.scores);
     }
+    // Same shape as sword_eligible above, one rank up: true once a Knight of
+    // the Sword has reached level 4 (this project's resolution of the book's
+    // own internally-inconsistent Rose level-threshold prose -- see
+    // character::meetsKnightOfRoseRequirements and docs/CHARACTER_NOTES.md)
+    // and meets the Rose's ability score minimums.
+    if (condition == "rose_eligible") {
+        return c.knightOrder == character::KnightOrder::Sword && c.level >= 4 &&
+               character::meetsKnightOfRoseRequirements(c.scores);
+    }
     return false;
 }
 
@@ -724,6 +733,10 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
         state_.character.inventory.push_back(
             character::InventoryItem{character::ItemKind::Shield, character::ArmorId::None, "", 0, 0});
         pushLog("You are granted Solamnic Armor and a Knight's shield. Press 'i' to equip them.");
+    }
+    if (q->rewardKnightRose) {
+        state_.character.knightOrder = character::KnightOrder::Rose;
+        pushLog("You are named a Knight of the Rose.");
     }
 }
 

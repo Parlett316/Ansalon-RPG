@@ -7,14 +7,16 @@
 namespace character {
 
 // Knights of Solamnia (Dragonlance Adventures, TSR 2021, p.14-20). Every
-// Knight starts in the Order of the Crown; the Order of the Rose still
-// requires a witnessed quest and XP thresholds this project doesn't model
-// -- see docs/CHARACTER_NOTES.md. Sword is append-only after Crown, same
+// Knight starts in the Order of the Crown, advances into the Order of the
+// Sword (see meetsKnightOfSwordRequirements below), and finally the Order
+// of the Rose (see meetsKnightOfRoseRequirements below) -- see
+// docs/CHARACTER_NOTES.md. Sword and Rose are append-only after Crown, same
 // precedent as quest::QuestStatus::ReadyToTurnIn.
 enum class KnightOrder {
     None,
     Crown,
     Sword,
+    Rose,
 };
 
 const char* knightOrderName(KnightOrder order);
@@ -43,5 +45,22 @@ bool meetsKnightOfCrownRequirements(RaceId race, SubraceId subrace, const Abilit
 // character who already has knightOrder == Crown, which already passed
 // the Crown race gate.
 bool meetsKnightOfSwordRequirements(const AbilityScores& scores);
+
+// True if these ability scores meet the Order of the Rose's minimums:
+// STR 15, INT 10, WIS 13, DEX 12, CON 15 (no CHA minimum) -- per the book's
+// Rose "Game Data" minimums box, printed p.19 (PDF p.20), correctly labeled
+// this time (the p.18/PDF p.19 box under this same heading is actually the
+// Sword minimums -- see meetsKnightOfSwordRequirements above and
+// docs/CHARACTER_NOTES.md). The book's own prose for the level threshold is
+// internally inconsistent -- "two levels as Crown, then Sword and two
+// additional levels" (arithmetically level 5) versus "sufficient hit points
+// to become 4th level" in the very next sentence -- resolved via the Rose
+// Knight Advancement Table itself, which starts at level 4 ("Novice of
+// Roses"); see game::conditionMatches's "rose_eligible" token and
+// docs/CHARACTER_NOTES.md for the full sourcing note. No race/class param,
+// same reasoning as meetsKnightOfSwordRequirements: only ever checked on a
+// character who already has knightOrder == Sword, which already passed the
+// Crown race gate.
+bool meetsKnightOfRoseRequirements(const AbilityScores& scores);
 
 } // namespace character

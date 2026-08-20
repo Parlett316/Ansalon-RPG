@@ -809,31 +809,78 @@ this stays authoritative.
     quest milestone so far. See `docs/CHARACTER_NOTES.md`'s "Magic
     items", `docs/QUEST_NOTES.md`'s "Shipped quests", `docs/ZONE_NOTES.md`.
 
+55. Order of the Rose advancement -- the capstone of the Knights of
+    Solamnia chain, completing Crown (character creation) -> Sword
+    (Milestone 53) -> Rose. Re-confirmed the sourcing directly against
+    rendered page images of DL Adventures pp.18-19 rather than trusting
+    Milestone 53's earlier partial pass from memory, per this project's
+    accuracy discipline -- and turned up a second real book inconsistency
+    alongside the p.18/p.19 Sword erratum Milestone 53 already found: the
+    Rose "Minimum Requirements" prose says a candidate needs "two levels as
+    Crown, then Sword and two additional levels" (arithmetically level 5)
+    but the very next sentence says "sufficient hit points to become 4th
+    level" -- resolved via the **Rose Knight Advancement Table** itself,
+    which starts at level 4 ("Novice of Roses"), the same hard-table-over-
+    loose-prose tie-break Milestone 53 used for its own erratum. A new
+    `character::KnightOrder::Rose` value (append-only-safe),
+    `character::meetsKnightOfRoseRequirements` (Str15/Int10/Wis13/Dex12/
+    Con15, correctly-labeled on p.19, distinct from the p.18 box that's
+    actually mislabeled Sword data), and `game::conditionMatches`'s
+    `rose_eligible` token (`knightOrder==Sword && level>=4 &&
+    meetsKnightOfRoseRequirements`), the same compound-condition shape as
+    `sword_eligible`. The real quest, `measure_of_roses`, is given by a new
+    POI (`R`, "A Rose Knight") at High Clerist's Tower's Muster Yard --
+    `K`/`S`/`L` there already carry a quest each, so this needed its own
+    POI, same reasoning Milestone 54 used for `L`. Objectives mix `VISIT
+    plains_of_dust` (reusing `named_in_fact`'s "farthest mapped location
+    from the Tower" target, since the book's 500-mile/30-day journey
+    requirement is *identical* text between Sword and Rose) and `SLAY ogre
+    1` (the book's "evil opponent of equal or higher level... without
+    killing the foes" -- Ogre is the highest-XP, clearly-evil single
+    monster in the roster, deliberately distinct from Sword's Baaz duel so
+    the two quests don't feel identical); the book's other four elements
+    (one test of wisdom, three of generosity, three of compassion,
+    restoring something lost) have no corresponding trackable state, same
+    as Sword's four, and are narrated in `COMPLETE` text only. Turning it
+    in sets a new bare `REWARD_KNIGHT_ROSE` flag, promoting `knightOrder` to
+    Rose; reward is 100 steel/250 XP, above Sword's 60/150 since Rose is the
+    capstone rank. `SaveGame.cpp`'s `KNIGHTORDER` bound moved from 3 to 4
+    (append-only-safe, same precedent as Milestone 53's 2->3 move); a new
+    `Leveling.cpp` flavor line foreshadows Rose eligibility at level 4,
+    mirroring the existing level-3 Crown->Sword line. Verified via a
+    throwaway self-test (ability-score boundary cases including confirming
+    Sword's own minimums don't accidentally satisfy Rose's higher bar,
+    `QuestLoader` against the real eight-quest `data/quests.txt` including
+    `REWARD_KNIGHT_ROSE`'s fail-fast case, and a save round-trip covering
+    both the widened `KNIGHTORDER` bound and its new exclusion boundary), a
+    clean `/W4` rebuild, a direct check that the user's real save (the
+    executable-relative `build\Debug\save.txt`, not the stale repo-root
+    copy -- see `docs/GOTCHAS.md`) still loads cleanly under the new bound,
+    and the standard piped smoke test. Interactive verification (reaching
+    level 4 as a Sword Knight, confirming the Rose Knight only offers the
+    quest once eligible, completing the VISIT+SLAY mix) still needs the
+    user's own keyboard, the same `_getch()` limitation flagged for every
+    quest milestone so far. See `docs/CHARACTER_NOTES.md`'s "Knights of
+    Solamnia" and `docs/QUEST_NOTES.md`'s "Shipped quests".
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Order of the Rose advancement** — the natural follow-up to Milestone
-   53's Sword advancement: real DL Adventures p.19 requirements (two
-   levels as a Sword Knight, sufficient hit points for 4th, ability
-   minimums Str15/Int10/Wis13/Dex12/Con15, a witnessed quest) already
-   researched. See `docs/CHARACTER_NOTES.md`'s "Rose Knights, for real."
-   Not entangled with `solamnic_armor` (above), which deliberately gates
-   on the already-shipped Sword rank instead.
-2. **More Dragonlance magical items** — DLA's "Magical Items of Krynn"
+1. **More Dragonlance magical items** — DLA's "Magical Items of Krynn"
    chapter has real, sourced content still unused (Rods/Staves/Wands,
    Crystals and Gems, Miscellaneous Magic). See `docs/CHARACTER_NOTES.md`'s
    "Magic items" for what's already sourced and why the chapter's unique
    named artifacts stay out of scope regardless.
-3. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
+2. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
    has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
-4. **Terrain-specific monster pools** — encounter *chance* now varies by
+3. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-5. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+4. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project

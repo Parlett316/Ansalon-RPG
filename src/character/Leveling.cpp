@@ -216,6 +216,10 @@ int applyPendingLevelUps(Character& character, std::vector<std::string>& message
             character.knightOrder == KnightOrder::Crown) {
             messages.push_back("Word reaches you that the Order of the Sword has taken notice of your deeds.");
         }
+        if (nextLevel == 4 && character.charClass == ClassId::Fighter &&
+            character.knightOrder == KnightOrder::Sword) {
+            messages.push_back("Word reaches you that the Order of the Rose has taken notice of your deeds.");
+        }
         if (nextLevel == 3 && character.charClass == ClassId::Mage) {
             character.robeColor = robeForAlignment(character.alignment);
             messages.push_back("You journey to the Tower of Wayreth and undergo the Test of High Sorcery. You emerge a " +

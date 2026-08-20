@@ -261,10 +261,10 @@ Crown"). Advancing into the **Order of the Sword** is real as of Milestone
 (`docs/QUEST_NOTES.md`), see below. A Sword Knight can also now earn
 **Solamnic Armor** (`data/quests.txt`'s `solamnic_armor`) — see "Magic
 items" above; it doesn't advance `knightOrder` further, it's equipment,
-not a rank. The **Order of the Rose** still requires
-XP thresholds and a witnessed quest (p.19–20) this project doesn't model —
-deferred the same way Sword was until this milestone, not yet content this
-project has scoped.
+not a rank. The **Order of the Rose**, Solamnia's highest rank, is real as
+of the Order of the Rose milestone — a `character::KnightOrder::Rose` value
+plus the `measure_of_roses` quest (`docs/QUEST_NOTES.md`), see "Entry
+requirements for Knight of the Rose" below.
 
 **Entry requirements for Knight of the Crown** (p.18, "Game Data",
 visually confirmed on the rendered page): ability minimums **Strength 10,
@@ -307,8 +307,38 @@ correctly-headed "Rose Knight Minimum Scores" box printed on p.19 (Str
 (`pdftoppm`, not just `pdftotext` OCR, which could otherwise read as a
 column-alignment artifact rather than the book's own real mislabel) that
 this is a genuine 1987 printing error, not an OCR misread. The p.18 box's
-values are used above as the real Sword minimums; p.19's values remain the
-real Rose minimums, for whenever Rose is implemented.
+values are used above as the real Sword minimums; p.19's values are the
+real Rose minimums, used below.
+
+**Entry requirements for Knight of the Rose** (p.19, "Knights of the Rose /
+Game Data", visually confirmed on the rendered page — see "Sourcing note: a
+second inconsistency" below): ability minimums **Strength 15, Intelligence
+10, Wisdom 13, Dexterity 12, Constitution 15** (again no Charisma minimum)
+— every minimum equal to or higher than Sword's. Implemented in
+`character::meetsKnightOfRoseRequirements` (scores only, same reasoning as
+Sword's own check) and `game::conditionMatches`'s `rose_eligible` token
+(`knightOrder==Sword && level>=4 && meetsKnightOfRoseRequirements(scores)`).
+The book's further "witnessed quest" requirement (a journey of ≥500
+miles/30 days, one test of wisdom, three of generosity, three of
+compassion, the restoration of something lost, and the defeat of an evil
+opponent of equal or higher level than the candidate, without killing it)
+is `data/quests.txt`'s `measure_of_roses` quest — see `docs/QUEST_NOTES.md`
+for how each element maps (or doesn't) onto real objective state.
+
+**Sourcing note: a second inconsistency.** The Rose "Minimum Requirements"
+prose (p.19) says a candidate must have "gained two levels as Knights of
+the Crown, then been accepted as Knights of the Sword and earned two
+additional levels" before being considered for the Rose — arithmetically
+level 5, since Sword is entered at level 3 (see above). The very next
+sentence contradicts this: "Once a character has earned sufficient hit
+points to become 4th level, he can petition the Order of the Rose." Both
+readings were checked against a rendered page image, ruling out an OCR
+misread. The tie-breaker is the **Rose Knight Advancement Table** printed
+on the same page, which starts at **level 4** ("Novice of Roses") — the
+same kind of hard-table-over-loose-prose resolution used for the p.18/p.19
+Sword erratum above. `rose_eligible` uses `level>=4` accordingly, the exact
+parallel of how Sword's own "2d level... XP to gain 3d level" prose
+resolves to (and is confirmed by) its own table starting at level 3.
 
 **Deliberate simplification**: the book actually builds Knights of
 Solamnia on the **Cavalier** class (Unearthed Arcana), not Fighter — this
@@ -837,17 +867,17 @@ stored in `GameState::character` and never reassigned after that; pressing
   (Rods/Staves/Wands, Crystals and Gems, Miscellaneous Magic) if wanted
   later — see "Magic items" above for why the chapter's unique named
   artifacts specifically stay out of scope.
-- **Rose Knights, for real**: Sword shipped at Milestone 53 (see "Knights
-  of Solamnia" above); Rose still needs its own XP threshold, ability
-  minimums (Str 15/Int 10/Wis 13/Dex 12/Con 15 — visually confirmed on
-  p.19 during Milestone 53's research, see "Sourcing note: a book erratum"
-  above), and witnessed-quest content, the same shape of work Sword just
-  went through.
 - **Sword Knight's real healing/foresight/clerical-spell abilities and
-  weekly fasting/meditation ritual** (p.19-20): not modeled, same
+  weekly fasting/meditation ritual** (p.18-19): not modeled, same
   "flavor-only, needs a fuller spell system" treatment already given to
   Wizard Robe spell-sphere restrictions below — this project's Sword
-  Knights get the title only, not the book's limited-cleric powers.
+  Knights get the title only, not the book's limited-cleric powers. Rose
+  Knights (shipped alongside Sword, see "Knights of Solamnia" above) get
+  the same treatment — the book's Rose-specific perks (faster weapon/
+  nonweapon proficiency advancement past what Crown/Sword already grant)
+  aren't modeled either, since this project has no weapon-proficiency
+  system for either order to plug into (see "Deliberate simplification"
+  above).
 - **Wizard Robe mechanics, for real**: Robe assignment by alignment at
   3rd level is implemented (see "Leveling / experience" above); robe-based
   spell-sphere restrictions and moon-phase (Solinari/Lunitari/Nuitari)

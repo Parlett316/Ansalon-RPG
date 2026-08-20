@@ -19,7 +19,7 @@ GRID
 #......................................#
 #...........................B..........#
 #......................................#
-#..........Y..S..L.....................#
+#..........Y..S..L..R..................#
 #......................................#
 #......................................#
 #......................................#
@@ -32,17 +32,21 @@ POI K "A Garrison Knight" He stands his post with a Solamnic formality that hasn
 POI Y "The Muster Yard" A wide stretch of open ground where the garrison forms up at dawn, and where the Order still gathers whenever it has cause to name a new Knight in fact as well as blood. Whether that cause comes often or rarely seems to depend entirely on which years you ask about.
 POI S "A Sword Knight" A knight past his own Order of the Crown watches the Muster Yard the way a man watches ground he's buried friends on, sword-belt scarred where insignia has been unpicked and resewn more than once. He doesn't miss much.
 POI L "A Knight of the Circle" An older knight keeps his own counsel near the edge of the Yard, plate scarred by campaigns his juniors only know as stories. He has the bearing of a man used to being listened to, and the patience of one who rarely bothers speaking unless there's a reason.
+POI R "A Rose Knight" A woman stands apart even from the other Knights, watching the Yard with a stillness none of them quite manage. Nothing about her armor announces rank, but nothing about the way the others give her room needs to.
 TALK K "Stand where I can see you, and state your business." He doesn't lower his spear, exactly, but he doesn't raise it either. "Supplies from Vingaard stopped coming weeks ago. We've gotten particular about visitors since."
 TALK_AGAIN K "Still standing, are we both. That's no small thing, up here, these days."
 TALK S He looks you over without hurry -- boots, sword-wear, the particular set of shoulders that says whether you've actually bled for anything yet. Whatever he sees, he keeps to himself for now.
 TALK_AGAIN S The Sword Knight gives you the same unhurried appraisal as before. He hasn't decided anything he's willing to say out loud.
 TALK L He studies you the way a smith studies a blade before deciding whether it's worth the hammer. "Sword-rank isn't nothing," he says, "but the Circle doesn't convene for a title. It convenes for service it can point to."
 TALK_AGAIN L The Knight of the Circle inclines his head, unhurried as ever. Whatever he's weighing, he's still weighing it in his own time.
+TALK R She doesn't offer a greeting, only a measuring look that takes rather longer than the Sword Knight's own. Whatever she's weighing, it isn't armor or bearing.
+TALK_AGAIN R The Rose Knight's attention returns to the Yard rather than to you, unhurried as before. She hasn't finished weighing whatever she started weighing.
 SAY_IF K fighter The knight's formal posture eases, just slightly -- soldier recognizing soldier. "Then you'll understand why I'd rather trust a blade's read of this siege than a stranger's optimism. Whatever comes through that gate, I'm glad it won't only be knights meeting it."
 TOPIC K "The Knights' Trial" The knight's voice drops, careful. "You'll have heard by now -- Lord Derek Crownguard called one of ours a coward before the whole assembly at Sancrist, and very nearly made it stick. Lord Gunthar found a door the Measure left open and walked him through it before Derek could nail it shut." He shakes his head. "Split the Order clean in half, that trial did. Half of us are still deciding which half we're standing in."
 TOPIC K "Holding the Pass" The knight doesn't look away from the northern approach. "Palanthas stands or falls on whether this Tower does. That's not boast, it's arithmetic -- there's no other way through these mountains a dragonarmy could use. We hold it as long as we're able, and we don't discuss out loud what happens to Vingaard's people if we're not able long enough."
 QUEST K word_for_the_tower
 QUEST S named_in_fact
 QUEST L solamnic_armor
+QUEST R measure_of_roses
 TIMELINE_ANCHOR Y
 END

@@ -96,6 +96,10 @@ struct Quest {
     // item-reward mapping (see docs/QUEST_NOTES.md's "Deliberately not in
     // v1" for why that's still out of scope).
     bool rewardSolamnicArmor = false;
+    // True if turning this quest in promotes the character to Knight of
+    // the Rose (character::KnightOrder::Rose) -- same "named, specific,
+    // compile-time flag" shape as rewardKnightSword above.
+    bool rewardKnightRose = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and

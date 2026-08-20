@@ -85,6 +85,14 @@ REWARD_SOLAMNIC_ARMOR              optional, bare flag (no argument) --
                                   REWARD_KNIGHT_SWORD above, not a generic
                                   item-reward mapping -- see "Deliberately
                                   not in v1" below.
+REWARD_KNIGHT_ROSE                 optional, bare flag (no argument) --
+                                  promotes the character to
+                                  character::KnightOrder::Rose on turn-in;
+                                  see "Order of the Rose advancement"
+                                  below. Exactly one quest (measure_of_roses)
+                                  carries it. Same "named, specific,
+                                  compile-time flag" shape as
+                                  REWARD_KNIGHT_SWORD above.
 END
 ```
 
@@ -315,6 +323,54 @@ needs one.
 
 ## Shipped quests
 
+### Order of the Rose advancement: `measure_of_roses`
+
+The capstone of the Knights of Solamnia chain: Crown (character creation) →
+Sword (Milestone 53's `named_in_fact`) → Rose. Offered by a new POI at
+`data/zones/high_clerist_tower.txt` — "A Rose Knight" (`R`), on the same
+Muster Yard row as `Y`/`S`/`L`, since that's already established as where
+the Order convenes and `K`/`S`/`L` are all already spoken for. Gated by
+`REQUIRE rose_eligible` (`c.knightOrder == character::KnightOrder::Sword &&
+c.level >= 4 && character::meetsKnightOfRoseRequirements(c.scores)`), the
+same compound-condition shape as `sword_eligible` — see
+`docs/CHARACTER_NOTES.md`'s "Entry requirements for Knight of the Rose" for
+the full sourcing, including a second book inconsistency this milestone's
+research turned up (resolved via the Rose Knight Advancement Table itself,
+which starts at level 4) alongside the p.18/p.19 Sword erratum Milestone 53
+already found. Objectives mix `VISIT plains_of_dust` (reusing the same
+"farthest mapped location from the Tower" target `named_in_fact` already
+established — the book's 500-mile/30-day journey requirement is *identical*
+text between Sword and Rose, so reusing the location is the honest choice)
+and `SLAY ogre 1` (the book's "defeat of an evil opponent of equal or
+higher level... without killing the foes" — Ogre is the highest-XP,
+clearly-evil single monster in the roster, deliberately distinct from
+Sword's Baaz duel; this project's standing "knocked out, not killed" combat
+convention satisfies the no-killing clause for free, same as Sword's). The
+book's other four elements (one test of wisdom, three of generosity, three
+of compassion, restoring something lost) have no corresponding trackable
+state, same as Sword's four — narrated in `COMPLETE` text only, the same
+"narrated, not tracked" treatment. Turning it in sets `REWARD_KNIGHT_ROSE`,
+promoting `knightOrder` to Rose; reward is 100 steel/250 XP, above Sword's
+60/150 — Rose is the capstone rank. `SaveGame.cpp`'s `KNIGHTORDER` bound
+moved from 3 to 4, append-only-safe, same precedent as the 2→3 move at
+Milestone 53. A new `nextLevel == 4 && knightOrder == Sword` flavor line in
+`Leveling.cpp` foreshadows eligibility, mirroring the existing level-3
+Crown→Sword line. Verified via a throwaway self-test (ability-score
+boundary cases for `meetsKnightOfRoseRequirements`, confirming Sword's own
+minimums don't accidentally satisfy Rose's higher bar; `QuestLoader`
+parsing the real, now-eight-quest `data/quests.txt` including
+`REWARD_KNIGHT_ROSE`'s fail-fast trailing-argument case; a `SaveGame`
+round-trip covering the widened `KNIGHTORDER` bound, plus confirming the
+old bound's exclusion boundary — `KNIGHTORDER 4` — still fails to load), a
+clean `/W4` rebuild, a direct check that the user's real save (the
+executable-relative `save.txt` next to the built exe, not the stale
+repo-root copy — see `docs/GOTCHAS.md`) still loads cleanly under the new
+`KNIGHTORDER` bound, and the standard piped smoke test. Interactive
+verification (reaching level 4 as a Sword Knight, confirming the Rose
+Knight only offers the quest once eligible, completing the VISIT+SLAY mix)
+still needs the user's own keyboard, the same `_getch()` limitation flagged
+for every quest milestone so far.
+
 ### Dragonlance magical items: `solamnic_armor`
 
 The follow-up to Milestone 53's Sword advancement, and this project's
@@ -519,22 +575,17 @@ above, and separately a real crash bug (unrelated to quests — see
 ## Extending this later
 
 Milestone 52 shipped the ordinary-NPC content pass, Milestone 53 shipped
-Knight of the Sword advancement, and the Dragonlance magical items
-milestone shipped `solamnic_armor` (see "Shipped quests" above) — VISIT,
-TALK, a mixed-kind quest, REQUIRE conditions beyond `knight`, and now an
-item-granting reward are all proven live in real, played content. Two
-items from the original backlog are still open:
+Knight of the Sword advancement, the Dragonlance magical items milestone
+shipped `solamnic_armor`, and the Order of the Rose milestone shipped
+`measure_of_roses`, completing the Crown→Sword→Rose chain (see "Shipped
+quests" above) — VISIT, TALK, a mixed-kind quest, REQUIRE conditions beyond
+`knight`, and an item-granting reward are all proven live in real, played
+content. One item from the original backlog is still open:
 
 - **`DELIVER`/item-possession objectives**, if a future quest concept
   genuinely needs one rather than being addable with VISIT/TALK/SLAY (as
   every quest shipped so far has been) — see "Deliberately not in v1"
   above for what this would actually require.
-- **Order of the Rose advancement**, the natural follow-up to Sword now
-  that the pattern exists — see `docs/CHARACTER_NOTES.md`'s "Rose Knights,
-  for real" for the real, already-researched XP/ability-score
-  requirements. Not entangled with `solamnic_armor` above, which
-  deliberately gates on the already-shipped Sword rank instead of waiting
-  on Rose.
 - **More of DLA's "Magical Items of Krynn" chapter** (Rods/Staves/Wands,
   Crystals and Gems, Miscellaneous Magic) is real, sourced, and
   unused — see `docs/CHARACTER_NOTES.md`'s "Magic items" for what's

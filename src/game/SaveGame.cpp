@@ -265,9 +265,9 @@ GameState SaveGame::load(const std::string& path) {
         } else if (keyword == "ALIGNMENT") {
             state.character.alignment = parseEnumInt<character::Alignment>(path, lineNumber, rest, "ALIGNMENT", 9);
         } else if (keyword == "KNIGHTORDER") {
-            // KnightOrder has 3 values (None, Crown, Sword) -- see character/Knighthood.h.
+            // KnightOrder has 4 values (None, Crown, Sword, Rose) -- see character/Knighthood.h.
             state.character.knightOrder =
-                parseEnumInt<character::KnightOrder>(path, lineNumber, rest, "KNIGHTORDER", 3);
+                parseEnumInt<character::KnightOrder>(path, lineNumber, rest, "KNIGHTORDER", 4);
         } else if (keyword == "ROBE") {
             // RobeColor has 4 values (None, White, Red, Black) -- see character/WizardOrder.h.
             state.character.robeColor = parseEnumInt<character::RobeColor>(path, lineNumber, rest, "ROBE", 4);

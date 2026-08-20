@@ -6,6 +6,7 @@ const char* knightOrderName(KnightOrder order) {
     switch (order) {
         case KnightOrder::Crown: return "Knight of the Crown";
         case KnightOrder::Sword: return "Knight of the Sword";
+        case KnightOrder::Rose: return "Knight of the Rose";
         case KnightOrder::None: return "";
     }
     return "";
@@ -37,6 +38,11 @@ bool meetsKnightOfCrownRequirements(RaceId race, SubraceId /*subrace*/, const Ab
 bool meetsKnightOfSwordRequirements(const AbilityScores& scores) {
     return scores.strength >= 12 && scores.intelligence >= 9 && scores.wisdom >= 13 &&
            scores.dexterity >= 9 && scores.constitution >= 10;
+}
+
+bool meetsKnightOfRoseRequirements(const AbilityScores& scores) {
+    return scores.strength >= 15 && scores.intelligence >= 10 && scores.wisdom >= 13 &&
+           scores.dexterity >= 12 && scores.constitution >= 15;
 }
 
 } // namespace character
