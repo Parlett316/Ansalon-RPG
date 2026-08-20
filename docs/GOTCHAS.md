@@ -197,6 +197,19 @@ you hit something surprising — that's the whole point of it existing.
   `docs/COMBAT_NOTES.md` for why (no Monstrous Compendium/Monster Manual
   in this project's reference library). Don't assume they're
   book-verified the way class/race numbers are.
+- **`character::roll(count, sides)` used to crash on `count == 0`,
+  regardless of `sides`** — it unconditionally built
+  `std::uniform_int_distribution<int> die(1, sides)` before ever checking
+  `count`, so `roll(0, 0)` (`STEEL 0 0 0`, "this monster drops no steel" —
+  Timber Wolf, Skeleton, Zombie) violated the distribution's own `min <=
+  max` precondition and crashed the whole process the instant one of
+  those three was the killing blow. Fixed at the root (`count <= 0`
+  returns `0` before constructing anything) — see
+  `docs/COMBAT_NOTES.md`'s "Bug fixed" section. If you're ever
+  hand-rolling a new `uniform_int_distribution` somewhere instead of going
+  through `character::roll`, this is the exact mistake to avoid: check
+  the count/range is non-empty *before* constructing the distribution,
+  not after.
 
 ## Save/load (`game::SaveGame`)
 

@@ -302,6 +302,33 @@ sourcing (PHB Tables 14/20/23/25 for XP, Table 53 for THAC0, Table 60 for
 saves, now all the way to level 20) and what's still deferred (Fighter's
 extra attacks per round).
 
+## Bug fixed: killing a no-steel-drop monster crashed the game
+
+Timber Wolf, Skeleton, and Zombie all have `STEEL 0 0 0` in
+`data/monsters.txt` (deliberately -- an animal or the animated dead
+carries no coin). Killing any of them called
+`character::roll(monster.steelDiceCount, monster.steelDiceSides)` as
+`roll(0, 0)`, and `roll` unconditionally constructed
+`std::uniform_int_distribution<int> die(1, sides)` before ever looking at
+`count` -- `die(1, 0)` violates that distribution's own precondition
+(`min <= max`) and crashed the whole process with a debug assertion,
+every single time, for as long as those three monsters have existed in
+the roster. Reported by the user with a screenshot
+(`Bugs/errorinbattle.png`, now resolved) mid-fight against a Timber Wolf.
+
+Fixed at the root in `character::roll` (`character/Dice.cpp`): `count <=
+0` now returns `0` immediately, before constructing any distribution --
+"roll zero dice" is a real, meaningful call (exactly what `STEEL 0 0 0`
+means), not a caller error, so it needs to be a safe no-op rather than
+something every call site has to remember to guard against. `sides <= 0`
+with a nonzero count is left to assert -- that would be a genuine data
+bug elsewhere (no monster's `HP`/`DAMAGE` lines have this problem; checked
+directly against every line in `data/monsters.txt`) and should still fail
+loudly rather than be silently masked. Verified via a throwaway self-test
+(`roll(0, 0)`/`roll(0, 8)`/`roll(0, 20)` all return 0 without crashing;
+`roll(1, 8)`/`roll(3, 6)` stay in range across 500 rolls each) and a
+clean `/W4` rebuild.
+
 ## Rendering
 
 `render::MapRenderer::drawCombatFrame` (new) shows both combatants'

@@ -2,6 +2,22 @@
 
 Nothing in flight.
 
+Bug fix (post-Milestone 51): killing a monster with `STEEL 0 0 0` (Timber
+Wolf, Skeleton, Zombie -- animals/undead that carry no coin) crashed the
+whole game with a debug assertion in `<random>`. Root cause:
+`character::roll(count, sides)` constructed `uniform_int_distribution<int>
+die(1, sides)` unconditionally, before ever checking `count`, so
+`roll(0, 0)` violated the distribution's own `min <= max` precondition.
+Reported by the user via `Bugs/errorinbattle.png` (a real Timber Wolf
+fight -- their save also confirmed the quest system already working in
+practice: `road_wolves` accepted from the Notice Board, a kobold kill
+already tracked). Fixed in `character/Dice.cpp`: `count <= 0` now returns
+`0` before constructing anything. Verified via a throwaway self-test
+(`roll(0, 0)`/`roll(0, 8)`/`roll(0, 20)` return 0, ordinary rolls stay in
+range across 500 iterations each) and a clean `/W4` rebuild. See
+`docs/COMBAT_NOTES.md`'s "Bug fixed" section and `docs/GOTCHAS.md`'s
+Combat section.
+
 Milestone 51 (quest system engine) shipped: the first version of a quest
 system, built as glue over systems that already existed rather than new
 machinery -- `VISIT`/`TALK` objectives are pure queries over

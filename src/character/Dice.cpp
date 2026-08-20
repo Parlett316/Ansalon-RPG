@@ -18,6 +18,16 @@ std::mt19937& rng() {
 } // namespace
 
 int roll(int count, int sides) {
+    // "Roll zero dice" is a real, meaningful call (e.g. data/monsters.txt's
+    // STEEL 0 0 0 for a monster that drops no steel -- Timber Wolf,
+    // Skeleton, Zombie), not a caller error -- it must return 0 without
+    // ever constructing uniform_int_distribution, whose constructor
+    // requires min <= max. Constructing it unconditionally with sides
+    // possibly 0 crashed the game (debug assertion in <random>) the
+    // instant one of those monsters was killed. `sides <= 0` with a
+    // nonzero count is still a genuine data bug elsewhere and is left to
+    // assert -- only the "no dice at all" case is special-cased here.
+    if (count <= 0) return 0;
     std::uniform_int_distribution<int> die(1, sides);
     int total = 0;
     for (int i = 0; i < count; ++i) {
