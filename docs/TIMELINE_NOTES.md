@@ -1164,11 +1164,75 @@ already-shipped content.
 
 **The Dragon Highlords backlog gets more interesting, not less.** Laurana's
 `high_clerist_tower 81 81` and `neraka 105 107` windows both now put
-Kitiara on-page in her dialogue (still unnamed, per the still-open design
-question in `docs/MILESTONES.md`'s NEXT UP) from the receiving end of two
-of Kitiara's defining scenes. Whenever that milestone is picked up, both
-women's existing content is worth rereading together before deciding how
-Kitiara herself gets handled.
+Kitiara on-page in her dialogue (still unnamed here) from the receiving
+end of two of Kitiara's defining scenes. Kitiara herself is handled at
+Milestone 50, below.
+
+## Kitiara (Milestone 50)
+
+The design question this section's neighbor above left open — does an
+adversarial character belong on the same friendly talk/topic picker the
+8 Heroes use, or stay retrospective dialogue inside an existing Hero's
+own `TOPIC` — was raised via `AskUserQuestion` and answered: retrospective
+dialogue, the same technique already used for Raistlin's Neraka reunion
+via Caramon's `TOPIC`, and for Kitiara's own Sturm-kill via Sturm's/
+Flint's/Tasslehoff's/Laurana's no-SAY-adjacent windows. **No new
+`CHARACTER kitiara` block, no new `PRESENCE`, no new `LOCATION`** — she
+never becomes directly talkable.
+
+**Sourcing.** Three scenes, each directly re-read from a fresh
+`pdftotext -layout` extraction before writing anything:
+
+- `.research/dwn_full.txt` lines 15370-15492 — Kitiara unmasks herself to
+  Laurana by name at the High Clerist Tower, just after killing Sturm:
+  taunts her, mentions having seen Tanis "two days ago" in Flotsam, takes
+  the dragonlance as "a prize she's heard reports of," then drops it back
+  at Laurana's feet from dragonback: "Keep it. You're going to need it!"
+  Sources Laurana's expanded `TOPIC "What the Dragon Highlord Said"` (now
+  naming her) and new `TOPIC "The Dragonlance Returned"`.
+- `.research/dosd_full.txt` lines 13440-13530 — the Crown of Power
+  confrontation at Neraka: Kitiara asks Tanis to crown her; he crowns
+  himself instead, tests her word by making her escort him and Laurana
+  out under threat of forfeiting the Crown, and she keeps it despite
+  bitter anger, before Laurana attacks Kitiara to break free. Sources
+  Tanis's new `TOPIC "The Crown of Power"`.
+- `.research/dosd_full.txt` lines 1340-1412 — a Blood Sea storm scene
+  where Raistlin and Caramon both recognize Kitiara (their older
+  half-sister, confirmed at `.research/dat_full.txt` line 11494) riding
+  Skie; she hesitates, then the storm separates them before anything
+  resolves. No `LOCATION` models a sea voyage, so the scene itself
+  can't be staged, but it's valid grounding for a Hero's own retrospective
+  `TOPIC` — the same technique already used for Tanis's unstaged Flotsam
+  material in `TOPIC "A Debt He Won't Name"` (see the Kalaman write-up
+  above). Sources Caramon's new `TOPIC "His Sister"`.
+
+**Naming.** Kitiara is named in all of the above. The blanket "keep major
+recurring canon characters unnamed" precedent is already retired as of
+Milestone 49 (see "Named vs. off-stage canon characters" near the top of
+this file) — what was left open was only whether she gets her own
+`CHARACTER` block, which this milestone answers no to. Every scene
+sourced here is one where a tracked Hero says or hears her name directly
+in the source text (Tanis shouts "No, Kitiara—", Raistlin cries
+"Kitiara!", she introduces herself to Laurana by name); scrubbing the
+name back out would fight the source rather than exercise restraint.
+
+**Deliberately not touched.** Tanis's existing `TOPIC "A Debt He Won't
+Name"` at `kalaman 100 100` keeps its title and stays word-for-word as
+written. Unlike the Fizban/Laurana anonymous-tag fixes (narrator-level
+anonymity, e.g. "a golden-haired elfwoman"), this is Tanis himself
+deliberately declining to say her name out of guilt — an in-character
+choice, not a placeholder to fix. The player only learns her name later,
+from Tanis's own mouth, in the new Neraka `TOPIC` above, which lands
+better if Kalaman stays coy. Ariakas and Lord Soth remain off-stage; no
+tracked Hero witnesses either one's scenes with Kitiara (her own
+confrontation with Lord Soth, and her taking up the recovered Crown
+afterward at `.research/dosd_full.txt` lines 14600-14642, both happen
+with Kitiara alone). Verminaard, Feal-thas, and Fewmaster Toede's
+off-stage treatment was already confirmed correct by the Milestone 48/49
+research pass and needed no further work.
+
+Verified via the piped smoke test (pure data + prose edits, no new
+grammar, no throwaway self-test needed, same call as Milestones 47-49).
 
 ## Adding a new character or event
 

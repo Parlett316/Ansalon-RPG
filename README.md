@@ -81,7 +81,11 @@ Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
 forces the dragon orb to its limit and delivers Sturm's eulogy the day
 he dies at the High Clerist Tower, and rises to command the war itself
 as the Golden General before a final captivity and reunion at Neraka.
-Stepping inside a zone carries the encounter through too: find them
+Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
+captivity, stays off the talk/topic picker by design — her defining
+scenes surface as retrospective dialogue inside Tanis's, Laurana's, and
+Caramon's own `TOPIC` entries instead. Stepping inside a zone carries
+the encounter through too: find them
 gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
 Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine
 entrance at Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the

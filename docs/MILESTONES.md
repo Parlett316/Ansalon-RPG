@@ -619,6 +619,35 @@ this stays authoritative.
     warnings) and the piped smoke test; no throwaway self-test needed
     (pure data, no new grammar). See `docs/TIMELINE_NOTES.md`'s "Laurana"
     section.
+50. Kitiara -- resolves the Dragon Highlords backlog item. A design
+    question the prior research pass had left open (adversarial character
+    on the same friendly talk/topic picker the 8 Heroes use, or
+    retrospective dialogue inside an existing Hero's own `TOPIC`) was
+    raised via `AskUserQuestion` and answered: retrospective dialogue.
+    No new `CHARACTER kitiara` block, no new `PRESENCE`, no new
+    `LOCATION` -- she never becomes directly talkable. Four content
+    changes, each re-sourced directly from a fresh `pdftotext -layout`
+    extraction: Tanis's new `TOPIC "The Crown of Power"` at
+    `neraka 105 107` (the Crown-of-Power confrontation, where he crowns
+    himself instead of her and tests her word); Laurana's `TOPIC "What
+    the Dragon Highlord Said"` at `high_clerist_tower 81 81` gets a
+    light-touch name edit (same technique as the Fizban/Laurana
+    anonymous-tag fixes) plus a new second `TOPIC "The Dragonlance
+    Returned"`; Caramon's new `TOPIC "His Sister"` at `neraka 105 107`
+    (a Blood Sea storm scene where he and Raistlin both recognize their
+    half-sister, unstaged since no `LOCATION` models a sea voyage, same
+    retrospective-material technique as Tanis's own unstaged Flotsam
+    content). Kitiara is named throughout, since the blanket
+    "keep major recurring canon characters unnamed" precedent was already
+    retired at Milestone 49 and every sourced scene has a tracked Hero
+    saying or hearing her name directly in the source text. Tanis's
+    existing `TOPIC "A Debt He Won't Name"` at `kalaman 100 100` was
+    deliberately left untouched -- an in-character choice not to name
+    her, not a narrator placeholder. Ariakas and Lord Soth remain
+    off-stage; no tracked Hero witnesses their scenes with Kitiara.
+    Verified via the piped smoke test; no throwaway self-test needed
+    (pure data, no new grammar). See `docs/TIMELINE_NOTES.md`'s "Kitiara"
+    section.
 
 ## NEXT UP
 
@@ -626,26 +655,11 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Dragon Highlords** — mostly validates the existing restraint: Verminaard,
-   Feal-thas, and Fewmaster Toede all confirmed to have no real
-   talk-shaped on-page material, so the existing off-stage treatment was
-   correct and needs no change. Kitiara is the one exception — genuine
-   face-to-face dialogue with Tanis lands inside the existing
-   `neraka 105 107` window, and Milestone 49 (Laurana) added two more
-   scenes that put her on-page in someone else's dialogue
-   (`high_clerist_tower 81 81`, `neraka 105 107` again) — but before
-   writing anything, this needs a design decision the research didn't
-   resolve: whether an adversarial character belongs on the same friendly
-   talk/topic picker the 8 Heroes use, or should stay retrospective
-   dialogue inside an existing Hero's own `TOPIC` (the technique already
-   used for Raistlin's Neraka reunion via Caramon, and for Kitiara's own
-   Sturm-kill via Sturm's and now Laurana's no-SAY-adjacent windows).
-   Raise this via `AskUserQuestion` before scoping content.
-2. **Terrain-specific monster pools** — encounter *chance* now varies by
+1. **Terrain-specific monster pools** — encounter *chance* now varies by
    terrain (Milestone 27), but which monster you fight is still
    uniform-random regardless of terrain. See `docs/COMBAT_NOTES.md`'s
    "Extending this later."
-3. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project
