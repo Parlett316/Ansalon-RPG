@@ -36,8 +36,6 @@ Laurana section's forward pointer), `docs/MILESTONES.md` (new Milestone
 `README.md`'s Status paragraph. No `docs/ZONE_NOTES.md` changes needed --
 nothing there became inaccurate.
 
-**Not yet committed** -- ask the user before committing.
-
 Next: `docs/MILESTONES.md`'s "NEXT UP" has two live options left:
 
 1. **Terrain-specific monster pools** -- encounter chance already varies
