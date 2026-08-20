@@ -147,3 +147,12 @@ TOWN
 POS 167 85
 DESC A wheel-shaped city of white marble ringing the Bay of Branchala, its dwarven-cut avenues radiating out from a central hub to the sea gates and the Old City Wall. The only deep-water port to survive the Cataclysm intact -- and, somewhere past its rooftops, a single black tower the whole city has learned not to look at.
 END
+
+LOCATION godshome
+NAME Godshome
+REGION Taman-Busuk
+TERRAIN sacred-mountain-hollow
+GLYPH G
+POS 267 139
+DESC A hidden, barren bowl deep in the Khalkist Mountains, reached only through a narrow cleft in the rock -- not the ruined city that shares its name on the merchants' maps, but an older, holier place, said to have been sacred before there was ever a city to abandon. At its center stands a perfect ring of ancient standing stones.
+END

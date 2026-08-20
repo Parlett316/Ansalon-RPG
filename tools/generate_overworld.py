@@ -117,6 +117,7 @@ ROAD_PAIRS = [
     ("solace", "silvanesti"),
     ("high_clerist_tower", "kalaman"),
     ("high_clerist_tower", "palanthas"),
+    ("kalaman", "godshome"),
 ]
 
 

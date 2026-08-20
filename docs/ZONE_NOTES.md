@@ -626,6 +626,44 @@ Vingaard Keep — correctly out of scope here, same "don't invent to fill a
 gap, and don't drag in an off-site subplot" restraint as Dargaard Keep
 staying unmodeled at Kalaman.
 
+## Godshome (Milestone 45)
+
+`data/zones/godshome.txt` — a 40×16 grid, same footprint as every other
+top-level zone despite the "small, self-contained" framing (confirmed by
+measuring every existing zone before writing this one: "small" means a
+sparse POI count, not a smaller grid — see `docs/MAP_NOTES.md`). Three
+POIs only, matching the source's own "overwhelming desolation and
+emptiness" (*Dragons of Spring Dawning*): the Narrow Cleft (`T`, the
+crawl-through tunnel entrance), the Circle of Standing Stones (`C`,
+flavor-only), and Where Flint Fell (`F`).
+
+**No full `#` border, unlike Palanthas/Kalaman's walled-room grids** —
+same open-floor choice Xak Tsaroth already made, since this is a natural
+mountain bowl under open sky, not a room with walls. `Zone::tileCodeAt`'s
+existing bounds-safe out-of-range behavior (returns `#`) still keeps the
+edges a hard boundary without anything drawn there.
+
+**`TIMELINE_ANCHOR` is `F`, not `C`.** The book's own geography puts
+Flint's collapse and the farewell scene on the far side of the bowl from
+the standing stones — the circle is where his body is carried *after*,
+not where the scene the player finds happens. `C`'s own description
+(the black, star-filled pool) is deliberately evergreen, same "true
+regardless of when a player visits" treatment as the Tower's Muster Yard
+and Silvanesti's Tower of the Stars — nothing about it changes based on
+whether day 103 has passed.
+
+**Not the same Godshome as the "Ruins of Godshome" a few days' walk
+northwest on the reference map** — a real, separate, legible label
+confirmed directly on the map image, matching Tasslehoff's own
+"no, not that Godshome" line in the source text. The ruined city is not
+built; it exists only as one flavor beat in `data/timeline.txt`'s
+dialogue, not a second `LOCATION`.
+
+Berem and Fizban (the old mage) are both present in the source scene but
+stay unnamed in this zone's text and in the Heroes' dialogue, same
+off-stage-major-character precedent as Kitiara/Laurana/Alhana/Derek/
+Gunthar — see `docs/TIMELINE_NOTES.md`.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

@@ -453,6 +453,40 @@ this stays authoritative.
     same as Kalaman), and the piped smoke test. See `docs/MAP_NOTES.md`,
     `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
 
+45. Godshome -- the fourth *Dragons of Spring Dawning* content milestone,
+    and Flint Fireforge's death: the last living member of the party's
+    original trio (with Tanis and Tasslehoff) since Milestone 1. A new
+    `LOCATION godshome` (`POS 267 139`, `REGION Taman-Busuk`, placed by
+    the first fully-legible reference-map read yet -- no pixel-bias
+    correction needed, see `docs/MAP_NOTES.md`) and a new, deliberately
+    sparse 40x16 zone (three POIs: the Narrow Cleft entrance, the Circle
+    of Standing Stones, and Where Flint Fell -- the `TIMELINE_ANCHOR` --
+    see `docs/ZONE_NOTES.md`). Sourced from a fresh `pdftotext -layout`
+    extraction of the actual Godshome chapter: Flint's death is a heart
+    attack, not violence, foreshadowed earlier the same chapter and
+    misread by Tanis in the moment as an attack by Berem (who is actually
+    catching Flint as he falls) -- Tanis stabs the immortal Berem first in
+    blind grief-rage, the first mention in this project of his nature as
+    "the Everman," established only as far as the scene requires. A
+    single-day `PRESENCE godshome 103 103` window was added to Tanis,
+    Caramon, Flint, and Tasslehoff (the four Heroes confirmed present;
+    Goldmoon and Riverwind are confirmed staying behind at Kalaman in the
+    same scene, Raistlin already resolved separately at Palanthas) --
+    Flint's window has no `SAY`, the third use of this project's
+    established "no SAY = scripted death" device after Sturm and
+    Raistlin, and his schedule's permanent last entry. The old mage who
+    carries Flint's body away (Fizban, in the source text) and Berem both
+    stay unnamed, same off-stage-major-character precedent as Kitiara/
+    Laurana/Alhana/Derek/Gunthar. The `("kalaman", "godshome")` road
+    addition required regenerating `data/overworld.grid`; Ice Wall's
+    46-tile glacier patch was captured before regenerating and reapplied
+    afterward, same procedure as every prior `ROAD_PAIRS` change since
+    Milestone 37. Verified via a throwaway self-test (zone/location load,
+    `Timeline::presentAt` day-102/103/104 boundary correctness, Flint's
+    empty `SAY`), a clean rebuild (zero new warnings, no `.cpp`/`.h`
+    changes -- pure data content), and the piped smoke test. See
+    `docs/MAP_NOTES.md`, `docs/ZONE_NOTES.md`, `docs/TIMELINE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -469,10 +503,11 @@ session's work.
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
 
-**Continuing *Dragons of Spring Dawning* after Palanthas (Milestone 44):**
-Godshome (small, self-contained -- Flint's death) and Neraka (the climax,
-fortress-zone idiom like Pax Tharkas/Ice Wall) are the remaining natural
-candidates. Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and
-Sanction are recommended to stay flavor-only dialogue rather than walkable
-zones -- see `docs/MILESTONES.md` Milestone 39 and `docs/TIMELINE_NOTES.md`
-for the full reasoning.
+**Continuing *Dragons of Spring Dawning* after Godshome (Milestone 45):**
+Neraka (the climax, a fortress-zone idiom like Pax Tharkas/Ice Wall) is
+the natural next candidate -- Berem is now established as "the only road
+left into Neraka" (see `docs/TIMELINE_NOTES.md`'s Godshome section).
+Flotsam, Vingaard Keep, Dargaard Keep, sunken Istar, and Sanction are
+recommended to stay flavor-only dialogue rather than walkable zones -- see
+`docs/MILESTONES.md` Milestone 39 and `docs/TIMELINE_NOTES.md` for the
+full reasoning.

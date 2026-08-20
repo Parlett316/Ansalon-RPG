@@ -739,6 +739,73 @@ Caramon's own gap between `silvanesti 25 30` and `kalaman 100 100` stays
 unmodeled, same "don't invent to fill a gap" restraint as every prior
 time-skip in this file.
 
+## Godshome (Milestone 45)
+
+The third scripted-death `PRESENCE` window in this file, after Sturm
+(Milestone 38) and Raistlin's ambiguous collapse (Milestone 44) — this
+time sourced from a fresh `pdftotext -layout` extraction of *Dragons of
+Spring Dawning* itself (lines ~9570-10450), not summary-level research.
+
+**Who's there, confirmed by direct text search.** Tanis, Caramon,
+Tasslehoff, and Flint travel on together from Kalaman (lines 9576-9710
+confirm this exact group, plus Tika/Fizban/Berem, none of them tracked
+characters); Goldmoon and Riverwind are confirmed staying behind at
+Kalaman in the same farewell scene that sends the others onward (lines
+8580-8716: "Your work is done, my friend... Here our roads separate")
+— consistent with their `kalaman 100 100` window already being their
+schedule's last entry, unchanged by this milestone. Raistlin is
+separately in Palanthas, already resolved at Milestone 44.
+
+**Flint's death is a heart attack, not violence** — foreshadowed
+earlier the same chapter (Tanis noticing him rub his left arm, dismissed
+as "rheumatism," line 9599). He collapses chasing a trail; Berem — misread
+by Tanis, in blind grief-rage, as an attacker, and stabbed for it — was
+actually catching Flint as he fell (Flint's own account, lines 10014-10018:
+"this old heart of mine finally burst"). Berem heals instantly, the first
+mention in this project of his nature as "the Everman... died countless
+deaths, only to rise again" (line 10175) — established just enough for
+Tanis's own `godshome` dialogue to reference, not fully explained (his
+full Jasla/green-gemstone backstory, lines 10161-10420, stays out of scope
+for whenever Neraka itself is built). Flint dies peacefully afterward,
+surrounded by friends (lines 10010-10069) — gives Tasslehoff his helm,
+has a last exchange with Tanis. An old mage (left unnamed, same treatment
+as below) carries the body into a circle of standing stones and a black,
+star-filled pool, and both vanish (lines 10079-10143) — heavy
+foreshadowing of a divine identity, left exactly as ambiguous here as the
+source text leaves it.
+
+**Single-day window, `godshome 103 103`**, added to all four present
+Heroes immediately after their shared `kalaman 100 100` window — the
+whole scene (arrival, the chase, the death, departure) happens inside one
+afternoon in the source text ("leaving Godshome, never to see it again,"
+line 10446). Day 103 is a soft, disclosed-as-invented placement, same
+convention as every other date in this file — roughly the book's own "a
+long and weary day" of wandering (line 9709) then "the second day in the
+mountains" when Berem vanishes and Flint dies (line 9793), counted from
+the `kalaman 100 100` night departure.
+
+**Flint's window has no `SAY`** — third use of this project's established
+"no SAY = scripted death, not absence" device, and his schedule's final
+entry: no `PRESENCE` line exists for him anywhere after this one. Tanis,
+Caramon, and Tasslehoff each get full `SAY`/`SAY_AGAIN`/`TOPIC` content
+reacting to it (Tanis's grief-rage and guilt over Berem; Caramon's guilt
+at having lost track of Berem in the first place, distracted worrying
+about Raistlin; Tasslehoff's grief over the helm and reaching for the
+vanishing pool before Tanis stops him, lines 10037-10073/10144-10153) —
+their own three schedules simply end at `godshome` too, for now, same
+"don't invent to fill a gap" restraint as every prior stop that came
+before its sequel was built (Neraka, the next stop in the book and the
+next natural backlog candidate, is not modeled this milestone).
+
+**Berem and the old mage (Fizban, in the source text) both stay
+unnamed**, referenced only descriptively in the Heroes' own dialogue —
+same off-stage-major-character precedent as Kitiara, Laurana, Alhana
+Starbreeze, Derek Crownguard, and Lord Gunthar. The old mage's likely
+divine identity is real, load-bearing foreshadowing in the source but
+isn't surfaced at all here, consistent with how ambiguous/unresolved
+source-text beats are already treated elsewhere in this file (Raistlin's
+own fate, Lorac Caladon's).
+
 ## Adding a new character or event
 
 1. Add a `CHARACTER <id> ... END` block to `data/timeline.txt` (or a new

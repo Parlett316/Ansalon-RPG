@@ -282,6 +282,43 @@ west/south at roughly the same rows — worth knowing if a future placement
 in this same corner of the map needs to route around that pocket, since
 this road happened to clear it without any special handling.
 
+## Godshome (Milestone 45)
+
+Unlike every prior placement, the reference image turned out to be
+**directly legible at this corner of the map without any pixel-bias
+correction** — a wide crop around the Khalkist/Taman-Busuk mountains
+south of Kalaman showed "Godshome" as a real, standalone label,
+distinct from "Ruins of Godshome" roughly 15 grid units to its
+northwest, both sitting immediately next to "Neraka" inside a region
+clearly labeled "Taman-Busuk" — matching the book's own geography (and
+Tasslehoff's own "no, not that Godshome" line) exactly.
+
+Cropped and gridded (`crop_kalaman_calib.png`/`crop_kalaman_godshome_grid.png`
+in that session's scratchpad) the same "calibrated gridline overlay,
+cross-check against a known point" method as Kalaman/Palanthas, confirming
+Kalaman's own recorded `POS 262 73` still lands correctly on its map icon
+before trusting the new reading. The "Godshome" label itself reads at
+approximately grid **(267, 139)** — south of Kalaman across the Estwilde
+plains and deep into the Khalkist mountain range.
+
+Checked `data/overworld.grid` directly at that coordinate before writing
+anything: `^` (hills, walkable) — not one of the many `!` (Blood
+Sea-coded) tiles that blanket this entire mountainous region, the same
+pre-existing classification gap this file already flagged near the Tower
+(mountain shadow bucketed into the Blood Sea's color index during
+Phase 1's 16-color quantization). No nudge needed.
+
+**`("kalaman", "godshome")` added to `ROAD_PAIRS`** — nearest
+already-modeled location, both geographically (~66 grid units) and
+narratively (the Heroes' immediately-preceding stop). Same "invented road
+standing in for actual travel" disclosure as Silvanesti's griffon-flight
+road: the book's party makes this leg by brass dragon at night, not on
+foot. Ice Wall's 46-tile glacier patch was captured to a scratch file
+before regenerating and reapplied afterward, diff-confirmed identical (a
+Python set-equality check rather than a byte-for-byte file diff this
+time, same effective guarantee) — same procedure as every `ROAD_PAIRS`
+change since Milestone 37.
+
 ## Road 4-connectivity fix
 
 A player reported getting stuck at overworld tile `(174,106)`, unable to

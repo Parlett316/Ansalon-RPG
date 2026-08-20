@@ -44,7 +44,7 @@ launch rather than assuming a fixed size. The whole continent is a
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
-Silvanesti, Kalaman, Palanthas, ...) sit on that grid, most connected by roads baked
+Silvanesti, Kalaman, Palanthas, Godshome, ...) sit on that grid, most connected by roads baked
 into the terrain — Ice Wall is the one exception, a sea-locked ruin
 reachable only by arranging passage and crossing open water (see below) —
 and every one of them now has a walkable interior (Enter to step in) —
@@ -66,13 +66,16 @@ dragon-orb escape from the Blood Sea maelstrom lands him half-dead on the
 Great Library's steps — before reaching Kalaman for its Spring Dawning
 festival, while the rest of the surviving party washes ashore after a
 shipwreck and reunites with them there, just as a Dragon Highlord's
-ultimatum arrives — see `docs/TIMELINE_NOTES.md`. Stepping inside a zone
-carries the encounter through too: find them gathered at the Inn's
-fireplace, Haven's market, Xak Tsaroth's old well, Qualinost's Hall of the
-Sky, Darken Wood's faded trail, the Tharkadan mine entrance at Pax
-Tharkas, Tarsis's old dock, the Tower's Muster Yard, the Tower of the
-Stars in Silvanost, Kalaman's Market Square, or Palanthas's Great Library,
-not just standing on the overworld tile. You can actually talk to them
+ultimatum arrives — and then Tanis, Caramon, Flint, and Tasslehoff travel
+on together into the hidden mountain hollow of Godshome, where Flint dies
+of a sudden, peaceful heart failure — see `docs/TIMELINE_NOTES.md`.
+Stepping inside a zone carries the encounter through too: find them
+gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
+Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine
+entrance at Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the
+Tower of the Stars in Silvanost, Kalaman's Market Square, Palanthas's
+Great Library, or the bare stone at Godshome where Flint fell, not just
+standing on the overworld tile. You can actually talk to them
 (and to NPCs inside zones, like the Inn's Otik and Tika, Haven's Seeker
 Guard, Darken Wood's Forestmaster, the Tower's Garrison Knight, Ice Wall's
 own young Knight, Silvanost's Warder, Kalaman's City Watchman, and
