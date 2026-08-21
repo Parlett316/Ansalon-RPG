@@ -116,13 +116,14 @@ Knight's Runner in Tarsis to arrange passage, and you can then cross open
 water the same way you cross any other terrain (the ocean itself, not a
 separate travel screen), Blood Sea excepted. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
-skeletons, zombies, or Baaz/Kapak draconians, all sourced from a real
+skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
+(Icewall Glacier's walrus-men), all sourced from a real
 2e Monster Manual and, for the
-Krynn-specific draconians, Dragonlance Adventures (no orcs, since Krynn
+Krynn-specific draconians and Thanoi, Dragonlance Adventures (no orcs, since Krynn
 has none) — the chance of one varies by terrain, roads safest and forest/
 mountains riskiest, and which monster you draw leans toward that terrain too
 (Bugbears more common in hills and mountains, Gnolls never on salt flats,
-and so on) — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
+Thanoi more common on glacier, and so on) — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
 Cleric can also `m` to cast — a real multi-level spellbook now, 49 spells
 across Mage's 9 levels and Cleric's 7, sourced from an official TSR/SSI
 Dragonlance computer game manual and cross-checked against the actual PHB

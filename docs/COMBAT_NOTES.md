@@ -109,6 +109,65 @@ was chosen and checked with that constraint in mind.
   Lord/Sea variants sharing it): HD 2, AC 8, THAC0 19, damage 1-8, XP 65.
   Real Zombies are immune to sleep/charm/hold/death-magic/poison/cold,
   same flavor-only treatment as the Skeleton's immunities above.
+- **Bozak Draconian** (*Dragonlance Adventures*, TSR 2021, p.74): HD 4,
+  AC 2, two claws (1d4/1d4) or by weapon — simplified to a single 1d8
+  weapon hit, identical wording and treatment to the Baaz's own stat line.
+  **THAC0 isn't printed** (same gap as Baaz/Kapak) — derived as 17 from
+  this project's established HD-to-THAC0 pattern, the same bracket as
+  Ogre's real printed HD 4+1 → THAC0 17. Real spellcasting (as a
+  4th-level magic-user: burning hands, enlarge, magic missile, shocking
+  grasp, invisibility, levitate, stinking cloud, web), +2 saves, and 20%
+  magic resistance are all unmodeled (no monster-spellcasting system
+  exists for anyone yet), same restraint as Baaz's own unmodeled magic
+  resistance. Its bone-explosion death trait is likewise unmodeled, same
+  treatment as Kapak's acid pool.
+- **Sivak Draconian** (*Dragonlance Adventures*, TSR 2021, p.75): HD 6,
+  AC 1, two swords (1d6/1d6) plus an armored tail (2d6) — simplified to a
+  single 2d6 hit (its highest, most distinctive die), same "one
+  representative die" treatment as the Ghoul's claw/claw/bite. **THAC0
+  isn't printed** — derived as 15, one HD-to-THAC0 bracket further down
+  from the Bozak above. Real shapeshifting (takes the form of a humanoid
+  it kills, or its own killer's form on death), +2 saves, and 20% magic
+  resistance are all unmodeled — no shapeshifting or status-effect system
+  exists for anyone yet.
+- **Aurak Draconian** (*Dragonlance Adventures*, TSR 2021, p.73): HD 8,
+  AC 0, twin energy blasts (1d8+2 each) or a spell — simplified to a
+  single 1d8+2 hit. **THAC0 isn't printed** — derived as 13, the same
+  pattern extended to the highest HD this project has extrapolated it to
+  (see the caveat below). The most mechanically loaded monster in the
+  roster: limited dimension door, suggestion/mind control, change self,
+  polymorph self, at-will invisibility, a noxious-cloud breath weapon,
+  real 1st- to 4th-level magic-user spellcasting, 30% magic resistance,
+  and saves at +4 are all unmodeled — would need several subsystems this
+  project doesn't have. Its real three-stage death (immolation → lightning
+  ball → explosion) is likewise unmodeled.
+- **Thanoi** (*Dragonlance Adventures*, TSR 2021, p.78, "Thanoi (Walrus
+  Men)"): HD 4, AC 4, damage by weapon or tusk (1d8), plus a separately
+  printed "any weapon used by a thanoi does 2 more points of damage than
+  usual" — both numbers directly sourced, combined as 1d8+2. THAC0 derived
+  as 17, the same HD-4 bracket as the Bozak above. XP 85 + 4/hp. The
+  walrus-men of Icewall Glacier — already referenced as flavor-only
+  dialogue at Ice Wall since Milestone 36, now a real roster entry, and
+  the first monster to carry `TERRAIN_BIAS` toward glacier (`:`), closing
+  the gap Milestone 57 left open (see "Terrain-specific monster pools"
+  below). No `EXCLUDE_TERRAIN`: unlike Gnoll's real Monstrous Manual
+  Climate/Terrain field, *Dragonlance Adventures* prints no such field for
+  the Thanoi to hang a hard exclusion on. Real cold immunity (natural and
+  magical), extra fire/heat damage, and HD loss in warm climates are all
+  unmodeled — no damage-type or elemental-exposure system exists for
+  anyone yet, same flavor-only restraint as Skeleton's/Zombie's immunities.
+
+**Sourcing caveat (Milestone 64)**: none of the four draconian/Thanoi
+entries above print THAC0 (Dragonlance Adventures' stat-block format never
+does), so all four are derived via the same "roughly one point of THAC0
+per Hit Die" empirical pattern already used and validated for Baaz/Kapak.
+That pattern was previously validated only up to HD 4+1 (Ogre's real
+printed THAC0 17); Sivak (HD 6 → 15) and Aurak (HD 8 → 13) extend it past
+that ceiling. All four new monsters have plain, non-bonus Hit Dice, so
+each lands cleanly on a bracket boundary rather than a "+" tier, which is
+the least ambiguous case for this kind of extrapolation — but it's still
+an extrapolation, not a directly re-confirmed value, and is flagged as
+such here.
 
 **Sourcing caveat for this batch (Milestone 34)**: no PDF-page-image
 renderer was available in that session (no `pdftoppm`/ImageMagick/Python
@@ -274,17 +333,22 @@ file's own header comment):
   (salt flat, this project's closest terrain analog to desert). Bugbear's
   real terrain ("Any subterranean") and Timber Wolf's ("Non-tropical") don't
   map cleanly onto this project's specific overworld terrain codes as a hard
-  exclusion, so they're expressed as bias instead (below). Baaz/Kapak
-  Draconian (Dragonlance Adventures, not the Monstrous Manual) have no
-  Climate/Terrain field at all — the book frames them as garrison
-  troops/infiltrators, a faction/location thing this terrain-code system
-  can't represent honestly, so they carry neither line and stay uniform.
-  **Known gap, left as a gap rather than invented away**: nothing in the
-  roster is Arctic-flavored, so glacier encounters fall back to the full
-  uniform pool (`MonsterCatalog::randomMonster`'s empty-eligible-list
-  fallback) rather than being hand-excluded monster-by-monster — same "not
-  invented to fill a gap" restraint as Ocean's "no sea monsters exist yet"
-  note in `Terrain.cpp`.
+  exclusion, so they're expressed as bias instead (below). Baaz/Kapak/
+  Bozak/Sivak/Aurak Draconian (Dragonlance Adventures, not the Monstrous
+  Manual) have no Climate/Terrain field at all — the book frames them as
+  garrison troops/infiltrators/special agents, a faction/location thing
+  this terrain-code system can't represent honestly, so they carry
+  neither line and stay uniform.
+  **Glacier gap closed (Milestone 64)**: this section used to note that
+  "nothing in the roster is Arctic-flavored," so glacier fell back to the
+  full uniform pool. The Thanoi (`data/monsters.txt`) closes that gap --
+  Icewall Glacier's own walrus-men, sourced from Dragonlance Adventures
+  p.78, carrying `TERRAIN_BIAS :`. It's bias, not a hard lock (the rest of
+  the roster can still turn up on glacier, same as every other biased
+  terrain) -- same "not invented beyond what the book supports" restraint
+  as everywhere else in this section, since DLA gives Thanoi no formal
+  Climate/Terrain field either, so this stays a `TERRAIN_BIAS`, not an
+  `EXCLUDE_TERRAIN`.
 - **`TERRAIN_BIAS <codes>`** — invented flavor weighting (a biased monster
   is 3x as likely to be picked on that terrain as an unbiased one,
   `combat::kBiasWeight` in `Monster.cpp`), informed by each monster's real
@@ -293,12 +357,13 @@ file's own header comment):
   already gets. Goblin/Kobold lean hills/forest (caves, ruins, mining
   terrain); Timber Wolf leans forest/grassland; Giant Spider leans
   forest/bog (web-spinner ambush terrain); Bugbear leans hills/mountains (a
-  proxy for its real "any subterranean"); Gnoll leans forest/hills/bog.
-  Hobgoblin, Ogre, Baaz, Kapak, Ghoul, Skeleton, and Zombie are left
-  deliberately uniform — Ogre's own book text says "found anywhere, from
-  deep caverns to mountaintops," the three undead have no ecological terrain
-  link, and Baaz/Kapak's real differentiator (faction/location) isn't one
-  this system can express without forcing it.
+  proxy for its real "any subterranean"); Gnoll leans forest/hills/bog;
+  Thanoi leans glacier (see below). Hobgoblin, Ogre, Baaz, Kapak, Bozak,
+  Sivak, Aurak, Ghoul, Skeleton, and Zombie are left deliberately uniform —
+  Ogre's own book text says "found anywhere, from deep caverns to
+  mountaintops," the three undead have no ecological terrain link, and the
+  five draconians' real differentiator (faction/location) isn't one this
+  system can express without forcing it.
 
 ## Player actions: Attack, Cast, Drink a Potion, and Flee
 
@@ -429,14 +494,19 @@ either.
   Draconian's 20% magic resistance is a related but different mechanic
   (resistance to being targeted at all, not a saving throw) and still
   isn't modeled.
-- **More monsters**: thirteen creatures are in the roster now (Goblin,
-  Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak Draconian,
-  Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie); `Monster Manual (2nd
-  ed).pdf` and *Dragonlance Adventures* have far more of Krynn's actual
-  bestiary still untouched (Bozak/Sivak/Aurak Draconians — the
-  higher-tier ones are spellcasters or shapeshifters, real mechanics this
-  project doesn't model yet — plus other ordinary Monstrous Manual
-  entries). Can be added the same way, one more sourced `MONSTER` block
-  at a time. A new monster with real terrain flavor can also carry
-  `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines — see "Terrain-specific monster
-  pools" above.
+- **More monsters**: seventeen creatures are in the roster now (Goblin,
+  Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
+  Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi);
+  `Monster Manual (2nd ed).pdf` and *Dragonlance Adventures* still have
+  more of Krynn's actual bestiary untouched. Can be added the same way,
+  one more sourced `MONSTER` block at a time. A new monster with real
+  terrain flavor can also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines —
+  see "Terrain-specific monster pools" above.
+- **Real mechanics for Bozak/Sivak/Aurak** (Milestone 64 added all three
+  as roster entries, but every ability that made them interesting stayed
+  flavor-only): Bozak's and Aurak's spellcasting would need a
+  monster-spellcasting system (nothing currently lets a monster act
+  outside the fixed "one weapon/poison hit" `runCombat` loop); Sivak's
+  shapeshifting and Aurak's mind control/dimension door/breath weapon
+  would each need their own new mechanic. None of these are small — this
+  is real future-engine-milestone territory, not a quick follow-up.

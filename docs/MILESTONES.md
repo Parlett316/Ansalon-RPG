@@ -1264,24 +1264,70 @@ section).
     `Console::readKey` actually accepts, not an oversight. Verified the
     same way: clean `/W4` rebuild, piped smoke test.
 
+64. Four more monsters -- Bozak, Sivak, and Aurak Draconians, and Thanoi --
+    the "More monsters" NEXT UP item the user picked to build next, closing
+    it out entirely rather than cherry-picking. Sourced from *Dragonlance
+    Adventures* pp.73-75 (Draconians) and p.78 (Thanoi), visually confirmed
+    via rendered page images since OCR text badly scrambles this book's
+    multi-column stat-block layout. Each monster's real signature ability
+    (Bozak's 4th-level spellcasting, Sivak's shapeshifting, Aurak's mind
+    control/dimension door/breath weapon, Thanoi's cold immunity) got the
+    same flavor-only, unmodeled treatment this roster already gives Baaz's
+    magic resistance and Kapak's paralysis-poison -- no new subsystem
+    needed, confirming the backlog note's own caveat that the higher-tier
+    draconians would need real mechanics this project doesn't have yet.
+    None of the four print THAC0 (same gap DLA already has for Baaz/Kapak),
+    so all four are derived via this project's own established
+    HD-to-THAC0 empirical pattern -- previously validated only up to HD
+    4+1, extended here to HD 6 (Sivak, THAC0 15) and HD 8 (Aurak, THAC0
+    13), flagged explicitly as an extrapolation past its prior ceiling.
+    Thanoi -- the walrus-man already referenced as flavor-only dialogue at
+    Ice Wall since Milestone 36 -- is the first monster in the roster to
+    carry `TERRAIN_BIAS` toward glacier, closing a gap Milestone 57
+    explicitly left open ("nothing in the roster is Arctic-flavored"); no
+    `EXCLUDE_TERRAIN` was added, since (unlike Gnoll's real Monstrous
+    Manual Climate/Terrain field) *Dragonlance Adventures* prints no such
+    field to hang a hard exclusion on. Pure data addition to
+    `data/monsters.txt` -- confirmed directly against the source that
+    `MonsterLoader.cpp`'s grammar already covered every field needed and
+    that `GameLoop.cpp`'s only monster-id special case (Baaz's
+    turn-to-stone message) wasn't needed here, so zero `.cpp`/`.h` changes,
+    same shape as Milestone 34's four-monster batch. Verified via a
+    throwaway self-test (the real 17-monster `data/monsters.txt` parses
+    clean, all four new blocks' fields match, 4000 sampled draws on glacier
+    terrain confirm Thanoi's `TERRAIN_BIAS` is real weighting rather than
+    an accidental exclusive lock, and a malformed-line case still fails
+    fast), a clean `/W4` rebuild (zero new warnings, no source changes),
+    and the piped character-creation smoke test (with the user's real save
+    moved aside and restored afterward, per the established procedure). No
+    interactive playtest needed -- pure content, same as Milestone 34's
+    own precedent -- though seeing a Thanoi turn up while walking Icewall
+    Glacier would be a nice, easy live confirmation of the new bias
+    wiring. See `docs/COMBAT_NOTES.md`'s monster-roster sourcing list,
+    "Terrain-specific monster pools," and "Extending this later" (which
+    now flags real Bozak/Sivak/Aurak mechanics as a possible future
+    *engine* milestone, not a commitment).
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
-   flavor-only at Ice Wall so far -- see Milestone 36), and other
-   Monstrous Manual entries are still untouched; the higher-tier
-   draconians are spellcasters/shapeshifters, real mechanics this project
-   doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
-2. **More of DLA's "Magical Items of Krynn" chapter** — Rods/Staves/Wands,
+1. **More of DLA's "Magical Items of Krynn" chapter** — Rods/Staves/Wands,
    Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
    Brooch of Imog are real, sourced, and unused. See
    `docs/CHARACTER_NOTES.md`'s "Extending this later."
-3. **Interactive verification of Milestone 62's spellcasting UI** -- the
+2. **Interactive verification of Milestone 62's spellcasting UI** -- the
    Rest re-memorize prompt, the multi-level spell-loadout picker, and the
    in-combat cast picker were all built and self-tested this pass but
    never actually driven by a real keypress (`_getch()` can't be piped).
    A real playthrough as a Mage or Cleric would confirm the pickers read
    right and the buff/debuff/block spells feel right in an actual fight.
+3. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
+   added all three to the roster, but their spellcasting, shapeshifting,
+   and mind control/dimension door/breath weapon all stayed flavor-only.
+   Each would need its own new subsystem (monster spellcasting,
+   shapeshifting, a mind-affecting-status mechanic) -- real engine work,
+   not a quick content pass. See `docs/COMBAT_NOTES.md`'s "Extending this
+   later."

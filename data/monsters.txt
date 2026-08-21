@@ -1,20 +1,23 @@
 # data/monsters.txt -- hand-authored monster roster for random encounters.
 # Grammar: docs/COMBAT_NOTES.md. Stats are sourced from real 2e rulebooks
 # (Monster Manual (2nd ed).pdf, actually the 1993 Monstrous Manual
-# compilation, and TSR 2021 DragonLance Adventures.pdf for the Baaz and
-# Kapak Draconians) -- visually confirmed against rendered page images,
-# not invented, EXCEPT the Gnoll/Ghoul/Skeleton/Zombie entries added in
-# Milestone 34: no page-image renderer was available that session, so
-# those four were instead cross-checked between two independent text
-# extractions of the same PDF pages (see docs/COMBAT_NOTES.md for the
-# caveat and page citations). The Giant Spider's real Type F poison bite
-# is modeled (POISON below); the Baaz's 20% magic resistance, the Kapak's
-# real paralysis-poison bite, the Ghoul's real paralyzing touch, and the
-# Skeleton's/Zombie's real damage-type/spell immunities are all different
-# mechanics not modeled the same way (see COMBAT_NOTES.md) and still not
-# modeled; Baaz's and Kapak's XP values are also simplified, see below.
-# This project models Krynn specifically -- no orcs, matching
-# Dragonlance's distinct bestiary.
+# compilation, and TSR 2021 DragonLance Adventures.pdf for all five
+# Draconians and the Thanoi) -- visually confirmed against rendered page
+# images, not invented, EXCEPT the Gnoll/Ghoul/Skeleton/Zombie entries
+# added in Milestone 34: no page-image renderer was available that
+# session, so those four were instead cross-checked between two
+# independent text extractions of the same PDF pages (see
+# docs/COMBAT_NOTES.md for the caveat and page citations). The Giant
+# Spider's real Type F poison bite is modeled (POISON below); the Baaz's
+# 20% magic resistance, the Kapak's real paralysis-poison bite, the
+# Ghoul's real paralyzing touch, the Skeleton's/Zombie's real
+# damage-type/spell immunities, the Bozak's spellcasting, the Sivak's
+# shapeshifting, the Aurak's mind control/dimension door/breath weapon,
+# and the Thanoi's cold immunity are all different mechanics not modeled
+# the same way (see COMBAT_NOTES.md) and still not modeled; Baaz's,
+# Kapak's, Bozak's, Sivak's, Aurak's, and Thanoi's XP values are also
+# simplified, see below. This project models Krynn specifically -- no
+# orcs, matching Dragonlance's distinct bestiary.
 #
 # MONSTER <id>            starts a block
 # NAME <text>              display name
@@ -207,4 +210,123 @@ XP 65
 # Real Zombies are immune to sleep/charm/hold/death-magic/poison/cold --
 # same flavor-only treatment as the Skeleton's immunities above.
 DESC A bloated corpse shambles forward, arms outstretched, its jerky steps and low moan the only warning you get.
+END
+
+MONSTER bozak
+NAME Bozak Draconian
+HP 4 8 0
+AC 2
+# Real HD is a plain 4 (Dragonlance Adventures p.74) -- THAC0 isn't
+# printed (same gap as Baaz/Kapak above), derived as 17 from this
+# project's own HD-to-THAC0 pattern (see docs/COMBAT_NOTES.md), the same
+# bracket as Ogre's real printed HD 4+1 -> THAC0 17.
+THAC0 17
+# Real attack is two claws (1d4/1d4) or by weapon -- identical wording to
+# the Baaz's own stat line, so simplified the same way: a single 1d8
+# weapon hit, since this project doesn't model multiple attacks per round
+# for anyone.
+DAMAGE 1 8 0
+STEEL 3 8 0
+# Real formula is "175 + 4/hp" -- simplified to a flat value near the
+# average roll (4d8 averages 18), same treatment as Baaz's/Kapak's XP.
+XP 247
+# Bozaks are real spellcasters (cast as a 4th-level magic-user: burning
+# hands, enlarge, magic missile, shocking grasp, invisibility, levitate,
+# stinking cloud, web), save at +2, and have 20% magic resistance -- none
+# of that is modeled (no monster-spellcasting system exists for anyone
+# yet), same restraint as Baaz's unmodeled magic resistance. Its
+# bone-explosion death trait (1d6 dmg/10 ft) is also unmodeled, same
+# treatment as the Kapak's acid-pool-on-death.
+DESC A crested draconian levels a clawed hand crackling with raw magic, sizing you up like a problem to be solved.
+END
+
+MONSTER sivak
+NAME Sivak Draconian
+HP 6 8 0
+AC 1
+# Real HD is a plain 6 (Dragonlance Adventures p.75) -- THAC0 isn't
+# printed, derived as 15 from the same HD-to-THAC0 pattern as the Bozak
+# above, one bracket further down (see docs/COMBAT_NOTES.md).
+THAC0 15
+# Real attack is two swords (1d6/1d6) plus an armored tail (2d6), the
+# tail usable only in draconian form -- simplified to a single hit using
+# its highest, most distinctive die, same "one representative die"
+# treatment as the Ghoul's claw/claw/bite.
+DAMAGE 2 6 0
+STEEL 3 10 0
+# Real formula is "350 + 6/hp" -- simplified to a flat value near the
+# average roll (6d8 averages 27), same treatment as the Bozak's XP above.
+XP 512
+# Sivaks are real shapeshifters -- they can take the form of a humanoid
+# they kill, and burst into flame or assume their killer's form when
+# slain themselves -- plus +2 on saves and 20% magic resistance. None of
+# it is modeled (no shapeshifting or status-effect system exists for
+# anyone yet); left as flavor-only, same restraint as every other
+# draconian's unmodeled traits.
+DESC A heavily armored draconian unslings a pair of wicked blades, its long tail lashing behind it like a whip.
+END
+
+MONSTER aurak
+NAME Aurak Draconian
+HP 8 8 0
+AC 0
+# Real HD is a plain 8 (Dragonlance Adventures p.73) -- THAC0 isn't
+# printed, derived as 13 from the same HD-to-THAC0 pattern, one bracket
+# further down from the Sivak above (see docs/COMBAT_NOTES.md). This is
+# the highest HD this project has extrapolated the pattern to.
+THAC0 13
+# Real attack is twin energy blasts (1d8+2 each) or a spell -- simplified
+# to a single 1d8+2 hit, same single-attack simplification as every other
+# multi-attack monster in this roster.
+DAMAGE 1 8 2
+STEEL 4 10 0
+# Real formula is "1,800 + 10/hp" -- simplified to a flat value near the
+# average roll (8d8 averages 36), same treatment as the Bozak's/Sivak's
+# XP above.
+XP 2160
+# Auraks are the most mechanically loaded draconian in the book: limited
+# dimension door, suggestion/mind control, change self, polymorph self,
+# at-will invisibility, a noxious-cloud breath weapon, and real 1st- to
+# 4th-level magic-user spellcasting, plus 30% magic resistance and saves
+# at +4. None of it is modeled -- would need several subsystems this
+# project doesn't have (mind control, shapeshifting, monster spellcasting,
+# a breath-weapon area effect); left entirely as flavor text, same
+# restraint as its lesser cousins above. Its real three-stage death
+# (immolation, then a lightning-ball transformation, then an explosion)
+# is likewise unmodeled.
+DESC A tall, wingless draconian regards you with unsettling stillness, a voice that isn't yours already forming inside your skull.
+END
+
+MONSTER thanoi
+NAME Thanoi
+HP 4 8 0
+AC 4
+# Real HD is a plain 4 (Dragonlance Adventures p.78) -- THAC0 isn't
+# printed, derived as 17 from the same HD-to-THAC0 pattern as the Bozak
+# above (both land on the same HD-4 bracket; see docs/COMBAT_NOTES.md).
+THAC0 17
+# Real damage is "by weapon or tusk (1d8)," and the book separately notes
+# "any weapon used by a thanoi does 2 more points of damage than usual" --
+# both numbers are directly printed, combined here as 1d8+2.
+DAMAGE 1 8 2
+STEEL 2 8 0
+# Real formula is "85 + 4/hp" -- simplified to a flat value near the
+# average roll (4d8 averages 18), same treatment as the draconians' XP
+# above.
+XP 157
+# The walrus-men of Icewall Glacier -- already referenced as flavor-only
+# dialogue at Ice Wall since Milestone 36, now a real roster entry. First
+# monster to carry TERRAIN_BIAS toward glacier, closing the documented gap
+# Milestone 57 left open ("nothing in the roster is Arctic-flavored"). No
+# EXCLUDE_TERRAIN: unlike Gnoll's real Monstrous Manual Climate/Terrain
+# field, Dragonlance Adventures prints no such field for the Thanoi to
+# hang a hard exclusion on -- only the sourced, narratively-grounded bias
+# below is added.
+TERRAIN_BIAS :
+# Thanoi are immune to cold (natural and magical), take extra damage from
+# fire/heat attacks, and lose 1 Hit Die per week if kept somewhere above
+# freezing -- none of it modeled (no damage-type or elemental-exposure
+# system exists for anyone yet), same flavor-only restraint as the
+# Skeleton's/Zombie's immunities above.
+DESC A tusked, blubbery brute hauls itself up onto the ice, gripping a spear in fingers built for both weapon and walrus alike.
 END
