@@ -1308,16 +1308,88 @@ section).
     now flags real Bozak/Sivak/Aurak mechanics as a possible future
     *engine* milestone, not a commitment).
 
+65. Staff of Striking/Curing -- the item Milestone 56 had explicitly
+    flagged by name as needing a "charges" subsystem, closing out the
+    NEXT UP item Milestone 64 pointed at. Re-read the full "Magical Items
+    of Krynn" chapter directly from rendered page images (book pp.91-99,
+    not Milestone 56's secondhand summary) before committing scope --
+    confirmed Scrolls/Rods-minus-one/Crystals/Misc Magic still need
+    unbuilt subsystems and "Special Magical Items of Krynn" (pp.95-99) is
+    entirely unique artifacts bound to named canon owners, correctly out
+    of scope by existing precedent, but also surfaced a real gap in
+    Milestone 56's earlier pass: **Frostreaver** (p.94, Weapons), a heavy
+    battle axe of Icewall Glacier ice tied to the already-shipped Ice
+    Wall location and Thanoi monster, not a unique artifact and so not
+    covered by the exclusion list. Asked the user to choose between it and
+    the Staff (`AskUserQuestion`, same practice as Milestones 54/56/58);
+    they picked the Staff, deferring Frostreaver to a future pass (see
+    NEXT UP). Two more real gaps needed the user's call before planning
+    could lock down: DLA's own text never gives a heal amount for the
+    staff's curing function, and the project's 2e DMG has no "Staff of
+    Curing" entry to borrow from (confirmed absent by a direct text
+    search, not an OCR gap, since it's a 1st-edition-only item DLA
+    references without restating) -- user chose 1d8, reusing the
+    already-PHB-sourced Cure Light Wounds dice over inventing an unrelated
+    number. And: quest reward, Cleric-only, over a shop item -- a
+    permanent +3 weapon plus rechargeable healing outclasses anything
+    currently sold, so it's gated like Solamnic Armor rather than sold
+    like Webnet/Brooch. A design finding surfaced during planning (not a
+    question, since it followed directly from those two answers): the
+    book's 50-charge pool becomes vestigial once its "no more than once
+    per day on a given individual" cap is the actual binding constraint --
+    this engine tracks exactly one player character, so the only possible
+    "individual" is the player, and 5/day recharge always outpaces at-most-
+    2/day consumption once the book's separate double-damage-striking mode
+    is cut (needs real-time cooldown tracking this engine has never had,
+    same gap already flagged for the Golden Circlet/Flute of Wind
+    Dancing). Modeled instead as a flat once-per-day self-heal,
+    `Character::lastStaffCureDay`, the identical shape as
+    `activateBrooch`/`broochAvailableToday`'s existing day-gate --
+    genuinely less code than the charge pool would have needed, not a
+    compromise. The striking side needed zero new mechanism at all: an
+    ordinary `ItemKind::Weapon` (magicBonus +3, 1d6 base = the book's
+    "4-9 points of damage") reuses every piece of the existing
+    `MagicWeapon` machinery -- equip/unequip, resale-blocking (falls
+    through the existing code path to unsellable automatically, no
+    special-casing needed), and the general inventory screen's equip-on-
+    Enter. New quest `staff_of_striking_curing` (`REQUIRE cleric`, `SLAY
+    skeleton 2`, `REWARD_STAFF_OF_STRIKING_CURING`), offered by a new POI
+    at Xak Tsaroth -- "A Ruin-Scavenger" (`S`), the zone's first talkable
+    NPC, a deliberate, documented departure from that zone's "no talkable
+    NPC, the ruins are abandoned" precedent (someone passing through,
+    not a resident, grounded in the same relic-hunting flavor DLA's own
+    Bupu's Emerald sources to these ruins). `SaveGame.cpp` touches: one
+    new optional `STAFFCUREDAY` line, same backward-compatible shape as
+    `RESTDAY`/`BROOCHDAY`; no inventory-format change, since the weapon
+    stats ride the existing `MAGICWEAPON` line unchanged. Verified via a
+    throwaway self-test (ownership/day-gate/heal-cap behavior;
+    `QuestLoader` against the real, now-ten-quest `data/quests.txt`
+    including the new reward keyword's fail-fast case; a `SaveGame`
+    round-trip covering `STAFFCUREDAY` present and absent), a clean `/W4`
+    rebuild (zero new warnings), and a direct piped run confirming the
+    user's real save loads cleanly under the new format -- this run also
+    exercised every data loader including the new quest/zone content,
+    since it reaches the character-creation EOF-fail point cleanly with
+    the real save present. Interactive verification (talking to the
+    Scavenger as a Cleric, clearing the skeletons, equipping the staff,
+    using its combat cure action) still needs the user's own keyboard, the
+    same `_getch()` limitation flagged for every quest milestone so far.
+    See `docs/CHARACTER_NOTES.md`'s "Magic items" and `docs/QUEST_NOTES.md`'s
+    "Shipped quests".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **More of DLA's "Magical Items of Krynn" chapter** — Rods/Staves/Wands,
-   Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
-   Brooch of Imog are real, sourced, and unused. See
-   `docs/CHARACTER_NOTES.md`'s "Extending this later."
+1. **Frostreaver** (DLA p.94) -- a heavy battle axe of Icewall Glacier ice,
+   tied to the already-shipped Ice Wall location and Thanoi monster (see
+   Milestone 65). Buildable mostly from existing patterns: a Str-13
+   `REQUIRE` condition and a terrain check at attack time (terrain code is
+   already available where combat is resolved), simplifying the book's
+   "melts above freezing" weakness to "only carries its magic bonus on
+   glacier." See `docs/CHARACTER_NOTES.md`'s "Extending this later."
 2. **Interactive verification of Milestone 62's spellcasting UI** -- the
    Rest re-memorize prompt, the multi-level spell-loadout picker, and the
    in-combat cast picker were all built and self-tested this pass but
@@ -1331,3 +1403,14 @@ session's work.
    shapeshifting, a mind-affecting-status mechanic) -- real engine work,
    not a quick content pass. See `docs/COMBAT_NOTES.md`'s "Extending this
    later."
+4. **SFML-backed rendering, in place of the raw Windows console** —
+   flagged as a future direction, not started, not a commitment. Would
+   enable real cross-platform builds (Linux/macOS, not just MSVC) and
+   open the door to sprites later, at the cost of this project's first
+   external dependency (vcpkg or `FetchContent`). Chosen over SDL2 for
+   fitting the codebase's existing RAII/modern-C++ style. Scoped to
+   `render/Console.cpp`, `render/MapRenderer.cpp`, and the input-polling
+   call sites in `game/GameLoop.cpp` only -- every data loader and all
+   game logic (`World`, `ZoneCatalog`, `Timeline`, `MonsterCatalog`,
+   combat, quests) stays untouched. See `docs/ARCHITECTURE.md`'s "Why
+   `Console` is the only platform-specific file."

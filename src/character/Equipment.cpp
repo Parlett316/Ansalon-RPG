@@ -488,6 +488,33 @@ PurchaseResult activateBrooch(Character& character, long long today) {
     return {true, "You speak the Brooch of Imog's command word -- a minor globe of invulnerability surrounds you!"};
 }
 
+bool ownsStaffOfStrikingCuring(const Character& character) {
+    return ownsWeapon(character, kStaffOfStrikingCuringName);
+}
+
+bool staffCureAvailableToday(const Character& character, long long today) {
+    return ownsStaffOfStrikingCuring(character) && character.lastStaffCureDay != today;
+}
+
+// DLA (p.91) never gives a heal amount for the staff's curing function --
+// it references the 2nd ed. DMG's own separately-defined "Staff of
+// Curing," but that item isn't in this project's 2e DMG (a 1st-edition-only
+// item DLA assumes without restating; confirmed absent by a direct text
+// search, not an OCR gap). kStaffCureDiceSides (1d8) reuses this project's
+// own already-PHB-sourced Cure Light Wounds dice (Spellcasting.cpp) rather
+// than inventing an unrelated number -- see docs/CHARACTER_NOTES.md.
+PurchaseResult useStaffCure(Character& character, long long today) {
+    if (!staffCureAvailableToday(character, today)) {
+        return {false, ownsStaffOfStrikingCuring(character)
+                            ? "The staff's curing power is already spent for today."
+                            : "You don't carry the Staff of Striking/Curing."};
+    }
+    character.lastStaffCureDay = today;
+    int healed = std::max(0, std::min(roll(1, kStaffCureDiceSides), character.maxHp - character.currentHp));
+    character.currentHp += healed;
+    return {true, "You call on the staff's curing power and recover " + std::to_string(healed) + " hit points."};
+}
+
 int findQuestItemIndex(const Character& character, const std::string& questItemId) {
     for (size_t i = 0; i < character.inventory.size(); ++i) {
         const InventoryItem& item = character.inventory[i];

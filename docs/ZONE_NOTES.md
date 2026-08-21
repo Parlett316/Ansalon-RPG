@@ -527,8 +527,14 @@ non-infringing approach as everywhere else in this project):
   sunken ruins, not the full multi-level dungeon DL1 describes (this
   game doesn't model that crawl). Broken towers, a waterfall, the old
   masonry well shaft, and the huge hanging chain DL1 describes dropping
-  out of the mist overhead — all scenery, deliberately no talkable NPC
-  since the ruins are abandoned.
+  out of the mist overhead — all scenery. Originally deliberately had no
+  talkable NPC, since the ruins themselves are abandoned; the Staff of
+  Striking/Curing milestone (`docs/QUEST_NOTES.md`) added one anyway — a
+  Ruin-Scavenger (`S`), someone passing through rather than a resident,
+  the same distinction that's kept the ruins' "no one lives here" premise
+  intact while still grounding a quest giver in the zone's existing relic-
+  hunting flavor (DLA's own Bupu's Emerald is sourced to these same
+  ruins).
 
 Both were picked because they already have `PRESENCE` stops on Tanis and
 Raistlin's timeline schedule (see `docs/TIMELINE_NOTES.md`), so a player

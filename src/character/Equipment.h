@@ -281,6 +281,44 @@ PurchaseResult useWebnet(Character& character, int index);
 // flag handles that.
 PurchaseResult activateBrooch(Character& character, long long today);
 
+// Staff of Striking/Curing (Dragonlance Adventures p.91, visually
+// confirmed via a rendered page image) -- see docs/CHARACTER_NOTES.md's
+// "Magic items" section. A quest reward, Cleric-only, never sold (see
+// data/quests.txt's staff_of_striking_curing) -- granted as an ordinary
+// ItemKind::Weapon InventoryItem, so equipping/unequipping/resale-blocking
+// all reuse the existing weapon machinery with no extra code (see
+// magicWeaponFor's doc comment above for the to-hit/damage convention this
+// follows). kStaffCureDiceSides is an invented-and-flagged number, not a
+// DMG-sourced one -- see the .cpp for why.
+inline constexpr const char* kStaffOfStrikingCuringName = "Staff of Striking/Curing";
+constexpr int kStaffMagicBonus = 3;    // "it strikes as a +3 weapon"
+constexpr int kStaffDamageSides = 6;   // 1d6+3 = the book's "4-9 points of damage"
+constexpr int kStaffCureDiceSides = 8; // invented -- see the .cpp comment on useStaffCure
+
+// True if character.weaponName or any carried InventoryItem matches
+// kStaffOfStrikingCuringName -- i.e. the character owns the staff at all,
+// equipped or not. Used by staffCureAvailableToday below and by
+// GameLoop::offerOrTurnInQuest to avoid granting a duplicate on repeat
+// turn-in (can't currently happen -- a quest only turns in once -- but
+// matches the defensive style already used elsewhere in this file).
+bool ownsStaffOfStrikingCuring(const Character& character);
+
+// True if the character owns the staff AND hasn't already used its cure
+// function today -- same day-gate shape as broochAvailableToday, keyed off
+// Character::lastStaffCureDay. See Character.h and the "Magic items"
+// section of docs/CHARACTER_NOTES.md for why this project models curing as
+// a flat once-per-day action rather than the book's 50-charge pool (the
+// pool can never actually bind under this engine's constraints).
+bool staffCureAvailableToday(const Character& character, long long today);
+
+// Heals kStaffCureDiceSides (1d8) hit points, capped at maxHp -- same
+// "heal self, capped" shape as drinkPotion, but doesn't consume anything
+// (the staff is worn/carried, not a one-shot item) -- sets
+// lastStaffCureDay instead, same as activateBrooch. Returns {false, ...}
+// if the character doesn't own the staff or staffCureAvailableToday is
+// already false.
+PurchaseResult useStaffCure(Character& character, long long today);
+
 // A quest item (ItemKind::QuestItem) -- a real, granted-in-the-world
 // object carried toward a quest::ObjectiveKind::Deliver objective, never
 // sold and never equipped (see docs/QUEST_NOTES.md's "DELIVER"). Unlike

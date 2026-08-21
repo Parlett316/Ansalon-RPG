@@ -110,6 +110,13 @@ struct Quest {
     // the Rose (character::KnightOrder::Rose) -- same "named, specific,
     // compile-time flag" shape as rewardKnightSword above.
     bool rewardKnightRose = false;
+    // True if turning this quest in grants the Staff of Striking/Curing (a
+    // character::ItemKind::Weapon InventoryItem named
+    // character::kStaffOfStrikingCuringName, see
+    // game::GameLoop::offerOrTurnInQuest) -- same "named, specific,
+    // compile-time flag" shape as rewardSolamnicArmor above, not a generic
+    // item-reward mapping.
+    bool rewardStaffOfStrikingCuring = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and

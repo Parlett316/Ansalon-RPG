@@ -862,6 +862,15 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
         state_.character.knightOrder = character::KnightOrder::Rose;
         pushLog("You are named a Knight of the Rose.");
     }
+    if (q->rewardStaffOfStrikingCuring) {
+        // See character::kStaffOfStrikingCuringName and docs/
+        // CHARACTER_NOTES.md's "Magic items" -- granted to inventory, not
+        // auto-equipped, same as Solamnic Armor above.
+        state_.character.inventory.push_back(character::InventoryItem{
+            character::ItemKind::Weapon, character::ArmorId::None, character::kStaffOfStrikingCuringName,
+            character::kStaffDamageSides, 0, character::kStaffMagicBonus});
+        pushLog("You are granted the Staff of Striking/Curing. Press 'i' to equip it.");
+    }
 }
 
 void GameLoop::checkQuestReadiness() {
@@ -1246,6 +1255,14 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         log.push_back(result.message);
         if (result.success) globeActive = true;
     };
+    // Same "replaces playerAttacks() for the round" shape as the other
+    // item-use lambdas above -- character::useStaffCure owns the heal math
+    // and the once-per-day gate itself, same division of labor drinkPotion
+    // already has.
+    auto playerUsesStaffCure = [&]() {
+        character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
+        log.push_back(result.message);
+    };
 
     for (;;) {
         render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
@@ -1265,6 +1282,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         bool drinking = false;
         bool usingWebnet = false;
         bool activatingBrooch = false;
+        bool usingStaffCure = false;
         if (key == render::Key::Cast) {
             if (!character::canCastSpells(state_.character.charClass)) {
                 log.push_back("You have no spell to cast.");
@@ -1321,8 +1339,9 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             // key reinterpretation instead of a new Key value" trick
             // handleShop already uses for this exact key (buy/sell toggle
             // there). Potion takes priority (unchanged behavior), then
-            // Webnet, then Brooch of Imog -- same "first one found, nothing
-            // to actually pick between" simplification already established
+            // Webnet, then Brooch of Imog, then the Staff of Striking/
+            // Curing's cure function -- same "first one found, nothing to
+            // actually pick between" simplification already established
             // for potions themselves.
             if (character::firstPotionIndex(state_.character) >= 0) {
                 drinking = true;
@@ -1330,6 +1349,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 usingWebnet = true;
             } else if (character::broochAvailableToday(state_.character, state_.hoursElapsed / 24)) {
                 activatingBrooch = true;
+            } else if (character::staffCureAvailableToday(state_.character, state_.hoursElapsed / 24)) {
+                usingStaffCure = true;
             } else {
                 log.push_back("You have nothing to use.");
                 continue;
@@ -1345,6 +1366,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             : drinking ? std::function<void()>(playerDrinksPotion)
             : usingWebnet ? std::function<void()>(playerUsesWebnet)
             : activatingBrooch ? std::function<void()>(playerActivatesBrooch)
+            : usingStaffCure ? std::function<void()>(playerUsesStaffCure)
                        : std::function<void()>(playerAttacks);
         if (combat::playerActsFirst()) {
             playerActs();

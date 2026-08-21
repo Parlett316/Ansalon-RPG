@@ -154,6 +154,9 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
         } else if (keyword == "REWARD_KNIGHT_ROSE") {
             if (!rest.empty()) fail(path, lineNumber, "REWARD_KNIGHT_ROSE takes no argument");
             current.rewardKnightRose = true;
+        } else if (keyword == "REWARD_STAFF_OF_STRIKING_CURING") {
+            if (!rest.empty()) fail(path, lineNumber, "REWARD_STAFF_OF_STRIKING_CURING takes no argument");
+            current.rewardStaffOfStrikingCuring = true;
         } else if (keyword == "END") {
             if (current.name.empty()) fail(path, lineNumber, "quest is missing its NAME");
             if (current.offerText.empty()) fail(path, lineNumber, "quest is missing its OFFER text");

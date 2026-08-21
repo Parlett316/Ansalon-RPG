@@ -23,6 +23,10 @@
 # objective: an actual character::ItemKind::QuestItem, granted by a zone
 # POI's GRANTS_ITEM line and consumed on turn-in, rather than a query over
 # state the game already tracked the way VISIT/TALK/SLAY are.
+# staff_of_striking_curing (below) is this project's second item-granting
+# reward after solamnic_armor -- REQUIRE cleric and REWARD_STAFF_OF_
+# STRIKING_CURING, granting character::kStaffOfStrikingCuringName (see
+# docs/CHARACTER_NOTES.md's "Magic items").
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -139,4 +143,18 @@ GIVER the journeyman at Flint's Smithy
 DELIVER raw_tharkadan_ore 1 Bring raw ore from the Tharkadan Mine at Pax Tharkas
 REWARD_STEEL 35
 REWARD_XP 80
+END
+
+QUEST staff_of_striking_curing
+NAME A Priest's Rod
+OFFER The scavenger turns the rod over once more before offering it, considering you the way an appraiser considers a coin. "I said priest's work. I meant it needs a priest -- somebody the gods still listen to." Their eyes drift past you, toward the black mouth of the well shaft. "Something's nesting down there now. Wasn't, when I first climbed in. I'd want it gone before I trusted anyone with what I pulled out of this place."
+ACCEPT You understand the trade being offered, unstated as it is: clear out whatever's taken up residence in the well shaft, and the rod is yours to make sense of.
+PROGRESS The scavenger is still crouched at the well shaft's rim, satchel between their knees. "Still down there, whatever it is. I can hear it some nights."
+COMPLETE The scavenger listens to what you found below without much surprise -- "Should've guessed, this deep under the Cataclysm's mess" -- and hands over the rod without further ceremony. "It's yours to puzzle out now. I only ever felt it go cold in my hands."
+GIVER the Ruin-Scavenger at Xak Tsaroth
+REQUIRE cleric
+SLAY skeleton 2 Clear whatever has nested in the well shaft below Xak Tsaroth
+REWARD_STEEL 40
+REWARD_XP 100
+REWARD_STAFF_OF_STRIKING_CURING
 END

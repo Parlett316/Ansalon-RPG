@@ -95,6 +95,19 @@ need an alternate implementation of `Console`, never a change to `World`,
 non-Windows branch of `Console::readKey` is a line-based fallback, not a
 real raw-input implementation — see `docs/GOTCHAS.md`.)
 
+**Flagged future direction, not a commitment:** if real cross-platform
+builds or sprite rendering ever become an actual goal, this isolation is
+exactly what would make an SFML-backed `Console`/renderer a contained
+swap rather than a rewrite — SFML was chosen over SDL2 for fitting this
+codebase's existing modern-C++ (RAII) style more closely. It would touch
+only `render/Console.cpp`, `render/MapRenderer.cpp`, and the input-polling
+call sites in `game/GameLoop.cpp`; `World`, `ZoneCatalog`, `Timeline`,
+`MonsterCatalog`, and every data loader are untouched either way, since
+none of them depend on `render/`. The one real cost: this project
+currently has zero external dependencies, and SFML would be the first —
+bringing in vcpkg or `FetchContent` is a bigger step than it sounds for a
+repo this deliberately minimal. See `docs/MILESTONES.md`'s "NEXT UP".
+
 ## Why location data is a hand-rolled text format, not JSON
 
 Unchanged reasoning from Milestone 1: no external dependency to vendor for

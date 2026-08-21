@@ -148,6 +148,7 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "\n";
     file << "RESTDAY " << c.lastRestDay << "\n";
     file << "BROOCHDAY " << c.lastBroochUseDay << "\n";
+    file << "STAFFCUREDAY " << c.lastStaffCureDay << "\n";
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
     file << "POS " << state.x << " " << state.y << "\n";
     file << "HOURS " << state.hoursElapsed << "\n";
@@ -412,6 +413,13 @@ GameState SaveGame::load(const std::string& path) {
             // (-1, "never used") is the correct value for it anyway, same
             // backward-compatibility shape as RESTDAY above.
             if (!(iss >> state.character.lastBroochUseDay)) fail(path, lineNumber, "malformed BROOCHDAY");
+        } else if (keyword == "STAFFCUREDAY") {
+            // Optional -- a save written before this milestone simply has
+            // no STAFFCUREDAY line, and Character::lastStaffCureDay's
+            // default (-1, "never used") is the correct value for it
+            // anyway, same backward-compatibility shape as RESTDAY/
+            // BROOCHDAY above.
+            if (!(iss >> state.character.lastStaffCureDay)) fail(path, lineNumber, "malformed STAFFCUREDAY");
         } else if (keyword == "MODE") {
             if (rest == "ZONE") {
                 modeIsZone = true;

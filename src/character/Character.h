@@ -92,6 +92,16 @@ struct Character {
     // character::activateBrooch/broochAvailableToday and
     // GameLoop::runCombat) -- same once-per-day gate shape as lastRestDay.
     long long lastBroochUseDay = -1;
+    // The day the character last used the Staff of Striking/Curing's cure
+    // function (see character::useStaffCure/staffCureAvailableToday and
+    // GameLoop::runCombat) -- same once-per-day gate shape as
+    // lastBroochUseDay. The staff's own DLA text also caps it at 50
+    // charges/5-per-day recharge, but that pool can never actually bind
+    // once the "no more than once per day on a given individual" cap
+    // already limits this engine's one player character to once/day --
+    // see docs/CHARACTER_NOTES.md's "Magic items" for the full reasoning,
+    // so no separate charge count is tracked.
+    long long lastStaffCureDay = -1;
 };
 
 } // namespace character

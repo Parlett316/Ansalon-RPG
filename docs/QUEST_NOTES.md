@@ -419,6 +419,40 @@ needs one.
 
 ## Shipped quests
 
+### Dragonlance magical items, continued: `staff_of_striking_curing`
+
+The second item-granting quest reward, following `solamnic_armor`'s exact
+shape. Offered by a new POI at `data/zones/xak_tsaroth.txt` — "A
+Ruin-Scavenger" (`S`) — the zone's first talkable NPC (every prior POI
+there is pure scenery, see `docs/ZONE_NOTES.md`). Gated by `REQUIRE
+cleric`, matching the source's own "common among the clerics" framing (see
+`docs/CHARACTER_NOTES.md`'s "Magic items"). One `SLAY skeleton 2`
+objective — "clear whatever's nested in the well shaft" — grounded in the
+zone's existing ruined/haunted flavor text rather than inventing new lore,
+and matching the weight of a real small task the way every other
+item-granting quest has one (not an instant handout). Turning it in sets
+`REWARD_STAFF_OF_STRIKING_CURING`, granting a `character::ItemKind::Weapon`
+InventoryItem named `character::kStaffOfStrikingCuringName` (+3 to-hit and
+damage, 1d6 base — see `docs/CHARACTER_NOTES.md`'s "Magic items" for the
+full sourcing, including why this project models the item's "curing" side
+as a flat once-per-day self-heal rather than the book's 50-charge pool).
+Reward: 40 steel, 100 XP — same tier as `solamnic_armor`, since both grant
+a single standalone item rather than a rank. Verified via a throwaway
+self-test (`ownsStaffOfStrikingCuring`/`staffCureAvailableToday`/
+`useStaffCure`'s ownership check, once-per-day gate, and heal-cap
+behavior; `QuestLoader` against the real, now-ten-quest `data/quests.txt`
+including `REWARD_STAFF_OF_STRIKING_CURING`'s fail-fast trailing-argument
+case; a `SaveGame` round-trip covering the new `STAFFCUREDAY` line and a
+save with it absent defaulting to -1), a clean `/W4` rebuild, and a direct
+piped run confirming the user's real save loads cleanly under the new
+save format (see `docs/GOTCHAS.md`'s executable-relative `save.txt` note)
+— this run also exercises every data loader including the new quest/zone
+content, since it reaches the character-creation EOF-fail point cleanly.
+Interactive verification (talking to the Scavenger as a Cleric, clearing
+the skeletons, equipping the staff, and using its combat cure action)
+still needs the user's own keyboard, the same `_getch()` limitation
+flagged for every quest milestone so far.
+
 ### Order of the Rose advancement: `measure_of_roses`
 
 The capstone of the Knights of Solamnia chain: Crown (character creation) →

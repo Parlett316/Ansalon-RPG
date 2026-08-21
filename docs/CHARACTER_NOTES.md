@@ -1055,6 +1055,68 @@ has been spent does. `SaveGame.cpp` touches: a new `BROOCHDAY` line
 and two new bare-keyword inventory lines, `WEBNET`/`BROOCH`, alongside the
 existing `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON` ones.
 
+**Staff of Striking/Curing**, DLA's next magic item after Webnet/Brooch of
+Imog, sourced from p.91 (Rods, Staves, and Wands), visually confirmed via a
+rendered page image. A quest reward (`data/quests.txt`'s
+`staff_of_striking_curing`, see `docs/QUEST_NOTES.md`), Cleric-only via
+`REQUIRE cleric` — the book frames it as "common among the clerics of the
+Age of Might," and this project has no printed restriction to the contrary,
+but the flavor precedent (Webnet/Brooch's own "only useful to a magic-user"
+text gating them to Mage) made a class restriction the honest call.
+
+The **striking** side needs no new mechanism at all: it's an ordinary
+`ItemKind::Weapon` InventoryItem (`character::kStaffOfStrikingCuringName`),
+magicBonus +3 (to-hit and damage, the same convention `MagicWeapon`
+already established) and 1d6 base damage — "it strikes as a +3 weapon...
+4-9 points of damage," i.e. 1d6+3. Equipping, unequipping, and resale
+(unsellable — falls through `resaleValueStl`'s existing `ItemKind::Weapon`
+case to `sellable = false` since the name matches neither the class's
+mundane upgrade nor its `MagicWeapon`, no special-casing needed) all reuse
+the exact machinery a "+1" magic weapon already has.
+
+The **curing** side needed real design judgment, since the book's own
+mechanics don't fit this engine cleanly. DLA says curing "drains two
+charges for each cure," referencing the 2nd ed. DMG's own separately
+defined *Staff of Curing* — but that item isn't in this project's 2e DMG
+at all (a 1st-edition-only item DLA assumes without restating; confirmed
+by a direct text search of the DMG extraction, not an OCR gap), so no heal
+amount is available to source. **kStaffCureDiceSides is 1d8, reusing this
+project's own already-PHB-sourced Cure Light Wounds dice**
+(`character/Spellcasting.cpp`) rather than inventing an unrelated number —
+naming parity with the real spell it stands in for, chosen over reusing
+the Potion of Healing's 2d4+2 (a different, DMG-"Healing"-table-sourced
+value with less naming justification).
+
+The book's 50-charge pool (5/day recharge in sunlight) and its second
+striking mode (spend 2 charges for double damage, then blocked from
+curing for an hour per double-damage blow) are **both deliberately not
+modeled** — the latter needs real-time cooldown tracking this engine has
+never had, the same category of gap already flagged for the Golden
+Circlet/Flute of Wind Dancing (see "Extending this later" below); and once
+that's cut, the charge pool becomes vestigial. The book's other cap —
+"no more than once per day on a given individual" — is already stricter
+than any charge count, since this engine tracks exactly one player
+character and there's no party to spread cures across: 5/day recharge
+always outpaces the at-most-once/day-at-2-charges consumption, so the pool
+could never actually run dry. Modeling a 50-charge counter that never
+binds would be exactly the kind of unneeded complexity CLAUDE.md's "no
+premature abstraction" warns against. Instead, curing is a flat
+**once-per-day self-heal**, implemented with the identical shape as the
+Brooch of Imog's own day-gate: `Character::lastStaffCureDay`
+(`character::useStaffCure`/`staffCureAvailableToday`, mirroring
+`activateBrooch`/`broochAvailableToday` exactly). Combat-only, same
+simplification Webnet/Brooch already have (not exposed via the general
+inventory screen — the item may or may not be in the browsable list
+depending on whether it's currently equipped) — used via the same
+`'i'`-in-combat priority chain, now four deep: potion, then Webnet, then
+Brooch, then the staff's cure.
+
+`SaveGame.cpp` touches: one new optional `STAFFCUREDAY` line, same
+backward-compatible shape as `RESTDAY`/`BROOCHDAY` (defaults to -1 if
+absent, re-verified directly against the user's real save). No inventory
+format change — the staff's weapon stats ride the existing `MAGICWEAPON`
+line unchanged, same as any other named magic weapon.
+
 ### Quest items (the DELIVER milestone)
 
 `ItemKind::QuestItem`, the first inventory kind that isn't a piece of
@@ -1114,19 +1176,31 @@ stored in `GameState::character` and never reassigned after that; pressing
   Still missing: per-location wares (every shop sells the identical
   catalog) and armor weight/encumbrance. Milestone 56 read the rest of
   DLA's "Magical Items of Krynn" chapter closely (Rods/Staves/Wands,
-  Crystals and Gems, Miscellaneous Magic, Armor and Shields, Weapons) and
-  found almost everything left needs a subsystem this engine doesn't have
-  yet: charges (Staff of Striking/Curing), creature command/charm (Golden
-  Circlet), a translation flag (Glasses of Arcanist), environmental wind
-  control (Flute of Wind Dancing), or a plot-key/door mechanic (Keys of
-  Quinarost) — plus Armor and Shields/Weapons' remaining entries are
-  either already shipped (Solamnic Armor), antagonist-only (Dragonarmor),
-  a whole quest's goal in their own right (Plate of Solamnus, alignment-
-  scaled), or unique named artifacts (Dragonlance, Mantooth, Nightbringer,
-  Wyrmsbane, Wyrmslayer, Shield of Huma), out of scope for the same reason
-  as the chapter's other artifacts (see "Magic items" above). None of
-  these are being built just to place one item — see CLAUDE.md's "no
-  premature abstraction."
+  Crystals and Gems, Miscellaneous Magic, Armor and Shields, Weapons); a
+  later pass (see "Magic items" above) re-read the same chapter directly
+  from rendered page images and shipped the Staff of Striking/Curing,
+  modeled without the charge pool Milestone 56 originally flagged it as
+  needing (see "Magic items" for why). What's left in the chapter still
+  needs an unbuilt subsystem: creature command/charm (Golden Circlet), a
+  translation flag (Glasses of Arcanist), environmental wind control
+  (Flute of Wind Dancing), a plot-key/door mechanic (Keys of Quinarost),
+  or moon-phase magic (Scroll of the Stellar Path) — plus Armor and
+  Shields/Weapons' remaining entries are either already shipped (Solamnic
+  Armor), antagonist-only (Dragonarmor), a whole quest's goal in their own
+  right (Plate of Solamnus, alignment-scaled), or unique named artifacts
+  (Dragonlance, Mantooth, Nightbringer, Wyrmsbane, Wyrmslayer, Shield of
+  Huma), out of scope for the same reason as "Special Magical Items of
+  Krynn"'s entries (see "Magic items" above). One real exception the
+  later re-read surfaced and the user chose not to build this pass:
+  **Frostreaver** (p.94, Weapons) — a heavy battle axe of Icewall Glacier
+  ice, forged by the Ice Folk's clerics who compete with the Thanoi for
+  the glacier (ties directly to the already-shipped Ice Wall location and
+  Thanoi monster). Not a unique artifact, so not excluded by the above —
+  buildable mostly from existing patterns (a Str-13 `REQUIRE` condition,
+  a terrain check at attack time simplifying the book's "melts above
+  freezing" weakness to "only carries its bonus on glacier"), just not
+  this milestone's pick. None of the still-out-of-scope items are being
+  built just to place one — see CLAUDE.md's "no premature abstraction."
 - **Sword Knight's real healing/foresight/clerical-spell abilities and
   weekly fasting/meditation ritual** (p.18-19): not modeled, same
   "flavor-only, needs a fuller spell system" treatment already given to
