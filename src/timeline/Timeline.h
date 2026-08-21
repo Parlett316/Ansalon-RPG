@@ -63,6 +63,14 @@ public:
     // `day` -- normally 0 or 1 results, but not assumed to be.
     std::vector<Presence> presentAt(const std::string& locationId, int day) const;
 
+    // The latest dayEnd across every PresenceWindow scheduled at
+    // `locationId`, or -1 if no character's schedule ever visits it at all --
+    // lets a caller ask "have the Heroes fully moved on from here?" (day >
+    // this value) without re-scanning every character's schedule itself. See
+    // docs/ZONE_NOTES.md's "Aftermath dialogue" section for the feature this
+    // supports.
+    int latestDayEnd(const std::string& locationId) const;
+
 private:
     std::vector<CanonCharacter> characters_;
 };

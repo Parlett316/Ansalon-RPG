@@ -32,6 +32,16 @@ struct PointOfInterest {
     // after the first -- empty means fall back to that generic line. Set
     // via an optional TALK_AGAIN line (see docs/ZONE_NOTES.md).
     std::string dialogueAgain;
+    // Shown instead of `dialogue`/`dialogueAgain` the first time this POI is
+    // talked to once every canon character scheduled at this zone's
+    // effective timeline location has fully moved on (checked against
+    // timeline::Timeline::latestDayEnd, independent of whether this POI has
+    // ever been talked to before -- see GameLoop::talkTo). Empty means this
+    // POI has no aftermath reaction. Set via an optional TALK_AFTER line
+    // (see docs/ZONE_NOTES.md's "Aftermath dialogue" section), which must
+    // reference a POI that already has a TALK line, same rule as SAY_IF/
+    // TOPIC.
+    std::string dialogueAfter;
     // Topics offered after the greeting, in authored order -- empty means
     // no topic-picker menu. Set via zero or more TOPIC lines (see
     // docs/ZONE_NOTES.md), which must reference a POI that also has a

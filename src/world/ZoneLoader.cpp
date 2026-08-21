@@ -82,6 +82,10 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // TALK_AGAIN gets the exact same "applied after the whole file is
     // parsed, must reference an already-declared POI" treatment as talkLines.
     std::unordered_map<char, std::pair<std::string, int>> talkAgainLines;
+    // TALK_AFTER gets the same treatment as TALK_AGAIN, plus the extra
+    // "must already have a TALK line" validation SAY_IF/TOPIC/BOAT require --
+    // see docs/ZONE_NOTES.md's "Aftermath dialogue" section.
+    std::unordered_map<char, std::pair<std::string, int>> talkAfterLines;
     // Same "applied after the whole file is parsed" treatment as talkLines
     // above -- keyed by code, value is the line number SHOP appeared on,
     // for a clear error if its POI never shows up.
@@ -198,6 +202,19 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "TALK_AGAIN is missing its dialogue text");
                 }
                 talkAgainLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "TALK_AFTER") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed TALK_AFTER (expected: TALK_AFTER <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "TALK_AFTER is missing its dialogue text");
+                }
+                talkAfterLines[codeToken[0]] = {dialogue, lineNumber};
             } else if (keyword == "SHOP") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -296,8 +313,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             } else {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
-                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, GRANTS_ITEM, BED, "
-                         "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
+                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, TALK_AFTER, SHOP, BOAT, "
+                         "GRANTS_ITEM, BED, SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -361,6 +378,23 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                  "TALK_AGAIN '" + std::string(1, code) + "' has no matching POI declaration");
         }
         it->second.dialogueAgain = dialogueAndLine.first;
+    }
+    // Same rule for TALK_AFTER, plus the same "must already have a TALK
+    // line" requirement as BOAT/SAY_IF/TOPIC: aftermath dialogue is a
+    // reactive variant of TALK, so a POI with no TALK line could parse
+    // cleanly but never actually be reachable in play (see
+    // docs/ZONE_NOTES.md's "Aftermath dialogue" section).
+    for (const auto& [code, dialogueAndLine] : talkAfterLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "TALK_AFTER '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, dialogueAndLine.second,
+                 "TALK_AFTER '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        it->second.dialogueAfter = dialogueAndLine.first;
     }
     // Same rule for SHOP: a browsable POI still needs a name/description
     // via POI, SHOP only marks it as also being able to open the shop screen.

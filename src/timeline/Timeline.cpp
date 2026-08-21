@@ -19,4 +19,16 @@ std::vector<Presence> Timeline::presentAt(const std::string& locationId, int day
     return result;
 }
 
+int Timeline::latestDayEnd(const std::string& locationId) const {
+    int latest = -1;
+    for (const auto& character : characters_) {
+        for (const auto& window : character.schedule) {
+            if (window.locationId == locationId && window.dayEnd > latest) {
+                latest = window.dayEnd;
+            }
+        }
+    }
+    return latest;
+}
+
 } // namespace timeline

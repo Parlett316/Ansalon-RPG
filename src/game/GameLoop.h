@@ -75,6 +75,17 @@ struct TalkCandidate {
     // See docs/QUEST_NOTES.md's "DELIVER".
     std::string grantsItemId;
     std::string grantsItemName;
+    // Non-empty for a zone POI marked TALK_AFTER (world::PointOfInterest::
+    // dialogueAfter) once GameLoop::handleTalk has confirmed every canon
+    // character scheduled at this zone's effective timeline location has
+    // fully moved on (timeline::Timeline::latestDayEnd). Always empty for
+    // timeline candidates -- this is zone-NPC-only content, see
+    // docs/ZONE_NOTES.md's "Aftermath dialogue" section. talkTo() shows this
+    // instead of the ordinary greeting/again text exactly once, tracked via
+    // a separate "<id>:after" GameState::metCharacters entry so it fires
+    // correctly even if the player already met this NPC before the Heroes'
+    // window ever opened.
+    std::string dialogueAfter;
 };
 
 // A look-at-someone candidate -- read-only counterpart to TalkCandidate (no
@@ -162,6 +173,11 @@ private:
     // only for a zone POI marked BOAT, see world::PointOfInterest::isBoat)
     // sets GameState::hasBoat the first time such a candidate is talked to
     // -- Milestone 36's sea-travel mechanic, see docs/ZONE_NOTES.md.
+    // `dialogueAfter`, when non-empty, is shown instead of the ordinary
+    // greeting/again text exactly once (tracked via a separate "<id>:after"
+    // metCharacters entry, checked before the ordinary alreadyMet branch so
+    // it fires regardless of prior "met" state) -- see docs/ZONE_NOTES.md's
+    // "Aftermath dialogue" section.
     void talkTo(const TalkCandidate& candidate);
     // Offers, updates, or turns in `questId` as part of talking to
     // `speakerName` -- called from talkTo() when candidate.questId is

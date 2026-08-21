@@ -71,6 +71,14 @@ TALK_AGAIN <char> <dialogue...>         optional -- shown on every talk
                                         after the first, instead of the
                                         generic recognition fallback; same
                                         POI-must-exist rule as TALK
+TALK_AFTER <char> <dialogue...>          optional -- shown instead of
+                                        TALK/TALK_AGAIN the first time this
+                                        POI is talked to once every canon
+                                        character scheduled at this zone's
+                                        effective timeline location has
+                                        fully moved on (see "Aftermath
+                                        dialogue" below); same "must already
+                                        have a TALK line" rule as SAY_IF
 SAY_IF <char> <condition> <dialogue...> optional, zero or more per POI --
                                         a reactive variant of TALK, shown
                                         instead of it on the first talk if
@@ -419,6 +427,52 @@ all already spoken for), same Muster Yard row. Completes the Crown->
 Sword->Rose chain; see `docs/QUEST_NOTES.md`'s "Shipped quests" and
 `docs/CHARACTER_NOTES.md`'s "Knights of Solamnia".
 
+## Aftermath dialogue: POIs that react once the Heroes have moved on
+
+`TALK_AFTER <char> <dialogue...>` marks a POI's reaction to the Heroes of the
+Lance having already come and gone from this zone's effective timeline
+location -- shown instead of the ordinary `TALK`/`TALK_AGAIN` greeting the
+first time this POI is talked to once every character `data/timeline.txt`
+schedules here has a `PRESENCE` window whose `dayEnd` has passed (checked via
+the new `timeline::Timeline::latestDayEnd`, see `docs/TIMELINE_NOTES.md`).
+Same "layers a reaction on top of an existing POI" pattern as `SAY_IF`/
+`TOPIC`, and the same "must already have a `TALK` line to react against" load-
+time validation -- but keyed on elapsed in-game time rather than the player's
+own race/class/alignment.
+
+**Shown exactly once, independent of "have I talked to this NPC before".**
+Unlike `SAY_IF` (checked only the very first time a POI is ever talked to),
+aftermath dialogue is tracked under its own synthesized id
+(`"<talk-candidate-id>:after"` in `GameState::metCharacters` --
+`game::GameLoop::talkTo`) so it fires correctly even for a player who already
+met this NPC *before* the Heroes' window ever opened (e.g. talked to Otik on
+day 0, then returns on day 20) -- the ordinary "have I met them" state
+(`TALK`/`TALK_AGAIN`) would otherwise mask it entirely. No new save format:
+this reuses the existing `MET` line as-is, the same "met-id naming
+convention" precedent `docs/TIMELINE_NOTES.md`'s "Met-tracking id exception"
+already established for `TIMELINE_ANCHOR`. After the one-time aftermath line,
+later visits fall back to ordinary `TALK_AGAIN`/recognition behavior -- there
+is no `TALK_AFTER_AGAIN`, a deliberate restraint call: the specific "they were
+here, and left" fact only needs saying once.
+
+Deliberately no conditional (`SAY_IF`-style) variant of aftermath dialogue,
+and it only applies to zone-native POIs, never a `TIMELINE_ANCHOR` candidate
+(a departed canon character already stops appearing there for free, once
+`Timeline::presentAt` no longer returns them -- see "Zone-interior
+encounters" above) -- same one-flat-mechanism-first restraint `BOAT`/
+`GRANTS_ITEM`/`BED` each shipped with.
+
+As of this feature's introduction, exactly one POI carries `TALK_AFTER`:
+`data/zones/solace_inn.txt`'s `O` (Otik), referencing the shared `PRESENCE
+solace 0 1` window (all 8 Heroes) and the day 2-3 Haven/Darken Wood split
+that follows it (`docs/TIMELINE_NOTES.md`) -- deliberately hedged ("some say
+... others swear ...") rather than picking one, matching that same window's
+own established two-versions-of-one-leg ambiguity. Widening this to other
+zones (Haven's Seeker Guard, Xak Tsaroth, Kalaman's Watchman, etc.) is
+natural follow-up work, not done this pass -- same "one proof-of-concept
+first" precedent `road_wolves` set for the quest engine (Milestone 51, widened
+in Milestone 52).
+
 ## Portals: a zone can lead into another zone
 
 `PORTAL <char> <target-zone-id>` (a footer line, alongside `POI`/`END`)
@@ -505,6 +559,12 @@ becomes his `TOPIC "Keeping the Peace"`; Tika's real unease about war
 rumors and "strange, hooded men" around the High Theocrat becomes her
 `TOPIC "Strange Talk"`, deliberately distinct from Otik's own
 dismissiveness of the same rumor in the book.
+
+Otik also carries this project's first `TALK_AFTER` line -- see "Aftermath
+dialogue: POIs that react once the Heroes have moved on" below -- describing
+the reunion having already happened and the company moving on toward Haven
+or Darken Wood, the same two-versions-of-one-leg ambiguity
+`docs/TIMELINE_NOTES.md` already documents for that stretch of the schedule.
 
 ## Haven and Xak Tsaroth
 
@@ -869,6 +929,8 @@ own real reunion scene with Caramon here does **not** add a
    "Beds: POIs for complete bed-rest" above). If a talkable POI should
    offer a quest, add a matching `QUEST <char> <quest-id>` line, and make
    sure that id exists in `data/quests.txt` (see "Quests: POIs that offer
-   them" above and `docs/QUEST_NOTES.md`).
+   them" above and `docs/QUEST_NOTES.md`). If a talkable POI should react
+   once the Heroes have moved on from this zone, add a matching
+   `TALK_AFTER <char> <dialogue...>` line (see "Aftermath dialogue" above).
 6. Build and check the load succeeds (a malformed zone file fails fast with
    a clear error at startup, not partway through play).

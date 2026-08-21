@@ -293,6 +293,21 @@ zone-anchor timeline character, overworld timeline character) share one
 `pickAndTalk` helper for the "0/1/2+ candidates" picker logic, rather
 than a third near-duplicate loop.
 
+## Aftermath dialogue: has a location's schedule already closed?
+
+`Timeline::latestDayEnd(locationId)` answers "what's the latest `dayEnd`
+across every character's `PresenceWindow` at this location?" (-1 if no
+character's schedule ever visits it) -- a pure query, same shape as
+`presentAt`, added specifically so a zone-native POI can react once the
+Heroes have fully moved on from its zone (`dayNow > latestDayEnd(effectiveId)
+>= 0`), via the new `TALK_AFTER` zone grammar. See `docs/ZONE_NOTES.md`'s
+"Aftermath dialogue" section for the full mechanism -- including how it's
+tracked (a synthesized `"<id>:after"` `GameState::metCharacters` entry, so it
+fires even for a player who met the NPC before the Heroes' window ever
+opened) and why it's zone-native-POI-only, not extended to the
+`TIMELINE_ANCHOR` path (a departed canon character already stops appearing
+there for free, via `presentAt` alone).
+
 ## The current timeline specifically
 
 `data/timeline.txt` now has **all eight** Heroes of the Lance — Tanis,

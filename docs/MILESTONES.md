@@ -1377,6 +1377,41 @@ section).
     See `docs/CHARACTER_NOTES.md`'s "Magic items" and `docs/QUEST_NOTES.md`'s
     "Shipped quests".
 
+66. Aftermath dialogue -- the timeline schedule could already show who's
+    present at a location today, but nothing acknowledged a player arriving
+    *after* the Heroes had already come and gone. New zone grammar,
+    `TALK_AFTER <char> <dialogue...>` (`world::PointOfInterest::
+    dialogueAfter`, parsed by `ZoneLoader` exactly like `TALK_AGAIN`, with
+    the same "must already have a POI with a TALK line" validation `SAY_IF`/
+    `TOPIC`/`BOAT` already require), backed by a new pure query,
+    `timeline::Timeline::latestDayEnd(locationId)` (the max `dayEnd` across
+    every character's `PresenceWindow` there, or -1 if none). A zone POI
+    carrying `TALK_AFTER` shows it instead of the ordinary `TALK`/
+    `TALK_AGAIN` line the first time it's talked to once
+    `dayNow > latestDayEnd(effectiveId) >= 0` -- tracked under its own
+    synthesized `"<id>:after"` `GameState::metCharacters` entry (same
+    met-id-naming precedent `TIMELINE_ANCHOR` already established) so it
+    fires correctly even for a player who met the NPC before the Heroes'
+    window ever opened, which the ordinary alreadyMet/`TALK_AGAIN` check
+    alone would otherwise mask. No save-format change -- reuses the existing
+    `MET` line as-is. One proof-of-concept POI, `data/zones/solace_inn.txt`'s
+    Otik, referencing the shared `PRESENCE solace 0 1` reunion and the day
+    2-3 Haven/Darken Wood split that follows it, deliberately hedged between
+    the two rather than picking one, matching that window's own established
+    two-versions-of-one-leg ambiguity (`docs/TIMELINE_NOTES.md`). Widening to
+    other zones is deliberately left for later, same "one proof-of-concept
+    first" precedent the quest engine set (Milestone 51, widened in
+    Milestone 52). Verified via a throwaway self-test (`latestDayEnd` against
+    synthetic multi-character/multi-window schedules; `ZoneLoader` parsing
+    `TALK_AFTER` correctly plus its two fail-fast cases), a clean `/W4`
+    rebuild (zero new warnings), and the piped smoke test (confirms the
+    modified `solace_inn.txt` still parses). Interactive verification
+    (talking to Otik before day 2, after day 2 to see the aftermath line fire
+    once, then a third time to confirm the fallback to `TALK_AGAIN`) still
+    needs the user's own keyboard. See `docs/ZONE_NOTES.md`'s "Aftermath
+    dialogue" section and `docs/TIMELINE_NOTES.md`'s own section on
+    `latestDayEnd`.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1414,3 +1449,10 @@ session's work.
    game logic (`World`, `ZoneCatalog`, `Timeline`, `MonsterCatalog`,
    combat, quests) stays untouched. See `docs/ARCHITECTURE.md`'s "Why
    `Console` is the only platform-specific file."
+5. **Widen aftermath dialogue (`TALK_AFTER`) beyond Otik** -- Milestone 66
+   shipped the mechanism with one proof-of-concept POI. Every other zone
+   with a talkable NPC and real `PRESENCE` content (Haven's Seeker Guard,
+   Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel, Kalaman's City
+   Watchman, etc.) is a candidate -- same "reframe an existing NPC's
+   established voice, don't invent a new one" approach the quest-widening
+   pass (Milestone 52) already used successfully.

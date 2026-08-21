@@ -603,11 +603,26 @@ void GameLoop::handleTalk() {
     } else {
         const world::Zone* zone = zones_.getZone(state_.currentZoneId);
         const world::PointOfInterest* poi = zone->poiAt(state_.zoneX, state_.zoneY);
+        // The location whose schedule this zone checks -- shared by the
+        // TIMELINE_ANCHOR branch below and the aftermath-dialogue check
+        // above it, since "have the Heroes moved on?" is a fact about the
+        // whole zone, not any one POI. See docs/TIMELINE_NOTES.md /
+        // docs/ZONE_NOTES.md's "Aftermath dialogue" section.
+        const std::string& effectiveId =
+            zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
+        int dayNow = static_cast<int>(state_.hoursElapsed / 24);
         if (poi != nullptr && !poi->dialogue.empty()) {
             const std::string* questId = zone->questAt(state_.zoneX, state_.zoneY);
-            candidates.push_back({state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
-                                   speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string(),
-                                   poi->grantsItemId, poi->grantsItemName});
+            TalkCandidate candidate{state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
+                                     speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string(),
+                                     poi->grantsItemId, poi->grantsItemName};
+            if (!poi->dialogueAfter.empty()) {
+                int latestDayEnd = timeline_.latestDayEnd(effectiveId);
+                if (latestDayEnd >= 0 && dayNow > latestDayEnd) {
+                    candidate.dialogueAfter = poi->dialogueAfter;
+                }
+            }
+            candidates.push_back(std::move(candidate));
         }
         // Zone-interior encounters (Milestone 23): standing on this zone's
         // TIMELINE_ANCHOR tile also makes any canon character the timeline
@@ -616,10 +631,7 @@ void GameLoop::handleTalk() {
         // so "have I met them" carries over correctly from the overworld.
         // See docs/TIMELINE_NOTES.md.
         if (poi != nullptr && poi->code == zone->timelineAnchorPoi()) {
-            const std::string& effectiveId =
-                zone->timelineLocationId().empty() ? state_.currentZoneId : zone->timelineLocationId();
-            for (const auto& presence :
-                 timeline_.presentAt(effectiveId, static_cast<int>(state_.hoursElapsed / 24))) {
+            for (const auto& presence : timeline_.presentAt(effectiveId, dayNow)) {
                 if (!presence.window->dialogue.empty()) {
                     candidates.push_back(
                         {presence.character->id, presence.character->name, speechFromWindow(*presence.window)});
@@ -703,9 +715,20 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     const std::string& id = candidate.id;
     const std::string& name = candidate.name;
     const Speech& speech = candidate.speech;
-    bool alreadyMet = state_.metCharacters.count(id) > 0;
     std::string text;
-    if (alreadyMet) {
+    // Aftermath dialogue (see docs/ZONE_NOTES.md) is checked before the
+    // ordinary alreadyMet branch below, and tracked under its own id, so it
+    // fires the first time the Heroes' window has closed regardless of
+    // whether this NPC was already met beforehand -- a player who talked to
+    // Otik on day 0, before the Heroes ever arrived, still hears about their
+    // departure the next time they visit after day 1.
+    std::string afterId = id + ":after";
+    bool showAfter = !candidate.dialogueAfter.empty() && state_.metCharacters.count(afterId) == 0;
+    bool alreadyMet = state_.metCharacters.count(id) > 0;
+    if (showAfter) {
+        text = candidate.dialogueAfter;
+        state_.metCharacters.insert(afterId);
+    } else if (alreadyMet) {
         text = !speech.again.empty() ? speech.again
                                       : (name + " catches your eye and gives a small nod of recognition.");
     } else {
