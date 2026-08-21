@@ -89,6 +89,10 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // Same "applied after the whole file is parsed" treatment as shopLines
     // above -- keyed by code, value is the line number BOAT appeared on.
     std::unordered_map<char, int> boatLines;
+    // Same "applied after the whole file is parsed, must reference an
+    // already-declared POI with a TALK line" treatment as boatLines above.
+    // Value is {item-id, display-name, the line number GRANTS_ITEM appeared on}.
+    std::unordered_map<char, std::tuple<std::string, std::string, int>> grantsItemLines;
     // Same "applied after the whole file is parsed" treatment as shopLines
     // above -- keyed by code, value is the line number BED appeared on.
     std::unordered_map<char, int> bedLines;
@@ -208,6 +212,20 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed BOAT (expected: BOAT <char>)");
                 }
                 boatLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "GRANTS_ITEM") {
+                std::istringstream iss(rest);
+                std::string codeToken, itemId;
+                if (!(iss >> codeToken >> itemId) || codeToken.size() != 1) {
+                    fail(path, lineNumber,
+                         "malformed GRANTS_ITEM (expected: GRANTS_ITEM <char> <item-id> <display-name...>)");
+                }
+                std::string itemName;
+                std::getline(iss, itemName);
+                itemName = trim(itemName);
+                if (itemName.empty()) {
+                    fail(path, lineNumber, "GRANTS_ITEM is missing its display name");
+                }
+                grantsItemLines[codeToken[0]] = {itemId, itemName, lineNumber};
             } else if (keyword == "BED") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -278,7 +296,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             } else {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
-                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, BED, "
+                         "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, SHOP, BOAT, GRANTS_ITEM, BED, "
                          "SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
             }
         } else {
@@ -366,6 +384,21 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no TALK line to grant it through");
         }
         it->second.isBoat = true;
+    }
+    // Same rule for GRANTS_ITEM as BOAT: granted as a side effect of
+    // talking to the POI (see GameLoop::talkTo), so it needs the same
+    // "already-declared POI with a TALK line" validation.
+    for (const auto& [code, idNameLine] : grantsItemLines) {
+        const auto& [itemId, itemName, lineNum] = idNameLine;
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "GRANTS_ITEM '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "GRANTS_ITEM '" + std::string(1, code) + "' has no TALK line to grant it through");
+        }
+        it->second.grantsItemId = itemId;
+        it->second.grantsItemName = itemName;
     }
     // Same rule for QUEST as BOAT: it must reference an already-declared
     // POI that also has a TALK line, since a quest is offered through

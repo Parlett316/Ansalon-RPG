@@ -68,6 +68,13 @@ struct TalkCandidate {
     // restriction as grantsBoat (see docs/QUEST_NOTES.md: the canon Heroes
     // are deliberately never quest givers). See Milestone 51.
     std::string questId;
+    // Non-empty for a zone POI marked GRANTS_ITEM (world::PointOfInterest::
+    // grantsItemId/grantsItemName) -- talkTo() adds a character::ItemKind::
+    // QuestItem to inventory the first time such a candidate is talked to.
+    // Always empty for timeline candidates, same restriction as grantsBoat.
+    // See docs/QUEST_NOTES.md's "DELIVER".
+    std::string grantsItemId;
+    std::string grantsItemName;
 };
 
 // A look-at-someone candidate -- read-only counterpart to TalkCandidate (no

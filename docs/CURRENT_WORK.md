@@ -2,21 +2,25 @@
 
 Nothing in flight.
 
-Milestone 57 (terrain-specific monster pools) just shipped: which monster a
-random encounter draws now varies by terrain, via a real, sourced
-Climate/Terrain hard exclusion (Gnoll only) plus clearly-flagged, invented
-flavor weighting on top. Also fixed a real page-citation bug found along the
-way (9 of 11 monster citations in `docs/COMBAT_NOTES.md` were off by +3).
-See `docs/MILESTONES.md`'s Milestone 57 entry and `docs/COMBAT_NOTES.md`'s
-"Terrain-specific monster pools" for the full design and sourcing.
+Milestone 58 (`DELIVER`/item objectives) just shipped: a real, granted-
+in-the-world quest-item concept (`character::ItemKind::QuestItem`), a new
+`quest::ObjectiveKind::Deliver`, and a `GRANTS_ITEM` zone-POI mechanism
+mirroring `BOAT` -- plus one proof-of-concept quest, `ore_for_the_forge`
+(Pax Tharkas's new Ore Cart POI grants `raw_tharkadan_ore`; Solace's
+Flint's Smithy, previously scenery, now has a talkable journeyman who
+wants it delivered). See `docs/MILESTONES.md`'s Milestone 58 entry,
+`docs/QUEST_NOTES.md`'s "DELIVER"/"Shipped: ore_for_the_forge", and
+`docs/ZONE_NOTES.md`'s "Quest items: POIs that grant a DELIVER object"
+for the full design and sourcing.
 
-**Not yet verified**: real interactive playthrough confirming terrain
-visibly changes which monster shows up (e.g. Bugbears feeling more common in
-hills/mountains, Gnolls never appearing on salt flat) -- `_getch()` can't be
-piped, the same limitation flagged for every combat milestone so far.
-Milestone 56's own interactive verification (buying/using a Webnet and
-Brooch mid-fight) is also still outstanding from last session.
+**Not yet verified**: real interactive playthrough -- walking to Pax
+Tharkas, talking to the Ore Cart, carrying the ore to Solace, confirming
+the journal shows progress and the quest turns in and consumes the item
+-- `_getch()` can't be piped, the same limitation flagged for every quest/
+combat milestone so far. Milestone 56's Webnet/Brooch and Milestone 57's
+terrain-pool interactive verification are also still outstanding from
+earlier sessions.
 
-NEXT UP (`docs/MILESTONES.md`) now leads with the still-unused `DELIVER`
-objective kind, then more monsters (Bozak/Sivak/Aurak Draconians, Thanoi,
-etc.). Ask the user before starting either.
+NEXT UP (`docs/MILESTONES.md`) now offers two candidates: more monsters
+(Bozak/Sivak/Aurak Draconians, Thanoi, etc.) or more of DLA's "Magical
+Items of Krynn" chapter. Ask the user before starting either.

@@ -19,7 +19,10 @@
 # The Order of the Rose milestone (below) adds measure_of_roses -- REQUIRE
 # rose_eligible (Solamnia's highest rank, same compound-condition shape as
 # sword_eligible) and REWARD_KNIGHT_ROSE.
-# The DELIVER objective kind is still deferred to its own future milestone.
+# DELIVER (below, ore_for_the_forge) is this project's first carried-item
+# objective: an actual character::ItemKind::QuestItem, granted by a zone
+# POI's GRANTS_ITEM line and consumed on turn-in, rather than a query over
+# state the game already tracked the way VISIT/TALK/SLAY are.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -124,4 +127,16 @@ SLAY ogre 1 Meet an ogre in single combat and come home standing
 REWARD_STEEL 100
 REWARD_XP 250
 REWARD_KNIGHT_ROSE
+END
+
+QUEST ore_for_the_forge
+NAME Ore for the Forge
+OFFER "Whoever you're looking for, it isn't me," the journeyman says, setting down his hammer long enough to size you up. "I mind the forge when Flint's off wherever Flint's off to. This blade would've been done a week ago if Pax Tharkas' ore hadn't slowed to a trickle -- everyone up there's too busy arguing over who owns the mountain to dig anything out of it. You headed that way at all? Even a stray chunk would keep this forge lit a while longer."
+ACCEPT You know the sort of place he means -- a mine nobody's quite in charge of anymore, which usually means nobody's minding what leaves it, either.
+PROGRESS The journeyman glances at the cold half of the forge. "Still waiting on that ore, unless you're telling me otherwise."
+COMPLETE The journeyman turns the ore over in his hands, weighing it like it's worth more than it looks. "That'll do it." He sets it by the anvil and picks his hammer back up. "Flint'll wonder how I finished this without him. I won't be the one to tell him."
+GIVER the journeyman at Flint's Smithy
+DELIVER raw_tharkadan_ore 1 Bring raw ore from the Tharkadan Mine at Pax Tharkas
+REWARD_STEEL 35
+REWARD_XP 80
 END

@@ -981,16 +981,72 @@ this stays authoritative.
     same `_getch()` limitation flagged for every combat milestone so far. See
     `docs/COMBAT_NOTES.md`'s "Terrain-specific monster pools".
 
+58. `DELIVER`/item objectives -- the NEXT UP item the user picked to build
+    next, resolving the last deferred piece of the original quest-engine
+    design (deferred since Milestone 51, flagged both times as "the
+    riskiest thing to build near the user's real save" -- see
+    `docs/QUEST_NOTES.md`'s former "Deliberately not in v1" entry). Asked
+    the user how the item side should work before building anything
+    (`AskUserQuestion`, same practice as Milestones 54/56): reuse an
+    existing item kind (lower risk, weaker flavor) or build a real
+    quest-item concept; they chose the richer path. A new
+    `character::ItemKind::QuestItem` carries its own `questItemId`/
+    `questItemName` directly (the same "id + free display text" shape
+    `InventoryItem::weaponName` already has for a `Weapon`, not a fixed
+    enum + lookup table) -- never equippable, never sellable, removed from
+    inventory on turn-in. A new `quest::ObjectiveKind::Deliver` (grammar:
+    `DELIVER <item-id> <count> <label>`, parsed exactly like `SLAY`) reads
+    `character::Character::inventory` directly, the same "objective is a
+    query over existing state, not a counter" shape as `VISIT`/`TALK`/
+    `SLAY`. The item's origin is a new zone-file line, `GRANTS_ITEM <char>
+    <item-id> <display-name...>`, a one-line mirror of the existing `BOAT`
+    mechanism (Milestone 36): granted the first time that POI's `TALK`
+    fires, same "must already have a TALK line" validation. Deliberately
+    **not** a courier/two-location handoff mechanic -- turn-in still
+    happens at a single POI (the giver), matching every quest shipped so
+    far; `DELIVER` is a fetch objective ("possess it when you return"),
+    and the grant/the quest that wants it are two independently-existing
+    pieces of state, not a special-cased link between them. Ships one
+    proof-of-concept quest, `ore_for_the_forge`: a new POI,
+    `data/zones/pax_tharkas.txt`'s `O "An Ore Cart"` (grounded in the
+    zone's existing "war ... over who controls what's dug from it"
+    flavor, kept off the zone's `TIMELINE_ANCHOR` tile since no zone
+    shipped so far combines an anchor with its own zone-native `TALK`
+    line), grants `raw_tharkadan_ore`; `data/zones/solace.txt`'s `POI S`
+    ("Flint's Smithy," pure scenery until now) gains a `TALK S` for an
+    unnamed journeyman keeping the forge running -- written evergreen,
+    deliberately never claiming to *be* Flint, whose own tracked schedule
+    may have him elsewhere or already dead depending on the game day.
+    `SaveGame.cpp` touches: a new, purely additive `QUESTITEM <item-id>
+    <display-name...>` inventory-entry keyword -- not a widened enum
+    bound, since `ItemKind` was never itself a raw serialized int.
+    Verified via a throwaway self-test (`QuestLoader` parsing the real
+    `DELIVER` line plus a malformed-line failure case; `ZoneLoader`
+    parsing `GRANTS_ITEM` plus its "no TALK line" failure case; the real
+    edited zone files loading clean; `findQuestItemIndex`/
+    `inventoryItemLabel`/`sellableItems` on a constructed inventory; a
+    `SaveGame` round-trip covering `QUESTITEM`), a clean `/W4` rebuild, a
+    direct check that the user's real `save.txt` still loads cleanly
+    under the new inventory format, and the standard piped smoke test.
+    Interactive verification (walking to Pax Tharkas, picking up the ore,
+    carrying it to Solace, confirming the journal and turn-in) still
+    needs the user's own keyboard, the same `_getch()` limitation flagged
+    for every quest milestone so far. See `docs/QUEST_NOTES.md`'s
+    "DELIVER"/"Shipped: ore_for_the_forge" and `docs/ZONE_NOTES.md`'s
+    "Quest items: POIs that grant a DELIVER object".
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **`DELIVER`/item objectives** — still deferred; no quest shipped so far
-   has needed one. See `docs/QUEST_NOTES.md`'s "Deliberately not in v1."
-2. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
+1. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
    draconians are spellcasters/shapeshifters, real mechanics this project
    doesn't model yet. See `docs/COMBAT_NOTES.md`'s "Extending this later."
+2. **More of DLA's "Magical Items of Krynn" chapter** — Rods/Staves/Wands,
+   Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
+   Brooch of Imog are real, sourced, and unused. See
+   `docs/CHARACTER_NOTES.md`'s "Extending this later."

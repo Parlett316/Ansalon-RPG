@@ -9,28 +9,38 @@ namespace quest {
 // over state the game already persists* rather than a counter that starts
 // when the quest is accepted:
 //
-//   Visit -- game::GameState::visitedLocations (since Milestone 3)
-//   Talk  -- game::GameState::metCharacters    (since Milestone 18)
-//   Slay  -- game::GameState::monsterKills     (added with this system)
+//   Visit    -- game::GameState::visitedLocations (since Milestone 3)
+//   Talk     -- game::GameState::metCharacters    (since Milestone 18)
+//   Slay     -- game::GameState::monsterKills     (added with this system)
+//   Deliver  -- character::Character::inventory (added the DELIVER
+//               milestone) -- counts carried character::ItemKind::
+//               QuestItem entries matching targetId. The item itself is
+//               granted by a zone POI's GRANTS_ITEM line (see
+//               docs/ZONE_NOTES.md), a separate, independently-existing
+//               piece of state -- same "objective is a query, not a
+//               counter" shape as every other kind, not a special link
+//               between the grant and the quest that wants it.
 //
 // One consequence worth knowing when authoring: a quest can be immediately
 // completable the moment it's accepted, if the player already did the thing
 // before ever being asked. That is unavoidable for Visit/Talk (those sets
-// predate quests entirely), so Slay behaves the same way for consistency
-// rather than snapshotting a per-quest baseline. See docs/QUEST_NOTES.md.
+// predate quests entirely), so Slay/Deliver behave the same way for
+// consistency rather than snapshotting a per-quest baseline. See
+// docs/QUEST_NOTES.md.
 enum class ObjectiveKind {
     Visit,
     Talk,
     Slay,
+    Deliver,
 };
 
 struct Objective {
     ObjectiveKind kind = ObjectiveKind::Visit;
-    // A world::Location id (Visit), a met-id (Talk), or a combat::Monster id
-    // (Slay). Kept as a raw string and resolved in game/ -- quest/ stays
-    // decoupled from world/, combat/ and character/, exactly as
-    // timeline::PresenceWindow holds raw SAY_IF condition strings without
-    // knowing what they mean.
+    // A world::Location id (Visit), a met-id (Talk), a combat::Monster id
+    // (Slay), or a character::InventoryItem::questItemId (Deliver). Kept as
+    // a raw string and resolved in game/ -- quest/ stays decoupled from
+    // world/, combat/ and character/, exactly as timeline::PresenceWindow
+    // holds raw SAY_IF condition strings without knowing what they mean.
     //
     // A met-id is NOT a display name: canon characters use their own
     // timeline id ("tanis"), zone NPCs use the synthesized
@@ -40,7 +50,7 @@ struct Objective {
     // silent-failure class as an unvalidated PRESENCE location id. See
     // docs/GOTCHAS.md.
     std::string targetId;
-    // Only meaningful for Slay; Visit/Talk leave it at 1.
+    // Meaningful for Slay/Deliver; Visit/Talk leave it at 1.
     int count = 1;
     // The line shown in the journal, authored rather than derived. Deriving
     // "Slay three timber wolves" would need name lookups across

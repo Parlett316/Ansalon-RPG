@@ -119,6 +119,22 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
                 fail(path, lineNumber, "SLAY is missing its journal label");
             }
             current.objectives.push_back(std::move(obj));
+        } else if (keyword == "DELIVER") {
+            std::istringstream iss(rest);
+            Objective obj;
+            obj.kind = ObjectiveKind::Deliver;
+            if (!(iss >> obj.targetId >> obj.count)) {
+                fail(path, lineNumber, "malformed DELIVER (expected: DELIVER <item-id> <count> <label>)");
+            }
+            if (obj.count < 1) {
+                fail(path, lineNumber, "DELIVER count must be at least 1");
+            }
+            std::getline(iss, obj.label);
+            obj.label = trim(obj.label);
+            if (obj.label.empty()) {
+                fail(path, lineNumber, "DELIVER is missing its journal label");
+            }
+            current.objectives.push_back(std::move(obj));
         } else if (keyword == "REWARD_STEEL") {
             std::istringstream iss(rest);
             if (!(iss >> current.rewardSteel)) {
@@ -146,7 +162,7 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
             if (current.completeText.empty()) fail(path, lineNumber, "quest is missing its COMPLETE text");
             if (current.giver.empty()) fail(path, lineNumber, "quest is missing its GIVER text");
             if (current.objectives.empty()) {
-                fail(path, lineNumber, "quest has no objectives (need at least one VISIT/TALK/SLAY)");
+                fail(path, lineNumber, "quest has no objectives (need at least one VISIT/TALK/SLAY/DELIVER)");
             }
             outCatalog.addQuest(std::move(current));
             inQuest = false;

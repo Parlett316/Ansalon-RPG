@@ -112,6 +112,7 @@ enum class ItemKind {
     Potion,
     Webnet,
     BroochOfImog,
+    QuestItem,
 };
 
 struct InventoryItem {
@@ -121,6 +122,14 @@ struct InventoryItem {
     int weaponDamageSides = 0;           // valid when kind == Weapon
     int weaponDamageBonus = 0;           // valid when kind == Weapon
     int weaponMagicBonus = 0;            // valid when kind == Weapon
+    std::string questItemId;             // valid when kind == QuestItem --
+                                          // stable id, matched against
+                                          // quest::Objective::targetId for a
+                                          // DELIVER objective and against a
+                                          // zone POI's GRANTS_ITEM id
+    std::string questItemName;           // valid when kind == QuestItem --
+                                          // display label, e.g. "Raw
+                                          // Tharkadan Ore"
 };
 
 // Human-readable label for a carried item, same format as ShopItem::label
@@ -271,5 +280,19 @@ PurchaseResult useWebnet(Character& character, int index);
 // monster's attacks land this fight -- GameLoop::runCombat's own local
 // flag handles that.
 PurchaseResult activateBrooch(Character& character, long long today);
+
+// A quest item (ItemKind::QuestItem) -- a real, granted-in-the-world
+// object carried toward a quest::ObjectiveKind::Deliver objective, never
+// sold and never equipped (see docs/QUEST_NOTES.md's "DELIVER"). Unlike
+// Potion/Webnet/BroochOfImog, there is no fixed catalog: a zone POI's
+// GRANTS_ITEM line supplies both `questItemId` and `questItemName`
+// directly, the same "id + display text" shape InventoryItem::weaponName
+// already carries for a Weapon.
+//
+// -1 if the character carries no QuestItem with this id, otherwise the
+// character.inventory index of the first one found -- used both by
+// game::GameLoop::talkTo (to avoid granting a duplicate on repeat talk)
+// and by game::objectiveProgress's Deliver case.
+int findQuestItemIndex(const Character& character, const std::string& questItemId);
 
 } // namespace character

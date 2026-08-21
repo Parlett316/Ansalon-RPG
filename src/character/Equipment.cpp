@@ -74,6 +74,8 @@ std::string inventoryItemLabel(const InventoryItem& item) {
             return "Webnet";
         case ItemKind::BroochOfImog:
             return "Brooch of Imog";
+        case ItemKind::QuestItem:
+            return item.questItemName;
     }
     return "";
 }
@@ -122,10 +124,12 @@ bool equipInventoryItem(Character& character, int index) {
         case ItemKind::Potion:
         case ItemKind::Webnet:
         case ItemKind::BroochOfImog:
+        case ItemKind::QuestItem:
             // Not equippable -- GameLoop::handleInventory branches on
             // ItemKind before ever calling here for these; using them is a
             // different action (see drinkPotion/useWebnet/activateBrooch
-            // below), unreachable here in practice.
+            // below, or simply carrying a QuestItem toward a DELIVER
+            // objective), unreachable here in practice.
             break;
     }
     return true;
@@ -390,6 +394,12 @@ int resaleValueStl(const Character& character, const InventoryItem& item, bool& 
         case ItemKind::BroochOfImog:
             sellable = true;
             return kBroochOfImogCostStl / 2;
+        case ItemKind::QuestItem:
+            // Never sold, never bought -- granted in the world for one
+            // specific quest, same "no established price" treatment as
+            // SolamnicArmor above.
+            sellable = false;
+            return 0;
     }
     sellable = false;
     return 0;
@@ -476,6 +486,14 @@ PurchaseResult activateBrooch(Character& character, long long today) {
     }
     character.lastBroochUseDay = today;
     return {true, "You speak the Brooch of Imog's command word -- a minor globe of invulnerability surrounds you!"};
+}
+
+int findQuestItemIndex(const Character& character, const std::string& questItemId) {
+    for (size_t i = 0; i < character.inventory.size(); ++i) {
+        const InventoryItem& item = character.inventory[i];
+        if (item.kind == ItemKind::QuestItem && item.questItemId == questItemId) return static_cast<int>(i);
+    }
+    return -1;
 }
 
 } // namespace character

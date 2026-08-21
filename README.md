@@ -164,7 +164,7 @@ press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
 reward — the moment every objective's actually done, the game says so
 itself ("...is ready to turn in -- return to..."), so you never have to
-guess or walk back speculatively. Eight ship so far — Solace's Notice
+guess or walk back speculatively. Nine ship so far — Solace's Notice
 Board offers a bounty to clear three timber wolves off the south road;
 Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
 Tower, and Kalaman's City Watchman each have their own reason to send you
@@ -173,11 +173,15 @@ hers to a fellow Elf; once a Knight of the Crown has proven
 themselves, High Clerist's Tower's Sword Knight can sponsor real
 advancement into the Order of the Sword; once you've reached that
 Sword rank, the Tower's Knight of the Circle can grant real Solamnic
-Armor (AC 0, sourced directly from Dragonlance Adventures); and, at the top
+Armor (AC 0, sourced directly from Dragonlance Adventures); at the top
 of the chain, a Rose Knight at the same Tower can name a proven Sword
-Knight into the Order of the Rose, Solamnia's highest rank — see
-`docs/QUEST_NOTES.md` for the full design, what ships, and how more get
-authored.
+Knight into the Order of the Rose, Solamnia's highest rank; and, back in
+Solace, Flint Fireforge's smithy — pure scenery until now — has a
+journeyman who'll ask you to fetch raw ore from Pax Tharkas's contested
+Tharkadan Mine and actually carry it back, this project's first quest
+built around a real, granted-in-the-world object rather than a place
+visited or a foe slain — see `docs/QUEST_NOTES.md` for the full design,
+what ships, and how more get authored.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),

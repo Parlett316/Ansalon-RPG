@@ -125,6 +125,15 @@ int objectiveProgress(const quest::Objective& objective, const GameState& state)
             auto it = state.monsterKills.find(objective.targetId);
             return it == state.monsterKills.end() ? 0 : it->second;
         }
+        case quest::ObjectiveKind::Deliver: {
+            int count = 0;
+            for (const auto& item : state.character.inventory) {
+                if (item.kind == character::ItemKind::QuestItem && item.questItemId == objective.targetId) {
+                    ++count;
+                }
+            }
+            return count;
+        }
     }
     return 0; // unreachable -- every ObjectiveKind is handled above
 }
@@ -501,7 +510,8 @@ void GameLoop::handleTalk() {
         if (poi != nullptr && !poi->dialogue.empty()) {
             const std::string* questId = zone->questAt(state_.zoneX, state_.zoneY);
             candidates.push_back({state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
-                                   speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string()});
+                                   speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string(),
+                                   poi->grantsItemId, poi->grantsItemName});
         }
         // Zone-interior encounters (Milestone 23): standing on this zone's
         // TIMELINE_ANCHOR tile also makes any canon character the timeline
@@ -619,6 +629,13 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
         state_.hasBoat = true;
         pushLog("You've arranged passage south. You can now cross open water.");
     }
+    if (!candidate.grantsItemId.empty() &&
+        character::findQuestItemIndex(state_.character, candidate.grantsItemId) < 0) {
+        state_.character.inventory.push_back(character::InventoryItem{
+            character::ItemKind::QuestItem, character::ArmorId::None, "", 0, 0, 0,
+            candidate.grantsItemId, candidate.grantsItemName});
+        pushLog("You've picked up " + candidate.grantsItemName + ".");
+    }
     if (!candidate.questId.empty()) {
         offerOrTurnInQuest(candidate.questId, name);
     }
@@ -705,6 +722,17 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
     // ReadyToTurnIn -- turn in.
     render::MapRenderer::drawDialogueFrame({{speakerName, q->completeText}});
     render::Console::readKey();
+    // Hand over any delivered quest items -- the literal "give it to the
+    // giver" for each Deliver objective, mirroring rewardSolamnicArmor's
+    // add-to-inventory below in reverse. allObjectivesMet already confirmed
+    // every one of these is actually carried before this branch is reached.
+    for (const auto& objective : q->objectives) {
+        if (objective.kind != quest::ObjectiveKind::Deliver) continue;
+        for (int i = 0; i < objective.count; ++i) {
+            int index = character::findQuestItemIndex(state_.character, objective.targetId);
+            if (index >= 0) state_.character.inventory.erase(state_.character.inventory.begin() + index);
+        }
+    }
     state_.character.steelPieces += q->rewardSteel;
     if (q->rewardXp > 0) {
         state_.character.experience += q->rewardXp;
@@ -858,6 +886,8 @@ void GameLoop::handleInventory() {
                     pushLog(result.message);
                 } else if (kind == character::ItemKind::Webnet || kind == character::ItemKind::BroochOfImog) {
                     pushLog("That can only be used in combat.");
+                } else if (kind == character::ItemKind::QuestItem) {
+                    pushLog("That's meant for someone else -- you'll need to deliver it.");
                 } else {
                     character::equipInventoryItem(state_.character, selected);
                 }

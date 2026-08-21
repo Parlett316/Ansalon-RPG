@@ -99,6 +99,13 @@ BOAT <char>                             optional, marks a POI as granting
                                         same "must already have a POI
                                         **and** a TALK line" rule as
                                         SAY_IF/TOPIC
+GRANTS_ITEM <char> <item-id>            optional, marks a POI as granting
+  <display-name...>                      a character::ItemKind::QuestItem
+                                        the first time it's talked to (see
+                                        "Quest items: POIs that grant a
+                                        DELIVER object" below); same "must
+                                        already have a POI **and** a TALK
+                                        line" rule as BOAT
 BED <char>                              optional, marks a POI as a bed --
                                         pressing 'z' on that tile fully
                                         heals and advances 8 hours (see
@@ -305,6 +312,29 @@ represents passage arranged by Derek Crownguard's knights (see
 `docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
 the Old Sailor's characterization untouched.
 
+## Quest items: POIs that grant a DELIVER object (the DELIVER milestone)
+
+`GRANTS_ITEM <char> <item-id> <display-name...>` marks a POI whose `TALK`
+interaction, the first time it happens, adds a `character::ItemKind::
+QuestItem` to the player's inventory -- the exact same "layers an ability
+on top of an existing POI, tied to talking" pattern `BOAT` established
+(same "must already have a TALK line" rule, same "granted once, never
+again" guard), just handing over a carried item instead of flipping a
+flag. `<item-id>` is a stable id matched against a quest's `DELIVER
+<item-id> <count> <label>` objective (`quest::Objective::targetId`, see
+`docs/QUEST_NOTES.md`'s "DELIVER"); `<display-name...>` is free text shown
+in the inventory screen and journal (`character::InventoryItem::
+questItemName`). The grant and the quest that wants the item are two
+independently-existing pieces of state -- deliberately not a special link
+between them, same "objective is a query, not a counter" shape as every
+other objective kind.
+
+As of the DELIVER milestone, exactly one POI carries `GRANTS_ITEM`:
+`data/zones/pax_tharkas.txt`'s `O "An Ore Cart"`, granting
+`raw_tharkadan_ore` -- see `docs/QUEST_NOTES.md`'s "Shipped:
+ore_for_the_forge" and this file's own Pax Tharkas section below for why
+it's a new POI rather than added to the existing Mine Entrance.
+
 ## Beds: POIs for complete bed-rest (Milestone 41)
 
 `BED <char>` marks a POI as a bed the player can press `z` at to fully heal
@@ -437,6 +467,14 @@ make literal" — as of Milestone 51 it's the game's first quest-giver
 (`QUEST B road_wolves`, see "Quests: POIs that offer them" above), reading
 the same "armies on the move in the east" description it always had.
 
+Flint Fireforge's smithy (`POI S`) was pure scenery until the DELIVER
+milestone, which gave it a `TALK S` for an unnamed journeyman who keeps
+the forge running — written evergreen, deliberately never claiming to
+*be* Flint (his own tracked `PRESENCE` schedule may have him elsewhere,
+or already dead by Godshome, depending on the game day — see
+`docs/TIMELINE_NOTES.md`). `QUEST S ore_for_the_forge` — see
+`docs/QUEST_NOTES.md`'s "Shipped: ore_for_the_forge".
+
 ## The Inn of the Last Home specifically
 
 `data/zones/solace_inn.txt` is the Inn's ground floor (44×16, well under the
@@ -529,7 +567,16 @@ same freshly-written-not-transcribed treatment as everywhere else:
   **no** race-based `SAY_IF` (dwarf/elf), since a warm or hostile
   reaction from this specific guard risks implying an occupier identity
   the project has deliberately left open; don't "fix" this gap without
-  re-reading why it's here.
+  re-reading why it's here. The DELIVER milestone added a second POI, `O
+  "An Ore Cart"` (abandoned near the Mine Entrance, in keeping with the
+  zone's existing "war ... over who controls what's dug from it" flavor
+  — see "Quest items" above), carrying `GRANTS_ITEM O raw_tharkadan_ore
+  Raw Tharkadan Ore`. Deliberately its own tile rather than added to `M`
+  (the Mine Entrance) — `M` is this zone's `TIMELINE_ANCHOR`, and no zone
+  shipped so far combines a `TIMELINE_ANCHOR` tile with its own
+  zone-native `TALK` line (anchors are always pure scenery in every zone
+  to date), so the grant stayed off that tile rather than exercising an
+  untested combination.
 - `data/zones/plains_of_dust.txt` — a Plainsfolk camp. Deliberately an
   unnamed tribe's camp, not Que-Shu specifically, since DL3 establishes
   Que-Shu as destroyed by the time of that module's story — using an

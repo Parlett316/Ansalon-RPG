@@ -65,8 +65,12 @@ REQUIRE <condition>                optional -- game::conditionMatches's
 VISIT <location-id> <label>       one or more objectives, any mix, in
 TALK <met-id> <label>             authored order -- <label> is the line
 SLAY <monster-id> <count> <label> shown in the journal, hand-written rather
-                                  than derived (see "Objectives are queries
-                                  over existing state" below)
+DELIVER <item-id> <count> <label> than derived (see "Objectives are queries
+                                  over existing state" below). DELIVER's
+                                  <item-id> is a character::InventoryItem::
+                                  questItemId, granted in the world by a
+                                  zone POI's GRANTS_ITEM line (see
+                                  docs/ZONE_NOTES.md) -- see "DELIVER" below.
 REWARD_STEEL <n>                  optional, default 0
 REWARD_XP <n>                     optional, default 0
 REWARD_KNIGHT_SWORD                optional, bare flag (no argument) --
@@ -106,8 +110,8 @@ machine field *and* free text that could otherwise run together).
 loader — see `docs/ARCHITECTURE.md`): a keyword outside a `QUEST`/`END`
 block; `QUEST` opened before the previous block's `END`; a duplicate quest
 id; any of `NAME`/`OFFER`/`ACCEPT`/`PROGRESS`/`COMPLETE` missing at `END`;
-zero objectives at `END`; a `SLAY` count below 1; an objective missing its
-label; end-of-file inside an open block.
+zero objectives at `END`; a `SLAY`/`DELIVER` count below 1; an objective
+missing its label; end-of-file inside an open block.
 
 ## Objectives are queries over existing state, not counters
 
@@ -119,23 +123,27 @@ it's a live read of state the game already tracks:
 |------|-------|
 | `VISIT <location-id>` | `GameState::visitedLocations` (tracked since Milestone 3) |
 | `TALK <met-id>` | `GameState::metCharacters` (tracked since Milestone 18) |
-| `SLAY <monster-id> <count>` | `GameState::monsterKills` (new this milestone) |
+| `SLAY <monster-id> <count>` | `GameState::monsterKills` (added with this system) |
+| `DELIVER <item-id> <count>` | `character::Character::inventory` (added the DELIVER milestone) |
 
 `VISIT` and `TALK` needed **zero new tracking** — those sets already
 existed for unrelated reasons and simply happened to answer "has the
 player done this" already. `SLAY` needed exactly one new field:
 `monsterKills`, a lifetime tally incremented in `GameLoop::runCombat` on
 every kill, regardless of whether any quest cares about that monster.
+`DELIVER` reads `inventory` directly (counting
+`character::ItemKind::QuestItem` entries whose `questItemId` matches) —
+see "DELIVER" below for where the item itself comes from.
 
 **Consequence, not a bug: a quest can be instantly completable the moment
 it's accepted**, if the player already did the thing before ever hearing
 about it. This was already unavoidably true for `VISIT`/`TALK` (those sets
 predate quests entirely — a well-traveled character could easily have
-already visited the target location), so making `SLAY` behave differently
-would have been the *inconsistent* choice, not the safe one. The
-alternative — snapshotting a per-quest kill baseline on accept — is a
-second saved map and an ordering rule, for a game whose whole combat design
-is already forgiving (knocked out, not killed; see
+already visited the target location), so making `SLAY`/`DELIVER` behave
+differently would have been the *inconsistent* choice, not the safe one.
+The alternative — snapshotting a per-quest kill/possession baseline on
+accept — is a second saved map and an ordering rule, for a game whose
+whole combat design is already forgiving (knocked out, not killed; see
 `docs/COMBAT_NOTES.md`). Author quest flavor with this in mind rather than
 fighting it: `road_wolves`'s `ACCEPT` text ("the wolves, presumably, are
 still out there") reads fine either way.
@@ -146,6 +154,83 @@ equivalent for `world::World`/`timeline::Timeline` for the other two
 kinds) — cross-module lookups `quest::Objective` deliberately doesn't have
 access to. Writing the label directly in `data/quests.txt` costs nothing
 and matches `PRESENCE`'s own trailing-flavor-text shape.
+
+## DELIVER
+
+The last objective kind deferred since the engine first shipped (see
+"Deliberately not in v1" below, and Milestone 51's original scoping) — a
+real, carried quest item, not a query over state the game already tracked
+for unrelated reasons the way `VISIT`/`TALK`/`SLAY` are. Two independently-
+existing pieces of state make it work, deliberately not a special link
+between them:
+
+- **The item's origin**: a zone POI's `GRANTS_ITEM <char> <item-id>
+  <display-name...>` line (see `docs/ZONE_NOTES.md`) hands over a
+  `character::ItemKind::QuestItem` the first time that POI is talked to —
+  the exact same mechanism `BOAT` already established for
+  `GameState::hasBoat` (Milestone 36), just granting an inventory item
+  instead of flipping a flag. Same "must already have a TALK line"
+  validation, same "granted once, never again" guard.
+- **The quest that wants it**: `DELIVER <item-id> <count> <label>`'s
+  `objectiveProgress` (`game::objectiveProgress` in `GameLoop.cpp`) counts
+  matching `QuestItem` entries in `character::Character::inventory` — a
+  live read, not a counter, same as every other kind.
+
+A `QuestItem` is a real `character::ItemKind` (`Equipment.h`), carrying its
+own `questItemId`/`questItemName` rather than looking either up from a
+fixed table the way `ArmorId` does — the same "id + free display text"
+shape `InventoryItem::weaponName` already has for a `Weapon`, since quest
+items are one-off narrative objects, not a small closed catalog. It is
+never equippable (`equipInventoryItem` no-ops on it, same as
+`Potion`/`Webnet`/`BroochOfImog`) and never sellable (`sellableItems`
+marks it unsellable with no resale value, same "never had an established
+price" treatment as `SolamnicArmor`). Turning in a quest with a `Deliver`
+objective removes `count` matching items from inventory as part of the
+turn-in — the literal "handing it over" — via a new
+`character::findQuestItemIndex` helper, the same shape as
+`firstPotionIndex`/`firstWebnetIndex`.
+
+Save format: a new, purely additive inventory-entry keyword,
+`QUESTITEM <item-id> <display-name...>`, alongside `ARMOR`/`SHIELD`/
+`POTION`/etc. in the same per-entry dispatch (see "Save format" below) —
+not a widened enum bound, since `ItemKind` was never itself a raw
+serialized int (each kind gets its own keyword).
+
+### Shipped: `ore_for_the_forge`
+
+The first (and so far only) `DELIVER` quest, proving the mechanism with
+real content rather than landing pure engine work with nothing to point
+at — same discipline `road_wolves` established for the quest engine
+itself. **Source** — `data/zones/pax_tharkas.txt`'s new POI `O`, "An Ore
+Cart" (an abandoned cart near the Tharkadan Mine gate, grounded in the
+zone's existing "war ... over who controls what's dug from it" flavor;
+the mine's interior stays unmodeled, same restraint the zone file's own
+header comment already documents), grants `raw_tharkadan_ore`. Deliberately
+its own POI rather than added to `M` (the Mine Entrance) — `M` is this
+zone's `TIMELINE_ANCHOR`, and no zone shipped so far combines a
+`TIMELINE_ANCHOR` tile with its own zone-native `TALK` line (anchors are
+always pure scenery), so the grant was kept on a separate tile rather than
+exercising that untested combination for a first pass. **Sink** —
+`data/zones/solace.txt`'s `POI S`, "Flint's Smithy," previously pure
+scenery, gains a `TALK S` for an unnamed journeyman who keeps the forge
+running — written evergreen, deliberately never claiming to *be* Flint
+(whose own tracked schedule may have him elsewhere, or already dead,
+depending on the game day — see `docs/TIMELINE_NOTES.md`), asking for ore
+hauled from Pax Tharkas since the mine's supply has dried up amid the
+dispute over who holds it. `QUEST S ore_for_the_forge`, a single
+`DELIVER raw_tharkadan_ore 1` objective, 35 steel / 80 XP reward (the
+`inn_supply_run`/`bazaar_road_raiders` range, not the Knight-advancement
+tier). Verified via a throwaway self-test (`QuestLoader` parsing the real
+`DELIVER` line plus a malformed-line failure case; `ZoneLoader` parsing
+`GRANTS_ITEM` plus its "no TALK line" failure case; the real edited zone
+files loading clean; `findQuestItemIndex`/`inventoryItemLabel`/
+`sellableItems` on a constructed inventory; a `SaveGame` round-trip
+covering `QUESTITEM`), a clean `/W4` rebuild, a direct check that the
+user's real `save.txt` still loads cleanly under the new inventory
+format, and the standard piped smoke test. Interactive verification
+(walking to Pax Tharkas, picking up the ore, carrying it to Solace,
+confirming the journal and turn-in) still needs the user's own keyboard,
+the same `_getch()` limitation flagged for every quest milestone so far.
 
 ## The met-id trap
 
@@ -293,6 +378,15 @@ pairs, and packing pairs onto one line would need its own delimiter):
 QUEST <quest-id> <statusInt>    0 = Active, 1 = Complete, 2 = ReadyToTurnIn
 KILL <monster-id> <count>
 ```
+
+A third keyword, `QUESTITEM <item-id> <display-name...>`, was added with
+DELIVER — but unlike the two above it's not a new top-level line, just a
+new per-entry keyword inside the existing `INVENTORY` block (alongside
+`ARMOR`/`SHIELD`/`POTION`/etc. — see `character::ItemKind::QuestItem` and
+"DELIVER" above). Purely additive: `ItemKind` was never itself a raw
+serialized int (each kind gets its own keyword, not a shared `ITEMKIND
+<n>` line), so no bound-widening or backward-compatibility shim was
+needed the way `ARMOR`/`KNIGHTORDER`'s bound-widening has needed before.
 
 Written immediately after `BOAT`, before `ZONE`/`ZONESTACK` —
 `SaveGame.cpp` documents that `load()`'s `ZONESTACK` consumption relies on
@@ -544,13 +638,6 @@ above, and separately a real crash bug (unrelated to quests — see
 
 ## Deliberately not in v1
 
-- **`DELIVER` / item-possession objectives.** `character::InventoryItem`
-  only models Armor/Shield/Weapon/Potion and items carry no id — this
-  would mean a new `ItemKind`, new `InventoryItem` fields, an
-  unsellable-in-shop rule, an equip-path guard (a quest item has no
-  slot), and a change to the save's `INVENTORY` block. A whole item
-  subsystem hiding inside "one more objective kind," and the riskiest
-  thing to build near the user's real save — deferred to Milestone 52.
 - **A *generic* item-reward mapping.** Mapping an arbitrary data string to
   a concrete `InventoryItem` needs a name<->enum reverse lookup this
   project's raw-int save design deliberately avoids everywhere else. Still
@@ -576,16 +663,14 @@ above, and separately a real crash bug (unrelated to quests — see
 
 Milestone 52 shipped the ordinary-NPC content pass, Milestone 53 shipped
 Knight of the Sword advancement, the Dragonlance magical items milestone
-shipped `solamnic_armor`, and the Order of the Rose milestone shipped
-`measure_of_roses`, completing the Crown→Sword→Rose chain (see "Shipped
-quests" above) — VISIT, TALK, a mixed-kind quest, REQUIRE conditions beyond
-`knight`, and an item-granting reward are all proven live in real, played
-content. One item from the original backlog is still open:
+shipped `solamnic_armor`, the Order of the Rose milestone shipped
+`measure_of_roses` (completing the Crown→Sword→Rose chain), and the
+DELIVER milestone shipped `ore_for_the_forge` (see "DELIVER"/"Shipped
+quests" above) — VISIT, TALK, SLAY, DELIVER, a mixed-kind quest, REQUIRE
+conditions beyond `knight`, and an item-granting reward are all proven
+live in real, played content. Every objective kind from the original
+design is now shipped; what's still open:
 
-- **`DELIVER`/item-possession objectives**, if a future quest concept
-  genuinely needs one rather than being addable with VISIT/TALK/SLAY (as
-  every quest shipped so far has been) — see "Deliberately not in v1"
-  above for what this would actually require.
 - **More of DLA's "Magical Items of Krynn" chapter** (Rods/Staves/Wands,
   Crystals and Gems, Miscellaneous Magic) is real, sourced, and
   unused — see `docs/CHARACTER_NOTES.md`'s "Magic items" for what's

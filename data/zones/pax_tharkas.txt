@@ -11,7 +11,7 @@ GRID
 #......................................#
 #..T................................T..#
 #......................................#
-#...................M..................#
+#...................M..O...............#
 #......................................#
 #......................................#
 #......................................#
@@ -26,6 +26,10 @@ GRID
 ENDGRID
 POI T "A Twin Tower" One of the fortress's two great guard towers, flanking the pass it was built to hold. The stonework predates every banner that's flown from it since.
 POI M "The Tharkadan Mine Entrance" A wide iron-bound gate opens into the mountain itself, dwarven-cut and elven-mortared, older than the war currently fought over who controls what's dug from it.
+POI O "An Ore Cart" A handcart of raw ore sits abandoned near the gate, half-loaded and going to rust -- whoever left it here in a hurry hasn't come back for it, and with the mine's ownership still an open question, it doesn't look like anyone's about to ask who it belongs to.
+TALK O You dig through the cart and come away with a solid chunk of raw ore, heavier than it looks. Nobody stops you. Nobody's watching closely enough to.
+TALK_AGAIN O The cart's mostly picked over now, whatever's left not worth the trouble of digging for twice.
+GRANTS_ITEM O raw_tharkadan_ore Raw Tharkadan Ore
 POI G "A Fortress Guard" A soldier stands post in the courtyard, watching the road south more than he watches you. Whoever holds Pax Tharkas this season, the pass still needs watching.
 TALK G Move through if you're moving through. The road south is open today, for whatever that's worth -- I wouldn't count on it staying that way, and I wouldn't ask me who's counting.
 TALK_AGAIN G Still standing, same as you. Road's still open. I'd tell you that's a good sign, but I've been wrong about that before.

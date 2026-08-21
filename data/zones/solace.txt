@@ -31,4 +31,7 @@ QUEST B road_wolves
 POI G "General Store" A cluttered storefront built into a hollowed vallenwood limb, shelves crowded with rope, oil, dried rations, and traveling gear.
 SHOP G
 POI S "Flint's Smithy" A stocky dwarf hunches over the forge, muttering at a half-finished blade. He doesn't look up, but he's clearly listening.
+TALK S "Whoever you're looking for, it isn't me," the journeyman says, setting down his hammer just long enough to size you up. "I mind the forge when Flint's off wherever Flint's off to. Which is most of the time, these days." He nods at the half-finished blade. "Would've been done a week ago if Pax Tharkas' ore hadn't slowed to a trickle -- everyone up there's too busy arguing over who owns the mountain to dig anything out of it."
+TALK_AGAIN S The forge is still going, the blade still waiting on its ore. "Same as before," the journeyman says, without looking up this time.
+QUEST S ore_for_the_forge
 END

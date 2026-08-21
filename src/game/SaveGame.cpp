@@ -127,6 +127,9 @@ void SaveGame::save(const GameState& state, const std::string& path) {
             case character::ItemKind::BroochOfImog:
                 file << "BROOCH\n";
                 break;
+            case character::ItemKind::QuestItem:
+                file << "QUESTITEM " << item.questItemId << " " << item.questItemName << "\n";
+                break;
         }
     }
     file << "SPELLSTODAY " << c.spellsCastToday << " " << c.spellsCastDay << "\n";
@@ -225,6 +228,14 @@ GameState SaveGame::load(const std::string& path) {
                 item.kind = character::ItemKind::Webnet;
             } else if (itemKeyword == "BROOCH") {
                 item.kind = character::ItemKind::BroochOfImog;
+            } else if (itemKeyword == "QUESTITEM") {
+                item.kind = character::ItemKind::QuestItem;
+                if (!(itemIss >> item.questItemId)) {
+                    fail(path, lineNumber, "malformed inventory QUESTITEM entry (expected: QUESTITEM <id> <name...>)");
+                }
+                std::string questItemName;
+                std::getline(itemIss, questItemName);
+                item.questItemName = trim(questItemName);
             } else if (itemKeyword == "WEAPON") {
                 // Legacy pre-magic-weapon keyword -- see the top-level WEAPON
                 // handler below for why this is still accepted read-only.

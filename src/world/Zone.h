@@ -52,6 +52,14 @@ struct PointOfInterest {
     // zone file, which must reference an already-declared POI char, same
     // "no TALK prerequisite" rule as SHOP (see docs/ZONE_NOTES.md).
     bool isBed = false;
+    // Non-empty if talking to this POI grants a character::ItemKind::
+    // QuestItem the first time -- set via a GRANTS_ITEM line in the zone
+    // file (grantsItemId + grantsItemName, e.g. "raw_tharkadan_ore" /
+    // "Raw Tharkadan Ore"), same "must reference an already-declared POI
+    // with a TALK line" validation as BOAT (see docs/ZONE_NOTES.md and
+    // docs/QUEST_NOTES.md's "DELIVER").
+    std::string grantsItemId;
+    std::string grantsItemName;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in

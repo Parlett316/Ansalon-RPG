@@ -882,6 +882,23 @@ has been spent does. `SaveGame.cpp` touches: a new `BROOCHDAY` line
 and two new bare-keyword inventory lines, `WEBNET`/`BROOCH`, alongside the
 existing `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON` ones.
 
+### Quest items (the DELIVER milestone)
+
+`ItemKind::QuestItem`, the first inventory kind that isn't a piece of
+purchasable/sourced equipment — a real, narrative object granted in the
+world (via a zone POI's `GRANTS_ITEM` line, see `docs/ZONE_NOTES.md`) and
+carried toward a `quest::ObjectiveKind::Deliver` objective (see
+`docs/QUEST_NOTES.md`'s "DELIVER"). Unlike `ArmorId`'s small fixed table,
+a quest item carries its own `questItemId`/`questItemName` directly on
+the `InventoryItem` — the same "id + free display text" shape
+`weaponName` already has for a `Weapon` — since quest items are one-off
+objects, not a closed catalog. Never equippable, never sellable (no
+established price, same treatment `SolamnicArmor` already gets), and
+removed from inventory on turn-in rather than by the player directly —
+there is deliberately no "drop" action. `SaveGame.cpp` touches: a new
+`QUESTITEM <item-id> <display-name...>` inventory-entry keyword,
+alongside `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON`/`WEBNET`/`BROOCH`.
+
 ## Where a character lives
 
 `CharacterCreator::run()` executes once, in `main.cpp`, before `GameState`
@@ -913,8 +930,9 @@ stored in `GameState::character` and never reassigned after that; pressing
   and the one Mage spell isn't sphere-restricted).
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
   a carried inventory, sell-back, three shops (Solace, Haven, Tarsis), a
-  Potion, a "+1" magic weapon/Solamnic Armor, and (Milestone 56) a Webnet/
-  Brooch of Imog all exist now (see "Equipment" and "Magic items" above).
+  Potion, a "+1" magic weapon/Solamnic Armor, (Milestone 56) a Webnet/
+  Brooch of Imog, and (the DELIVER milestone) real quest items all exist
+  now (see "Equipment", "Magic items", and "Quest items" above).
   Still missing: per-location wares (every shop sells the identical
   catalog) and armor weight/encumbrance. Milestone 56 read the rest of
   DLA's "Magical Items of Krynn" chapter closely (Rods/Staves/Wands,
