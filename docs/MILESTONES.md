@@ -1072,6 +1072,43 @@ Not yet started — a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
+60. Derek Crownguard and Lord Gunthar -- the Kitiara treatment (retrospective
+    `TOPIC` dialogue folded into existing Heroes' schedules, never a
+    talkable `CHARACTER` of their own) applied to the next pair on the
+    off-stage roster, at the user's explicit pick over Ariakas/Lord Soth.
+    Both names were already present in the game since Milestone 35 (Sturm's
+    `ice_wall`/`high_clerist_tower` dialogue, the Tower's Garrison Knight,
+    the Tarsis Runner), so this closed two real, sourced gaps the existing
+    content left untold rather than introducing the names from scratch --
+    found by re-reading `.research/dwn_full.txt` directly rather than
+    trusting the existing docs summary. Laurana's new `TOPIC "The Writ of
+    Vindication"` (`high_clerist_tower 76 80`) explains how Sturm's
+    provisional Sancrist pledge became real: Gunthar, mid political war
+    with Derek's faction, sent her ahead with the dragonlances and a formal
+    Writ of Vindication after she testified to the Knights' Council herself
+    -- the missing explanation for a `PRESENCE` line ("freshly vigiled and
+    formally sworn") that's been in the game since Milestone 35 with no
+    account of how it happened. Sturm's new `TOPIC "Derek's Last Charge"`
+    (same window) tells Derek's end: driven half-mad by Sturm's
+    vindication, he leads an unauthorized dawn sortie against the besieging
+    dragonarmy the night of Sturm's own Knighting and dies raving that he'd
+    won and would be Grand Master -- Sturm's own verdict grim and
+    complicated ("He's dying -- bravely -- like a true knight") rather than
+    a simple villain's end, consistent with the source's own funeral scene
+    where Laurana's eulogy blames the whole divided Order, not Derek alone.
+    Pure data -- two `TOPIC` lines added to two already-existing `CHARACTER`
+    blocks in `data/timeline.txt`, no new `CHARACTER`/`LOCATION`/grammar,
+    no `.cpp`/`.h` changes. Sancrist Isle itself stays unmodeled, same
+    restraint as Milestone 36 (ocean-locked, no on-page reason to build it
+    as a walkable stop). Ariakas and Lord Soth remain the one still fully
+    untouched pair on the roster. Verified via a clean rebuild (zero new
+    warnings) and the piped smoke test; no throwaway self-test needed (pure
+    data, no new grammar). Not yet interactively verified in a real
+    playthrough (day 76-80 at the Tower). See `docs/TIMELINE_NOTES.md`'s
+    "Derek Crownguard and Lord Gunthar" section.
+
+NEXT UP (`docs/MILESTONES.md`) now offers two candidates:
+
 1. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
    Monstrous Manual entries are still untouched; the higher-tier
@@ -1081,11 +1118,9 @@ session's work.
    Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
    Brooch of Imog are real, sourced, and unused. See
    `docs/CHARACTER_NOTES.md`'s "Extending this later."
-3. **More off-stage canon characters** — Derek Crownguard and Lord
-   Gunthar (retrospective dialogue folded into an existing Hero's own
-   `TOPIC` at the High Clerist's Tower, same treatment Kitiara got at
-   Milestone 50, since their on-page scenes are at the unmodeled Sancrist
-   Isle) and Ariakas/Lord Soth (same retrospective treatment -- no
-   tracked Hero witnesses their scenes directly). See
-   `docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters" and
-   "Alhana Starbreeze" sections.
+3. **More off-stage canon characters** — Ariakas and Lord Soth (the
+   retrospective-`TOPIC` treatment, same as Kitiara/Derek/Gunthar -- no
+   tracked Hero witnesses their scenes directly, so this needs its own
+   sourcing pass first). See `docs/TIMELINE_NOTES.md`'s "Named vs.
+   off-stage canon characters" and "Derek Crownguard and Lord Gunthar"
+   sections.

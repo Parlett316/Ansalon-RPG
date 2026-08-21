@@ -87,8 +87,12 @@ crisis, at her father Lorac's side as he's freed from the dragon orb's
 nightmare. Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
 captivity, stays off the talk/topic picker by design — her defining
 scenes surface as retrospective dialogue inside Tanis's, Laurana's, and
-Caramon's own `TOPIC` entries instead. Stepping inside a zone carries
-the encounter through too: find them
+Caramon's own `TOPIC` entries instead. Lord Derek Crownguard and Lord
+Gunthar Uth Wistan get the same treatment: Derek's doomed unauthorized
+sortie against the besieging dragonarmy and Gunthar's political maneuvering
+to see Sturm fully vindicated both surface only inside Sturm's and
+Laurana's own `TOPIC` entries at the High Clerist's Tower. Stepping inside
+a zone carries the encounter through too: find them
 gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
 Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine
 entrance at Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the

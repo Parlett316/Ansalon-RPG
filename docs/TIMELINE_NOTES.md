@@ -407,12 +407,15 @@ gives them genuine on-page, talk-shaped scenes at locations and
 day-ranges the game already models — never invented to fill a gap (same
 "don't invent to fill a gap" idiom applied everywhere else in this file,
 e.g. "Plains of Dust stays out of scope" above). Alhana Starbreeze is
-named as of Milestone 59 (see below). Characters still referenced only
-descriptively in the milestone write-ups below (Kitiara, Derek
-Crownguard, Lord Gunthar, Ariakas, Lord Soth, Feal-thas, Fewmaster Toede,
-Verminaard) are off-stage because no milestone has built them out yet,
-not because of a standing rule against
-it — see `docs/MILESTONES.md`'s NEXT UP for what's still pending. Where
+named as of Milestone 59 (see below). "Off-stage" in this file specifically
+means "never becomes a talkable `CHARACTER`" — it doesn't mean untouched.
+Kitiara (Milestone 50) and Derek Crownguard/Lord Gunthar (Milestone 60) are
+both off-stage in that sense but already have real, sourced retrospective
+`TOPIC` dialogue folded into other Heroes' schedules. Ariakas, Lord Soth,
+Feal-thas, Fewmaster Toede, and Verminaard remain fully untouched — no
+milestone has built any content for them yet, not because of a standing
+rule against it — see `docs/MILESTONES.md`'s NEXT UP for what's still
+pending. Where
 an older section below still describes a since-named character as
 "unnamed" or "off-stage," that was accurate as of the milestone it
 describes, not the current state — check the character's own `CHARACTER`
@@ -1283,6 +1286,65 @@ the corrected paragraph in "Silvanesti (Milestone 37)" above). Verified
 via a clean rebuild (zero new warnings, no `.cpp`/`.h` changes) and the
 piped smoke test; no throwaway self-test needed (pure data, no new
 grammar, same call as Milestones 47-49).
+
+## Derek Crownguard and Lord Gunthar (Milestone 60)
+
+The Kitiara treatment Milestone 59 deferred, at the user's request: named
+via retrospective `TOPIC` dialogue folded into existing Heroes' schedules,
+never talkable themselves, no new `CHARACTER` block. Sancrist Isle stays
+unmodeled, same restraint as Milestone 36 (ocean-locked, no on-page reason
+to build it as a walkable stop).
+
+Both names were already present in the game before this milestone — Sturm's
+`ice_wall` `SAY`/`TOPIC "An Old Debt"`, his `high_clerist_tower` `TOPIC "The
+Trial at Sancrist"` (dramatizing the Sancrist accusation itself), the
+Tower's Garrison Knight NPC `TOPIC "The Knights' Trial"`, and the Tarsis
+Runner's `TALK` line, all apparently dating to Milestone 35. This milestone
+isn't introducing the names; it closes two real, sourced gaps the existing
+content left untold, found by re-reading `.research/dwn_full.txt` directly
+rather than trusting the existing docs summary alone.
+
+**Gap 1: how Sturm's Sancrist "vindication" became real.** Lines 12630-12770:
+after the trial, Gunthar tells Laurana and Elistan plainly that the Knights'
+Council is split into pro-Gunthar/pro-Derek factions, and that Sturm's
+Sancrist pledge was only ever Gunthar's own personal, provisional gamble —
+not a real Council ruling. Gunthar sends Laurana to Palanthas/the Tower
+carrying the dragonlances *and* a formal Writ of Vindication, explicitly to
+"strike the death's blow to Derek's ambition." Laurana calls out, in her own
+words, that she knows she's being used as one of Gunthar's "game pieces,"
+and does it anyway for Sturm's sake. This is the missing explanation for a
+line that's been in the game since Milestone 35: Sturm's existing
+`high_clerist_tower 76 80` `PRESENCE` text already says he's "freshly
+vigiled and formally sworn," with no prior in-game account of how that
+happened. Laurana's new `TOPIC "The Writ of Vindication"` (appended after
+her existing `TOPIC "An Orb Best Left Alone"`, same window) supplies it.
+
+**Gap 2: Derek's death.** Lines 13600-13900: at the Tower, news of Sturm's
+full vindication "shattered Derek's hopes" and "severed Derek's tenuous
+hold on sanity." The night of Sturm's actual Knighting, Derek confronts him
+on the battlements and vows an unauthorized dawn sortie against the
+besieging dragonarmy: "By tomorrow night, my name will be legend!" Lines
+14390-14440: the sortie fails; Derek is carried back dying, raving that it
+was a "Victory!" and that he "will be Grand Master." Sturm's own verdict is
+grim and complicated: "He's dying — bravely — like a true knight." Lines
+15550-15620 (the funeral) confirm Derek's body lies beside Sturm's and Lord
+Alfred's, and Laurana's eulogy blames the whole divided Order's "pride,
+ambition, and greed," not Derek alone — consistent with the restraint this
+milestone takes (Sturm grants Derek a genuine, if bitter, "he died bravely"
+rather than flattening him into a simple villain). Sturm's new `TOPIC
+"Derek's Last Charge"` (appended after his existing `TOPIC "A Fortress
+Waiting"`, same window) tells it from his side, the only side any tracked
+Hero directly witnesses.
+
+Ariakas and Lord Soth remain the one still-off-stage pair on the roster
+(see `docs/MILESTONES.md`'s NEXT UP) — no tracked Hero directly witnesses
+either of their scenes, so either would need its own sourcing pass before a
+future milestone, same as this one required. Verified via a clean rebuild
+(zero new warnings, no `.cpp`/`.h` changes) and the piped smoke test; no
+throwaway self-test needed (pure data, no new grammar, same call as
+Milestones 47-50/59). Not yet interactively verified in a real playthrough
+(both new `TOPIC`s live in the `high_clerist_tower 76 80` window, day 76-80,
+not readily reachable without a long playthrough).
 
 ## Adding a new character or event
 
