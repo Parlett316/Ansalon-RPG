@@ -18,8 +18,19 @@ struct AttackOutcome {
 // character::Character::weaponMagicBonus (a "+1" enchanted weapon, see
 // character/Equipment.h's MagicWeapon) adds to both the to-hit total and
 // the damage roll -- real 2e convention, applied on top of Strength.
-AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster);
-AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character);
+//
+// thac0Bonus/damageBonus (player) and acBonus/thac0Penalty/damagePenalty
+// (monster) are this-fight-only spell buffs/debuffs (Bless, Prayer,
+// Protection from Evil, Strength, Slow, Bestow Curse, ... -- see
+// character/Spellcasting.h), held as local variables in
+// game::GameLoop::runCombat and never written into the character's real
+// saved armorClass/thac0 -- same "local to this one runCombat call, doesn't
+// survive to the save file" precedent Webnet/Brooch of Imog already
+// established (docs/CHARACTER_NOTES.md's "Magic items").
+AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
+                                   int thac0Bonus = 0, int damageBonus = 0);
+AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character,
+                                    int acBonus = 0, int thac0Penalty = 0, int damagePenalty = 0);
 
 // PHB p.124: one d10 per side, lower roll acts first. Ties are rare enough
 // (both parties would need to act "simultaneously," which this project's

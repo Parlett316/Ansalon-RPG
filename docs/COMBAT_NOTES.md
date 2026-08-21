@@ -308,21 +308,32 @@ while fleeing" — a deliberate simplification). `Enter` (reused from its
 existing "step in/interact" meaning elsewhere) resolves one full round as
 a weapon attack.
 
-**`render::Key::Cast` (`'m'`/`'M'`)**, new alongside the leveling-system
+**`render::Key::Cast` (`'m'`/`'M'`)**, alongside the leveling-system
 spellcasting work (`character::Spellcasting`, see
-`docs/CHARACTER_NOTES.md`): a Mage or Cleric can spend their round casting
-their one known spell instead of swinging their weapon. Pressing it
-validates `character::canCastSpells` and `hasSpellSlotAvailable` first —
-on failure (wrong class, no slots left today, or a racially-blocked Mage
-whose slot count is always 0) it logs a message and does **not** consume
-the round, same forgiving UX as any other out-of-context key press. On
-success, `GameLoop::runCombat` swaps a `playerCasts()` lambda in for
+`docs/CHARACTER_NOTES.md`, now a real multi-level spellbook, not one fixed
+spell): a Mage or Cleric can spend their round casting instead of
+swinging their weapon. Pressing it validates `character::canCastSpells`
+and `hasMemorizedSpellsAvailable` first — on failure (wrong class, no
+spells memorized today, or a racially-blocked Mage whose slot count is
+always 0) it logs a message and does **not** consume the round, same
+forgiving UX as any other out-of-context key press. With exactly one
+distinct memorized spell left today it casts directly (the original
+one-spell UX, unchanged); with more than one, a `drawPickerFrame` picker
+("Cast which spell?") asks which before spending the round. On success,
+`GameLoop::runCombat` swaps a `playerCasts(spellId)` lambda in for
 `playerAttacks()` inside the exact same `playerActsFirst()`-ordered
-exchange — Magic Missile damages the monster, Cure Light Wounds heals the
-caster and never touches the monster, but either way the monster still
-gets its own attack afterward per the usual initiative ordering. Thief,
-Fighter, and Tinker never see the `m=cast` option at all (`drawCombatFrame`
-only shows it for `canCastSpells` classes).
+exchange, dispatching on `character::SpellEffect` (damage, heal, block the
+monster's attacks, a this-fight THAC0/AC/damage buff or debuff, or an
+outright instant defeat — see `docs/CHARACTER_NOTES.md`'s spell census for
+which spell does which) — the monster still gets its own attack afterward
+per the usual initiative ordering except when blocked. This-fight
+buffs/debuffs thread through as new optional parameters on
+`resolvePlayerAttack`/`resolveMonsterAttack` (`thac0Bonus`/`damageBonus`
+for the player, `acBonus`/`thac0Penalty`/`damagePenalty` for the monster),
+held as local variables in `runCombat` and never written into the
+character's real saved `armorClass`/`thac0`. Thief, Fighter, and Tinker
+never see the `m=cast` option at all (`drawCombatFrame` only shows it for
+`canCastSpells` classes with something memorized).
 
 **`render::Key::Inventory` (`'i'`), reinterpreted locally as "drink a
 potion" (Milestone 42)**, new alongside the Potion of Healing item (see
@@ -399,10 +410,11 @@ either.
 
 ## Extending this later
 
-- **Spellcasting past one known spell each**: Mage/Cleric now cast a real,
-  sourced spell in combat (Magic Missile / Cure Light Wounds — see
-  `docs/CHARACTER_NOTES.md`); a real spellbook/spell-selection system and
-  spells above 1st level are still future work.
+- **Spellcasting**: Mage/Cleric now select and cast from a real,
+  PHB/DQoK-sourced multi-level spellbook (49 implemented spells across
+  Mage's 9 levels and Cleric's 7 — see `docs/CHARACTER_NOTES.md`'s
+  spellcasting section for the full census, including what's sourced but
+  intentionally not castable yet).
 - **Equipment past the General Store's short list**: armor tiers/weapon
   upgrades exist now (see `docs/CHARACTER_NOTES.md`'s "Equipment"
   section), but there's still no carried-item inventory, no selling gear

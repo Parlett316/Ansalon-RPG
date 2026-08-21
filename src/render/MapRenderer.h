@@ -122,6 +122,16 @@ public:
     // if so, how many slots remain -- see character::memorizeSpells.
     static void drawCharacterSheet(const character::Character& character, long long currentDay);
 
+    // Renders the full spell roster for the character's class
+    // (character::spellListFor), grouped by level up to
+    // character::maxAccessibleSpellLevel -- the detail drawCharacterSheet's
+    // own terse "Spells memorized: ..." line leaves out. Each spell still
+    // memorized-and-uncast today is marked. Reached from the character
+    // sheet ('s', only offered to a caster -- see game::GameLoop::
+    // showCharacterSheet/showSpellbook). Same one-keypress-blocks shape as
+    // drawCharacterSheet.
+    static void drawSpellbookFrame(const character::Character& character, long long currentDay);
+
     // Renders one combat frame: both combatants' HP/AC, a scrolling combat
     // log (most recent entries last -- only the tail that fits is shown),
     // and the available actions. `monsterHp` is tracked by

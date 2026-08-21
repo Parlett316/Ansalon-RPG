@@ -213,9 +213,9 @@ private:
     // Rest ('r') -- once per in-game day (Character::lastRestDay), advances
     // hoursElapsed by 8 (an overnight rest), heals 1 hp (DMG p.74's base
     // natural-healing rate, capped at maxHp), and -- for a real caster
-    // (character::maxSpellSlotsPerDay > 0) -- memorizes today's spells (see
-    // character::memorizeSpells). See docs/CHARACTER_NOTES.md's "Rest and
-    // spell memorization".
+    // (character::maxAccessibleSpellLevel > 0) -- memorizes today's spells
+    // via performSpellMemorization/character::memorizeSpells. See
+    // docs/CHARACTER_NOTES.md's "Rest and spell memorization".
     void handleRest();
     // Bed Rest ('z') -- like Rest, gated to once per in-game day via
     // Character::lastRestDay (the two share the same gate: one overnight
@@ -227,7 +227,34 @@ private:
     // this project's timeline-driven pace. See docs/CHARACTER_NOTES.md and
     // docs/ZONE_NOTES.md's "Beds" section.
     void handleBedRest();
+    // Shared by handleRest/handleBedRest: for a real caster, either
+    // re-memorizes Character::preferredSpellIds as-is (the default, and the
+    // only option the very first time this character has ever memorized
+    // anything) or -- if the player says no to "keep the same spells
+    // memorized?" -- calls chooseSpellLoadout for a fresh one. Returns the
+    // flavor-text suffix to append to the rest message ("You re-memorize
+    // ..." / "You spend a quiet hour selecting new spells to memorize.").
+    // See character::memorizeSpells and docs/CHARACTER_NOTES.md's
+    // "Spellcasting" section.
+    std::string performSpellMemorization(long long dayAfterRest);
+    // Walks a drawPickerFrame loop once per prepared slot, grouped by spell
+    // level (lowest first) -- one pick per slot, no cancel mid-flow (the
+    // player already chose "no" to keeping the existing loadout to get
+    // here). Only offers levels/spells character::spellSlotsPerDay/
+    // spellListFor actually make available. Updates
+    // Character::preferredSpellIds as the new standing loadout.
+    void chooseSpellLoadout();
+    // Character sheet ('c'). Loops so a caster can drill into showSpellbook
+    // ('s', locally reinterpreted from render::Key::South -- same "local
+    // key reinterpretation instead of a new Key value" trick handleShop/
+    // runCombat already use for Inventory) and return to the sheet
+    // afterward; any other key dismisses, same as before this existed.
     void showCharacterSheet();
+    // The character's class's full spell roster, grouped by level -- the
+    // detail the sheet's own terse "Spells memorized: ..." line leaves
+    // out. Only reachable for a caster (see showCharacterSheet above).
+    // Same one-keypress-blocks shape as showCharacterSheet/showHelp.
+    void showSpellbook();
     // Opens the '?' help screen listing every command, until one keypress
     // dismisses it -- same one-keypress-blocks shape as showCharacterSheet.
     void showHelp();

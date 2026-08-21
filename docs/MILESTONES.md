@@ -1066,12 +1066,6 @@ this stays authoritative.
     Milestones 47-49). See `docs/TIMELINE_NOTES.md`'s "Alhana Starbreeze"
     section for the full sourcing and scope notes.
 
-## NEXT UP
-
-Not yet started — a short menu of well-grounded backlog candidates, not
-a commitment. Pick one (or something else) before starting the next
-session's work.
-
 60. Derek Crownguard and Lord Gunthar -- the Kitiara treatment (retrospective
     `TOPIC` dialogue folded into existing Heroes' schedules, never a
     talkable `CHARACTER` of their own) applied to the next pair on the
@@ -1139,7 +1133,93 @@ session's work.
     interactively verified in a real playthrough (day 105-107 at Neraka).
     See `docs/TIMELINE_NOTES.md`'s "Ariakas and Lord Soth" section.
 
-NEXT UP (`docs/MILESTONES.md`) now offers two candidates:
+The off-stage canon-character roster is now fully closed out -- Kitiara,
+Fizban, Laurana, Derek Crownguard, Lord Gunthar, Ariakas, and Lord Soth
+have all had their sourcing passes completed (see
+`docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters"
+section).
+
+62. Cleric and Mage spells beyond 1st level -- at the user's explicit
+    request, the biggest single engine milestone to date, growing
+    `character::Spellcasting` from Milestone 40's one-known-spell-per-
+    caster into a real multi-level spellbook. Sourced from
+    `References/DQoK.pdf` (the manual for *Dark Queen of Krynn*, an
+    official TSR/SSI Dragonlance computer game, not a rulebook -- read via
+    rendered page images, `pdftoppm`, since its 4-column layout badly
+    scrambles the OCR text layer) and cross-referenced against the actual
+    PHB's own alphabetical spell index and Tables 21/24 (also re-rendered
+    in full this pass, not just the 1st-level column Milestone 40
+    transcribed): 88 real spells found (29 Cleric across 7 levels, 59
+    Magic-User across 9), 85 confirmed exactly matching the PHB, three
+    corrected (Cleric's "Resist Cold" folded into the real single 2nd-level
+    "Resist Fire/Resist Cold"; Magic-User's "Iron Skin" and "Fire Touch"
+    dropped as DQoK-original inventions with no real PHB spell behind
+    them -- see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section for the
+    full census and citations). Of those 88, 49 are actually castable (14
+    Cleric, 35 Wizard) -- only a spell whose PHB effect maps onto state
+    this engine already tracks was implemented, reusing four existing
+    patterns (Magic Missile's damage branch, Cure Light Wounds's heal
+    branch, the Webnet/Brooch of Imog "block the monster's attacks"
+    mechanism generalized to a count, and new this-fight-only THAC0/AC/
+    damage buff-debuff parameters threaded through
+    `combat::resolvePlayerAttack`/`resolveMonsterAttack`) rather than a
+    bespoke mechanic per spell; the other 39 are sourced and documented but
+    not selectable, each needing a subsystem this project doesn't have
+    (poison/disease/blindness/curse status, monster saving throws --
+    still none exist -- damage-type resistance, stealth, multi-attack
+    rounds, ally summoning). Both classes now automatically "know" every
+    implemented spell their level unlocks (real 2e Cleric behavior,
+    extended to Mage as a documented simplification of the Wizard's
+    spellbook/spell-research rules this project doesn't model). `Character`
+    gained `memorizedSpellIds` (today's remaining prepared slots) and
+    `preferredSpellIds` (the standing loadout); Rest/Bed Rest now default to
+    re-memorizing the same loadout, only re-prompting a `drawPickerFrame`
+    picker when the player asks to change it -- a real, sourced UX
+    precedent, not invented (DQoK's own manual: "Selecting REST without
+    choosing new spells has the spellcasters rememorize the spells they
+    have cast since last resting"). In combat, `m`/`M` casts directly with
+    one spell left, or opens a picker with more than one. `SaveGame.cpp`'s
+    `SPELLSTODAY` line is replaced by `SPELLDAY`/`PREFERRED`/`MEMORIZED`,
+    with the old keyword still accepted read-only on load (verified
+    directly against the user's real save). DQoK's own per-spell Red/White
+    Robe restriction was deliberately not modeled -- not sourced from the
+    PHB or Dragonlance Adventures, and this project's Robe assignment is
+    still flavor-only with nothing to attach a restriction to; flagged as a
+    real Dragonlance-flavor design call, not an oversight. Verified via a
+    throwaway self-test (spell-slot tables against both fully-transcribed
+    PHB tables including the Wisdom-gated 6th/7th Cleric columns, the
+    Kender/blocked-subrace zero-slots rule, `castSpell`'s damage/heal/
+    block/instant-defeat/combined-buff-debuff shapes, and `SaveGame` round-
+    tripping including legacy-`SPELLSTODAY` backward compatibility), a
+    clean `/W4` rebuild (zero new warnings), the piped smoke test, and a
+    direct load of the user's real save (a Fighter, so spellcasting itself
+    is untouched by their character, but the save's legacy `SPELLSTODAY`
+    line needed to keep loading regardless). **Interactive verification
+    (the Rest re-memorize prompt, the multi-level spell picker, the
+    in-combat cast picker, an instant-defeat spell, a this-fight
+    buff/debuff) still needs the user's own keyboard** -- `_getch()` can't
+    be piped, same limitation every UI-touching milestone has flagged. See
+    `docs/CHARACTER_NOTES.md`'s "Spellcasting" section for the full spell
+    census and every citation.
+
+    Two same-session follow-up refinements, both user-requested after the
+    above shipped: the Rest flavor line is now class-specific ("You
+    rememorize your prayers." for Cleric, "You memorize your incantations."
+    for Mage, with the original combined line kept ready for a future
+    dual/multi-class character -- `Character::charClass` is a single value
+    today, so that branch can't actually trigger yet); and the character
+    sheet ('c') gained an `s` option, only offered to a caster, opening a
+    new `MapRenderer::drawSpellbookFrame` -- the full spell roster for the
+    character's class, grouped by level with real per-day slot counts and
+    each memorized-and-uncast spell marked, looping back to the sheet
+    rather than dismissing straight to gameplay. Verified via a clean
+    `/W4` rebuild (zero new warnings) and the piped smoke test after each.
+
+## NEXT UP
+
+Not yet started -- a short menu of well-grounded backlog candidates, not
+a commitment. Pick one (or something else) before starting the next
+session's work.
 
 1. **More monsters** — Bozak/Sivak/Aurak Draconians, Thanoi (walrus-men,
    flavor-only at Ice Wall so far -- see Milestone 36), and other
@@ -1150,9 +1230,9 @@ NEXT UP (`docs/MILESTONES.md`) now offers two candidates:
    Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
    Brooch of Imog are real, sourced, and unused. See
    `docs/CHARACTER_NOTES.md`'s "Extending this later."
-
-The off-stage canon-character roster is now fully closed out -- Kitiara,
-Fizban, Laurana, Derek Crownguard, Lord Gunthar, Ariakas, and Lord Soth
-have all had their sourcing passes completed (see
-`docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters"
-section).
+3. **Interactive verification of Milestone 62's spellcasting UI** -- the
+   Rest re-memorize prompt, the multi-level spell-loadout picker, and the
+   in-combat cast picker were all built and self-tested this pass but
+   never actually driven by a real keypress (`_getch()` can't be piped).
+   A real playthrough as a Mage or Cleric would confirm the pickers read
+   right and the buff/debuff/block spells feel right in an actual fight.

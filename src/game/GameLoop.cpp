@@ -282,15 +282,7 @@ void GameLoop::handleRest() {
 
     std::string message = "You settle in and rest through the night.";
     message += healed > 0 ? " You recover 1 hit point." : " You were already at full health.";
-
-    // Only a caster who can actually manage a slot (not a racially-blocked
-    // Mage, see character::maxSpellSlotsPerDay) gets the memorization
-    // flavor -- see character::memorizeSpells and docs/CHARACTER_NOTES.md.
-    if (character::maxSpellSlotsPerDay(c) > 0) {
-        character::memorizeSpells(c, dayAfterRest);
-        message += " You spend a quiet hour re-memorizing " +
-                    std::string(character::knownSpellName(c.charClass)) + ".";
-    }
+    message += performSpellMemorization(dayAfterRest);
     pushLog(message);
 }
 
@@ -322,19 +314,127 @@ void GameLoop::handleBedRest() {
 
     std::string message = "You spend the night resting soundly in a real bed.";
     message += alreadyFull ? " You were already at full health." : " You wake fully healed.";
-
-    // Same caster memorization flavor as ordinary Rest -- see
-    // character::memorizeSpells and docs/CHARACTER_NOTES.md.
-    if (character::maxSpellSlotsPerDay(c) > 0) {
-        character::memorizeSpells(c, dayAfterRest);
-        message += " You spend a quiet hour re-memorizing " +
-                    std::string(character::knownSpellName(c.charClass)) + ".";
-    }
+    message += performSpellMemorization(dayAfterRest);
     pushLog(message);
 }
 
+std::string GameLoop::performSpellMemorization(long long dayAfterRest) {
+    character::Character& c = state_.character;
+    if (character::maxAccessibleSpellLevel(c) == 0) return "";
+
+    if (c.preferredSpellIds.empty()) {
+        // Never memorized anything before -- nothing to "keep the same" as,
+        // so go straight to the picker.
+        chooseSpellLoadout();
+    } else {
+        std::vector<std::string> labels = {"Yes", "No -- choose new spells"};
+        int selected = 0;
+        bool keepSame = true;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame("Keep the same spells memorized?", labels, selected,
+                                                  "up/down=select   Enter=choose");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North || key == render::Key::South) {
+                selected = selected == 0 ? 1 : 0;
+            } else if (key == render::Key::Enter) {
+                keepSame = (selected == 0);
+                break;
+            }
+        }
+        if (!keepSame) {
+            chooseSpellLoadout();
+        } else {
+            // A level-up since the last rest may have opened more slots
+            // than the standing loadout fills -- top up with the lowest-
+            // level implemented spell rather than silently wasting slots.
+            int totalSlots = 0;
+            for (int lvl = 1; lvl <= character::maxAccessibleSpellLevel(c); ++lvl) {
+                totalSlots += character::spellSlotsPerDay(c, lvl);
+            }
+            const auto& roster = character::spellListFor(c.charClass);
+            if (!roster.empty()) {
+                while (static_cast<int>(c.preferredSpellIds.size()) < totalSlots) {
+                    c.preferredSpellIds.push_back(roster.front().id);
+                }
+            }
+        }
+    }
+
+    character::memorizeSpells(c, dayAfterRest, c.preferredSpellIds);
+    // Cleric prays, Mage studies -- distinct flavor per class. Character::
+    // charClass is a single value today, so the "both" branch below can't
+    // actually trigger yet, but it's written to fall out naturally the day
+    // this project ever gains dual/multi-classing rather than needing a
+    // rewrite then.
+    bool isCleric = c.charClass == character::ClassId::Cleric;
+    bool isMage = c.charClass == character::ClassId::Mage;
+    if (isCleric && isMage) {
+        return " You spend a quiet hour re-memorizing your prayers and incantations.";
+    }
+    if (isCleric) return " You rememorize your prayers.";
+    return " You memorize your incantations.";
+}
+
+void GameLoop::chooseSpellLoadout() {
+    character::Character& c = state_.character;
+    std::vector<std::string> loadout;
+    int maxLevel = character::maxAccessibleSpellLevel(c);
+    const auto& roster = character::spellListFor(c.charClass);
+
+    for (int lvl = 1; lvl <= maxLevel; ++lvl) {
+        int slots = character::spellSlotsPerDay(c, lvl);
+        if (slots <= 0) continue;
+
+        std::vector<const character::SpellInfo*> choices;
+        for (const auto& spell : roster) {
+            if (spell.level == lvl) choices.push_back(&spell);
+        }
+        if (choices.empty()) continue; // nothing implemented at this level yet
+
+        std::vector<std::string> labels;
+        for (const auto* spell : choices) labels.push_back(spell->name);
+
+        for (int slot = 0; slot < slots; ++slot) {
+            int selected = 0;
+            for (;;) {
+                std::ostringstream title;
+                title << "Level " << lvl << " spell (" << (slot + 1) << "/" << slots << ")";
+                render::MapRenderer::drawPickerFrame(title.str(), labels, selected,
+                                                      "up/down=select   Enter=choose");
+                render::Key key = render::Console::readKey();
+                if (key == render::Key::North) {
+                    selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
+                } else if (key == render::Key::South) {
+                    selected = (selected + 1) % static_cast<int>(labels.size());
+                } else if (key == render::Key::Enter) {
+                    loadout.push_back(choices[static_cast<size_t>(selected)]->id);
+                    break;
+                }
+            }
+        }
+    }
+
+    c.preferredSpellIds = std::move(loadout);
+}
+
 void GameLoop::showCharacterSheet() {
-    render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
+    for (;;) {
+        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
+        render::Key key = render::Console::readKey();
+        // 's' (South, off the sheet's own dismiss-with-any-key convention)
+        // drills into the full spell roster, then loops back to the sheet
+        // -- only offered to a caster, matching drawCharacterSheet's own
+        // "(s=view spells known...)" hint, which only appears for one.
+        if (character::canCastSpells(state_.character.charClass) && key == render::Key::South) {
+            showSpellbook();
+            continue;
+        }
+        return;
+    }
+}
+
+void GameLoop::showSpellbook() {
+    render::MapRenderer::drawSpellbookFrame(state_.character, state_.hoursElapsed / 24);
     render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
@@ -995,8 +1095,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // the overworld afterward isn't silent about what just happened.
     pushLog("A " + monster.name + " appears!");
 
+    // This-fight-only spell buffs/debuffs (Bless, Prayer, Protection from
+    // Evil, Strength, Slow, Bestow Curse, ... -- see
+    // character/Spellcasting.h's SpellEffect) -- purely local to this one
+    // runCombat call, same as monsterHp/log, never written into the
+    // character's real saved armorClass/thac0.
+    int playerThac0Bonus = 0;
+    int playerDamageBonus = 0;
+    int playerAcBonus = 0;
+    int monsterThac0Penalty = 0;
+    int monsterDamagePenalty = 0;
     auto playerAttacks = [&]() {
-        combat::AttackOutcome outcome = combat::resolvePlayerAttack(state_.character, monster);
+        combat::AttackOutcome outcome =
+            combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
         if (outcome.hit) {
             monsterHp -= outcome.damage;
             log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ".");
@@ -1004,26 +1115,37 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("You miss the " + monster.name + ".");
         }
     };
-    // Webnet (consumed, blocks one attack) and Brooch of Imog (reusable
-    // once/day, blocks the rest of this fight) -- see
+    // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
+    // once/day, blocks the rest of this fight -- see
     // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
-    // "Magic items". Purely local to this one runCombat call, same as
-    // monsterHp/log above -- "does an attack land this fight" never needs
-    // to survive to the save file, only the Brooch's daily charge does
+    // "Magic items"), and now spell-based crowd control (Sleep, Hold
+    // Person, Charm, Confusion, Fear, ... -- character::SpellEffect::
+    // BlockMonsterAttacks) all share one mechanism: blockedMonsterAttacks
+    // counts down a finite number of blocked attacks,
+    // monsterIncapacitatedRestOfFight covers the "until the fight ends"
+    // spells (character::kBlockRestOfFight). Purely local to this one
+    // runCombat call -- "does an attack land this fight" never needs to
+    // survive to the save file, only the Brooch's daily charge does
     // (Character::lastBroochUseDay).
-    bool blockNextMonsterAttack = false;
+    int blockedMonsterAttacks = 0;
+    bool monsterIncapacitatedRestOfFight = false;
     bool globeActive = false;
     auto monsterAttacks = [&]() {
         if (globeActive) {
             log.push_back("The globe of invulnerability absorbs the blow!");
             return;
         }
-        if (blockNextMonsterAttack) {
-            blockNextMonsterAttack = false;
-            log.push_back("The Webnet holds the " + monster.name + " fast -- it can't attack!");
+        if (monsterIncapacitatedRestOfFight) {
+            log.push_back("The " + monster.name + " is unable to act!");
             return;
         }
-        combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character);
+        if (blockedMonsterAttacks > 0) {
+            --blockedMonsterAttacks;
+            log.push_back("The " + monster.name + " can't bring itself to attack!");
+            return;
+        }
+        combat::AttackOutcome outcome = combat::resolveMonsterAttack(
+            monster, state_.character, playerAcBonus, monsterThac0Penalty, monsterDamagePenalty);
         if (outcome.hit) {
             state_.character.currentHp -= outcome.damage;
             log.push_back("The " + monster.name + " hits you for " + std::to_string(outcome.damage) + ".");
@@ -1045,22 +1167,63 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("The " + monster.name + " misses you.");
         }
     };
-    // Cast the character's one known spell (see character/Spellcasting.h)
-    // as their action for the round instead of attacking. Magic Missile
-    // damages the monster; Cure Light Wounds heals the caster and never
-    // touches the monster -- either way this replaces playerAttacks() in
-    // the initiative-ordered exchange below, the monster still gets its
-    // attack afterward per the usual ordering.
-    auto playerCasts = [&]() {
-        character::SpellCastResult result = character::castSpell(state_.character);
-        if (result.targetsMonster) {
-            monsterHp -= result.amount;
-            log.push_back("Your Magic Missile strikes the " + monster.name + " for " +
-                           std::to_string(result.amount) + ".");
-        } else {
-            int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
-            state_.character.currentHp += healed;
-            log.push_back("You cast Cure Light Wounds and heal " + std::to_string(healed) + " hit points.");
+    // Casts `spellId` (already confirmed memorized -- see the Cast key
+    // handling below) as the round's action instead of attacking, and
+    // dispatches on character::SpellEffect rather than the spell's name/id
+    // so a new spell that reuses an existing category needs no change here.
+    auto playerCasts = [&](const std::string& spellId) {
+        character::SpellCastResult result = character::castSpell(state_.character, spellId);
+        if (!result.success) return; // defensive -- shouldn't happen, caller already checked
+        switch (result.effect) {
+            case character::SpellEffect::DamageMonster:
+                monsterHp -= result.amount;
+                log.push_back("Your " + result.spellName + " strikes the " + monster.name + " for " +
+                               std::to_string(result.amount) + ".");
+                break;
+            case character::SpellEffect::HealCaster: {
+                int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
+                state_.character.currentHp += healed;
+                log.push_back("You cast " + result.spellName + " and heal " + std::to_string(healed) +
+                               " hit points.");
+                break;
+            }
+            case character::SpellEffect::BlockMonsterAttacks:
+                if (result.amount == character::kBlockRestOfFight) {
+                    monsterIncapacitatedRestOfFight = true;
+                } else {
+                    blockedMonsterAttacks += result.amount;
+                }
+                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
+                break;
+            case character::SpellEffect::BuffPlayerThac0:
+                playerThac0Bonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerDamage:
+                playerDamageBonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerAc:
+                playerAcBonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::DebuffMonsterThac0:
+                monsterThac0Penalty += result.amount;
+                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
+                break;
+            case character::SpellEffect::DebuffMonsterDamage:
+                monsterDamagePenalty += result.amount;
+                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
+                break;
+            case character::SpellEffect::BuffPlayerAndDebuffMonsterThac0:
+                playerThac0Bonus += result.amount;
+                monsterThac0Penalty += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::InstantDefeat:
+                log.push_back("Your " + result.spellName + " destroys the " + monster.name + " outright!");
+                monsterHp = 0;
+                break;
         }
     };
     // Drinks the first carried Potion of Healing (see
@@ -1080,7 +1243,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         int webnetIndex = character::firstWebnetIndex(state_.character);
         character::PurchaseResult result = character::useWebnet(state_.character, webnetIndex);
         log.push_back(result.message);
-        if (result.success) blockNextMonsterAttack = true;
+        if (result.success) ++blockedMonsterAttacks;
     };
     auto playerActivatesBrooch = [&]() {
         character::PurchaseResult result = character::activateBrooch(state_.character, state_.hoursElapsed / 24);
@@ -1102,6 +1265,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
 
         bool casting = false;
+        std::string chosenSpellId;
         bool drinking = false;
         bool usingWebnet = false;
         bool activatingBrooch = false;
@@ -1110,9 +1274,50 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You have no spell to cast.");
                 continue;
             }
-            if (!character::hasSpellSlotAvailable(state_.character, state_.hoursElapsed / 24)) {
+            if (!character::hasMemorizedSpellsAvailable(state_.character, state_.hoursElapsed / 24)) {
                 log.push_back("You have no spells remaining today.");
                 continue;
+            }
+            // Distinct remaining spell ids, in memorized order -- if
+            // exactly one, cast it directly (preserves the original
+            // one-spell UX exactly); otherwise open a picker.
+            std::vector<std::string> distinctIds;
+            for (const auto& id : state_.character.memorizedSpellIds) {
+                if (std::find(distinctIds.begin(), distinctIds.end(), id) == distinctIds.end()) {
+                    distinctIds.push_back(id);
+                }
+            }
+            if (distinctIds.size() == 1) {
+                chosenSpellId = distinctIds.front();
+            } else {
+                std::vector<std::string> labels;
+                for (const auto& id : distinctIds) {
+                    const character::SpellInfo* spell =
+                        character::findSpell(state_.character.charClass, id);
+                    int count = static_cast<int>(std::count(state_.character.memorizedSpellIds.begin(),
+                                                              state_.character.memorizedSpellIds.end(), id));
+                    labels.push_back((spell != nullptr ? spell->name : id) +
+                                      (count > 1 ? " (x" + std::to_string(count) + ")" : ""));
+                }
+                int selected = 0;
+                bool cancelled = false;
+                for (;;) {
+                    render::MapRenderer::drawPickerFrame("Cast which spell?", labels, selected,
+                                                          "up/down=select   Enter=cast   q=cancel");
+                    render::Key pickKey = render::Console::readKey();
+                    if (pickKey == render::Key::North) {
+                        selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
+                    } else if (pickKey == render::Key::South) {
+                        selected = (selected + 1) % static_cast<int>(labels.size());
+                    } else if (pickKey == render::Key::Enter) {
+                        chosenSpellId = distinctIds[static_cast<size_t>(selected)];
+                        break;
+                    } else if (pickKey == render::Key::Quit) {
+                        cancelled = true;
+                        break;
+                    }
+                }
+                if (cancelled) continue;
             }
             casting = true;
         } else if (key == render::Key::Inventory) {
@@ -1140,7 +1345,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         // PHB p.124: one d10 per side, lower goes first. Whoever acts
         // second is skipped if the first attacker already ended the fight.
         std::function<void()> playerActs =
-            casting ? std::function<void()>(playerCasts)
+            casting ? std::function<void()>([&]() { playerCasts(chosenSpellId); })
             : drinking ? std::function<void()>(playerDrinksPotion)
             : usingWebnet ? std::function<void()>(playerUsesWebnet)
             : activatingBrooch ? std::function<void()>(playerActivatesBrooch)

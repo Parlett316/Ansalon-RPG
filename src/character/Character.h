@@ -70,9 +70,19 @@ struct Character {
     // (hoursElapsed/24, -1 meaning "never memorized") the character last
     // memorized spells via game::GameLoop::handleRest -- no slots are
     // available at all until spellsCastDay == the current day, regardless
-    // of level. spellsCastToday counts casts against that memorization,
-    // reset to 0 by character::memorizeSpells.
-    int spellsCastToday = 0;
+    // of level. memorizedSpellIds holds one entry per prepared slot
+    // remaining today (repeats allowed -- the same spell can fill more than
+    // one slot); character::castSpell removes one matching entry per cast.
+    // preferredSpellIds is the standing loadout as last deliberately chosen
+    // by the player (game::GameLoop::chooseSpellLoadout) -- unlike
+    // memorizedSpellIds, casting a spell does NOT remove it from here.
+    // Resting re-copies preferredSpellIds into memorizedSpellIds by default
+    // (DQoK's own quoted design: "Selecting REST without choosing new
+    // spells has the spellcasters rememorize the spells they have cast
+    // since last resting"), only re-prompting the picker when the player
+    // asks to change loadouts. See docs/CHARACTER_NOTES.md.
+    std::vector<std::string> memorizedSpellIds;
+    std::vector<std::string> preferredSpellIds;
     long long spellsCastDay = -1;
     // The day (same hoursElapsed/24 convention) the character last used
     // the Rest action ('r') -- see game::GameLoop::handleRest. Gates Rest

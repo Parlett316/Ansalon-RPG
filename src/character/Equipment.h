@@ -261,7 +261,7 @@ int firstBroochIndex(const Character& character);
 
 // True if the character owns a Brooch of Imog AND hasn't already used its
 // daily charge today -- same day-gate shape as
-// Spellcasting.h's hasSpellSlotAvailable, keyed off Character::lastBroochUseDay
+// Spellcasting.h's hasMemorizedSpellsAvailable, keyed off Character::lastBroochUseDay
 // (see Character.h) the same way Rest keys off lastRestDay.
 bool broochAvailableToday(const Character& character, long long today);
 

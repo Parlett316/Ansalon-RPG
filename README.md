@@ -123,14 +123,19 @@ has none) — the chance of one varies by terrain, roads safest and forest/
 mountains riskiest, and which monster you draw leans toward that terrain too
 (Bugbears more common in hills and mountains, Gnolls never on salt flats,
 and so on) — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
-Cleric can also `m` to cast their one known spell — Magic Missile or Cure
-Light Wounds, real PHB slots-per-day by level); losing just knocks you out
-and sends you back to Solace, it isn't permadeath — see
+Cleric can also `m` to cast — a real multi-level spellbook now, 49 spells
+across Mage's 9 levels and Cleric's 7, sourced from an official TSR/SSI
+Dragonlance computer game manual and cross-checked against the actual PHB
+(damage, healing, blocking a monster's attacks, or a this-fight to-hit/AC
+buff or debuff, depending on the spell), with exactly one spell left it
+casts directly, with more than one a picker asks which); losing just
+knocks you out and sends you back to Solace, it isn't permadeath — see
 `docs/COMBAT_NOTES.md`. Press `r` to rest, once per in-game day: it heals
 1 hit point (the DMG's real natural-healing rate) and, for a Mage or
-Cleric, re-memorizes their spell for the day — no slots are available at
-all until you have, sourced from the PHB's actual memorization/prayer
-rules — see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section. A real bed
+Cleric, re-memorizes their standing spell loadout for the day (asking
+first if you'd rather choose a new one) — no slots are available at all
+until you have, sourced from the PHB's actual memorization/prayer rules —
+see `docs/CHARACTER_NOTES.md`'s "Spellcasting" section. A real bed
 heals faster: press `z` on the Inn of the Last Home's upstairs landing to
 fully heal overnight instead, the same 8 hours as ordinary rest — see
 `docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" section. Winning
@@ -294,7 +299,9 @@ needed:
 - `i` — outside a shop: view your carried items and equip one — up/down
   selects, Enter equips (swapping in whatever you were wearing before),
   `q`/Esc leaves
-- `c` — view your character sheet (any key dismisses it)
+- `c` — view your character sheet (any key dismisses it); a Mage or
+  Cleric gets an extra `s` option there to see their full spell roster by
+  level, separately from the sheet's own terse "memorized today" line
 - `v` — view the full scrollable event log (everything logged this
   session — arrivals, blocked moves, look results, combat outcomes —
   not just the live side panel's recent tail), up/down to scroll,
@@ -316,9 +323,9 @@ character whose schedule places them there today, or a talkable zone POI)
 only announces their name — Look (`;`) shows their full description, and
 offers a picker to choose whom if more than one is present.
 Traveling away from named locations carries a chance of a random encounter,
-which takes over the screen: **Enter** attacks, **`m`** casts your one
-known spell if you're a Mage or Cleric (and you have a spell slot left
-today), **`f`** flees. Losing a fight knocks you out (HP capped at 1) and
+which takes over the screen: **Enter** attacks, **`m`** casts a memorized
+spell if you're a Mage or Cleric (asks which, if more than one is
+memorized and unspent today), **`f`** flees. Losing a fight knocks you out (HP capped at 1) and
 sends you back to Solace rather than ending the run. The game sizes
 itself to your terminal automatically at startup (queries the real
 visible console window, not just the scrollback buffer, and shrinks the

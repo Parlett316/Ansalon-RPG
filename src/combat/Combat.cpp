@@ -6,7 +6,8 @@
 
 namespace combat {
 
-AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster) {
+AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
+                                   int thac0Bonus, int damageBonus) {
     int strToHit = character::strengthToHitAdjustment(character.scores.strength,
                                                         character.exceptionalStrengthPercentile);
 
@@ -17,7 +18,8 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
     } else if (naturalRoll == 1) {
         hit = false;
     } else {
-        hit = (naturalRoll + strToHit + character.weaponMagicBonus) >= (character.thac0 - monster.armorClass);
+        hit = (naturalRoll + strToHit + character.weaponMagicBonus + thac0Bonus) >=
+              (character.thac0 - monster.armorClass);
     }
 
     AttackOutcome outcome;
@@ -26,12 +28,14 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
         int strDamage = character::strengthDamageAdjustment(character.scores.strength,
                                                               character.exceptionalStrengthPercentile);
         outcome.damage = std::max(1, character::roll(1, character.weaponDamageSides) +
-                                          character.weaponDamageBonus + strDamage + character.weaponMagicBonus);
+                                          character.weaponDamageBonus + strDamage + character.weaponMagicBonus +
+                                          damageBonus);
     }
     return outcome;
 }
 
-AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character) {
+AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character,
+                                    int acBonus, int thac0Penalty, int damagePenalty) {
     int naturalRoll = character::roll(1, 20);
     bool hit;
     if (naturalRoll == 20) {
@@ -39,13 +43,17 @@ AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Char
     } else if (naturalRoll == 1) {
         hit = false;
     } else {
-        hit = naturalRoll >= (monster.thac0 - character.armorClass);
+        // thac0Penalty makes the monster a worse attacker (effectively
+        // raises its THAC0, the same direction a real THAC0 penalty works),
+        // not a bonus to the player's roll.
+        hit = naturalRoll >= (monster.thac0 + thac0Penalty - (character.armorClass - acBonus));
     }
 
     AttackOutcome outcome;
     outcome.hit = hit;
     if (hit) {
-        int damage = character::roll(monster.damageDiceCount, monster.damageDiceSides) + monster.damageFlatBonus;
+        int damage = character::roll(monster.damageDiceCount, monster.damageDiceSides) + monster.damageFlatBonus -
+                     damagePenalty;
         outcome.damage = std::max(1, damage);
     }
     return outcome;

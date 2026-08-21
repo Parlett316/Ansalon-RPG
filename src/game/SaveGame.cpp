@@ -132,7 +132,20 @@ void SaveGame::save(const GameState& state, const std::string& path) {
                 break;
         }
     }
-    file << "SPELLSTODAY " << c.spellsCastToday << " " << c.spellsCastDay << "\n";
+    // SPELLDAY/PREFERRED/MEMORIZED replace the old single-known-spell-per-
+    // caster SPELLSTODAY line -- see character/Spellcasting.h. PREFERRED is
+    // the standing loadout as last deliberately chosen (unaffected by
+    // casting); MEMORIZED is what's actually left to cast today. A save
+    // written before this milestone has only the legacy SPELLSTODAY line,
+    // still accepted on load (see below) -- same "old keyword still read,
+    // new keyword is what's written" migration as GOLD->STEEL.
+    file << "SPELLDAY " << c.spellsCastDay << "\n";
+    file << "PREFERRED " << c.preferredSpellIds.size();
+    for (const auto& id : c.preferredSpellIds) file << " " << id;
+    file << "\n";
+    file << "MEMORIZED " << c.memorizedSpellIds.size();
+    for (const auto& id : c.memorizedSpellIds) file << " " << id;
+    file << "\n";
     file << "RESTDAY " << c.lastRestDay << "\n";
     file << "BROOCHDAY " << c.lastBroochUseDay << "\n";
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
@@ -364,8 +377,29 @@ GameState SaveGame::load(const std::string& path) {
                 fail(path, lineNumber, "malformed INVENTORY (expected a non-negative count)");
             }
         } else if (keyword == "SPELLSTODAY") {
-            if (!(iss >> state.character.spellsCastToday >> state.character.spellsCastDay)) {
+            // Legacy pre-multi-spell keyword (see character/Spellcasting.h)
+            // -- save() never writes this anymore (SPELLDAY/PREFERRED/
+            // MEMORIZED below), but a save file written before this
+            // milestone still has it. Only the day carries over; the old
+            // count has no equivalent (there's no single "spells cast"
+            // counter anymore) and memorizedSpellIds simply stays empty --
+            // safe (not a crash), just "nothing left to cast today" until
+            // the player next rests.
+            int legacyCount = 0;
+            if (!(iss >> legacyCount >> state.character.spellsCastDay)) {
                 fail(path, lineNumber, "malformed SPELLSTODAY (expected: SPELLSTODAY count day)");
+            }
+        } else if (keyword == "SPELLDAY") {
+            if (!(iss >> state.character.spellsCastDay)) fail(path, lineNumber, "malformed SPELLDAY");
+        } else if (keyword == "PREFERRED" || keyword == "MEMORIZED") {
+            int count;
+            if (!(iss >> count) || count < 0) fail(path, lineNumber, "malformed " + keyword + " (expected a count)");
+            std::vector<std::string>& target =
+                keyword == "PREFERRED" ? state.character.preferredSpellIds : state.character.memorizedSpellIds;
+            for (int i = 0; i < count; ++i) {
+                std::string id;
+                if (!(iss >> id)) fail(path, lineNumber, keyword + " has fewer ids than its count");
+                target.push_back(id);
             }
         } else if (keyword == "RESTDAY") {
             // Optional -- a save written before Milestone 40 simply has no

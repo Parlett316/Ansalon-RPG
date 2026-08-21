@@ -117,11 +117,13 @@ skip for now rather than build unused:
 - **No demihuman level limits.** Irrelevant until leveling exists.
 - **No alignment restrictions.** The player picks freely from all 9
   alignments regardless of race/class.
-- **No spellbook or spell selection.** A Mage or Cleric character just
-  knows their class; actual starting spells are future work alongside a
-  magic/casting system. (Kender specifically are flagged as unable to cast
-  arcane magic at all — see above — but nothing stops them from being
-  *chosen* as Mage today, since spellcasting doesn't exist yet either way.)
+- **No spellbook or spell selection at character creation.** A Mage or
+  Cleric character just knows their class at level 1; the real spell
+  loadout picker happens later, at the character's first Rest (see
+  "Spellcasting" below — a real multi-level system now, not the single
+  fixed spell this line originally described). (Kender specifically are
+  flagged as unable to cast arcane magic at all — see above — but nothing
+  stops them from being *chosen* as Mage today.)
 - **A real but deliberately small equipment system exists** (see
   "Equipment" below) — a General Store sells a handful of sourced armor
   tiers and one weapon upgrade per class, buyable with `steelPieces`, and
@@ -390,13 +392,14 @@ levels" — rather than any mechanical robe system.
 
 **Now that leveling exists** (see below): Robe assignment by alignment at
 the Test of High Sorcery is implemented as a level-3 flavor moment.
-Spellcasting itself now exists too (see "Spellcasting" below), but
+Spellcasting itself now covers many spells (see "Spellcasting" below), but
 Robe-based spell-sphere restrictions and moon-phase
-(Solinari/Lunitari/Nuitari) saving-throw/spellcasting bonuses are still
-deferred — moot with only one, non-sphere-restricted Mage spell in the
-game (the book itself states a wizard "is unaffected by phases of the
-moons" below 3rd level anyway, so this was never a level-1 concern
-either).
+(Solinari/Lunitari/Nuitari) saving-throw/spellcasting bonuses remain a
+deliberate scope cut, not an oversight — DQoK's own Red/White Robe
+per-spell restriction was considered and rejected as not sourced from the
+PHB or Dragonlance Adventures (the book itself states a wizard "is
+unaffected by phases of the moons" below 3rd level anyway, so the moon-
+phase half was never a level-1 concern either).
 
 ## Leveling / experience
 
@@ -452,122 +455,292 @@ test.
 
 ## Spellcasting
 
-`character::Spellcasting` (`Spellcasting.h/.cpp`) gives Mage and Cleric one
-real, PHB-sourced spell each -- not a spellbook/spell-selection system,
-same "one sourced thing done honestly, not a whole subsystem faked" spirit
-as `ClassInfo`'s single placeholder weapon (see `docs/COMBAT_NOTES.md`).
-Everything below was visually confirmed against rendered PHB pages, same
-discipline as every other rules pass in this project:
+`character::Spellcasting` (`Spellcasting.h/.cpp`) grew from Milestone 40's
+one-known-spell-per-caster into a **real multi-level spellbook** covering
+every spell level a character's own level unlocks (up to Mage 9th / Cleric
+7th), still nowhere near a "cast anything in the PHB" simulator -- see the
+census below for exactly what's in and what's deliberately left out.
 
-- **Mage knows Magic Missile** (PHB p.176, Evocation): 1d4+1 damage per
-  missile, automatic hit (no attack roll, no saving throw -- the book's
-  own wording: "unerringly strike their target"), missile count = 1 at
-  1st level plus one more every two levels, capped at 5 (reached at 9th
-  level).
-- **Cleric knows Cure Light Wounds** (PHB p.253, Necromancy, Reversible):
-  a flat 1d8 healed, no level scaling, capped at the character's `maxHp`.
-- **Spell slots are real and level-based**: Wizard 1st-level-spell-per-day
-  counts come from Table 21 (Wizard Spell Progression, p.43); Cleric's
-  come from Table 24 (Priest Spell Progression, p.47) *plus* Wisdom bonus
-  spells (Table 5, p.23, cumulative per the book's own worked example).
-  Both tables' 1st-level column is transcribed in full for levels 1-20,
-  matching `Leveling`'s existing level range. **Mages get no
-  Intelligence-based bonus slots** -- confirmed against the book: INT
-  governs chance-to-learn-a-spell and max spell level for Wizards, not
-  slot count, unlike Wisdom's role for Clerics. This asymmetry is
-  deliberate, not a missing feature on the Mage side.
-- **Rest and spell memorization are real now (Milestone 40).** Pressing
-  `r` (`render::Key::Rest`, `GameLoop::handleRest`) rests once per
-  in-game day (`Character::lastRestDay`, same `hoursElapsed / 24` day
-  convention as everything else): it advances `hoursElapsed` by 8 (an
-  overnight rest) and heals 1 hp, capped at `maxHp` -- the DMG's base
-  natural-healing rate (2nd ed. DMG p.74, "Healing": "Characters heal
-  naturally at a rate of 1 hit point per day of rest. Rest is defined as
-  low activity -- nothing more strenuous than riding a horse or
-  traveling from one place to another"). Also not modeled: the DMG's
-  food/water/sleep prerequisite for healing at all -- this project has no
-  hunger/supply system, so Rest always assumes those are met.
+### Sourcing: DQoK.pdf cross-referenced against the PHB
 
-  **Complete bed rest, at an Inn, is real now (Milestone 41).** A new
-  `render::Key::BedRest` (`'z'`/`'Z'` -- not `'b'`, already `SouthWest` in
-  the `yubn` diagonal-movement scheme; `GameLoop::handleBedRest`) works
-  only while standing on a zone POI marked `BED <char>`
-  (`world::PointOfInterest::isBed`, parsed by `ZoneLoader` exactly like
-  `SHOP` -- no `TALK` prerequisite, see `docs/ZONE_NOTES.md`'s "Beds"
-  section). It shares `Character::lastRestDay` with ordinary Rest (one
-  overnight action per in-game day, whichever kind) and advances
-  `hoursElapsed` by the same 8 hours, but heals fully to `maxHp` instead
-  of 1 hp. This is a **deliberate simplification** of the DMG's literal
-  "complete bed-rest" rule (2nd ed. DMG p.74: "If a character has
-  complete bed-rest (doing nothing for an entire day), he can regain 3
-  hit points for the day. For each complete week of bed-rest, the
-  character can add any Constitution hit point bonus he may have to the
-  base of 21 points (3 points per day) he regained during that week.").
-  Taken literally, that's a multi-day-to-multi-week grind sitting in an
-  Inn room -- a poor fit for this project's timeline-driven pace, where
-  canon characters move on a real schedule (`docs/TIMELINE_NOTES.md`)
-  the player can walk past and miss. A single full-heal action was chosen
-  instead; the 3 hp/day and weekly-Constitution-bonus tiers are not
-  modeled, and this deviation from the sourced rule is intentional, not
-  an oversight. `data/zones/solace_inn.txt`'s existing `U "The Stairs Up"`
-  POI carries the new `BED U` line -- no other zone has an authored
-  Inn/lodging POI, so no other zone got one.
+At the user's direction, the spell list was built from `References/
+DQoK.pdf` -- the manual for *Dark Queen of Krynn*, an official TSR/SSI
+Dragonlance gold-box computer game (not a rulebook) -- then verified
+against the actual PHB, the same "don't trust a secondary source, check
+the real book" discipline as everything else in this project. DQoK's own
+4-column "Spell Descriptions" pages (real book pp.23-30, rendered as
+images via `pdftoppm` since the OCR text layer scrambles the columns badly
+-- see `docs/GOTCHAS.md`) gave a complete per-level census: **29 Cleric
+spells across 7 levels, 59 Magic-User spells across 9 levels** (its Druid
+spells were skipped -- not a class this project implements). Every one of
+those 88 was checked against the PHB's own alphabetical spell index
+(`"SpellName (Wiz N)"` / `"(Pr N)"` with real page numbers, pp.303+) --
+**85 matched exactly.** Three didn't, and were corrected rather than
+silently ported from the game manual:
 
-  For a Mage or Cleric, the same keypress also (re-)memorizes their one
-  known spell for the day, via `character::memorizeSpells`. Real 2e
-  requires a restful night's sleep *and then* time spent studying
-  (Wizard, PHB p.107, "Wizard Spells": "Memorization is not a thing that
-  happens immediately. The wizard must have a clear head gained from a
-  restful night's sleep and then has to spend time studying his spell
-  books. The amount of study time needed is 10 minutes per level of the
-  spell being memorized") or praying (Priest, PHB p.111, "Priest
-  Spells": "Priests must pray to obtain spells... The conditions for
-  praying are identical to those needed for the wizard's studying").
-  Since every caster in this project knows exactly one 1st-level spell,
-  that's a night's sleep plus 10 minutes -- i.e. exactly what one Rest
-  keypress already represents, with no actual *selection* to expose
-  through a second command (there's nothing to choose between). Folding
-  the book's two-step requirement into one action is a deliberate
-  simplification, not an oversight -- it would stop being honest the
-  moment this project ever gains a real spellbook with more than one
-  spell to pick from.
+- **"Resist Cold"** (DQoK: Cleric 1st level, standalone) -- the real PHB
+  spell is a single 2nd-level **Resist Fire/Resist Cold** covering both
+  (DQoK separately and correctly places "Resist Fire" at 2nd level, so
+  this is DQoK's own inconsistency, not a real 2e split).
+- **"Iron Skin"** (DQoK: Mage 5th level, "-4 AC") -- not a real PHB spell
+  name. The real analog is **Stoneskin** (PHB p.208, Wiz4), a 4th-level
+  spell with a completely different mechanic (absorbs a number of hits
+  outright, not an AC bonus) -- DQoK invented a simplified computer-game
+  reskin. Not sourced, not implemented.
+- **"Fire Touch"** (DQoK: Mage 5th level) -- doesn't appear anywhere in
+  the PHB's Wizard spell index under any name. Appears to be a DQoK-
+  original invention. Not sourced, not implemented.
 
-  `character::hasSpellSlotAvailable` is now a pure query with no side
-  effects: it returns false unless `Character::spellsCastDay` equals the
-  day being asked about, i.e. **no slots are available at all until
-  memorization has happened that day**, regardless of class or level.
-  The old behavior -- slots silently refilling the first time anything
-  checked on a new day, with no player action involved -- is gone.
-- **Real enforcement, finally, of the racial arcane-magic block.** Kender
-  (`raceInfo(Kender).canBeMage == false`) and the three subraces that
-  can't be Mages (Kagonesti Elf, Hill Dwarf, Mountain Dwarf, via
-  `effectiveCanBeMage`) now actually get `maxSpellSlotsPerDay == 0` --
-  before spellcasting existed, this restriction was flavor-only (see
-  "Kender in place of Half-Orc" and "Dragonlance depth" above, which both
-  said as much). Character creation is unchanged: you can still *choose*
-  Mage as one of these, same non-blocking UX as every other
-  eligibility mismatch in this project -- the consequence just shows up
-  in combat now instead of nowhere.
+Tables 21 (Wizard Spell Progression, PHB p.43) and 24 (Priest Spell
+Progression, PHB p.47) were re-rendered and transcribed **in full** (every
+spell-level column, levels 1-20) for `spellSlotsPerDay` -- Milestone 40 had
+only transcribed each table's 1st-level column, which this pass's own
+1st-level numbers still match exactly (a good cross-check that both
+research passes read the same page correctly). Table 24's footnote --
+6th-level slots need Wisdom 17+, 7th-level need Wisdom 18+ -- is enforced
+directly in `spellSlotsPerDay` (a Cleric below that Wisdom gets 0 in that
+column regardless of what the raw table says). Wisdom bonus spells (Table
+5, p.23) still only cover 1st-level slots, the exact scope Milestone 40
+already had -- Table 5's bonus-spell breakdown at higher spell levels
+wasn't re-verified this pass, so nothing claims to model it.
 
-**Wired into combat** (`GameLoop::runCombat`, see `docs/COMBAT_NOTES.md`):
-a new `render::Key::Cast` (`'m'`/`'M'`) lets a Mage or Cleric spend their
-round casting instead of attacking, through the same initiative-ordered
-exchange as a normal attack.
+### "Known spells" = the whole accessible-level roster
 
-**Not modeled, deliberately, and still real gaps**: no spells above 1st
-level, ever, in this pass; Elf/Half-Elf's sleep/charm magic resistance
-still has nothing to resist (neither Magic Missile nor Cure Light Wounds
-triggers it); Wizard Robe spell-sphere restrictions are moot with only one
-spell in the game, which isn't sphere-restricted to begin with. Tinker
-still never casts despite borrowing Mage's saves/steel table as an analogy
--- gadgets, not magic.
+Real 2e Clerics need no spellbook -- "all spells of the appropriate level
+are always available" (matches DQoK's own rules text almost verbatim).
+Real 2e Wizards do need one, gated by an Intelligence-based "chance to
+learn" roll this project doesn't implement (see "Scope" above, unchanged
+since character creation). Rather than build that second, smaller
+subsystem for one class, **both classes get the Priest's rule**: a caster
+automatically knows every implemented spell (see the census below) at
+every level their own character level unlocks. This is a documented
+simplification of the Wizard's real spell-research/spellbook rules, called
+out here exactly once rather than re-flagged at every spell.
+
+### The spell census: 49 implemented, 39 sourced-but-excluded
+
+Of the 88 real spells found above, **only a spell whose PHB effect maps
+onto state this engine already tracks is actually castable** -- a
+spell needing a subsystem that doesn't exist (poison/disease/blindness/
+curse status, monster saving throws, damage-type resistance, multi-attack
+rounds, item identification, locks/traps, ally summoning, NPC charisma
+reactions) is sourced and documented here but never offered in-game, the
+same "restraint over completeness" precedent Milestone 56 used for the
+rest of DLA's magic item chapter. This keeps the player from ever
+memorizing a spell that silently does nothing.
+
+Every implemented spell resolves through `character::SpellEffect`, one of
+six categories, each reusing a mechanism this project already had rather
+than inventing six new ones:
+
+| `SpellEffect` | Reuses | Engine detail |
+|---|---|---|
+| `DamageMonster` | Magic Missile's existing branch | subtracts from `monsterHp` |
+| `HealCaster` | Cure Light Wounds's existing branch | adds to `currentHp`, capped at `maxHp` |
+| `BlockMonsterAttacks` | Webnet (`blockedMonsterAttacks`, a count)/Brooch of Imog (`monsterIncapacitatedRestOfFight`) -- now one shared mechanism in `GameLoop::runCombat` | the sentinel `kBlockRestOfFight` means "until the fight ends," otherwise a counted number of the monster's attacks |
+| `BuffPlayerThac0` / `BuffPlayerDamage` / `BuffPlayerAc` | new local variables in `runCombat`, passed as optional params to `combat::resolvePlayerAttack`/`resolveMonsterAttack` | **never** written into the character's real saved `armorClass`/`thac0` -- local to the one `runCombat` call, same "doesn't survive to the save file" precedent Brooch already established |
+| `DebuffMonsterThac0` / `DebuffMonsterDamage` | same new local variables, applied against the monster's roll instead | |
+| `BuffPlayerAndDebuffMonsterThac0` | both of the above at once | Prayer is the one spell that buffs the player and debuffs the monster in a single cast |
+| `InstantDefeat` | nothing new -- sets `monsterHp = 0`, falls into the existing victory branch | Death Spell, Disintegrate, Flesh to Stone, Power Word Kill, and Cloudkill (its real "kills weaker monsters outright" framing, applied unconditionally since this engine has no monster Hit Dice threshold to gate it on) |
+
+**No monster saving throws.** This engine has never modeled one (only the
+player rolls saves, e.g. vs. the Giant Spider's poison bite). Every
+damage/effect spell above that would normally allow a monster a save
+instead applies at full, unconditional effect -- a flagged simplification,
+same spirit as "damage floored at 1" in `docs/COMBAT_NOTES.md`.
+
+**Cleric, implemented (14 of 29):**
+
+| Spell | Level | Effect | Source |
+|---|---|---|---|
+| Bless | 1 | +1 player THAC0 | PHB p.252; DQoK p.24 |
+| Cure Light Wounds | 1 | heal 1d8 | PHB p.253 (unchanged from Milestone 40) |
+| Protection from Evil | 1 | +2 player AC | PHB p.271; DQoK p.24 |
+| Hold Person | 2 | block, rest of fight | PHB p.261 |
+| Spiritual Hammer | 2 | damage 1d6 | DQoK p.24 ("normal hammer damage" -- reuses the Cleric's own Mace die, PHB Table 44, not a fresh PHB citation) |
+| Prayer | 3 | +1 player THAC0 / -1 monster THAC0 | PHB p.271; DQoK p.24 |
+| Cure Serious Wounds | 4 | heal 2d8+1 | PHB p.253 |
+| Protection from Evil, 10' Radius | 4 | +2 player AC | PHB p.271 |
+| Sticks to Snakes | 4 | block, 3 attacks | PHB p.280 |
+| Cure Critical Wounds | 5 | heal 3d8+3 | PHB p.253 |
+| Dispel Evil | 5 | +7 player AC | DQoK p.25 |
+| Flame Strike | 5 | damage 6d8 | DQoK p.25 |
+| Blade Barrier | 6 | damage 8d8 | DQoK p.25 |
+| Heal | 6 | heal to (`maxHp` - 1d4) | PHB p.253 |
+
+**Cleric, sourced but excluded (15 of 29), and why:** Detect Magic, Find
+Traps (no item-identification/trap system); Resist Fire/Resist Cold,
+Silence 15' Radius (no damage-type or enemy-spellcasting system); Slow
+Poison, Snake Charm, Cure Blindness, Cure Disease, Neutralize Poison,
+Remove Curse (no poison/disease/blindness/curse status exists to cure);
+Dispel Magic (nothing currently debuffs the player for it to remove);
+Raise Dead, Resurrection, Restoration (this engine's "knocked out, not
+killed" model means player characters never actually die).
+
+**Mage, implemented (35 of 59):**
+
+| Spell | Level | Effect | Source |
+|---|---|---|---|
+| Burning Hands | 1 | damage = caster level (flat, no die) | PHB p.170; DQoK p.26 |
+| Charm Person | 1 | block, rest of fight | PHB p.171 |
+| Enlarge | 1 | +1 player THAC0 | PHB p.173; DQoK p.26 |
+| Magic Missile | 1 | damage, 1d4+1/missile, 1 missile/2 levels, capped at 5 | PHB p.176 (unchanged from Milestone 40) |
+| Protection from Evil | 1 | +2 player AC | PHB p.271 |
+| Shocking Grasp | 1 | damage 1d8 + caster level | PHB p.178 |
+| Sleep | 1 | block, rest of fight | PHB p.178 |
+| Mirror Image | 2 | block, 1d4 attacks | PHB p.186 |
+| Ray of Enfeeblement | 2 | -2 monster damage | PHB p.187 |
+| Stinking Cloud | 2 | block, 3 attacks | PHB p.188 |
+| Strength | 2 | +2 player damage | PHB p.188 |
+| Fireball | 3 | damage 1d6/level, capped 10d6 | PHB p.192, "a maximum of 10d6" |
+| Hold Person | 3 | block, rest of fight | PHB p.193 |
+| Lightning Bolt | 3 | damage 1d6/level, capped 10d6 | PHB p.194, "maximum ... of 10d6" |
+| Protection from Evil, 10' Radius | 3 | +2 player AC | PHB p.195 |
+| Slow | 3 | -2 monster THAC0 | PHB p.196 |
+| Bestow Curse | 4 | -4 monster THAC0 | PHB; DQoK p.28 ("reduces THACO and saving throws by 4") |
+| Charm Monster | 4 | block, rest of fight | PHB p.198 |
+| Confusion | 4 | block, 4 attacks | PHB p.198 |
+| Fear | 4 | block, rest of fight | PHB p.201 |
+| Fumble | 4 | block, 3 attacks | PHB p.202 |
+| Ice Storm | 4 | damage 3d10 (flat) | PHB p.202; DQoK p.29 ("3-30") |
+| Cloudkill | 5 | instant defeat | PHB p.212 (simplified -- see "No monster saving throws" above) |
+| Cone of Cold | 5 | damage, level x (1d4+1) | PHB p.212, "1d4+1 ... per level ... of the wizard," no cap |
+| Hold Monster | 5 | block, rest of fight | PHB p.215 |
+| Death Spell | 6 | instant defeat | PHB p.221 |
+| Disintegrate | 6 | instant defeat | PHB |
+| Flesh to Stone | 6 | instant defeat | PHB |
+| Delayed Blast Fireball | 7 | damage 1d6/level, capped 10d6 | PHB, same dice as Fireball |
+| Power Word, Stun | 7 | block, rest of fight | PHB p.237 |
+| Mass Charm | 8 | block, rest of fight | PHB p.241 |
+| Otto's Irresistible Dance | 8 | block, rest of fight | PHB p.241 |
+| Power Word, Blind | 8 | -4 monster THAC0 | PHB p.238 |
+| Meteor Swarm | 9 | damage, uniform 10-40 | PHB p.248; DQoK p.30's own "10-40" number is used directly rather than the real spell's four-separate-2d6-sphere total, flagged since it isn't an ordinary N*d*M roll |
+| Power Word, Kill | 9 | instant defeat | PHB p.249 |
+
+**Mage, sourced but excluded (24 of 59), and why:** Detect Magic, Read
+Magic, Knock, Friends (no item-identification/lock/NPC-reaction system);
+Shield, Protection from Normal Missiles, Minor Globe of Invulnerability,
+Globe of Invulnerability, Mind Blank (only matter against an enemy
+spellcaster or ranged attacker -- monsters in this engine never cast
+spells or shoot); Detect Invisibility, Invisibility, Invisibility 10'
+Radius, Mass Invisibility (no stealth system); Haste (needs the
+already-deferred multi-attack-per-round engine feature, see "Leveling /
+experience" above); Dimension Door, Blink (the existing Flee action
+already always succeeds for free, so a "guaranteed escape" spell adds
+nothing to model); Fire Shield (needs a reflect-damage mechanic not built
+this pass); Remove Curse, Feeblemind (no curse/spellcasting-disable status
+exists); Dispel Magic (nothing currently debuffs the player for it to
+remove); Stone to Flesh (counters a status -- petrification -- nothing
+inflicts); Mass Charm's own Charm Monster analog is separate and IS
+implemented above; Iron Skin, Fire Touch (not real PHB spells, see
+sourcing above); Monster Summoning (no ally-summoning system).
+
+### Rest and spell memorization
+
+Pressing `r` (`GameLoop::handleRest`) or `z` (`GameLoop::handleBedRest`,
+standing on a `BED` POI) still rests once per in-game day
+(`Character::lastRestDay`) and heals as before (see below) -- what changed
+is what happens for a caster. `GameLoop::performSpellMemorization`:
+
+- **First rest ever** (`Character::preferredSpellIds` empty): walks
+  `chooseSpellLoadout`, a `drawPickerFrame` loop asking one spell per
+  prepared slot, grouped lowest-level-first (only levels/spells
+  `spellSlotsPerDay`/`spellListFor` actually allow are offered). The
+  chosen ids become the new standing `preferredSpellIds`.
+- **Every rest after that**: asks once, "Keep the same spells memorized?
+  (Y/n)." Saying yes re-copies `preferredSpellIds` into
+  `Character::memorizedSpellIds` -- this default, not a re-prompt every
+  night, directly matches DQoK's own quoted design: *"Spells should be
+  rememorized as soon as possible after they are used... Selecting REST
+  without choosing new spells has the spellcasters rememorize the spells
+  they have cast since last resting."* A level-up since the last rest
+  that opened new slots gets them auto-filled with the roster's lowest-
+  level spell rather than silently left empty. Saying no re-runs
+  `chooseSpellLoadout` for a fresh loadout.
+
+Real 2e's two-step memorization requirement (a restful night's sleep,
+*then* 10 minutes of study per spell level, PHB p.107/p.111) is still
+folded into the one Rest keypress, same simplification Milestone 40
+already made and flagged -- now covering a real selection step instead of
+"nothing to choose between."
+
+`character::hasMemorizedSpellsAvailable` is a pure query: false unless
+`Character::spellsCastDay` equals the day asked about AND
+`memorizedSpellIds` is non-empty -- no slots are available at all until
+memorization has happened that day, same no-silent-refill guarantee
+Milestone 40 established.
+
+Ordinary Rest still heals 1 hp (DMG p.74's base natural-healing rate) and
+Bed Rest still heals fully to `maxHp` -- neither changed this pass, see
+Milestone 40/41's original writeups below for their own sourcing.
+
+### Real enforcement of the racial arcane-magic block
+
+Unchanged in spirit from Milestone 40: Kender (`raceInfo(Kender).
+canBeMage == false`) and the three subraces that can't be Mages (Kagonesti
+Elf, Hill Dwarf, Mountain Dwarf, via `effectiveCanBeMage`) get
+`spellSlotsPerDay == 0` at every spell level, regardless of character
+level. Character creation still lets you *choose* Mage as one of these
+(the usual non-blocking eligibility UX) -- the consequence just shows up
+in combat.
+
+### Viewing your spellbook
+
+The character sheet's own "Spells memorized: ..." line is deliberately
+terse (just what's prepared today). For the full picture, a caster gets an
+extra hint on the sheet, `(s=view spells known, any other key to
+continue)` -- pressing `s` (`render::Key::South`, locally reinterpreted
+the same "instead of a new `Key` value" way `Cast`/`Inventory` already are
+elsewhere) opens `MapRenderer::drawSpellbookFrame`: every implemented
+spell for the character's class, grouped by level up to
+`maxAccessibleSpellLevel`, each level line showing its real per-day slot
+count, and each spell still memorized-and-uncast today marked `(memorized)`
+/ `(memorized x2)`. Any key returns to the character sheet (not straight
+back to gameplay), so a caster can flip between gear and spells in one
+`c` session. Since a character is only ever one class at a time (no
+multi/dual-classing exists), this naturally already shows "Mage spells"
+or "Cleric spells" separately -- there's no case where both would need
+splitting apart on screen.
+
+### In combat
+
+`GameLoop::runCombat`'s `m`/`M` (`render::Key::Cast`) casts the character's
+one remaining memorized spell directly if there's only one distinct id
+left (preserves the exact original one-spell UX for a low-level
+character); with more than one, it opens a `drawPickerFrame` picker
+("Cast which spell?", showing `x2`/`x3` counts for a spell memorized into
+more than one slot) before spending the round. See `docs/COMBAT_NOTES.md`.
+
+### Save format
+
+`SPELLSTODAY <count> <day>` (one line, a bare cast-count) is replaced by
+`SPELLDAY <day>` plus `PREFERRED <count> <id>...` / `MEMORIZED <count>
+<id>...` (the standing loadout and what's left to cast today,
+respectively). A save written before this milestone still has only
+`SPELLSTODAY` -- still accepted on load (only the day carries over;
+`memorizedSpellIds` simply stays empty, i.e. "nothing to cast until you
+next rest," never a crash), same "old keyword still read, new keyword is
+what's written" migration as `GOLD`->`STEEL`.
+
+**Not modeled, deliberately, and still real gaps**: Elf/Half-Elf's
+sleep/charm magic resistance still has nothing to resist (none of the
+block-category spells above roll a save this engine could apply it to);
+Wizard Robe spell-sphere restrictions -- DQoK has its own Red/White Robe
+per-spell restriction, but it's that computer game's own balancing
+invention, not sourced from the PHB or Dragonlance Adventures, and this
+project's Robe assignment (level 3, see "Wizards of High Sorcery" above)
+is still flavor-only with nothing to attach a restriction to -- **skipped
+this pass by design**, not an oversight, flagged here since it's a real
+Dragonlance-flavor call rather than a purely mechanical one. Tinker still
+never casts despite borrowing Mage's saves/steel table as an analogy --
+gadgets, not magic.
 
 ## Equipment
 
 `character::Equipment` (`Equipment.h/.cpp`) lets a character buy armor and
 one weapon upgrade at a shop POI (`p` while standing on one) — same "solve
-the reported problem, not the whole simulation" scope as Spellcasting's one
-known spell per caster. Everything below was visually confirmed against
+the reported problem, not the whole simulation" restraint as Spellcasting's
+census of implemented-vs-excluded spells. Everything below was visually confirmed against
 rendered PHB pages (this scan's OCR badly garbles table columns, so text
 search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
 
@@ -764,8 +937,8 @@ already reuses rather than a duplicate type) —
   non-casters.
 
 Every carried potion is identical, so there's nothing to actually pick
-between multiple ones — same "nothing to select" simplification
-Spellcasting's one-known-spell already established.
+between multiple ones — a "nothing to select" simplification, unlike the
+real spell-loadout picker Spellcasting now has.
 
 ### Magic items
 
@@ -919,15 +1092,20 @@ stored in `GameState::character` and never reassigned after that; pressing
 - **Fighter's extra attacks per round** (level 7+, PHB Table 15): needs
   the combat round loop restructured to resolve more than one attack per
   side — see "Leveling / experience" above and `docs/COMBAT_NOTES.md`.
-- **Spellcasting past 1st level**: Mage and Cleric each know exactly one
-  spell (see "Spellcasting" above) with real per-day slot counts; actual
-  spell selection/spellbooks and spells above 1st level are still future
-  work -- once a real spellbook exists, Rest's one-keypress-memorizes-
-  everything simplification (see "Spellcasting" above) needs to become a
-  real selection step. Elf/Half-Elf's sleep/charm magic resistance and
-  Wizard Robe spell-sphere restrictions remain unenforced since nothing
-  currently in the game triggers either (no sleep/charm spell exists,
-  and the one Mage spell isn't sphere-restricted).
+- **Spellcasting**: real multi-level spell selection/memorization now
+  exists (see "Spellcasting" above) -- 49 of the 88 PHB/DQoK-sourced
+  spells across Mage's 9 levels and Cleric's 7. The other 39 are sourced
+  and documented but not castable, each needing a subsystem this project
+  doesn't have (poison/disease/blindness/curse status, monster saving
+  throws, damage-type resistance, stealth, locks/traps, ally summoning,
+  NPC reactions) -- revisit individually as those subsystems get built,
+  rather than all at once. Elf/Half-Elf's sleep/charm magic resistance
+  still has nothing to resist (no block-category spell above rolls a
+  save this engine could apply it to). Wizard Robe spell-sphere
+  restrictions were a deliberate scope cut this pass (DQoK has its own
+  Red/White Robe per-spell restriction, but it isn't PHB/DLA-sourced, and
+  this project's Robe assignment is still flavor-only) -- a real design
+  call, not an oversight, see "Spellcasting" above.
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
   a carried inventory, sell-back, three shops (Solace, Haven, Tarsis), a
   Potion, a "+1" magic weapon/Solamnic Armor, (Milestone 56) a Webnet/

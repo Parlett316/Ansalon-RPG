@@ -491,30 +491,90 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
 
     if (character::canCastSpells(c.charClass)) {
         lines.push_back("");
-        int maxSlots = character::maxSpellSlotsPerDay(c);
-        if (maxSlots == 0) {
+        if (character::maxAccessibleSpellLevel(c) == 0) {
             lines.push_back("Spells: cannot cast arcane magic");
         } else if (c.spellsCastDay != currentDay) {
             // Not memorized today -- see character::memorizeSpells /
             // game::GameLoop::handleRest ('r').
-            std::ostringstream spellLine;
-            spellLine << "Spells: " << character::knownSpellName(c.charClass)
-                       << " (not memorized today -- rest to prepare)";
-            lines.push_back(spellLine.str());
+            lines.push_back("Spells: not memorized today -- rest to prepare");
+        } else if (c.memorizedSpellIds.empty()) {
+            lines.push_back("Spells: none remaining today -- rest to re-prepare");
         } else {
             std::ostringstream spellLine;
-            spellLine << "Spells: " << character::knownSpellName(c.charClass) << " ("
-                       << (maxSlots - c.spellsCastToday) << "/" << maxSlots << " remaining today)";
+            spellLine << "Spells memorized: ";
+            std::vector<std::string> distinctIds;
+            for (const auto& id : c.memorizedSpellIds) {
+                if (std::find(distinctIds.begin(), distinctIds.end(), id) == distinctIds.end()) {
+                    distinctIds.push_back(id);
+                }
+            }
+            for (size_t i = 0; i < distinctIds.size(); ++i) {
+                if (i > 0) spellLine << ", ";
+                const character::SpellInfo* spell = character::findSpell(c.charClass, distinctIds[i]);
+                int count = static_cast<int>(
+                    std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), distinctIds[i]));
+                spellLine << (spell != nullptr ? spell->name : distinctIds[i]);
+                if (count > 1) spellLine << " (x" << count << ")";
+            }
             lines.push_back(spellLine.str());
         }
     }
 
     lines.push_back("");
-    lines.push_back("(press any key to continue)");
+    if (character::canCastSpells(c.charClass)) {
+        lines.push_back("(s=view spells known, any other key to continue)");
+    } else {
+        lines.push_back("(press any key to continue)");
+    }
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
     writeBoxed(out, c.name, lines);
+    std::cout << out.str();
+}
+
+void MapRenderer::drawSpellbookFrame(const character::Character& c, long long currentDay) {
+    std::vector<std::string> lines;
+
+    int maxLevel = character::maxAccessibleSpellLevel(c);
+    if (maxLevel == 0) {
+        lines.push_back("Cannot cast arcane magic.");
+    } else {
+        bool memorizedToday = c.spellsCastDay == currentDay;
+        for (int lvl = 1; lvl <= maxLevel; ++lvl) {
+            std::vector<const character::SpellInfo*> atLevel;
+            for (const auto& spell : character::spellListFor(c.charClass)) {
+                if (spell.level == lvl) atLevel.push_back(&spell);
+            }
+            if (atLevel.empty()) continue; // nothing implemented at this level yet -- see docs/CHARACTER_NOTES.md
+
+            std::ostringstream header;
+            header << "Level " << lvl << " (" << character::spellSlotsPerDay(c, lvl) << " slot"
+                   << (character::spellSlotsPerDay(c, lvl) == 1 ? "" : "s") << "/day):";
+            lines.push_back(header.str());
+            for (const auto* spell : atLevel) {
+                std::ostringstream line;
+                line << "  " << spell->name;
+                if (memorizedToday) {
+                    int count = static_cast<int>(
+                        std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
+                    if (count > 0) {
+                        line << " (memorized";
+                        if (count > 1) line << " x" << count;
+                        line << ")";
+                    }
+                }
+                lines.push_back(line.str());
+            }
+        }
+    }
+
+    lines.push_back("");
+    lines.push_back("(press any key to return)");
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    writeBoxed(out, "Spells Known", lines);
     std::cout << out.str();
 }
 
@@ -543,8 +603,11 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
     lines.push_back("");
     std::ostringstream footer;
     footer << "Enter=attack";
-    if (character::canCastSpells(character.charClass)) {
-        footer << "   m=cast " << character::knownSpellName(character.charClass);
+    // Only hinted when a spell is actually memorized and unspent today --
+    // same "only show it when it's usable" precedent the potion/webnet/
+    // brooch hints below already follow.
+    if (character::hasMemorizedSpellsAvailable(character, currentDay)) {
+        footer << "   m=cast";
     }
     // Only hinted when there's actually something for 'i' to do -- same
     // "only show it when it's usable" precedent m=cast already follows for
