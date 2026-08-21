@@ -406,11 +406,12 @@ gets a real `CHARACTER` block, named and talkable, only when the source
 gives them genuine on-page, talk-shaped scenes at locations and
 day-ranges the game already models — never invented to fill a gap (same
 "don't invent to fill a gap" idiom applied everywhere else in this file,
-e.g. "Plains of Dust stays out of scope" above). Characters still
-referenced only descriptively in the milestone write-ups below (Kitiara,
-Alhana Starbreeze, Derek Crownguard, Lord Gunthar, Ariakas, Lord Soth,
-Feal-thas, Fewmaster Toede, Verminaard) are off-stage because no
-milestone has built them out yet, not because of a standing rule against
+e.g. "Plains of Dust stays out of scope" above). Alhana Starbreeze is
+named as of Milestone 59 (see below). Characters still referenced only
+descriptively in the milestone write-ups below (Kitiara, Derek
+Crownguard, Lord Gunthar, Ariakas, Lord Soth, Feal-thas, Fewmaster Toede,
+Verminaard) are off-stage because no milestone has built them out yet,
+not because of a standing rule against
 it — see `docs/MILESTONES.md`'s NEXT UP for what's still pending. Where
 an older section below still describes a since-named character as
 "unnamed" or "off-stage," that was accurate as of the milestone it
@@ -583,15 +584,16 @@ this project's restraint introduced). Lorac's own fate is left open too
 written to hold up regardless of exactly when a player reads it, same
 "evergreen despite dramatic content" treatment as the Tower's Muster Yard.
 
-**Alhana Starbreeze is deliberately not a named NPC**, despite being a
-major on-page character throughout this arc (she pilots the griffons,
-leads the party to her father, has her own extensive future plot in
-*Dragons of Spring Dawning* and beyond) — same reasoning that's kept Derek
-Crownguard and Lord Gunthar off-stage at the Tower: a character with
-significant ongoing canon fate doesn't become a static, permanently-
-available NPC. `data/zones/silvanesti.txt`'s talkable Warder is generic,
-the same "unnamed sentinel" pattern used for Pax Tharkas's Fortress
-Guard and the Tower/Ice Wall Knights.
+**Alhana Starbreeze was not a named NPC as of this milestone** — she's
+named as of Milestone 59 (see "Alhana Starbreeze" below), sharing this
+exact `silvanesti 25 30` window via her own `CHARACTER` block. Derek
+Crownguard and Lord Gunthar stayed off-stage at the Tower for a different
+reason (their on-page scenes are at Sancrist Isle, not a modeled
+`LOCATION`) and remain so. `data/zones/silvanesti.txt`'s talkable Warder
+is a separate, still-generic character — the same "unnamed sentinel"
+pattern used for Pax Tharkas's Fortress Guard and the Tower/Ice Wall
+Knights — and was never meant to represent Alhana, who is never
+stationary at the tree line in the source text.
 
 **Day-range placement.** `silvanesti 25 30` follows directly from the
 text's own "the third day" flight-time cue (line 3774) after leaving
@@ -1233,6 +1235,54 @@ research pass and needed no further work.
 
 Verified via the piped smoke test (pure data + prose edits, no new
 grammar, no throwaway self-test needed, same call as Milestones 47-49).
+
+## Alhana Starbreeze (Milestone 59)
+
+The first canon character named since Milestones 48-49, at the user's
+request for more canon NPCs. Of the still-off-stage roster (Kitiara —
+already resolved at Milestone 50 — Derek Crownguard, Lord Gunthar,
+Ariakas, Lord Soth, Feal-thas, Fewmaster Toede, Verminaard), Alhana was
+the clean pick: she's sustained, talking, on-page throughout the
+already-modeled `silvanesti 25 30` window, so this needed no new
+`LOCATION`, no new zone POI, no `.cpp`/`.h` changes — pure data, same
+shape as Fizban/Laurana.
+
+**Sourcing**, re-read directly from `.research/dwn_full.txt`. Lines
+3770-3990 (the griffon flight, already cited in "Silvanesti" above):
+Alhana's guarded exchange with Tanis about humans and Silvanesti; when
+Tanis mentions Sturm she snaps "Never speak of that to me!" then "I
+regret the day I set foot in Tarsis... I wish I had never gone there!"
+(lines 3826-3839) — the Starjewel itself (a soul-bond gift to Sturm) was
+given off-page at Tarsis, before this window; this milestone's `TOPIC "A
+Regret from Tarsis"` uses only her guardedness and regret, not an
+explanation of the jewel's mechanics, since the source itself never
+explains it to the reader at this point either. Lines 4847-4995 (the
+Tower of the Stars climax, already cited above): Alhana found weeping at
+her father's feet, addressing Tanis as "Half-Elven!" (grounds `SAY_IF
+halfelf`); her own account of the dragon carrying her to Lorac so his
+nightmare-self would be forced to kill his own child, and couldn't
+(grounds `TOPIC "Her Father"`); soothing him afterward ("The nightmare is
+ended. Silvanesti is safe"). Lines 5171-5178: "Alhana had not left her
+father's side all night... Her skin was torn by thorns, caked with dried
+blood" grounds the `PRESENCE` flavor text's physical detail. All dialogue
+is freshly written, inspired by these scenes, never transcribed.
+
+**Derek Crownguard, Lord Gunthar, Ariakas, and Lord Soth stay out of
+scope for this milestone specifically** — not a new restraint call, just
+the same one already on record (see "Named vs. off-stage canon
+characters" above and Milestone 50's Kitiara writeup). Derek/Gunthar's
+on-page scenes are entirely at Sancrist Isle, not a modeled `LOCATION`;
+Ariakas/Lord Soth are never witnessed directly by a tracked Hero. Either
+would need the Kitiara treatment (a retrospective `TOPIC` folded into an
+existing Hero's own dialogue, no `CHARACTER` block of their own) rather
+than Alhana's — left for a future milestone.
+
+`data/zones/silvanesti.txt`'s generic "Silvanesti Warder" POI is
+untouched — a separate, still-anonymous border sentinel, not Alhana (see
+the corrected paragraph in "Silvanesti (Milestone 37)" above). Verified
+via a clean rebuild (zero new warnings, no `.cpp`/`.h` changes) and the
+piped smoke test; no throwaway self-test needed (pure data, no new
+grammar, same call as Milestones 47-49).
 
 ## Adding a new character or event
 

@@ -1037,6 +1037,35 @@ this stays authoritative.
     pickup (ore grabbed before the journeyman was ever talked to) that
     still turned in cleanly on first contact.
 
+59. Alhana Starbreeze -- the first canon character named since Milestones
+    48-49 (Fizban, Laurana), at the user's request for more canon NPCs.
+    Of the still-off-stage roster, Alhana was the clean pick: sustained,
+    talking, on-page presence throughout the already-modeled
+    `silvanesti 25 30` window (she pilots the griffons in, leads the
+    party to her father, is the emotional center of the Tower of the
+    Stars climax) -- no new `LOCATION`, no new zone POI, no `.cpp`/`.h`
+    changes, pure data appended to `data/timeline.txt`'s existing
+    `CHARACTER` roster. Re-sourced directly from `.research/dwn_full.txt`:
+    the griffon-flight exchange with Tanis (lines 3770-3990, including her
+    guarded regret over the Starjewel given to Sturm at Tarsis, used only
+    for her guardedness, not an explanation of the jewel itself, since the
+    source never explains it at this point either) and the Tower of the
+    Stars climax (lines 4847-4995, including her address for Tanis,
+    "Half-Elven!", grounding a `SAY_IF halfelf`). Derek Crownguard, Lord
+    Gunthar, Ariakas, and Lord Soth stay out of scope for this milestone
+    specifically -- not a new restraint call, the same one already on
+    record: Derek/Gunthar's on-page scenes are at Sancrist Isle, not a
+    modeled `LOCATION`, and Ariakas/Lord Soth are never witnessed directly
+    by a tracked Hero, so either would need the Kitiara treatment
+    (retrospective `TOPIC` in an existing Hero's dialogue, no `CHARACTER`
+    block) rather than this one's. `data/zones/silvanesti.txt`'s generic
+    "Silvanesti Warder" POI is untouched -- a separate, still-anonymous
+    border sentinel, not Alhana. Verified via a clean rebuild (zero new
+    warnings, no `.cpp`/`.h` changes) and the piped smoke test; no
+    throwaway self-test needed (pure data, no new grammar, same call as
+    Milestones 47-49). See `docs/TIMELINE_NOTES.md`'s "Alhana Starbreeze"
+    section for the full sourcing and scope notes.
+
 ## NEXT UP
 
 Not yet started — a short menu of well-grounded backlog candidates, not
@@ -1052,3 +1081,11 @@ session's work.
    Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
    Brooch of Imog are real, sourced, and unused. See
    `docs/CHARACTER_NOTES.md`'s "Extending this later."
+3. **More off-stage canon characters** — Derek Crownguard and Lord
+   Gunthar (retrospective dialogue folded into an existing Hero's own
+   `TOPIC` at the High Clerist's Tower, same treatment Kitiara got at
+   Milestone 50, since their on-page scenes are at the unmodeled Sancrist
+   Isle) and Ariakas/Lord Soth (same retrospective treatment -- no
+   tracked Hero witnesses their scenes directly). See
+   `docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters" and
+   "Alhana Starbreeze" sections.

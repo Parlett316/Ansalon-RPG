@@ -81,7 +81,10 @@ Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
 forces the dragon orb to its limit and delivers Sturm's eulogy the day
 he dies at the High Clerist Tower, and rises to command the war itself
 as the Golden General before a final captivity and reunion at Neraka.
-Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
+Alhana Starbreeze, the Silvanesti princess who leads Tanis's half of the
+party home by griffon, is talkable throughout the Tower of the Stars
+crisis, at her father Lorac's side as he's freed from the dragon orb's
+nightmare. Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
 captivity, stays off the talk/topic picker by design — her defining
 scenes surface as retrospective dialogue inside Tanis's, Laurana's, and
 Caramon's own `TOPIC` entries instead. Stepping inside a zone carries
