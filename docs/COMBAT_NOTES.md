@@ -292,7 +292,7 @@ sealed to outsiders, a deliberate lore exclusion, not an oversight) are
 not towns for this purpose. `nearestTown()` picks whichever `isTown`
 location is closest by straight-line tile distance to where the player
 fell -- no pathfinding system exists in this project, same restraint
-already applied to `hoursToCross` being flat-per-tile -- falling back to
+already applied to `minutesToCross` being flat-per-tile -- falling back to
 Solace only if no town is found at all (defensive; can't happen with the
 current data).
 
@@ -302,11 +302,11 @@ current data).
 tile has no `Location` (named places/towns stay safe), a chance rolls a
 random monster from `combat::MonsterCatalog` and starts `runCombat`. As of
 Milestone 27 the chance varies by terrain — `world::TerrainInfo` gained an
-`encounterChancePercent` field alongside the existing `hoursToCross`,
+`encounterChancePercent` field alongside the existing `minutesToCross`,
 filled in per terrain in `Terrain.cpp`'s `kTable` (roads safest at 2%,
 mountains/forest riskiest at 12%/11%; ocean/Blood Sea/uncharted are 0,
 though they're impassable anyway so it never gets checked). Like
-`hoursToCross`, these numbers are tuned for pacing, not sourced from
+`minutesToCross`, these numbers are tuned for pacing, not sourced from
 anything. Monster *selection* is terrain-weighted as of Milestone 57 — see
 "Terrain-specific monster pools" below.
 

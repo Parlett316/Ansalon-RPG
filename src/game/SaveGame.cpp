@@ -152,6 +152,7 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
     file << "POS " << state.x << " " << state.y << "\n";
     file << "HOURS " << state.hoursElapsed << "\n";
+    file << "MINUTES " << state.minutesElapsed << "\n";
     file << "VISITED " << state.visitedLocations.size();
     for (const auto& id : state.visitedLocations) {
         file << " " << id;
@@ -433,6 +434,13 @@ GameState SaveGame::load(const std::string& path) {
             if (!(iss >> state.x >> state.y)) fail(path, lineNumber, "malformed POS (expected: POS x y)");
         } else if (keyword == "HOURS") {
             if (!(iss >> state.hoursElapsed)) fail(path, lineNumber, "malformed HOURS");
+        } else if (keyword == "MINUTES") {
+            // Optional -- a save written before Milestone 67 simply has no
+            // MINUTES line, and GameState::minutesElapsed's default (0, "no
+            // partial hour carried") is the correct value for it anyway,
+            // same backward-compatibility shape as RESTDAY/BROOCHDAY/
+            // STAFFCUREDAY above.
+            if (!(iss >> state.minutesElapsed)) fail(path, lineNumber, "malformed MINUTES");
         } else if (keyword == "VISITED") {
             int count;
             if (!(iss >> count) || count < 0) fail(path, lineNumber, "malformed VISITED (expected a count)");

@@ -45,9 +45,32 @@ it.
 Every field is single-line; `WorldLoader` throws a `file:line: message`
 error for anything malformed. There is no `CONNECT`/road field anymore —
 travel time now comes from actually walking the terrain
-(`world::Terrain::hoursToCross`), not a graph. Roads between locations are
-instead baked into `data/overworld.grid` as `#` tiles by
-`tools/generate_overworld.py`'s `ROAD_PAIRS` list.
+(`world::Terrain::minutesToCross` — see "Movement granularity" below), not
+a graph. Roads between locations are instead baked into
+`data/overworld.grid` as `#` tiles by `tools/generate_overworld.py`'s
+`ROAD_PAIRS` list.
+
+## Movement granularity: minutes, not hours (Milestone 67)
+
+`world::TerrainInfo::minutesToCross` (in-game minutes per tile stepped
+onto, `GameLoop::tryMoveOverworld`) used to be a flat, whole-hour
+`hoursToCross` (1-6 hours per tile). That made every single keypress
+consume at least a full hour of `GameState::hoursElapsed` — the same clock
+`timeline::Timeline` checks every `PRESENCE` window in `data/timeline.txt`
+against — so an ordinary play session (a couple hundred tile-moves,
+trivial for a real-time ASCII walker) could blow through the earliest,
+narrowest story windows (Solace's is only 48 hours wide) before a player
+even meant to rush anything. `minutesToCross` is a straight x15 scaling of
+the old hour values (1-6 hours -> 15-90 minutes) into a new small
+`GameState::minutesElapsed` remainder (0-59, rolled into the existing
+`hoursElapsed` on overflow — see `GameLoop::tryMoveOverworld`) — same
+relative tuning between terrain types, just four times finer-grained, so
+the same amount of real playtime now costs less simulated time.
+`data/timeline.txt`'s day windows are deliberately untouched by this —
+they're individually sourced against each novel's own elapsed-time cues
+(see `docs/TIMELINE_NOTES.md`), and rescaling them would invalidate that
+research for no reason. Rest/BedRest's flat 8-hour cost is untouched too —
+a night's rest is still a night's rest regardless of movement granularity.
 
 ## How location `POS` values were chosen
 
@@ -367,7 +390,7 @@ instead of once per loop iteration, so a would-be diagonal step becomes two
 sequential orthogonal stamps (a 1-tile "staircase" corner) — the error-term
 math and axis selection are untouched, so roads are still straight-ish
 lines, not a pathfinder; they just pick up a tile or two extra at each
-staircase corner, harmless since roads have a flat `hoursToCross = 1`
+staircase corner, harmless since roads have a flat `minutesToCross = 15`
 regardless of underlying terrain. `data/overworld.grid` was regenerated
 with the fix (Ice Wall's 46-tile glacier patch captured, reapplied, and
 diff-confirmed byte-for-byte identical afterward, same procedure as every

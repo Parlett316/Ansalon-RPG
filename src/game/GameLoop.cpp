@@ -470,7 +470,9 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     }
     state_.x = nx;
     state_.y = ny;
-    state_.hoursElapsed += terrain.hoursToCross;
+    state_.minutesElapsed += terrain.minutesToCross;
+    state_.hoursElapsed += state_.minutesElapsed / 60;
+    state_.minutesElapsed %= 60;
     const world::Location* here = world_.locationAt(nx, ny);
     if (here != nullptr) {
         state_.visitedLocations.insert(here->id);

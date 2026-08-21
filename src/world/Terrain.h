@@ -16,7 +16,7 @@ struct TerrainInfo {
                             // always follow it with a reset ("\x1b[0m"), or
                             // color bleeds into later output; see docs/GOTCHAS.md
     bool passable;
-    int hoursToCross;      // in-game hours consumed by stepping onto this tile
+    int minutesToCross;    // in-game minutes consumed by stepping onto this tile
     const char* name;      // shown in the status line, e.g. "forest"
     int encounterChancePercent; // risk of a random encounter per move onto
                                  // this tile -- see docs/COMBAT_NOTES.md

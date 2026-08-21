@@ -53,7 +53,9 @@ struct ZoneReturnPoint {
 // (hoursElapsed/24, hoursElapsed%24) wherever displayed, rather than
 // tracked as separate fields, so they can never drift out of sync. Walking
 // inside a zone does not advance hoursElapsed (see docs/ARCHITECTURE.md) --
-// only overworld travel does.
+// only overworld travel does. minutesElapsed (below) is a separate sub-hour
+// carry fed only by overworld movement -- never itself read for day/hour
+// math, so hoursElapsed's role as sole source of truth for those is unchanged.
 struct GameState {
     character::Character character; // produced once by CharacterCreator before the loop starts
 
@@ -61,6 +63,11 @@ struct GameState {
     int x = 0;
     int y = 0;
     long long hoursElapsed = 0;
+    // 0-59 -- sub-hour remainder accumulated by world::TerrainInfo::
+    // minutesToCross in GameLoop::tryMoveOverworld, rolled into hoursElapsed
+    // once it reaches 60 (Milestone 67). Rest/BedRest don't touch this --
+    // only overworld movement does.
+    int minutesElapsed = 0;
     std::unordered_set<std::string> visitedLocations;
     // Ids of every canon/NPC character the player has ever talked to (via
     // 't') at least once -- timeline characters use their CanonCharacter

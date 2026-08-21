@@ -1411,6 +1411,33 @@ section).
     needs the user's own keyboard. See `docs/ZONE_NOTES.md`'s "Aftermath
     dialogue" section and `docs/TIMELINE_NOTES.md`'s own section on
     `latestDayEnd`.
+67. Movement granularity, hours -> minutes -- user feedback while playing:
+    ordinary movement was consuming the Heroes' schedule far faster than
+    intended. Only two things ever advanced `GameState::hoursElapsed` (the
+    clock `timeline::Timeline` checks every `PRESENCE` window against):
+    overworld movement and Rest. `world::TerrainInfo::hoursToCross` was a
+    flat, whole-hour cost per tile (1-6 hours) -- even the cheapest terrain
+    consumed a full hour per single keypress, and the earliest window
+    (Solace, day 0-1, 48 hours) could be exhausted by ordinary local
+    wandering alone. Renamed to `minutesToCross` and rescaled x15 (15-90
+    minutes, same relative tuning between terrain types, just four times
+    finer-grained), fed into a new `GameState::minutesElapsed` remainder
+    (0-59, `GameLoop::tryMoveOverworld`) that rolls into the existing
+    `hoursElapsed` on overflow -- `hoursElapsed` itself, and everything that
+    reads it for day/hour math, is completely unchanged. `data/timeline.txt`'s
+    day windows and Rest's flat 8-hour cost are both deliberately untouched
+    -- the windows are individually sourced against each novel's own
+    elapsed-time cues (rescaling them would invalidate that research), and a
+    night's rest is still a night's rest regardless of movement granularity.
+    New optional `MINUTES <n>` save line, same backward-compatible shape as
+    `RESTDAY`/`BROOCHDAY`/`STAFFCUREDAY` -- a save from before this milestone
+    simply has no `MINUTES` line, and `minutesElapsed`'s `0` default is
+    already correct for it. Verified via a throwaway self-test (rollover
+    arithmetic at the 60-minute boundary; `SaveGame` round-tripping a
+    nonzero `minutesElapsed`; a hand-edited save missing the `MINUTES` line
+    still loading cleanly), a clean `/W4` rebuild (zero new warnings), and
+    the piped smoke test. See `docs/MAP_NOTES.md`'s "Movement granularity"
+    section.
 
 ## NEXT UP
 

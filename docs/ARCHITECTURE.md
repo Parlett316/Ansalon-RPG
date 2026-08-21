@@ -814,7 +814,8 @@ defaulting `false`, same backward-compatibility shape `INVENTORY` already
 established as optional.
 
 **Deliberately no HUD indicator and no new random-encounter risk.** Ocean
-got a real `hoursToCross` (2) now that it's sometimes traversable, but
+got a real `minutesToCross` (30, as of Milestone 67's granularity change —
+2 hours at the time this was written) now that it's sometimes traversable, but
 `encounterChancePercent` stays 0 — no sea monsters exist in
 `data/monsters.txt` yet, and drawing a land creature into open water would
 read as a bug, not content. Revisit both if a future milestone adds sea

@@ -276,7 +276,7 @@ private:
     void showHelp();
     // Nearest world::Location with isTown set, by straight-line tile
     // distance from state_.x/state_.y (no pathfinding system exists --
-    // same restraint as hoursToCross being flat-per-tile). Used by
+    // same restraint as minutesToCross being flat-per-tile). Used by
     // runCombat's knockout handling to send the player to the closest
     // civilian settlement rather than always Solace -- see
     // docs/COMBAT_NOTES.md. Falls back to "solace" if no town is found
