@@ -308,6 +308,21 @@ opened) and why it's zone-native-POI-only, not extended to the
 `TIMELINE_ANCHOR` path (a departed canon character already stops appearing
 there for free, via `presentAt` alone).
 
+## Anticipation dialogue: has a location's schedule not opened yet?
+
+`Timeline::earliestDayStart(locationId)` (Milestone 68) is the mirror-image
+query: "what's the earliest `dayStart` across every character's
+`PresenceWindow` at this location?" (-1 if none), letting a zone-native POI
+react while the Heroes haven't arrived *yet* (`dayNow <
+earliestDayStart(effectiveId) >= 0`), via the new `TALK_BEFORE` zone
+grammar. Unlike `latestDayEnd`'s aftermath dialogue, this isn't tracked
+under any `GameState::metCharacters` id at all -- it's shown on every visit
+while the condition holds, not just once, since "they still aren't here" is
+an ongoing truth rather than a one-time event, and the check naturally stops
+firing on its own once the window opens. See `docs/ZONE_NOTES.md`'s
+"Anticipation dialogue" section for the full mechanism and the reasoning
+behind that asymmetry.
+
 ## The current timeline specifically
 
 `data/timeline.txt` now has **all eight** Heroes of the Lance — Tanis,

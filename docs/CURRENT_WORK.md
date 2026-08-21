@@ -2,21 +2,20 @@
 
 Nothing in flight.
 
-Milestone 67 (Movement granularity, hours -> minutes) just shipped --
-`world::TerrainInfo::hoursToCross` (flat whole-hour terrain cost) renamed to
-`minutesToCross` and rescaled x15 into a new `GameState::minutesElapsed`
-remainder (0-59, rolled into the existing `hoursElapsed` on overflow in
-`GameLoop::tryMoveOverworld`), fixing user-reported feedback that ordinary
-play was consuming the Heroes' schedule far faster than intended -- even
-the cheapest terrain used to cost a full hour per keypress against
-Solace's 48-hour opening window. `data/timeline.txt`'s day windows and
-Rest's flat 8-hour cost are both deliberately untouched -- see
-`docs/MILESTONES.md`'s Milestone 67 entry and `docs/MAP_NOTES.md`'s
-"Movement granularity" section for the full design/rationale. New optional
-`MINUTES <n>` save line (same backward-compatible shape as
-RESTDAY/BROOCHDAY/STAFFCUREDAY). Verified via a throwaway self-test
-(rollover arithmetic, save/load round-trip, pre-milestone save missing
-MINUTES still loading), a clean `/W4` rebuild, and the piped smoke test.
-Interactive verification (confirming the HUD's Hour only ticks up after
-~4 road-tile moves, and that a mountain tile costs 1h30m) still needs the
-user's own keyboard.
+Milestone 68 (Anticipation dialogue) just shipped -- the direct follow-up
+to Milestone 67's movement-granularity change: since ordinary movement now
+typically lands a player *before* a location's `PRESENCE` window opens
+rather than mid-window, new `timeline::Timeline::earliestDayStart` (mirror
+of `latestDayEnd`) backs a new `TALK_BEFORE` zone grammar so a zone-native
+POI can react to "they haven't arrived yet". Deliberately shown on *every*
+early visit rather than the "exactly once" treatment `TALK_AFTER` uses --
+see `docs/MILESTONES.md`'s Milestone 68 entry and `docs/ZONE_NOTES.md`'s
+"Anticipation dialogue" section for the full design/rationale. No
+save-format change. One proof-of-concept POI: Haven's Seeker Guard
+(`data/zones/haven.txt`). Verified via a throwaway self-test
+(`earliestDayStart` against synthetic schedules, `ZoneLoader` parsing
+`TALK_BEFORE` plus its two fail-fast cases), a clean `/W4` rebuild, and the
+piped smoke test. Interactive verification (talking to the Guard before day
+2, confirming the anticipation line repeats across visits, then falls back
+to ordinary `TALK`/`TALK_AGAIN` on/after day 2) still needs the user's own
+keyboard.

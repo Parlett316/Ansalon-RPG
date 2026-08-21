@@ -1438,6 +1438,38 @@ section).
     still loading cleanly), a clean `/W4` rebuild (zero new warnings), and
     the piped smoke test. See `docs/MAP_NOTES.md`'s "Movement granularity"
     section.
+68. Anticipation dialogue -- the direct follow-up the user asked for after
+    Milestone 67: since ordinary movement now typically lands a player
+    *before* a location's `PRESENCE` window opens rather than mid-window
+    (concretely, Haven -- a 40-hour walk against a window that doesn't open
+    until hour 48), arriving early was silent, `Timeline::presentAt` simply
+    returning nothing. New `timeline::Timeline::earliestDayStart(locationId)`
+    (the mirror-image query to Milestone 66's `latestDayEnd` -- earliest
+    `dayStart` instead of latest `dayEnd`) backs a new `TALK_BEFORE <char>
+    <dialogue...>` zone grammar (`world::PointOfInterest::dialogueBefore`,
+    parsed by `ZoneLoader` exactly like `TALK_AFTER`, same "must already have
+    a TALK line" validation). Deliberately **not** the same "exactly once"
+    treatment `TALK_AFTER` uses, though: anticipation dialogue is an ongoing
+    truth ("they still aren't here"), not a one-time event, so it's shown on
+    *every* visit while `dayNow < earliestDayStart`, with no
+    `GameState::metCharacters` tracking id needed at all -- the condition
+    stops firing on its own once the Heroes actually arrive. Same
+    zone-native-POI-only scope as `TALK_AFTER`, and the same reasoning for
+    why (`TIMELINE_ANCHOR` already goes silent-then-populated for free via
+    `presentAt`). One proof-of-concept POI, `data/zones/haven.txt`'s Seeker
+    Guard, reacting to the shared `PRESENCE haven 2 3` window -- not
+    Otik/Solace, since Solace's own window starts at day 0 and so has no
+    "before" period to demonstrate. Verified via a throwaway self-test
+    (`earliestDayStart` against synthetic multi-character/multi-window
+    schedules, including the "-1, no schedule here" case; `ZoneLoader`
+    parsing `TALK_BEFORE` correctly plus its two fail-fast cases), a clean
+    `/W4` rebuild (zero new warnings), and the piped smoke test (confirms
+    the modified `haven.txt` still parses). Interactive verification
+    (talking to the Guard before day 2 to see the anticipation line repeat
+    across visits, then on/after day 2 to confirm the fallback to ordinary
+    `TALK`/`TALK_AGAIN`) still needs the user's own keyboard. See
+    `docs/ZONE_NOTES.md`'s "Anticipation dialogue" section and
+    `docs/TIMELINE_NOTES.md`'s own section on `earliestDayStart`.
 
 ## NEXT UP
 

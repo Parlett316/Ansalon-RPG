@@ -624,6 +624,12 @@ void GameLoop::handleTalk() {
                     candidate.dialogueAfter = poi->dialogueAfter;
                 }
             }
+            if (!poi->dialogueBefore.empty()) {
+                int earliestDayStart = timeline_.earliestDayStart(effectiveId);
+                if (earliestDayStart >= 0 && dayNow < earliestDayStart) {
+                    candidate.dialogueBefore = poi->dialogueBefore;
+                }
+            }
             candidates.push_back(std::move(candidate));
         }
         // Zone-interior encounters (Milestone 23): standing on this zone's
@@ -727,9 +733,16 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     std::string afterId = id + ":after";
     bool showAfter = !candidate.dialogueAfter.empty() && state_.metCharacters.count(afterId) == 0;
     bool alreadyMet = state_.metCharacters.count(id) > 0;
+    // Anticipation dialogue (see docs/ZONE_NOTES.md) takes the same
+    // "shown instead of the ordinary flow" precedence as aftermath dialogue
+    // above, but with no id of its own to track: it's an ongoing truth, not
+    // a one-time event, so it's meant to repeat on every visit until the
+    // condition (dayNow < earliestDayStart) stops holding on its own.
     if (showAfter) {
         text = candidate.dialogueAfter;
         state_.metCharacters.insert(afterId);
+    } else if (!candidate.dialogueBefore.empty()) {
+        text = candidate.dialogueBefore;
     } else if (alreadyMet) {
         text = !speech.again.empty() ? speech.again
                                       : (name + " catches your eye and gives a small nod of recognition.");

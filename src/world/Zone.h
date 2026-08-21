@@ -42,6 +42,18 @@ struct PointOfInterest {
     // reference a POI that already has a TALK line, same rule as SAY_IF/
     // TOPIC.
     std::string dialogueAfter;
+    // Shown instead of `dialogue`/`dialogueAgain` while every canon
+    // character scheduled at this zone's effective timeline location hasn't
+    // arrived yet (checked against timeline::Timeline::earliestDayStart --
+    // see GameLoop::handleTalk). Empty means this POI has no anticipation
+    // reaction. Unlike dialogueAfter, this is shown on *every* visit while
+    // the condition holds, not tracked via GameState::metCharacters -- it's
+    // an ongoing truth ("they still aren't here"), not a one-time event, and
+    // the condition itself stops firing on its own once they arrive. Set via
+    // an optional TALK_BEFORE line (see docs/ZONE_NOTES.md's "Anticipation
+    // dialogue" section), which must reference a POI that already has a
+    // TALK line, same rule as TALK_AFTER.
+    std::string dialogueBefore;
     // Topics offered after the greeting, in authored order -- empty means
     // no topic-picker menu. Set via zero or more TOPIC lines (see
     // docs/ZONE_NOTES.md), which must reference a POI that also has a

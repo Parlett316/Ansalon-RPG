@@ -86,6 +86,17 @@ struct TalkCandidate {
     // correctly even if the player already met this NPC before the Heroes'
     // window ever opened.
     std::string dialogueAfter;
+    // Non-empty for a zone POI marked TALK_BEFORE (world::PointOfInterest::
+    // dialogueBefore) once GameLoop::handleTalk has confirmed every canon
+    // character scheduled at this zone's effective timeline location hasn't
+    // arrived yet (timeline::Timeline::earliestDayStart). Always empty for
+    // timeline candidates -- zone-NPC-only content, same as dialogueAfter;
+    // see docs/ZONE_NOTES.md's "Anticipation dialogue" section. Unlike
+    // dialogueAfter, talkTo() shows this on *every* visit while the
+    // condition holds, not tracked via GameState::metCharacters -- an
+    // ongoing truth, not a one-time event, and the condition self-expires
+    // once the Heroes actually arrive.
+    std::string dialogueBefore;
 };
 
 // A look-at-someone candidate -- read-only counterpart to TalkCandidate (no

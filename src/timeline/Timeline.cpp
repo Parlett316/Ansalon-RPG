@@ -31,4 +31,16 @@ int Timeline::latestDayEnd(const std::string& locationId) const {
     return latest;
 }
 
+int Timeline::earliestDayStart(const std::string& locationId) const {
+    int earliest = -1;
+    for (const auto& character : characters_) {
+        for (const auto& window : character.schedule) {
+            if (window.locationId == locationId && (earliest < 0 || window.dayStart < earliest)) {
+                earliest = window.dayStart;
+            }
+        }
+    }
+    return earliest;
+}
+
 } // namespace timeline

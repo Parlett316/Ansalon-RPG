@@ -71,6 +71,14 @@ public:
     // supports.
     int latestDayEnd(const std::string& locationId) const;
 
+    // The earliest dayStart across every PresenceWindow scheduled at
+    // `locationId`, or -1 if no character's schedule ever visits it at all --
+    // the mirror-image query to latestDayEnd, letting a caller ask "have the
+    // Heroes not arrived here yet?" (day < this value). See
+    // docs/ZONE_NOTES.md's "Anticipation dialogue" section for the feature
+    // this supports.
+    int earliestDayStart(const std::string& locationId) const;
+
 private:
     std::vector<CanonCharacter> characters_;
 };

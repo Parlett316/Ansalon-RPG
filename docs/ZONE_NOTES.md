@@ -79,6 +79,14 @@ TALK_AFTER <char> <dialogue...>          optional -- shown instead of
                                         fully moved on (see "Aftermath
                                         dialogue" below); same "must already
                                         have a TALK line" rule as SAY_IF
+TALK_BEFORE <char> <dialogue...>         optional -- shown instead of
+                                        TALK/TALK_AGAIN on every talk while
+                                        every canon character scheduled at
+                                        this zone's effective timeline
+                                        location hasn't arrived yet (see
+                                        "Anticipation dialogue" below); same
+                                        "must already have a TALK line" rule
+                                        as TALK_AFTER
 SAY_IF <char> <condition> <dialogue...> optional, zero or more per POI --
                                         a reactive variant of TALK, shown
                                         instead of it on the first talk if
@@ -472,6 +480,57 @@ zones (Haven's Seeker Guard, Xak Tsaroth, Kalaman's Watchman, etc.) is
 natural follow-up work, not done this pass -- same "one proof-of-concept
 first" precedent `road_wolves` set for the quest engine (Milestone 51, widened
 in Milestone 52).
+
+## Anticipation dialogue: POIs that react before the Heroes arrive
+
+`TALK_BEFORE <char> <dialogue...>` marks a POI's reaction to the Heroes of
+the Lance not having arrived at this zone's effective timeline location
+*yet* -- the mirror image of `TALK_AFTER` above, shown instead of the
+ordinary `TALK`/`TALK_AGAIN` greeting while every character
+`data/timeline.txt` schedules here has a `PRESENCE` window whose `dayStart`
+hasn't been reached (checked via `timeline::Timeline::earliestDayStart`, see
+`docs/TIMELINE_NOTES.md`). Added in Milestone 68, prompted directly by
+Milestone 67's movement-granularity change: once an ordinary tile-move
+stopped costing a flat hour, beelining to a story stop started landing
+*before* its window opens far more often than not (confirmed concretely for
+Haven -- a direct walk from Solace is 40 hours, but `PRESENCE haven 2 3`
+doesn't open until hour 48) -- previously silent, since `Timeline::presentAt`
+simply returns nothing early.
+
+**Shown on every visit while the condition holds -- deliberately not the
+same "exactly once" treatment as `TALK_AFTER`.** Aftermath dialogue narrates
+a specific past event ("they came, and left") that only needs saying once
+before falling back to ordinary `TALK_AGAIN`. Anticipation dialogue is the
+opposite in nature: an ongoing truth ("they still aren't here") that stays
+accurate across every early visit, and the condition itself is
+self-expiring -- it simply stops firing on its own once `dayNow` reaches
+`earliestDayStart`, with no flag needed to prevent staleness. So unlike
+`dialogueAfter`, `dialogueBefore` (`world::PointOfInterest`,
+`game::TalkCandidate`) needs no synthesized `GameState::metCharacters`
+tracking id at all -- `GameLoop::talkTo` just checks it as a plain
+condition, ahead of the ordinary `alreadyMet`/greeting branches (same
+"shown instead of" precedence `TALK_AFTER` already has).
+`state_.metCharacters.insert(id)` for the NPC itself still fires
+unconditionally afterward, exactly as it always has, so the NPC is
+correctly "met" either way.
+
+Deliberately no conditional (`SAY_IF`-style) variant, and it only applies to
+zone-native POIs, never a `TIMELINE_ANCHOR` candidate -- same reasoning
+`TALK_AFTER` already established: a not-yet-arrived canon character already
+fails to appear there for free, once `Timeline::presentAt` doesn't return
+them yet.
+
+As of this feature's introduction, exactly one POI carries `TALK_BEFORE`:
+`data/zones/haven.txt`'s `G` (the Seeker Guard), reacting to the shared
+`PRESENCE haven 2 3` window. Not Otik/Solace -- Solace's own window
+(`PRESENCE solace 0 1`) starts at day 0, the game's first possible day, so
+there's no "before" period to demonstrate there at all. Written in the
+Guard's already-established tired/wary voice, general unease about
+travelers on the roads rather than naming any Hero (he has no way to know
+who's coming), same non-infringing, inspired-not-transcribed standard as
+every other line in this file. Widening to other zones is natural follow-up
+work, not done this pass -- same "one proof-of-concept first" precedent
+`TALK_AFTER` itself just set.
 
 ## Portals: a zone can lead into another zone
 
