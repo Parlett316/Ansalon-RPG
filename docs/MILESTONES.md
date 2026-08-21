@@ -1106,6 +1106,38 @@ session's work.
     data, no new grammar). Not yet interactively verified in a real
     playthrough (day 76-80 at the Tower). See `docs/TIMELINE_NOTES.md`'s
     "Derek Crownguard and Lord Gunthar" section.
+61. Ariakas and Lord Soth -- the sourcing pass Milestone 60 deferred, at the
+    user's request, which overturned its own premise: a direct re-check of
+    `.research/dosd_full.txt`'s Crown of Power sequence (the already-existing
+    `neraka 105 107` window) found they aren't off-stage at all. Tanis
+    personally kills Ariakas on-page, guided by an unidentified whispering
+    voice, and Lord Soth appears in person in the same scene -- reaching for
+    the fallen Crown, then ordered by Kitiara to personally escort Tanis
+    through a hostile crowd at swordpoint. The existing `TOPIC "The Crown of
+    Power"` (Tanis, Milestone 50) already dramatized part of this exact
+    scene but omitted the kill and Soth's appearance entirely, and its
+    ending overstated the resolution as a clean joint walk-out; what
+    actually breaks the deal apart is Laurana herself, catatonic with shock
+    until she suddenly seizes Kitiara's own sword, holds Tanis at
+    swordpoint, declares her own independence, and throws them both off the
+    platform into the ensuing succession free-for-all. This milestone
+    corrects that `TOPIC` in place (the kill, Soth's escort, and the real
+    ending) and adds one new `TOPIC` each for Tanis (`"What Kitiara Asked
+    For"`, Kitiara's undisclosed earlier betrayal -- presenting Laurana to
+    Takhisis as a war-trophy and offering her soul to Lord Soth) and Laurana
+    (`"Free By My Own Hand"`, her own breakout moment, plus a matching
+    in-place edit to her existing `TOPIC "Before the Dark Queen"` naming the
+    soul-threat from her own point of view). Both names appear directly
+    throughout -- the blanket unnamed-canon-character precedent was already
+    retired at Milestone 49, and this is a stronger case for naming than
+    Kitiara's own introduction was. No new `CHARACTER`/`PRESENCE`/`LOCATION`
+    -- pure `TOPIC` edits/additions to two already-existing `CHARACTER`
+    blocks, no `.cpp`/`.h` changes; confirmed safe against the user's save
+    first (`TOPIC` text isn't persisted in `SaveGame.cpp`). Verified via a
+    clean rebuild (zero new warnings) and the piped smoke test; no
+    throwaway self-test needed (pure data, no new grammar). Not yet
+    interactively verified in a real playthrough (day 105-107 at Neraka).
+    See `docs/TIMELINE_NOTES.md`'s "Ariakas and Lord Soth" section.
 
 NEXT UP (`docs/MILESTONES.md`) now offers two candidates:
 
@@ -1118,9 +1150,9 @@ NEXT UP (`docs/MILESTONES.md`) now offers two candidates:
    Crystals and Gems, and Miscellaneous Magic entries beyond the Webnet/
    Brooch of Imog are real, sourced, and unused. See
    `docs/CHARACTER_NOTES.md`'s "Extending this later."
-3. **More off-stage canon characters** — Ariakas and Lord Soth (the
-   retrospective-`TOPIC` treatment, same as Kitiara/Derek/Gunthar -- no
-   tracked Hero witnesses their scenes directly, so this needs its own
-   sourcing pass first). See `docs/TIMELINE_NOTES.md`'s "Named vs.
-   off-stage canon characters" and "Derek Crownguard and Lord Gunthar"
-   sections.
+
+The off-stage canon-character roster is now fully closed out -- Kitiara,
+Fizban, Laurana, Derek Crownguard, Lord Gunthar, Ariakas, and Lord Soth
+have all had their sourcing passes completed (see
+`docs/TIMELINE_NOTES.md`'s "Named vs. off-stage canon characters"
+section).

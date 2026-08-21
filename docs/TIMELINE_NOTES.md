@@ -409,9 +409,10 @@ day-ranges the game already models — never invented to fill a gap (same
 e.g. "Plains of Dust stays out of scope" above). Alhana Starbreeze is
 named as of Milestone 59 (see below). "Off-stage" in this file specifically
 means "never becomes a talkable `CHARACTER`" — it doesn't mean untouched.
-Kitiara (Milestone 50) and Derek Crownguard/Lord Gunthar (Milestone 60) are
-both off-stage in that sense but already have real, sourced retrospective
-`TOPIC` dialogue folded into other Heroes' schedules. Ariakas, Lord Soth,
+Kitiara (Milestone 50), Derek Crownguard/Lord Gunthar (Milestone 60), and
+Ariakas/Lord Soth (Milestone 61) are all off-stage in that sense but
+already have real, sourced retrospective `TOPIC` dialogue folded into
+other Heroes' schedules — this closes out the off-stage roster entirely.
 Feal-thas, Fewmaster Toede, and Verminaard remain fully untouched — no
 milestone has built any content for them yet, not because of a standing
 rule against it — see `docs/MILESTONES.md`'s NEXT UP for what's still
@@ -1345,6 +1346,109 @@ throwaway self-test needed (pure data, no new grammar, same call as
 Milestones 47-50/59). Not yet interactively verified in a real playthrough
 (both new `TOPIC`s live in the `high_clerist_tower 76 80` window, day 76-80,
 not readily reachable without a long playthrough).
+
+**Correction (Milestone 61): the "still off-stage" claim above was wrong.**
+A direct re-check of the actual Crown of Power scene found Ariakas and Lord
+Soth are both witnessed on-page, in person, by Tanis. See the "Ariakas and
+Lord Soth" section below.
+
+## Ariakas and Lord Soth (Milestone 61)
+
+The sourcing pass Milestone 60 deferred, requested by the user specifically
+because the "off-stage" framing above hadn't actually been checked against
+the source text closely enough. A fresh read of `.research/dosd_full.txt`
+lines ~12300-14650 (the Crown of Power sequence at Neraka, inside the
+already-existing `neraka 105 107` window) found the premise wrong: Tanis
+personally kills Ariakas on-page, and Lord Soth appears in person in the
+same scene. The existing `TOPIC "The Crown of Power"` (Tanis, Milestone 50)
+already dramatized part of this exact scene, but omitted the kill and
+Soth's appearance entirely, and its ending overstated how cleanly things
+resolved — so this milestone corrects and extends that existing content
+rather than inventing new off-stage material, per this project's sourcing
+discipline.
+
+**What actually happens, in order** (all directly witnessed by Tanis;
+Laurana too, for the first two beats):
+
+1. **Kitiara's undisclosed betrayal** (lines 12477-12991): she presents
+   Laurana to Takhisis as a war-trophy, bound for "the Death Chambers,"
+   then separately asks that Laurana's *soul* be given to Lord Soth as a
+   personal favor — tied to some old, unexplained grudge Soth holds
+   against "an elfwoman" from his own past that the text never clarifies
+   further (left exactly that vague in-game; no invented backstory for
+   Soth's grudge). None of this was disclosed to Tanis beforehand — he
+   reacts with `'You betrayed me! This was not part of the plan!'`
+2. **Tanis kills Ariakas** (lines 13106-13170): guided by an unidentified
+   whispering voice from a black-robed figure standing near the Dark
+   Queen (never identified in the source text — left that way here too),
+   Tanis feigns kneeling to lay his sword at Ariakas's feet and instead
+   stabs him through the heart. Ariakas dies; the Crown of Power falls
+   from his head.
+3. **Lord Soth appears** (lines 13182-13220, 13394-13445): materializes
+   and reaches for the fallen Crown himself; Tanis threatens to smash it,
+   and Kitiara calls Soth off, ordering him instead to personally escort
+   Tanis safely down through the hostile crowd to her platform, which he
+   does, sneering `'He is your master, still, my lady.'`
+4. **The crowning and the deal** (lines 13453-13501) — the part the
+   existing `TOPIC` already got right, kept as-is: Kitiara asks Tanis to
+   crown her; he crowns himself instead (`'One of us will rule by day
+   and by night — me.'`), then privately makes her swear to escort him
+   and Laurana out safely in exchange for the Crown once they're clear,
+   sworn on Sturm and Flint's souls.
+5. **It falls apart, but not by Kitiara's hand** (lines 13503-13581,
+   14600-14643): the guarded escort gets Tanis to the platform exactly as
+   promised. What actually derails everything is Laurana herself —
+   catatonic with shock until this moment, she suddenly wrenches
+   Kitiara's own sword free, holds it to Tanis's throat (`'I am Laurana.
+   And I will live or die on my own without your help.'`), then shoves
+   him off the platform and jumps down after him. The Crown skitters
+   loose in the resulting free-for-all as every Highlord in the hall
+   draws steel over the succession. Kitiara only recovers the Crown
+   afterward, alone on the Temple floor, after Lord Soth has personally
+   slaughtered her rivals and pledged her his "undying loyalty" before
+   withdrawing to Dargaard Keep.
+
+**The correction to Tanis's existing `TOPIC "The Crown of Power"`.** Its
+closing claim — "she could have had it by treachery right there in that
+hall. She didn't." — is defensible for the *narrow* Crown/escort promise
+specifically (Kitiara does call off Soth and does order a real escort),
+but it glossed over the fact she'd already betrayed Tanis and Laurana
+minutes earlier (beat 1 above), and overstated the ending as a clean
+walk-out when what really happens is Laurana's own violent bid for
+agency (beat 5) — a better, more character-true beat than what was
+missing entirely. The `TOPIC` was edited in place to fold in the kill and
+Soth's escort, and the ending now credits Laurana's own action rather
+than implying a successful joint walk-out; the crowning-himself and
+sworn-oath beats held up as originally written and were kept.
+
+**New content.** Tanis gains a new `TOPIC "What Kitiara Asked For"`
+(beat 1 — the undisclosed betrayal, positioned right before the edited
+"The Crown of Power" so the two sit together). Laurana's existing
+`TOPIC "Before the Dark Queen"` was edited in place to add the specific
+detail that her captor's price for delivering her included asking for
+her own soul (beat 1, her own point of view), and she gains a new
+`TOPIC "Free By My Own Hand"` (beat 5, her own breakout moment) —
+framed as the capstone of her already-established arc of self-assertion
+(`"Not Ceremonial"`, `"The Ice Reaver"`, `"The Golden General"` all track
+the same throughline).
+
+Ariakas and Lord Soth are both named directly throughout — the blanket
+"keep major recurring canon characters unnamed" precedent was already
+retired at Milestone 49, and both are now confirmed to be directly,
+personally witnessed by a tracked Hero, a stronger case for naming than
+Kitiara's own initial introduction was. No new `CHARACTER` block,
+`PRESENCE`, or `LOCATION` for either — they stay non-talkable, same
+mechanism as the Kitiara/Derek/Gunthar treatment. Confirmed safe to edit
+existing `TOPIC` text before touching it: `TOPIC` labels aren't
+persisted anywhere in `SaveGame.cpp` (only loader/render/quest files
+reference the keyword), so this can't break the user's real save.
+
+Verified via a clean rebuild (zero new warnings, no `.cpp`/`.h` changes)
+and the piped smoke test; no throwaway self-test needed (pure data, no
+new grammar or `PRESENCE` boundary, same call as Milestones 47/50/60).
+Not yet interactively verified in a real playthrough — the `neraka 105
+107` window is deep into a long playthrough, same caveat as every prior
+Neraka-window milestone.
 
 ## Adding a new character or event
 
