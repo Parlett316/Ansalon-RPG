@@ -13,13 +13,15 @@ wants it delivered). See `docs/MILESTONES.md`'s Milestone 58 entry,
 `docs/ZONE_NOTES.md`'s "Quest items: POIs that grant a DELIVER object"
 for the full design and sourcing.
 
-**Not yet verified**: real interactive playthrough -- walking to Pax
-Tharkas, talking to the Ore Cart, carrying the ore to Solace, confirming
-the journal shows progress and the quest turns in and consumes the item
--- `_getch()` can't be piped, the same limitation flagged for every quest/
-combat milestone so far. Milestone 56's Webnet/Brooch and Milestone 57's
-terrain-pool interactive verification are also still outstanding from
-earlier sessions.
+Milestone 58 is now **interactively verified** (2026-08-20): the user
+played it live, including an out-of-order edge case (grabbed the ore
+from Pax Tharkas's Ore Cart before ever talking to Solace's journeyman)
+that still turned in cleanly on first contact. See `docs/QUEST_NOTES.md`'s
+"Shipped: ore_for_the_forge".
+
+**Still outstanding from earlier sessions**: Milestone 56's Webnet/Brooch
+and Milestone 57's terrain-pool interactive verification -- both still
+only self-tested/smoke-tested, never played live.
 
 NEXT UP (`docs/MILESTONES.md`) now offers two candidates: more monsters
 (Bozak/Sivak/Aurak Draconians, Thanoi, etc.) or more of DLA's "Magical

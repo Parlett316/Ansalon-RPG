@@ -1033,7 +1033,10 @@ this stays authoritative.
     needs the user's own keyboard, the same `_getch()` limitation flagged
     for every quest milestone so far. See `docs/QUEST_NOTES.md`'s
     "DELIVER"/"Shipped: ore_for_the_forge" and `docs/ZONE_NOTES.md`'s
-    "Quest items: POIs that grant a DELIVER object".
+    "Quest items: POIs that grant a DELIVER object". **Interactively
+    verified** (2026-08-20) by the user, including an out-of-order
+    pickup (ore grabbed before the journeyman was ever talked to) that
+    still turned in cleanly on first contact.
 
 ## NEXT UP
 

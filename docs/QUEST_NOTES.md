@@ -227,10 +227,12 @@ files loading clean; `findQuestItemIndex`/`inventoryItemLabel`/
 `sellableItems` on a constructed inventory; a `SaveGame` round-trip
 covering `QUESTITEM`), a clean `/W4` rebuild, a direct check that the
 user's real `save.txt` still loads cleanly under the new inventory
-format, and the standard piped smoke test. Interactive verification
-(walking to Pax Tharkas, picking up the ore, carrying it to Solace,
-confirming the journal and turn-in) still needs the user's own keyboard,
-the same `_getch()` limitation flagged for every quest milestone so far.
+format, and the standard piped smoke test. **Interactively verified**
+(2026-08-20) by the user, including out-of-order pickup: they grabbed
+the ore from the Ore Cart before ever talking to the journeyman, and the
+quest still turned in cleanly on first contact — confirming the design
+intent that the grant and the quest wanting it are independent state,
+not a special-cased link (see "DELIVER" above).
 
 ## The met-id trap
 
