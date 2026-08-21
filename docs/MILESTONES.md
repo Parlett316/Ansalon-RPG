@@ -913,12 +913,11 @@ this stays authoritative.
     loading an old save with the `BROOCHDAY` line stripped out), a clean
     `/W4` rebuild, a direct check that the user's real `save.txt` (the
     executable-relative `build\Debug\save.txt`) still loads cleanly under
-    the new format, and the standard piped smoke test. Interactive
-    verification (buying/using a Webnet and Brooch mid-fight, confirming
-    the monster's attack is really skipped, confirming the Brooch's
-    once-per-day gate live) still needs the user's own keyboard, the same
-    `_getch()` limitation flagged for every combat/quest milestone so far.
-    See `docs/CHARACTER_NOTES.md`'s "Magic items".
+    the new format, and the standard piped smoke test. **Interactively
+    verified** (2026-08-20) by the user: bought and used a Webnet mid-
+    fight and confirmed the monster's attack was really skipped; used the
+    Brooch and confirmed its once-per-day gate blocked a second use the
+    same day. See `docs/CHARACTER_NOTES.md`'s "Magic items".
 
 57. Terrain-specific monster pools -- the NEXT UP item the user picked to
     build next. `combat::MonsterCatalog::randomMonster` had been uniform-
@@ -976,9 +975,9 @@ this stays authoritative.
     on hills confirm a biased monster (Bugbear) is picked roughly 3x as often
     as an unbiased one (Hobgoblin), matching `kBiasWeight` almost exactly in
     practice), a clean `/W4` rebuild (zero new warnings), and the piped smoke
-    test. Interactive verification (that terrain visibly changes which
-    monster shows up while playing) still needs the user's own keyboard, the
-    same `_getch()` limitation flagged for every combat milestone so far. See
+    test. **Interactively verified** (2026-08-20) by the user: terrain-
+    appropriate monsters visibly turned up while walking different terrain
+    types in a live playthrough. See
     `docs/COMBAT_NOTES.md`'s "Terrain-specific monster pools".
 
 58. `DELIVER`/item objectives -- the NEXT UP item the user picked to build

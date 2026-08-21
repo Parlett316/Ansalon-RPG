@@ -19,9 +19,10 @@ from Pax Tharkas's Ore Cart before ever talking to Solace's journeyman)
 that still turned in cleanly on first contact. See `docs/QUEST_NOTES.md`'s
 "Shipped: ore_for_the_forge".
 
-**Still outstanding from earlier sessions**: Milestone 56's Webnet/Brooch
-and Milestone 57's terrain-pool interactive verification -- both still
-only self-tested/smoke-tested, never played live.
+Milestones 56 (Webnet/Brooch) and 57 (terrain pools) are now also
+**interactively verified** (2026-08-20) by the user. See
+`docs/MILESTONES.md`'s Milestone 56/57 entries for what was specifically
+confirmed. Nothing left outstanding from earlier sessions.
 
 NEXT UP (`docs/MILESTONES.md`) now offers two candidates: more monsters
 (Bozak/Sivak/Aurak Draconians, Thanoi, etc.) or more of DLA's "Magical
