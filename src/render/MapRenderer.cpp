@@ -342,7 +342,7 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
 
     out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
     out << padPlain(
-        "Move: arrows/hjkl/yubn/wasd   ;=look around   t=talk   p=shop   v=log   Enter=step in   ?=help   q=quit",
+        "Move: wasd   l=look around   t=talk   p=shop   v=log   Enter=step in   ?=help   q=quit",
         kContentWidth) << "\n";
 
     // The whole frame is built as one string and written in a single
@@ -397,7 +397,7 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
 
     out << std::string(static_cast<size_t>(kContentWidth), '-') << "\n";
     out << padPlain(
-        "Move: arrows/hjkl/yubn/wasd   ;=look   t=talk   p=shop   v=log   Enter=leave (from the '>' marker)   ?=help   q=quit",
+        "Move: wasd   l=look   t=talk   p=shop   v=log   Enter=leave (from the '>' marker)   ?=help   q=quit",
         kContentWidth) << "\n";
 
     std::cout << out.str();
@@ -839,10 +839,10 @@ void MapRenderer::drawHelpFrame() {
     std::vector<std::string> lines;
 
     lines.push_back("Movement:");
-    lines.push_back("  arrows / hjkl / wasd = move   yubn = diagonals");
+    lines.push_back("  wasd = move (no diagonals)");
     lines.push_back("");
     lines.push_back("Overworld / zone:");
-    lines.push_back("  ; = look around        t = talk to someone here");
+    lines.push_back("  l = look around        t = talk to someone here");
     lines.push_back("  Enter = step in/out     c = character sheet");
     lines.push_back("  p = shop (at a shop)    i = inventory / equip");
     lines.push_back("  v = full event log      g = quest journal");

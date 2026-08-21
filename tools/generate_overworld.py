@@ -148,8 +148,8 @@ def draw_line(grid: list[list[str]], x0: int, y0: int, x1: int, y1: int, char: s
     """Bresenham's line algorithm, adapted so every two consecutively-drawn
     tiles are orthogonally (4-directionally) adjacent -- never diagonal-only.
     Standard Bresenham can advance x and y in the same step, drawing two
-    tiles that only touch corner-to-corner; the game's arrow-key/WASD
-    movement is strictly 4-directional (src/render/Console.cpp), so a
+    tiles that only touch corner-to-corner; the game's WASD movement is
+    strictly 4-directional (src/render/Console.cpp), so a
     diagonal-only road segment was a real player-facing dead end (see
     docs/MAP_NOTES.md's road-connectivity fix). Whenever a step would move
     both axes at once, the x-move and y-move are taken as two sequential

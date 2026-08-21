@@ -1215,6 +1215,55 @@ section).
     rather than dismissing straight to gameplay. Verified via a clean
     `/W4` rebuild (zero new warnings) and the piped smoke test after each.
 
+63. Key-binding cleanup -- at the user's explicit request ("clean up the
+    key bindings... player movement should just be WASD keys"). Movement
+    had accumulated three overlapping schemes since Milestone 2/51: arrow
+    keys, the vi `hjkl` cardinal convention, and `wasd`, plus `yubn`
+    roguelike-convention diagonals. Asked the user (`AskUserQuestion`)
+    whether to keep `yubn` diagonals, drop diagonals entirely, or replace
+    them with a WASD-adjacent scheme (`qezc`); the user picked dropping
+    diagonals entirely -- movement is now `wasd`-only, 4-directional, no
+    diagonal movement at all. `render::Key` lost `NorthEast`/`NorthWest`/
+    `SouthEast`/`SouthWest`; `Console::readKey` (both the Windows two-byte
+    path and the non-Windows `getline` fallback) lost the arrow-key scan-
+    code mapping, the `hjkl` aliases, and the `yubn` cases, leaving only
+    `wasd` bound to the 4 cardinal directions (the Windows path still has
+    to consume the second byte of any extended key it sees, or the classic
+    `conio.h` off-by-one bug resurfaces -- see `docs/GOTCHAS.md`);
+    `GameLoop::run`'s input switch lost its 4 diagonal-movement cases
+    (`tryMoveOverworld`/`tryMoveZone` themselves are untouched -- they're
+    generic `(dx, dy)` functions, just never called with a diagonal delta
+    now). `MapRenderer`'s two live-frame control-line strings and the `?`
+    help screen updated to describe `wasd` only. `North`/`South` remain
+    bound to `w`/`s` and are unaffected in their second role as menu up/
+    down (shops, inventory, the log pager, character-sheet lists, etc.) --
+    only the overworld/zone movement switch changed. Verified via a clean
+    `/W4` rebuild (zero new warnings, no self-test needed -- this is pure
+    input-mapping deletion, nothing computational to assert against) and
+    the piped character-creation smoke test. `README.md`'s Move bullet and
+    `docs/GOTCHAS.md`'s key-binding notes updated to match.
+
+    Same-session follow-up, also user-requested: Look moved from `;` to
+    `l` (freed up by dropping the `hjkl` cardinal aliases above -- `l` was
+    East under that scheme, now unbound). Updated in both of
+    `Console::readKey`'s switches, `MapRenderer`'s two live control-line
+    strings and the `?` help screen, `README.md`'s controls list, and the
+    `Look`-related comments in `GameLoop.h`/`GameLoop.cpp`. Verified the
+    same way: clean `/W4` rebuild, piped smoke test.
+
+    A second same-session follow-up, also user-requested: arrow keys work
+    again as a silent alias for `wasd`, but deliberately undocumented on
+    screen -- the help screen, the two live status-line strings, and
+    `README.md`'s controls list all still say `wasd` only. Windows-only
+    (the non-Windows `getline` fallback has no way to receive an arrow key
+    at all); `Console::readKey`'s extended-key branch maps scan codes 72/
+    80/75/77 back to `North`/`South`/`West`/`East` instead of discarding
+    them, every other extended key still falling through to `Unknown`.
+    `docs/GOTCHAS.md`'s two key-binding notes updated to describe this as
+    an intentional gap between the on-screen bindings and what
+    `Console::readKey` actually accepts, not an oversight. Verified the
+    same way: clean `/W4` rebuild, piped smoke test.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

@@ -128,7 +128,7 @@ private:
     // description are unaffected.
     void announceOverworldTile();
     void announceZoneTile();
-    // Look (';'). As of Milestone 43, first checks for any NPC present at
+    // Look ('l'). As of Milestone 43, first checks for any NPC present at
     // the player's current tile (a canon character via timeline::Timeline,
     // or -- zone only -- a talkable POI/the zone's TIMELINE_ANCHOR
     // presence) and, if any, hands off to pickAndLook to show their

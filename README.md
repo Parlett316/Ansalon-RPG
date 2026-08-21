@@ -274,9 +274,7 @@ a name, keep or reroll your ability scores, pick a race/class/alignment
 number, confirm). Once that's done, movement is immediate — no Enter key
 needed:
 
-- **Move**: arrow keys, or `hjkl` / `wasd` for the 4 cardinal directions,
-  or `y u b n` for the 4 diagonals (vi/roguelike convention: `y`=NW, `u`=NE,
-  `b`=SW, `n`=SE)
+- **Move**: `w a s d` for the 4 cardinal directions (no diagonals)
 - **Enter** — step into a location's walkable interior (every location has
   one now), or step back out if you're standing on the `>` marker inside
   one
@@ -311,7 +309,7 @@ needed:
   (Accept/Decline picker), shows a progress line on later visits, and
   turns it in with a reward once its objectives are met — see
   `docs/QUEST_NOTES.md`.
-- `;` — look around (overworld: names the nearest notable place and its
+- `l` — look around (overworld: names the nearest notable place and its
   direction; inside a zone: everything is already on screen, so there's
   nothing further to reveal)
 - `q` or Esc — quit

@@ -44,22 +44,28 @@ you hit something surprising — that's the whole point of it existing.
   `std::cout <<`/`fputs` call (as `MapRenderer::drawFrame` and
   `Console::clearScreen` both do) is what keeps this from visibly
   flickering — many small interleaved writes would.
-- **Windows arrow keys are reported as TWO bytes**, not one: a prefix byte
-  (`0x00` or `0xE0` depending on keyboard/driver) followed by a scan code.
-  `_getch()` must be called a *second* time to read the scan code — this is
-  the single most common `conio.h` bug (forgetting the second call causes
-  the scan code to be silently consumed as if it were the *next* keypress,
-  which manifests as movement feeling randomly "off by one input"). See the
-  comment in `Console::readKey`.
-- **Every obvious single-letter key mnemonic is already taken.** By
-  Milestone 51, `hjkl`/`wasd`/`yubn` cover movement, and `t`/`p`/`i`/`v`/
-  `c`/`r`/`z`/`f`/`m`/`?`/`q` are all bound too — check
-  `render::Console::readKey`'s doc comment before assuming a letter is
-  free. The quest journal wanted `j` (for "journal") and couldn't have it
-  (`j` is already South); it landed on `g` instead, the same kind of
-  collision `z` (not `b`) resolved for bed rest at Milestone 41. When
-  adding a new key, pick the letter *last*, after confirming nothing else
-  already owns it.
+- **Windows arrow keys (and other extended keys) are reported as TWO
+  bytes**, not one: a prefix byte (`0x00` or `0xE0` depending on keyboard/
+  driver) followed by a scan code. `_getch()` must be called a *second*
+  time to consume the scan code — this is the single most common
+  `conio.h` bug (forgetting the second call causes the scan code to be
+  silently consumed as if it were the *next* keypress, which manifests as
+  movement feeling randomly "off by one input"). Movement's on-screen
+  bindings went `wasd`-only at Milestone 63, but arrow keys were restored
+  same-session as a deliberately undocumented silent alias for `wasd`
+  (help screen, status line, and `README.md` still say `wasd` only) —
+  every other extended key still falls through to `Key::Unknown`, and
+  `Console::readKey` still has to eat the second byte of *any* extended
+  key it sees, mapped or not, or the classic bug above resurfaces. See
+  the comment in `Console::readKey`.
+- **Every obvious single-letter key mnemonic is already taken.** As of
+  Milestone 63, on-screen movement bindings are `wasd`-only (no `hjkl`,
+  no `yubn` diagonals — dropped for a simpler, more discoverable scheme;
+  arrow keys still work as a silent, undocumented alias, see above), and
+  `t`/`p`/`i`/`v`/`c`/`r`/`z`/`f`/`m`/`?`/`q`/`l` are all bound too —
+  check `render::Console::readKey`'s doc comment before assuming a letter
+  is free. When adding a new key, pick the letter *last*, after
+  confirming nothing else already owns it.
 - **`_getch()`/`_kbhit()` read from the real console, not from redirected
   stdin.** Piping input into the game the way Milestone 1's `getline`-based
   loop could be tested (`echo ... | ansalon_rpg.exe` or `< file`) does

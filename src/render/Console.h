@@ -9,10 +9,6 @@ enum class Key {
     South,
     East,
     West,
-    NorthEast,
-    NorthWest,
-    SouthEast,
-    SouthWest,
     Look,
     Talk,  // talk to a present NPC/canon character -- see game::GameLoop::handleTalk
     Enter, // enter/exit a walkable interior -- see game::GameLoop
@@ -66,19 +62,16 @@ public:
     static WindowSize currentWindowSize();
 
     // Blocks until a key is pressed and returns what it means. Bindings:
-    // arrows / hjkl / wasd for the 4 cardinal directions, yubn for the 4
-    // diagonals (vi/roguelike convention), ';' to look around, 't' to talk
-    // to a present NPC/canon character, Enter to step into/out of a
-    // walkable interior (or attack, during combat -- see
-    // game::GameLoop::runCombat), 'c' for the character sheet, 'p' to
-    // browse/buy at a shop, 'i' for the inventory/equip screen, 'v' for
-    // the scrollable full log-history screen, 'g' for the quest journal
-    // (not 'j' -- that's already South in the hjkl movement scheme, and
-    // 'q'/'l' are Quit/East, so every other natural mnemonic is taken; see
-    // docs/GOTCHAS.md), 'f' to flee combat, 'm' to cast in combat, 'r' to
-    // rest, 'z' to fully heal at a bed POI (not 'b' -- that's already
-    // SouthWest in the yubn diagonal-movement scheme), 'q'/Esc to quit. See
-    // docs/GOTCHAS.md for the Windows arrow-key decoding quirk.
+    // wasd for the 4 cardinal directions (no diagonals -- see
+    // docs/GOTCHAS.md; arrow keys are also accepted as a silent, on-screen-
+    // undocumented alias, Windows only), 'l' to look around, 't' to talk
+    // to a present NPC/
+    // canon character, Enter to step into/out of a walkable interior (or
+    // attack, during combat -- see game::GameLoop::runCombat), 'c' for the
+    // character sheet, 'p' to browse/buy at a shop, 'i' for the inventory/
+    // equip screen, 'v' for the scrollable full log-history screen, 'g' for
+    // the quest journal, 'f' to flee combat, 'm' to cast in combat, 'r' to
+    // rest, 'z' to fully heal at a bed POI, 'q'/Esc to quit.
     static Key readKey();
 
     // Directory containing the running executable (no trailing slash), used

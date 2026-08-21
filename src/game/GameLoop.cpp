@@ -184,10 +184,6 @@ void GameLoop::run() {
             case render::Key::South:     inZone ? tryMoveZone(0, 1)  : tryMoveOverworld(0, 1);  break;
             case render::Key::East:      inZone ? tryMoveZone(1, 0)  : tryMoveOverworld(1, 0);  break;
             case render::Key::West:      inZone ? tryMoveZone(-1, 0) : tryMoveOverworld(-1, 0); break;
-            case render::Key::NorthEast: inZone ? tryMoveZone(1, -1) : tryMoveOverworld(1, -1); break;
-            case render::Key::NorthWest: inZone ? tryMoveZone(-1, -1): tryMoveOverworld(-1, -1);break;
-            case render::Key::SouthEast: inZone ? tryMoveZone(1, 1)  : tryMoveOverworld(1, 1);  break;
-            case render::Key::SouthWest: inZone ? tryMoveZone(-1, 1) : tryMoveOverworld(-1, 1); break;
             case render::Key::Look:      inZone ? lookZone() : lookOverworld(); break;
             case render::Key::Talk:      handleTalk(); break;
             case render::Key::Enter:     handleEnter(); break;
@@ -231,7 +227,7 @@ void GameLoop::announceOverworldTile() {
     pushLog("== " + here->name + " (" + here->region + ") ==");
     pushLog(here->description);
     // Name only -- their full flavor text is shown via lookOverworld/
-    // pickAndLook on demand (';'), not dumped here. See Milestone 43.
+    // pickAndLook on demand ('l'), not dumped here. See Milestone 43.
     for (const timeline::Presence& presence :
          timeline_.presentAt(here->id, static_cast<int>(state_.hoursElapsed / 24))) {
         pushLog(presence.character->name + " is here.");

@@ -94,12 +94,14 @@ Key Console::readKey() {
 #ifdef _WIN32
     int c = _getch();
     if (c == 0 || c == 0xE0) {
-        // Arrow keys (and other extended keys) are reported as TWO bytes on
-        // Windows: a prefix (0x00 or 0xE0 depending on keyboard/driver)
-        // followed by a scan code. The prefix alone is not a real key -- a
-        // SECOND _getch() call is required to get the actual scan code.
-        // Forgetting this is the classic conio.h bug: the scan code gets
-        // silently read as if it were the *next* keypress instead.
+        // Extended keys (arrows, function keys, etc.) are reported as TWO
+        // bytes on Windows: a prefix (0x00 or 0xE0 depending on keyboard/
+        // driver) followed by a scan code that a SECOND _getch() call is
+        // required to consume -- forgetting it causes the scan code to be
+        // silently read as if it were the *next* keypress. See
+        // docs/GOTCHAS.md. Arrow keys are a deliberately undocumented
+        // silent alias for wasd (see Milestone 63's follow-up) -- every
+        // other extended key still falls through to Unknown.
         switch (_getch()) {
             case 72: return Key::North; // up arrow
             case 80: return Key::South; // down arrow
@@ -109,15 +111,11 @@ Key Console::readKey() {
         }
     }
     switch (c) {
-        case 'w': case 'W': case 'k': case 'K': return Key::North;
-        case 's': case 'S': case 'j': case 'J': return Key::South;
-        case 'a': case 'A': case 'h': case 'H': return Key::West;
-        case 'd': case 'D': case 'l': case 'L': return Key::East;
-        case 'y': case 'Y': return Key::NorthWest;
-        case 'u': case 'U': return Key::NorthEast;
-        case 'b': case 'B': return Key::SouthWest;
-        case 'n': case 'N': return Key::SouthEast;
-        case ';': return Key::Look;
+        case 'w': case 'W': return Key::North;
+        case 's': case 'S': return Key::South;
+        case 'a': case 'A': return Key::West;
+        case 'd': case 'D': return Key::East;
+        case 'l': case 'L': return Key::Look;
         case 't': case 'T': return Key::Talk;
         case 13: return Key::Enter; // Enter/Return
         case 'c': case 'C': return Key::Sheet;
@@ -143,15 +141,11 @@ Key Console::readKey() {
     if (!std::getline(std::cin, line)) return Key::Unknown;
     if (line.empty()) return Key::Enter; // an empty line means the user just pressed Enter
     switch (line[0]) {
-        case 'w': case 'k': return Key::North;
-        case 's': case 'j': return Key::South;
-        case 'a': case 'h': return Key::West;
-        case 'd': case 'l': return Key::East;
-        case 'y': return Key::NorthWest;
-        case 'u': return Key::NorthEast;
-        case 'b': return Key::SouthWest;
-        case 'n': return Key::SouthEast;
-        case ';': return Key::Look;
+        case 'w': return Key::North;
+        case 's': return Key::South;
+        case 'a': return Key::West;
+        case 'd': return Key::East;
+        case 'l': return Key::Look;
         case 't': return Key::Talk;
         case 'c': return Key::Sheet;
         case 'p': return Key::Shop;
