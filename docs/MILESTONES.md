@@ -1777,6 +1777,35 @@ section).
     `docs/ARCHITECTURE.md`'s "Colored dialogue/picker/combat screens, and
     re-picking after a talk".
 
+74. Showing the math behind attacks -- at the user's request, the combat
+    log now shows the real PHB roll math behind every weapon swing, not
+    just the hit/miss result and final damage. `combat::AttackOutcome`
+    (`Combat.h/.cpp`) gained the roll breakdown both
+    `resolvePlayerAttack`/`resolveMonsterAttack` already computed
+    internally but previously discarded -- `naturalRoll`, `toHitBonus`,
+    `attackerThac0`/`defenderArmorClass` (already folded in any this-fight
+    spell buff/penalty), the resulting `targetNumber`, and, on a hit, the
+    damage dice spec/roll/bonus -- with the underlying hit/miss and damage
+    logic itself byte-for-byte unchanged, just exposed instead of thrown
+    away. New file-local `game::describeToHit`/`describeDamage`
+    (`GameLoop.cpp`) render that breakdown as a bracketed suffix on the
+    existing log line, e.g. `You hit the Goblin for 6. [d20 14 +2 = 16 vs
+    THAC0 18 - AC 6 (need 12)] [1d8 5 +1 = 6]`, with a distinct natural-20/
+    natural-1 phrasing for the PHB's always-hit/always-miss override.
+    Scoped to just the two real `resolvePlayerAttack`/`resolveMonsterAttack`
+    call sites (`playerAttacks`/`monsterAttacks`) -- spell damage already
+    states its amount plainly and has no "roll vs AC" attack math to show,
+    so it's untouched. Hit entries now typically wrap to two physical lines
+    instead of one, so `drawCombatFrame`'s `kMaxLogLines` was trimmed 12->8
+    in the same change to keep the box roughly its old height. Verified via
+    a throwaway self-test (`CombatMathSelfTest.cpp`, 10,000 rolls split
+    across both attack directions, asserting every new field's formula
+    including the natural-20/natural-1 override, deleted after passing), a
+    clean `/W4` rebuild (zero new warnings), and the piped smoke test. Real
+    in-terminal rendering of the new log lines still needs the user's own
+    keyboard, same `_getch()` limitation as every prior combat-UI
+    milestone. See `docs/COMBAT_NOTES.md`'s "Showing the math" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

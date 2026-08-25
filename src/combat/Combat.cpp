@@ -12,24 +12,33 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
                                                         character.exceptionalStrengthPercentile);
 
     int naturalRoll = character::roll(1, 20);
+    int toHitBonus = strToHit + character.weaponMagicBonus + thac0Bonus;
+    int targetNumber = character.thac0 - monster.armorClass;
+
     bool hit;
     if (naturalRoll == 20) {
         hit = true;
     } else if (naturalRoll == 1) {
         hit = false;
     } else {
-        hit = (naturalRoll + strToHit + character.weaponMagicBonus + thac0Bonus) >=
-              (character.thac0 - monster.armorClass);
+        hit = (naturalRoll + toHitBonus) >= targetNumber;
     }
 
     AttackOutcome outcome;
     outcome.hit = hit;
+    outcome.naturalRoll = naturalRoll;
+    outcome.toHitBonus = toHitBonus;
+    outcome.attackerThac0 = character.thac0;
+    outcome.defenderArmorClass = monster.armorClass;
+    outcome.targetNumber = targetNumber;
     if (hit) {
         int strDamage = character::strengthDamageAdjustment(character.scores.strength,
                                                               character.exceptionalStrengthPercentile);
-        outcome.damage = std::max(1, character::roll(1, character.weaponDamageSides) +
-                                          character.weaponDamageBonus + strDamage + character.weaponMagicBonus +
-                                          damageBonus);
+        outcome.damageDiceCount = 1;
+        outcome.damageDiceSides = character.weaponDamageSides;
+        outcome.damageRoll = character::roll(1, character.weaponDamageSides);
+        outcome.damageBonus = character.weaponDamageBonus + strDamage + character.weaponMagicBonus + damageBonus;
+        outcome.damage = std::max(1, outcome.damageRoll + outcome.damageBonus);
     }
     return outcome;
 }
@@ -37,24 +46,37 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
 AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character,
                                     int acBonus, int thac0Penalty, int damagePenalty) {
     int naturalRoll = character::roll(1, 20);
+    // thac0Penalty makes the monster a worse attacker (effectively raises
+    // its THAC0, the same direction a real THAC0 penalty works), not a
+    // bonus to the player's roll -- folded into attackerThac0 rather than a
+    // separate toHitBonus field, since the monster's own to-hit math has no
+    // additive term on the die roll itself (unlike the player's STR/magic
+    // bonus), only a shifted target number.
+    int attackerThac0 = monster.thac0 + thac0Penalty;
+    int defenderArmorClass = character.armorClass - acBonus;
+    int targetNumber = attackerThac0 - defenderArmorClass;
+
     bool hit;
     if (naturalRoll == 20) {
         hit = true;
     } else if (naturalRoll == 1) {
         hit = false;
     } else {
-        // thac0Penalty makes the monster a worse attacker (effectively
-        // raises its THAC0, the same direction a real THAC0 penalty works),
-        // not a bonus to the player's roll.
-        hit = naturalRoll >= (monster.thac0 + thac0Penalty - (character.armorClass - acBonus));
+        hit = naturalRoll >= targetNumber;
     }
 
     AttackOutcome outcome;
     outcome.hit = hit;
+    outcome.naturalRoll = naturalRoll;
+    outcome.attackerThac0 = attackerThac0;
+    outcome.defenderArmorClass = defenderArmorClass;
+    outcome.targetNumber = targetNumber;
     if (hit) {
-        int damage = character::roll(monster.damageDiceCount, monster.damageDiceSides) + monster.damageFlatBonus -
-                     damagePenalty;
-        outcome.damage = std::max(1, damage);
+        outcome.damageDiceCount = monster.damageDiceCount;
+        outcome.damageDiceSides = monster.damageDiceSides;
+        outcome.damageRoll = character::roll(monster.damageDiceCount, monster.damageDiceSides);
+        outcome.damageBonus = monster.damageFlatBonus - damagePenalty;
+        outcome.damage = std::max(1, outcome.damageRoll + outcome.damageBonus);
     }
     return outcome;
 }

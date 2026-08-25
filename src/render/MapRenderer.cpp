@@ -655,8 +655,13 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
     lines.push_back({"", nullptr});
 
     // Only the tail fits comfortably in the viewport -- older lines scroll
-    // off, same "most recent last" convention as a chat/console log.
-    constexpr size_t kMaxLogLines = 12;
+    // off, same "most recent last" convention as a chat/console log. Trimmed
+    // from 12 (Milestone 73's colored-combat-screen value) to 8 now that a
+    // hit/miss entry carries its own bracketed to-hit/damage math (see
+    // GameLoop.cpp's describeToHit/describeDamage) and usually wraps to two
+    // physical lines instead of one -- keeps the box roughly the same
+    // height it was before that addition.
+    constexpr size_t kMaxLogLines = 8;
     size_t start = log.size() > kMaxLogLines ? log.size() - kMaxLogLines : 0;
     for (size_t i = start; i < log.size(); ++i) lines.push_back({log[i], nullptr});
 

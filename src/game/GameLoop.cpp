@@ -31,6 +31,46 @@ const char* compassDirection(int dx, int dy) {
     return kDirs[index];
 }
 
+// Renders the PHB p.119/121 to-hit math behind one attack roll as a
+// bracketed suffix appended to the existing hit/miss combat-log line --
+// e.g. "[d20 14 +2 = 16 vs THAC0 18 - AC 6 (need 12)]" or "[d20 20 --
+// natural 20, automatic hit]" -- so the player can see *why* an attack
+// landed or didn't, not just that it did. See docs/COMBAT_NOTES.md's
+// "Showing the math" section.
+std::string describeToHit(const combat::AttackOutcome& outcome) {
+    std::ostringstream out;
+    out << "[d20 " << outcome.naturalRoll;
+    if (outcome.naturalRoll == 20) {
+        out << " -- natural 20, automatic hit]";
+        return out.str();
+    }
+    if (outcome.naturalRoll == 1) {
+        out << " -- natural 1, automatic miss]";
+        return out.str();
+    }
+    if (outcome.toHitBonus != 0) {
+        out << (outcome.toHitBonus > 0 ? " +" : " ") << outcome.toHitBonus << " = "
+            << (outcome.naturalRoll + outcome.toHitBonus);
+    }
+    out << " vs THAC0 " << outcome.attackerThac0 << " - AC " << outcome.defenderArmorClass << " (need "
+        << outcome.targetNumber << ")]";
+    return out.str();
+}
+
+// Renders the damage-roll math the same way describeToHit renders the
+// attack roll -- e.g. "[1d8 5 +2 = 7]" -- appended only when the attack
+// actually hit.
+std::string describeDamage(const combat::AttackOutcome& outcome) {
+    std::ostringstream out;
+    out << "[" << outcome.damageDiceCount << "d" << outcome.damageDiceSides << " " << outcome.damageRoll;
+    if (outcome.damageBonus != 0) {
+        out << (outcome.damageBonus > 0 ? " +" : " ") << outcome.damageBonus << " = "
+            << (outcome.damageRoll + outcome.damageBonus);
+    }
+    out << "]";
+    return out.str();
+}
+
 // Adapts a timeline::PresenceWindow (plus the timeline::CanonCharacter it
 // belongs to, and the current in-game day) into the Speech shape
 // GameLoop::talkTo works with -- see docs/TIMELINE_NOTES.md for the
@@ -1242,9 +1282,10 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
         if (outcome.hit) {
             monsterHp -= outcome.damage;
-            log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ".");
+            log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ". " +
+                           describeToHit(outcome) + " " + describeDamage(outcome));
         } else {
-            log.push_back("You miss the " + monster.name + ".");
+            log.push_back("You miss the " + monster.name + ". " + describeToHit(outcome));
         }
     };
     // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
@@ -1280,7 +1321,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             monster, state_.character, playerAcBonus, monsterThac0Penalty, monsterDamagePenalty);
         if (outcome.hit) {
             state_.character.currentHp -= outcome.damage;
-            log.push_back("The " + monster.name + " hits you for " + std::to_string(outcome.damage) + ".");
+            log.push_back("The " + monster.name + " hits you for " + std::to_string(outcome.damage) + ". " +
+                           describeToHit(outcome) + " " + describeDamage(outcome));
             // Giant Spider's real Type F poison bite (Monstrous Manual
             // p.329): a failed save is "immediate death" in the book, but
             // this project never permadeaths the player (see docs/
@@ -1296,7 +1338,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 }
             }
         } else {
-            log.push_back("The " + monster.name + " misses you.");
+            log.push_back("The " + monster.name + " misses you. " + describeToHit(outcome));
         }
     };
     // Casts `spellId` (already confirmed memorized -- see the Cast key

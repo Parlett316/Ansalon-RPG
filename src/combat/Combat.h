@@ -8,6 +8,21 @@ namespace combat {
 struct AttackOutcome {
     bool hit = false;
     int damage = 0; // only meaningful if hit
+
+    // Roll breakdown behind hit/damage above, always populated (even on a
+    // miss -- damageRoll/damageBonus/damage just stay 0 in that case) so a
+    // caller can show the real PHB math instead of only the result -- see
+    // docs/COMBAT_NOTES.md's "Showing the math" section and
+    // game::describeToHit/describeDamage in GameLoop.cpp.
+    int naturalRoll = 0;        // unmodified 1d20 -- natural 20 always hits, natural 1 always misses (PHB p.121)
+    int toHitBonus = 0;         // every point added to naturalRoll before comparing to targetNumber
+    int attackerThac0 = 0;      // attacker's THAC0 used for this roll (may include a this-fight penalty)
+    int defenderArmorClass = 0; // defender's AC used for this roll (may include a this-fight bonus)
+    int targetNumber = 0;       // attackerThac0 - defenderArmorClass -- naturalRoll+toHitBonus must reach this
+    int damageDiceCount = 0;
+    int damageDiceSides = 0;
+    int damageRoll = 0; // raw dice roll, before bonuses
+    int damageBonus = 0; // every point added to damageRoll
 };
 
 // PHB p.119/p.121: roll 1d20 + attacker's to-hit adjustment; hits if the

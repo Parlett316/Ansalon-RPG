@@ -141,7 +141,9 @@ Krynn-specific draconians and Thanoi, Dragonlance Adventures (no orcs, since Kry
 has none) — the chance of one varies by terrain, roads safest and forest/
 mountains riskiest, and which monster you draw leans toward that terrain too
 (Bugbears more common in hills and mountains, Gnolls never on salt flats,
-Thanoi more common on glacier, and so on) — resolved with real 2e attack/damage math (Enter to attack, `f` to flee, and a Mage or
+Thanoi more common on glacier, and so on) — resolved with real 2e attack/damage math, and the combat log shows that math for every
+weapon swing (natural-roll, THAC0/AC, and damage-die breakdown, not just
+the hit/miss result) (Enter to attack, `f` to flee, and a Mage or
 Cleric can also `m` to cast — a real multi-level spellbook now, 49 spells
 across Mage's 9 levels and Cleric's 7, sourced from an official TSR/SSI
 Dragonlance computer game manual and cross-checked against the actual PHB

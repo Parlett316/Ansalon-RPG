@@ -462,11 +462,43 @@ loudly rather than be silently masked. Verified via a throwaway self-test
 `roll(1, 8)`/`roll(3, 6)` stay in range across 500 rolls each) and a
 clean `/W4` rebuild.
 
+## Showing the math
+
+`combat::AttackOutcome` (`Combat.h`) carries the full roll breakdown behind
+every hit/miss result, not just the final damage number: the unmodified
+`naturalRoll`, `toHitBonus` (every point added to it -- STR/magic/spell for
+the player, always 0 for a monster, which has no additive to-hit term
+modeled), the `attackerThac0`/`defenderArmorClass` actually used for that
+roll (already folded in any this-fight buff/penalty -- see "Player actions"
+above), the resulting `targetNumber` (`attackerThac0 - defenderArmorClass`),
+and, on a hit, the `damageDiceCount`/`damageDiceSides`/`damageRoll` plus the
+total `damageBonus` added to it. `resolvePlayerAttack`/`resolveMonsterAttack`
+populate every field unconditionally (damage fields just stay 0 on a miss)
+so a caller never has to re-derive the math from scratch.
+
+`game::describeToHit`/`describeDamage` (`GameLoop.cpp`, file-local) turn
+that breakdown into a short bracketed suffix appended to the existing
+hit/miss log line, e.g. `You hit the Goblin for 6. [d20 14 +2 = 16 vs
+THAC0 18 - AC 6 (need 12)] [1d8 5 +1 = 6]`, or, on the PHB's natural-20/
+natural-1 override, `[d20 20 -- natural 20, automatic hit]` with damage
+math following normally. Only `playerAttacks`/`monsterAttacks` (the two
+`resolvePlayerAttack`/`resolveMonsterAttack` call sites) get this treatment
+-- spell damage (`playerCasts`'s `SpellEffect::DamageMonster` case) already
+states its amount plainly and has no PHB "roll vs AC" attack math to show,
+so it's out of scope here, same restraint as everywhere else in this
+project.
+
+Each hit entry typically wraps to two physical lines in the combat log
+instead of one (see `drawCombatFrame` below), so `kMaxLogLines` was trimmed
+from 12 to 8 in the same change, keeping the box roughly the height it was
+before.
+
 ## Rendering
 
-`render::MapRenderer::drawCombatFrame` (new) shows both combatants'
-HP/AC and a scrolling log (last 12 lines — older entries fall off, same
-"most recent last" convention as a chat log), followed by the two
+`render::MapRenderer::drawCombatFrame` shows both combatants'
+HP/AC and a scrolling log (last 8 entries — older entries fall off, same
+"most recent last" convention as a chat log; see "Showing the math" above
+for why this was trimmed down from the original 12), followed by the two
 available actions. Monster HP is tracked as a local `int` inside
 `runCombat`, not stored on `combat::Monster` itself — the `Monster` struct
 is static content shared by every encounter with that monster type, the
