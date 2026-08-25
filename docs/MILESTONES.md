@@ -1604,17 +1604,24 @@ session's work.
    shapeshifting, a mind-affecting-status mechanic) -- real engine work,
    not a quick content pass. See `docs/COMBAT_NOTES.md`'s "Extending this
    later."
-4. **SFML-backed rendering, in place of the raw Windows console** —
-   flagged as a future direction, not started, not a commitment. Would
-   enable real cross-platform builds (Linux/macOS, not just MSVC) and
-   open the door to sprites later, at the cost of this project's first
-   external dependency (vcpkg or `FetchContent`). Chosen over SDL2 for
-   fitting the codebase's existing RAII/modern-C++ style. Scoped to
-   `render/Console.cpp`, `render/MapRenderer.cpp`, and the input-polling
-   call sites in `game/GameLoop.cpp` only -- every data loader and all
-   game logic (`World`, `ZoneCatalog`, `Timeline`, `MonsterCatalog`,
-   combat, quests) stays untouched. See `docs/ARCHITECTURE.md`'s "Why
-   `Console` is the only platform-specific file."
+4. **SFML-backed rendering, in place of the raw Windows console** — tried
+   as an isolated stage-1 trial (2026-08-24, its own branch, never merged,
+   fully reverted): a second `ansalon_sfml_trial` CMake target (SFML 3.0.0
+   via `FetchContent`) rendering the real overworld data as colored
+   monospace glyphs in a resizable window, with zero changes to
+   `render::Console`/`MapRenderer`/`game::GameLoop` or the real
+   `ansalon_rpg` target. User's verdict after seeing it run: "looks almost
+   exactly the same" as the terminal -- rejected. That's an honest result,
+   not a failed trial: stage 1 was always just glyphs-in-a-window: no
+   sprite/tile art, since the whole point was testing the dependency and
+   window mechanics before investing in art. The real visual payoff (stage
+   2, actual sprites) was never attempted, so it remains a real option, but
+   only if revisited *with real art*, not as plain glyphs again -- see
+   `docs/ARCHITECTURE.md`'s "Why `Console` is the only platform-specific
+   file" for the scoping this trial confirmed still holds (only
+   `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
+   input-polling call sites would need to change for a real migration;
+   every data loader and all game logic stays untouched either way).
 5. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 70 took
    four of the five candidates named above; every other zone with a
    talkable NPC and real `PRESENCE` content (Darken Wood's Forestmaster,
