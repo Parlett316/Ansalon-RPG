@@ -1806,6 +1806,41 @@ section).
     keyboard, same `_getch()` limitation as every prior combat-UI
     milestone. See `docs/COMBAT_NOTES.md`'s "Showing the math" section.
 
+75. Raistlin's deferred second "ask about anything" group -- the NEXT UP
+    item 6(b) Milestone 72 deliberately deferred, even though the citations
+    were already found and sitting in this file. Six new character-level
+    subjects (`draconians`, a dedicated `fistandantilus` name-keyword
+    subject, `bupu`, `alhana`/`starbreeze`, `cyan`/`bloodbane`, `lorac`),
+    each a `SUBJECT_WHEN 0 <d>` / `SUBJECT_WHEN <d> -1` pair -- a
+    pre-knowledge "doesn't know it yet" snap, then the real answer once the
+    player's reached the window that establishes it -- same shape as
+    Milestone 72's own Khisanth/Verminaard/Disks/gods group. Gated at
+    `darken_wood`'s day 2 (draconians), `xak_tsaroth`'s day 4
+    (fistandantilus, bupu), `tarsis`'s day 20 (alhana/starbreeze), and
+    `silvanesti`'s day 25 (cyan/bloodbane, lorac) -- this file's own
+    already-modeled timeline deciding the gate, not book chronology, same
+    precedent Milestone 72 established. Every citation was re-verified
+    directly against the `.research/*.txt` extractions before writing, not
+    trusted from the old summary blind: the Forestmaster scene naming
+    draconians and the "Order of Draco," Bupu's introduction and goodbye
+    scene (where she gives Raistlin Fistandantilus's own spellbook -- the
+    direct payoff of the existing `TOPIC "The Spellbook in the Vault"`),
+    Alhana Starbreeze's on-page arrest and naming at Tarsis, and Raistlin's
+    own on-page account of Cyan Bloodbane and Lorac at the Tower of the
+    Stars. Pure data content -- zero `.cpp`/`.h` changes, no new grammar
+    (`SUBJECT_WHEN` already existed), so no throwaway self-test needed, same
+    precedent as Milestones 47-50. Verified via a clean rebuild (zero new
+    warnings; not strictly required for a data-only change but run anyway
+    for consistency) and the piped smoke test, including checking stderr
+    for `TimelineLoader`'s keyword-collision warning -- none of the six new
+    keyword sets collide with any existing Raistlin subject, confirmed both
+    by inspection and at runtime (the one warning that does fire, the
+    pre-existing `kitiara` Solace-window override, predates this change and
+    is already documented as an intentional override). Real in-terminal
+    verification of the new gated answers still needs the user's own
+    keyboard, same `_getch()` limitation as every prior dialogue milestone.
+    See `docs/TIMELINE_NOTES.md`'s "Ask about anything" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1856,40 +1891,20 @@ session's work.
    the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
    Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
    future pass.
-6. **Widen "ask about anything" beyond Raistlin's current roster** --
-   Milestone 71 shipped the engine; Milestone 72 shipped the
-   character-level subject-pool mechanism (`SUBJECT_WHEN`, day-gating), a
-   full always-true content pass for Raistlin, and his gated Khisanth/
-   Verminaard/Disks-of-Mishakal/true-gods/Takhisis content. What's left:
-   (a) the other seven Heroes' own character-level pools (same "prove it
-   out narrow, widen later" pattern `TALK_AFTER`/`TALK_BEFORE` already
-   followed -- Milestone 73 went to an unrelated color/UI request
-   instead, so this is still unclaimed), and (b) a second Raistlin group the
-   user deliberately deferred rather than authored in Milestone 72, even
-   though the sourcing pass already found solid citations for each --
-   re-verify nothing's drifted before using these, but no fresh research
-   pass should be needed:
-     - `draconians` -- gate at day 2 (`darken_wood`). `.research/dat_full.txt`
-       lines 4788-4831: the Forestmaster scene, where Raistlin himself asks
-       "these loathsome creatures... can you tell us of these?" and learns
-       the name "draconians"/"Order of Draco" on-page.
-     - a dedicated `fistandantilus` name-keyword subject -- day 4
-       (`xak_tsaroth`), same in-game establishment already used for the
-       existing (unnamed-keyword) Test/Towers subject; see M20's `TOPIC
-       "The Spellbook in the Vault"`.
-     - `bupu` -- day 4 (`xak_tsaroth`). `.research/dat_full.txt` line 7769+,
-       Raistlin's direct companion through the vault sequence.
-     - `cyan`/`bloodbane` -- day 25 (`silvanesti`). `.research/dwn_full.txt`
-       lines 4583-4832; Raistlin is speaking on-page in this exact scene
-       (line 4828).
-     - `lorac` -- day 25 (`silvanesti`). `.research/dwn_full.txt` lines
-       3948, 4828, 4901-4902 -- Tanis addresses Raistlin directly about
-       Lorac, and Raistlin answers.
-     - `alhana`/`starbreeze` -- day 20 (`tarsis`). `.research/dwn_full.txt`
-       ~1900-2200, introduced during the Tarsis chapter itself.
-   See `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full
-   Milestone 72 writeup this list summarizes. Zone-NPC `SUBJECT` content
-   beyond what Milestone 71 already shipped remains untouched either way.
+6. **Widen "ask about anything" to the other seven Heroes** -- Milestone 71
+   shipped the engine; Milestone 72 shipped the character-level
+   subject-pool mechanism (`SUBJECT_WHEN`, day-gating) and a full pass for
+   Raistlin (always-true content plus his gated Khisanth/Verminaard/
+   Disks-of-Mishakal/true-gods/Takhisis group); Milestone 75 shipped
+   Raistlin's second deferred group (draconians/Fistandantilus/Bupu/Alhana/
+   Cyan Bloodbane/Lorac). What's left is the other seven Heroes' own
+   character-level pools from scratch -- same "prove it out narrow, widen
+   later" pattern `TALK_AFTER`/`TALK_BEFORE` already followed, and the same
+   scope-first conversation Milestone 75 had before starting (pick one Hero
+   to prove the pattern generalizes, or go wide -- ask, don't assume). See
+   `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full mechanism.
+   Zone-NPC `SUBJECT` content beyond what Milestone 71 already shipped
+   remains untouched either way.
 7. **Widen the "Bob's game" color palette to the remaining plain organic
    screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
    combat only; the character sheet, spellbook, shop, inventory, journal,

@@ -2,18 +2,20 @@
 
 Nothing in flight.
 
-Milestone 74 (showing the AD&D 2nd ed math behind attacks) just shipped --
-see `docs/MILESTONES.md`'s Milestone 74 entry and `docs/COMBAT_NOTES.md`'s
-"Showing the math" section for the full mechanism. In brief:
-`combat::AttackOutcome` now exposes the roll breakdown
-`resolvePlayerAttack`/`resolveMonsterAttack` already computed internally
-(natural roll, to-hit bonus, THAC0/AC/target number, damage dice/roll/
-bonus) -- hit/miss/damage logic itself is unchanged, just no longer thrown
-away -- and new `game::describeToHit`/`describeDamage` in `GameLoop.cpp`
-render it as a bracketed suffix on the existing combat-log hit/miss line.
-`drawCombatFrame`'s `kMaxLogLines` was trimmed 12->8 to compensate for
-entries now typically wrapping to two lines. Verified via a throwaway
-self-test (10,000 rolls, deleted after passing), a clean `/W4` rebuild
-(zero new warnings), and the piped smoke test. **Interactive verification
-still needs the user's own keyboard** -- seeing the actual bracketed math
-render correctly in a real fight, in a real terminal.
+Milestone 75 (Raistlin's deferred second "ask about anything" group --
+draconians, Fistandantilus, Bupu, Alhana Starbreeze, Cyan Bloodbane, Lorac)
+just shipped -- see `docs/MILESTONES.md`'s Milestone 75 entry and
+`docs/TIMELINE_NOTES.md`'s "Ask about anything" section for the full
+mechanism and sourcing. In brief: six new character-level `SUBJECT_WHEN`
+pairs added to `data/timeline.txt`'s `CHARACTER raistlin` block, each gated
+at the day the window establishing it opens (`darken_wood`/`xak_tsaroth`/
+`tarsis`/`silvanesti`). Pure data, no `.cpp`/`.h` changes, no new grammar.
+Verified via a clean rebuild (zero new warnings) and the piped smoke test,
+including confirming no new `TimelineLoader` keyword-collision warnings.
+**Interactive verification still needs the user's own keyboard** -- asking
+Raistlin about each new subject, both before and after its gate day, in a
+real playthrough.
+
+Next backlog candidate (not started, not committed): widening "ask about
+anything" to the other seven Heroes' own character-level pools -- see
+`docs/MILESTONES.md`'s NEXT UP item 6.

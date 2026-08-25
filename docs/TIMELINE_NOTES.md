@@ -365,11 +365,28 @@ inventing to fill a gap, the same restraint this file names repeatedly);
 Astinus and Laurana (both first appear well past Raistlin's own last
 talkable window — `silvanesti 25 30`; `palanthas 83 83` has no `SAY` — so
 no in-game moment exists where the player could ask him about either).
-**Also intentionally left for a later pass, despite being well-grounded**
-(the user's own explicit scoping call, not a sourcing gap): a dedicated
-`fistandantilus` name-keyword subject, `draconians`, `bupu`, `cyan`/
-`bloodbane`, `lorac`, and `alhana`/`starbreeze` — see
-`docs/MILESTONES.md`'s NEXT UP for the citations already on file for each.
+**A second character-level group shipped at Milestone 75**, closing the gap
+the paragraph above once left open: `draconians` (gate `darken_wood`'s day
+2 — the Forestmaster scene, `.research/dat_full.txt` lines 4788-4831, where
+Raistlin himself asks "can you tell us of these?" and learns the name
+"draconians"/"Order of Draco"), a dedicated `fistandantilus` name-keyword
+subject and `bupu` (both gated at `xak_tsaroth`'s day 4 — `.research/
+dat_full.txt` lines 7769-7786 introduce her, lines 10403-10454 are the
+goodbye scene where she gives Raistlin Fistandantilus's own spellbook as a
+parting gift, the direct payoff of the existing `TOPIC "The Spellbook in the
+Vault"`), `alhana`/`starbreeze` (gate `tarsis`'s day 20 — her arrest scene,
+`.research/dwn_full.txt` lines 1880-2009, named on-page as "Alhana
+Starbreeze, daughter of the Speaker of the Stars"), and `cyan`/`bloodbane`
+and `lorac` (both gate `silvanesti`'s day 25 — `.research/dwn_full.txt`
+lines 3948-3967 and 4814-4929, where Raistlin himself names Cyan Bloodbane
+as the orb-set guardian dragon he "drove off, with help," and describes
+Lorac, Silvanesti's elfking and Alhana's father, consumed by the orb's
+nightmare). Each gets a `SUBJECT_WHEN 0 <d> ` / `SUBJECT_WHEN <d> -1` pair,
+same "doesn't know it yet" / real-answer shape as the Khisanth/Verminaard/
+Disks group above. No fresh research pass was needed — every citation had
+already been found and left on file in `docs/MILESTONES.md`'s NEXT UP; this
+pass re-verified each one directly against the `.research/*.txt`
+extractions before writing.
 
 **Shipped on exactly one window so far** *(historical — see "Widened to a
 character-level pool" above for the current state)*: Raistlin's `PRESENCE
