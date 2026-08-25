@@ -109,6 +109,28 @@ you hit something surprising — that's the whole point of it existing.
   cancel, but `readLine` is reading arbitrary free text — `q` is a
   perfectly ordinary character to type in a real question (e.g. "ask about
   the Test") and can't be reserved. Esc is the only cancel key while typing.
+- **`tokenizeAskInput` keeps a literal hyphen inside a word, it does not
+  split on it or strip it to nothing** (confirmed by a Milestone 72
+  throwaway self-test, per `docs/MILESTONE_72_SPEC.md` section 4.6 — see
+  `docs/TIMELINE_NOTES.md`'s "Ask about anything"). Typing "half-sister"
+  tokenizes to the single word `half-sister`; typing "half sister" (a
+  space, not a hyphen) still splits normally into `half` and `sister`. This
+  is why an authored `half-sister` keyword needs a separate `sister` alias
+  alongside it if a player typing the two words apart (no hyphen) should
+  still match — the hyphenated form alone only catches someone who types
+  the hyphen too.
+- **`SUBJECT`/`SUBJECT_WHEN` keyword collisions are a load-time warning
+  (stderr), not a load failure** — see `TimelineLoader`'s
+  `reportKeywordCollisions` (Milestone 72). A window's own `SUBJECT`
+  sharing a keyword with a character-level pool entry is the *intended*
+  override mechanism (`docs/TIMELINE_NOTES.md`'s "Ask about anything"), so
+  failing hard on every collision would forbid the pattern the milestone
+  was built to enable. It still warns on every case, override or not,
+  because the loader can't distinguish "deliberate" from "forgot this
+  keyword was already claimed" — read the warning's two line numbers
+  before assuming it's fine. Author keyword lists specific-before-general
+  (e.g. `orb`/`orbs` before anything claiming the bare `dragon`) to avoid
+  the accidental kind.
 
 ## Toolchain
 

@@ -106,6 +106,18 @@ codebase has never needed and hasn't tested (see `docs/GOTCHAS.md`).
 Consequence: like the rest of `GameLoop`'s input, it can't be driven by a
 piped/redirected script either.
 
+**As of Milestone 72**, the adapter that turns a `timeline::PresenceWindow`
+into a `game::Speech` (`speechFromWindow`, in `GameLoop.cpp`, called from
+both the overworld and `TIMELINE_ANCHOR` talk paths in `handleTalk`) now
+calls `timeline::Timeline::subjectsFor`/`subjectUnknownFor` instead of
+reading `window.subjects`/`window.subjectUnknown` directly, so a
+character's day-gated subject pool layers in underneath that window's own
+`SUBJECT` entries. Nothing downstream of `Speech` changed: `talkTo`,
+`TalkCandidate`, `pickAndTalk`, `tokenizeAskInput`, and `matchSubject` are
+all untouched — the same "the executor was always source-agnostic; only
+the loader needed to learn the new grammar" precedent Milestones 26 and 71
+both already established.
+
 **Flagged future direction, not a commitment:** if real cross-platform
 builds or sprite rendering ever become an actual goal, this isolation is
 exactly what would make an SFML-backed `Console`/renderer a contained
@@ -279,6 +291,17 @@ callers get the flavor text without re-scanning. Loaded once at startup by
 `TimelineLoader::loadFromFile` from `data/timeline.txt` — same
 hand-rolled-text, `trim`/`splitKeyword`/fail-fast pattern as
 `WorldLoader`/`ZoneLoader` (see `docs/TIMELINE_NOTES.md` for the grammar).
+**As of Milestone 72**, `CanonCharacter` also carries a character-level
+`subjects` pool (`std::vector<CharacterSubject>`, each day-range-gated) and
+an optional character-level `subjectUnknown` — the free-text "ask about
+anything" content that used to live only on `PresenceWindow`, now
+available at every one of a character's windows instead of needing to be
+copy-pasted into each. Two pure queries, `subjectsFor`/`subjectUnknownFor`,
+resolve a window's own subjects plus the character's day-filtered pool
+into the list a talk actually uses — see `docs/TIMELINE_NOTES.md`'s
+"Character-level subject pools" for the resolution order and why `timeline/`
+still returns its own `Subject` type rather than `game::Speech::SubjectEntry`
+(same module-independence reasoning as everything else in this section).
 
 **Static content, not player state**: like `World`/`OverworldGrid`, a
 `Timeline` is loaded fresh every run and never mutated during play — only

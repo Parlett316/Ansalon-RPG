@@ -46,10 +46,43 @@ struct PresenceWindow {
     std::string subjectUnknown;
 };
 
+// A character-level free-text-askable subject, scoped to an in-game day
+// range -- see docs/TIMELINE_NOTES.md's "Ask about anything". Set via
+// SUBJECT (dayStart=0, dayEnd=-1, i.e. always available) or SUBJECT_WHEN
+// (explicit range) before the first PRESENCE line in a CHARACTER block.
+// dayEnd of -1 means open-ended, same sentinel latestDayEnd/earliestDayStart
+// already use for "no such day".
+struct CharacterSubject {
+    std::vector<std::string> keywords;
+    std::string text;
+    int dayStart = 0;
+    int dayEnd = -1;
+};
+
 struct CanonCharacter {
     std::string id;
     std::string name;
     std::vector<PresenceWindow> schedule;
+    // Character-level subjects (SUBJECT/SUBJECT_WHEN before the first
+    // PRESENCE line) -- available at every window whose current day falls
+    // in range, layered underneath that window's own subjects. See
+    // Timeline::subjectsFor and docs/TIMELINE_NOTES.md.
+    std::vector<CharacterSubject> subjects;
+    // Character-level SUBJECT_UNKNOWN -- the fallback used when a window
+    // has no SUBJECT_UNKNOWN of its own. Empty means no character-level
+    // fallback either (falls through to game::GameLoop::talkTo's generic
+    // line). See Timeline::subjectUnknownFor.
+    std::string subjectUnknown;
+};
+
+// One free-text subject as resolved for a specific window/day by
+// Timeline::subjectsFor -- window-level and character-level subjects share
+// this shape once resolved, since day-range filtering has already happened
+// by the time a caller sees one. See docs/TIMELINE_NOTES.md's "Ask about
+// anything".
+struct Subject {
+    std::vector<std::string> keywords;
+    std::string text;
 };
 
 // One canon character's presence, as returned by Timeline::presentAt --
@@ -90,6 +123,20 @@ public:
     // docs/ZONE_NOTES.md's "Anticipation dialogue" section for the feature
     // this supports.
     int earliestDayStart(const std::string& locationId) const;
+
+    // The free-text subjects available while talking to `character` during
+    // `window`, on in-game day `day`: that window's own SUBJECT entries
+    // (authored order), then the character's SUBJECT/SUBJECT_WHEN entries
+    // whose day range contains `day` (authored order) -- a window SUBJECT
+    // sharing a keyword with a pool entry wins, since game::matchSubject
+    // checks this list in order and stops at the first match. See
+    // docs/TIMELINE_NOTES.md's "Ask about anything".
+    std::vector<Subject> subjectsFor(const CanonCharacter& character, const PresenceWindow& window, int day) const;
+
+    // `window`'s own SUBJECT_UNKNOWN if it has one, else `character`'s
+    // character-level SUBJECT_UNKNOWN, else empty (falls back to
+    // game::GameLoop::talkTo's generic line).
+    std::string subjectUnknownFor(const CanonCharacter& character, const PresenceWindow& window) const;
 
 private:
     std::vector<CanonCharacter> characters_;

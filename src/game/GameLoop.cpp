@@ -31,18 +31,24 @@ const char* compassDirection(int dx, int dy) {
     return kDirs[index];
 }
 
-// Adapts a timeline::PresenceWindow into the Speech shape GameLoop::talkTo
-// works with -- see docs/TIMELINE_NOTES.md for the underlying grammar.
-Speech speechFromWindow(const timeline::PresenceWindow& window) {
+// Adapts a timeline::PresenceWindow (plus the timeline::CanonCharacter it
+// belongs to, and the current in-game day) into the Speech shape
+// GameLoop::talkTo works with -- see docs/TIMELINE_NOTES.md for the
+// underlying grammar. `subjects`/`subjectUnknown` come from
+// Timeline::subjectsFor/subjectUnknownFor (Milestone 72) rather than
+// reading `window` directly, so a character's day-gated subject pool layers
+// in underneath that window's own SUBJECT entries.
+Speech speechFromWindow(const timeline::Timeline& timeline, const timeline::CanonCharacter& character,
+                         const timeline::PresenceWindow& window, int day) {
     Speech speech;
     speech.greeting = window.dialogue;
     speech.conditional = window.conditionalDialogue;
     speech.again = window.dialogueAgain;
     speech.topics = window.topics;
-    for (const auto& [keywords, text] : window.subjects) {
-        speech.subjects.push_back(Speech::SubjectEntry{keywords, text});
+    for (const auto& subject : timeline.subjectsFor(character, window, day)) {
+        speech.subjects.push_back(Speech::SubjectEntry{subject.keywords, subject.text});
     }
-    speech.subjectUnknown = window.subjectUnknown;
+    speech.subjectUnknown = timeline.subjectUnknownFor(character, window);
     return speech;
 }
 
@@ -642,11 +648,11 @@ void GameLoop::handleTalk() {
         if (here != nullptr) {
             // Same query drawOverworldFrame already makes for the passive
             // flavor line -- see docs/TIMELINE_NOTES.md.
-            for (const auto& presence :
-                 timeline_.presentAt(here->id, static_cast<int>(state_.hoursElapsed / 24))) {
+            int dayNow = static_cast<int>(state_.hoursElapsed / 24);
+            for (const auto& presence : timeline_.presentAt(here->id, dayNow)) {
                 if (!presence.window->dialogue.empty()) {
-                    candidates.push_back(
-                        {presence.character->id, presence.character->name, speechFromWindow(*presence.window)});
+                    candidates.push_back({presence.character->id, presence.character->name,
+                                           speechFromWindow(timeline_, *presence.character, *presence.window, dayNow)});
                 }
             }
         }
@@ -689,8 +695,8 @@ void GameLoop::handleTalk() {
         if (poi != nullptr && poi->code == zone->timelineAnchorPoi()) {
             for (const auto& presence : timeline_.presentAt(effectiveId, dayNow)) {
                 if (!presence.window->dialogue.empty()) {
-                    candidates.push_back(
-                        {presence.character->id, presence.character->name, speechFromWindow(*presence.window)});
+                    candidates.push_back({presence.character->id, presence.character->name,
+                                           speechFromWindow(timeline_, *presence.character, *presence.window, dayNow)});
                 }
             }
         }

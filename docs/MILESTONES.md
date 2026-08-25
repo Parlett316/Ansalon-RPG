@@ -1630,6 +1630,108 @@ section).
     `docs/TIMELINE_NOTES.md`'s and `docs/ZONE_NOTES.md`'s "Ask about
     anything" sections.
 
+72. Character-level subject pools and day-gated knowledge -- Milestone 71's
+    `SUBJECT` was window-only, which doesn't scale: Raistlin alone has eight
+    talkable windows, and hand-copying twenty-five subjects into each would
+    drift out of sync within two content passes. `SUBJECT`/`SUBJECT_UNKNOWN`
+    are now legal *before* a `CHARACTER` block's first `PRESENCE` line too,
+    where they attach to the character as a whole (same positional
+    convention `NAME` already uses) rather than to one window. A new
+    `SUBJECT_WHEN <d0> <d1> <keywords> <text>` line (character-level only,
+    an error after the first `PRESENCE`) adds a day-range gate on top of
+    that -- plain character-level `SUBJECT` is exactly `SUBJECT_WHEN 0 -1`.
+    At talk time on the current in-game day, the candidate list is that
+    window's own `SUBJECT` entries first, then the character's day-filtered
+    pool -- `game::matchSubject` runs over the concatenation unchanged
+    (first match wins, same as `SAY_IF`), so a window `SUBJECT` sharing a
+    keyword with a pool entry silently overrides it, and two `SUBJECT_WHEN`
+    rows sharing a keyword with adjacent ranges give an evolving answer for
+    free. Two new pure `timeline::Timeline` queries (`subjectsFor`/
+    `subjectUnknownFor`, same "tiny, return by value" shape as
+    `latestDayEnd`/`earliestDayStart`) do the resolution; `GameLoop`'s
+    `speechFromWindow` adapter (both the overworld and `TIMELINE_ANCHOR`
+    talk paths) is the only caller -- `talkTo`, `TalkCandidate`,
+    `pickAndTalk`, `tokenizeAskInput`, and `matchSubject` itself are
+    unchanged, the same "the executor was always source-agnostic" precedent
+    Milestones 26 and 71 both already established. `TimelineLoader` also
+    gained a keyword-collision check: after loading each `CHARACTER` block,
+    it warns (stderr, `file:line`, never a load failure) about any keyword
+    reachable from two entries whose day ranges overlap, since a deliberate
+    window-over-pool override is indistinguishable at load time from an
+    accidental duplicate -- authoring rule: order specific keywords before
+    general ones. Content-wise, Raistlin's three Solace-only subjects
+    (`caramon`/`brother`, `magic`/`test`/`towers`/`sorcery`/`tower`, and
+    `SUBJECT_UNKNOWN`) were promoted to character-level unchanged; Kitiara's
+    Inn-letter-scene entry stayed window-scoped at Solace, with a new,
+    deliberately non-committal character-level Kitiara entry covering his
+    other seven windows (left ungated, not split into a `SUBJECT_WHEN`
+    pair, because every one of those windows closes by day 30 -- well
+    before Kitiara's Dragon Highlord reveal at the `high_clerist_tower 81
+    81` siege -- so no in-game moment exists where the player could ask him
+    about her after the fact). Fourteen new always-true subjects were added
+    on top of that: his hourglass eyes, golden skin, the Test/Wayreth/
+    Conclave, the Staff of Magius, Par-Salian, the three orders/robes/his
+    own neutrality, the three moons, his health/cough/blood, his mother and
+    father, and one opinion entry each for Tanis, Sturm, Flint, Tasslehoff,
+    Goldmoon, and Riverwind (Caramon's was already covered by the migrated
+    entry) -- grounded in the Solace reunion scene already used throughout
+    this file (`.research/dat_full.txt`), the orders/moons material in
+    `.research/dla_full.txt`, and two freshly-extracted passages for the
+    parents, neither of whom is ever named in this project's source
+    library: `.research/wott_full.txt` lines 12952-12993 (his mother --
+    "magic in her blood," weak-willed, died young) and
+    `.research/testott_full.txt` line 4784 (his father -- "a poor
+    woodcutter," a "perpetual look of worry and care"). A research pass
+    then covered every remaining candidate against this game's
+    already-modeled timeline (not assumed from canon memory), for the
+    user's review before any gate was written -- three names (Khisanth,
+    Verminaard, and the Disks of Mishakal) were confirmed groundable, all
+    at day 4 (`xak_tsaroth`'s own `PRESENCE` start): `.research/dat_full.txt`
+    lines 6990-7035 (Mishakal's temple vision, naming the Disks and
+    Khisanth directly) and line 6075 ("confer with Lord Verminaard about
+    the staff"), following the same "this file's own established facts
+    win over book chronology" reasoning the spec's own Fistandantilus case
+    laid out -- Raistlin isn't the on-page witness for either passage, but
+    per Milestone 24's standing "whole company experiences a stop
+    together" abstraction, that doesn't disqualify it the way the book
+    explicitly sending Goldmoon away at Pax Tharkas would. Each got a
+    `SUBJECT_WHEN 0 3`/`SUBJECT_WHEN 4 -1` pair (an in-voice "I don't know
+    that name yet" reaction, then the real answer), plus a matching
+    `gods`/`mishakal`/`faith` "true gods" pair at the same day-4 boundary.
+    Takhisis moved to the always-true set instead of being gated -- her
+    proper name never appears in any novel in this project's library (only
+    in the DLA rulebook), and the novels' own "Queen of Darkness"/"Dark
+    Queen" title is already in play from the book's opening prologue, so
+    there was no scene-boundary to gate against. Dragon orbs, Astinus, and
+    Laurana were dropped outright (this file's own Xak Tsaroth content
+    already frames Raistlin's vault find as the spellbook, not an orb, and
+    neither Astinus nor Laurana appears before Raistlin's last talkable
+    window closes) -- and a further well-grounded group (a dedicated
+    `fistandantilus` name subject, `draconians`, `bupu`, `cyan`/
+    `bloodbane`, `lorac`, `alhana`/`starbreeze`) was deliberately left for
+    a later pass at the user's own call, not a sourcing gap; see NEXT UP
+    for the citations already on file for each. See
+    `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full reasoning
+    and citations.
+    Section 4.6's tokenizer question was settled via the throwaway
+    self-test: `game::tokenizeAskInput` keeps a literal hyphen inside a
+    word rather than splitting on it, so "half-sister" tokenizes to one
+    word and "half sister" (a space) still splits into two -- see
+    `docs/GOTCHAS.md`. Verified via a throwaway self-test (day-range
+    filtering at both edges and outside, `-1` open-ended, window-beats-pool
+    ordering, the two-`SUBJECT_WHEN` evolving-answer case, `subjectUnknownFor`
+    falling window -> character -> empty, the hyphen behavior, and the
+    loader rejecting a post-`PRESENCE` `SUBJECT_WHEN`/backwards range/
+    negative `dayStart`), a clean `/W4` rebuild (zero new warnings), and the
+    piped smoke test (confirms the new grammar parses and the deliberate
+    Kitiara collision warning fires as expected). **Interactive verification
+    still needs the user's own keyboard** -- typing a gated-adjacent subject
+    like "Kitiara" at Solace vs. at Silvanesti and confirming the Solace
+    override still wins over the pool answer, and confirming the curated
+    `TOPIC` menu and "Ask about something else..." row both still behave.
+    See `docs/TIMELINE_NOTES.md`'s "Character-level subject pools and
+    day-gated knowledge".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1680,12 +1782,36 @@ session's work.
    the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
    Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
    future pass.
-6. **Widen "ask about anything" (`SUBJECT`) beyond Raistlin's Solace
-   window** -- Milestone 71 shipped the engine and one proof-of-concept
-   window; every other Hero's existing `PRESENCE` window (and any zone NPC
-   with real `TALK`/`TOPIC` content) is a candidate for real `SUBJECT`
-   entries next, same "prove it out narrow, widen later" pattern
-   `TALK_AFTER`/`TALK_BEFORE` already followed. Likely needs a fresh
-   sourcing pass per character/window, same discipline every dialogue
-   milestone in this project has followed -- not something to fill in from
-   memory.
+6. **Widen "ask about anything" beyond Raistlin's current roster** --
+   Milestone 71 shipped the engine; Milestone 72 shipped the
+   character-level subject-pool mechanism (`SUBJECT_WHEN`, day-gating), a
+   full always-true content pass for Raistlin, and his gated Khisanth/
+   Verminaard/Disks-of-Mishakal/true-gods/Takhisis content. What's left:
+   (a) the other seven Heroes' own character-level pools (Milestone 73,
+   same "prove it out narrow, widen later" pattern `TALK_AFTER`/
+   `TALK_BEFORE` already followed), and (b) a second Raistlin group the
+   user deliberately deferred rather than authored in Milestone 72, even
+   though the sourcing pass already found solid citations for each --
+   re-verify nothing's drifted before using these, but no fresh research
+   pass should be needed:
+     - `draconians` -- gate at day 2 (`darken_wood`). `.research/dat_full.txt`
+       lines 4788-4831: the Forestmaster scene, where Raistlin himself asks
+       "these loathsome creatures... can you tell us of these?" and learns
+       the name "draconians"/"Order of Draco" on-page.
+     - a dedicated `fistandantilus` name-keyword subject -- day 4
+       (`xak_tsaroth`), same in-game establishment already used for the
+       existing (unnamed-keyword) Test/Towers subject; see M20's `TOPIC
+       "The Spellbook in the Vault"`.
+     - `bupu` -- day 4 (`xak_tsaroth`). `.research/dat_full.txt` line 7769+,
+       Raistlin's direct companion through the vault sequence.
+     - `cyan`/`bloodbane` -- day 25 (`silvanesti`). `.research/dwn_full.txt`
+       lines 4583-4832; Raistlin is speaking on-page in this exact scene
+       (line 4828).
+     - `lorac` -- day 25 (`silvanesti`). `.research/dwn_full.txt` lines
+       3948, 4828, 4901-4902 -- Tanis addresses Raistlin directly about
+       Lorac, and Raistlin answers.
+     - `alhana`/`starbreeze` -- day 20 (`tarsis`). `.research/dwn_full.txt`
+       ~1900-2200, introduced during the Tarsis chapter itself.
+   See `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full
+   Milestone 72 writeup this list summarizes. Zone-NPC `SUBJECT` content
+   beyond what Milestone 71 already shipped remains untouched either way.

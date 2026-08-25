@@ -43,4 +43,23 @@ int Timeline::earliestDayStart(const std::string& locationId) const {
     return earliest;
 }
 
+std::vector<Subject> Timeline::subjectsFor(const CanonCharacter& character, const PresenceWindow& window,
+                                            int day) const {
+    std::vector<Subject> result;
+    for (const auto& [keywords, text] : window.subjects) {
+        result.push_back(Subject{keywords, text});
+    }
+    for (const auto& subject : character.subjects) {
+        if (day >= subject.dayStart && (subject.dayEnd == -1 || day <= subject.dayEnd)) {
+            result.push_back(Subject{subject.keywords, subject.text});
+        }
+    }
+    return result;
+}
+
+std::string Timeline::subjectUnknownFor(const CanonCharacter& character, const PresenceWindow& window) const {
+    if (!window.subjectUnknown.empty()) return window.subjectUnknown;
+    return character.subjectUnknown;
+}
+
 } // namespace timeline

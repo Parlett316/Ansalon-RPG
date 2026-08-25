@@ -62,10 +62,32 @@ SUBJECT <keywords> <text> optional, zero or more -- a free-text-askable
                           <keywords> is one whitespace-free,
                           comma-separated token (e.g.
                           "kitiara,kit,sister"), matched against words in
-                          whatever the player types, case-insensitively
+                          whatever the player types, case-insensitively.
+                          Inside a PRESENCE window: scoped to that window
+                          (unchanged since Milestone 71). Before the first
+                          PRESENCE line in a CHARACTER block (Milestone 72):
+                          character-level, available at every one of that
+                          character's windows -- equivalent to
+                          SUBJECT_WHEN 0 -1, below
+SUBJECT_WHEN <d0> <d1>     optional, zero or more -- character-level only
+  <keywords> <text>        (Milestone 72): before the first PRESENCE line;
+                          an error if it appears after one, since a window
+                          is already day-scoped. A subject available only
+                          while the current in-game day is in [d0, d1]
+                          inclusive; d1 of -1 means open-ended. <keywords>/
+                          <text> parse exactly as SUBJECT's own. Two
+                          entries sharing a keyword list with adjacent,
+                          non-overlapping ranges is how an answer changes
+                          over time -- see "Character-level subject pools"
+                          below
 SUBJECT_UNKNOWN <text>    optional -- shown when the player's typed
                           subject matches no SUBJECT above; omitting this
-                          falls back to a generic engine line (see below)
+                          falls back to a generic engine line (see below).
+                          Legal inside a window (applies to that window
+                          only) or before the first PRESENCE (character-
+                          level, Milestone 72: applies to any window that
+                          lacks its own) -- at most one of each per
+                          CHARACTER block
 END                        closes the block
 ```
 
@@ -181,12 +203,182 @@ uses, rather than `std::cin`/`getline` — see `docs/GOTCHAS.md` for why
 mixing the two inside `GameLoop`'s live loop is unproven territory this
 project has deliberately avoided rather than tested and relied on.
 
-**Shipped on exactly one window so far**: Raistlin's `PRESENCE solace 0 1`
-(`data/timeline.txt`), the proof of concept for this mechanic. Three real
-subjects — `kitiara`/`kit`/`sister`/`half-sister` (freshly written, grounded
-in `.research/dat_full.txt`'s actual Inn-of-the-Last-Home letter scene: "Who
-knows with Kitiara? ... she has sworn allegiance to another. She is, after
-all, a mercenary."), `caramon`/`brother`, and `magic`/`test`/`towers`/
+**Character-level subject pools and day-gated knowledge (Milestone 72).**
+Duplicating a character's `SUBJECT` content into every `PRESENCE` window
+doesn't scale — Raistlin alone has eight talkable windows, and
+hand-copying twenty-five subjects into each would drift out of sync within
+two content passes. `SUBJECT`/`SUBJECT_UNKNOWN` are legal *before* a
+`CHARACTER` block's first `PRESENCE` line too (see grammar above), where
+they attach to the character as a whole rather than to one window — the
+same positional convention `NAME` already uses. `SUBJECT_WHEN` adds a
+day-range gate on top of that: a character-level subject that's only in
+the answerable pool while the current in-game day falls in `[d0, d1]`
+(`d1` of `-1` = open-ended). Plain character-level `SUBJECT` is exactly
+`SUBJECT_WHEN 0 -1`.
+
+*Resolution order*, at talk time on in-game day `D`
+(`state.hoursElapsed / 24`, the same value `presentAt` is already called
+with — deliberately the *current* day, not the window's own `dayStart`, so
+a player who meets a character on day 28 of a 25–30 window gets the
+day-28 answer, the more truthful reading of "when did they meet him"):
+
+1. That window's own `SUBJECT` entries, in authored order.
+2. The character's `SUBJECT`/`SUBJECT_WHEN` entries whose day range
+   contains `D`, in authored order.
+
+`game::matchSubject` runs over that concatenated list unchanged — first
+match wins, same convention as `SAY_IF`. Two consequences worth knowing:
+
+- **A window `SUBJECT` sharing a keyword with a pool entry silently
+  wins.** That's the override mechanism, not a bug — it's how one specific
+  stop (Raistlin on Kitiara at the Inn, still window-scoped) can outrank
+  the character-wide default covering every other stop. `TimelineLoader`
+  warns about this at load time (see below) but never fails on it, since
+  it can't tell "deliberate override" from "accidental duplicate."
+- **Two `SUBJECT_WHEN` rows sharing a keyword list with adjacent,
+  non-overlapping ranges give an evolving answer for free** — no new
+  engine concept, just two pool entries whose day windows happen to abut.
+
+`SUBJECT_UNKNOWN` resolves the same way, minus the day-gating: the
+window's own if it has one, else the character's, else the existing
+hardcoded engine line.
+
+`timeline::Timeline::subjectsFor(character, window, day)` and
+`subjectUnknownFor(character, window)` are the two pure queries that do
+this resolution (`src/timeline/Timeline.h`/`.cpp`) — same "tiny, runs once
+per talk, return by value" shape as `latestDayEnd`/`earliestDayStart`.
+Both stay in `timeline::` types only (a plain `Subject` struct of
+keywords+text) — `timeline/` still doesn't know `game::Speech` exists,
+same module independence `docs/ARCHITECTURE.md` documents. `GameLoop`'s
+`speechFromWindow` adapter (both the overworld and `TIMELINE_ANCHOR` talk
+paths funnel through it) is the only caller, converting the result into
+`Speech::subjects`/`subjectUnknown` — `talkTo`, `TalkCandidate`,
+`pickAndTalk`, `tokenizeAskInput`, and `matchSubject` itself didn't change
+at all, the same "the executor was always source-agnostic, only the
+loader needed to learn the new grammar" precedent Milestones 26 and 71
+both followed.
+
+**Keyword-collision warning.** At three subjects per character, keyword
+ordering is invisible; at twenty-five it's load-bearing and fragile — a
+player typing "dragon orb" tokenizes to `dragon` and `orb`, and `dragon`
+alone is reachable from dragon orbs, Khisanth, Cyan Bloodbane, and
+draconians alike. After loading each `CHARACTER` block, `TimelineLoader`
+walks its merged `SUBJECT`/`SUBJECT_WHEN` pool (a window subject counts as
+overlapping its own window's day range) and prints a `file:line` warning
+to stderr — never a load failure, since the intentional override above is
+exactly this pattern — for any keyword reachable from two entries whose
+day ranges overlap. Authoring rule: order specific keywords before general
+ones (`orb`/`orbs` before anything claiming the bare `dragon`). See
+`docs/GOTCHAS.md`.
+
+**The hyphen in `half-sister`.** `game::tokenizeAskInput` keeps a literal
+hyphen inside a word rather than splitting on it or stripping it out —
+confirmed by a throwaway self-test, see `docs/GOTCHAS.md`. Typing
+"half-sister" (with the hyphen) tokenizes to one word, `half-sister`;
+typing "half sister" (a space) still splits into two. Raistlin's Kitiara
+entries rely on their separate `sister` alias to catch the un-hyphenated
+phrasing — the hyphenated keyword alone only catches someone who types the
+hyphen too.
+
+**Widened to a character-level pool for Raistlin — as of Milestone 72.**
+The three subjects `caramon`/`brother`, `magic`/`test`/`towers`/`sorcery`/
+`tower`, and `SUBJECT_UNKNOWN`, previously scoped to `PRESENCE solace 0 1`
+only, are now character-level and available at all eight of his windows,
+unchanged in text. The `kitiara`/`kit`/`sister`/`half-sister` entry stays
+at the Solace window specifically (its Inn-letter-scene voice belongs
+there), with a new, separate character-level `kitiara`/`kit`/`sister`/
+`half-sister` pool entry covering the other seven — deliberately generic,
+non-committal about what she's become, since that question needs its own
+sourcing pass (see below). Fourteen new always-true character-level
+subjects were added covering his hourglass eyes, golden skin, the Test/
+Wayreth/Conclave, the Staff of Magius, Par-Salian, the three orders/robes/
+his own neutrality, the three moons, his health/cough/blood, his mother
+and father, and one opinion entry each for Tanis, Sturm, Flint,
+Tasslehoff, Goldmoon, and Riverwind (Caramon's opinion was already covered
+by the migrated `caramon`/`brother` entry, so it wasn't duplicated) —
+grounded in the Solace reunion scene already used throughout this file
+(`.research/dat_full.txt` lines ~790–880: the hourglass eyes, golden skin,
+Par-Salian, the Staff of Magius, and "blood flowing from his mouth" all
+come directly from that scene), `.research/dla_full.txt` (the three
+orders/robes and their moons), and two freshly-extracted passages —
+`.research/wott_full.txt` lines 12952–12993 (his mother: "magic in her
+blood," weak-willed, died young, watched over by a grief-stricken
+Raistlin — neither parent is ever named in this project's source
+library) and `.research/testott_full.txt` line 4784 (his father: "a poor
+woodcutter," a "perpetual look of worry and care"). **The generic Kitiara
+pool entry is deliberately left ungated, not split into a `SUBJECT_WHEN`
+pair** — unlike the gated content below, this was verified directly from
+the schedule already in this file rather than left as an open sourcing
+question: every one of Raistlin's talkable windows ends by day 30
+(`silvanesti 25 30`; `palanthas 83 83` has no `SAY` and was never
+talkable), and Kitiara isn't revealed in the source text as a Dragon
+Highlord until the `high_clerist_tower 81 81` siege (see "Sturm's death"
+below) — a day the player can never actually ask Raistlin about her on.
+**Gated content actually shipped this pass: Khisanth, Verminaard, and the
+Disks of Mishakal, all gated at day 4 (`xak_tsaroth`'s own `PRESENCE`
+start), plus a two-stage "true gods" pair at the same boundary.** All four
+follow the same reasoning the spec's own Fistandantilus sharp case laid
+out: *this file's already-modeled timeline*, not book chronology, decides
+the gate. All three names are established (to the reader) in the same
+Xak Tsaroth sequence — Mishakal's temple vision (`.research/dat_full.txt`
+lines 6990–7035: the Disks named directly, "the ancient and powerful black
+dragon, Khisanth" named at line 7030) and the draconians' cage-camp scene
+a little earlier (line 6075: "confer with Lord Verminaard about the
+staff"). Raistlin isn't the on-page POV witness for either specific
+passage — the vision is Goldmoon's alone, and he's most likely off with
+Bupu when the cage scene plays out — but per Milestone 24's own standing
+"whole company experiences a stop together" abstraction (all 8 Heroes
+"simultaneously" present at a stop, not a literal single-path simulation),
+that's not treated as disqualifying the way Goldmoon's Pax Tharkas split
+was: that split is the book explicitly sending her elsewhere entirely
+(see "Goldmoon's Pax Tharkas content deliberately stayed as-is" above);
+nothing here sends Raistlin anywhere. Each of the three names gets a
+`SUBJECT_WHEN 0 3`/`SUBJECT_WHEN 4 -1` pair — days 0–3 an in-voice "I
+don't know that name yet" snap (per section 5.4's "he doesn't know it
+yet" category: a forward-reference that's still worth a reaction, not a
+generic dismissal), days 4-onward the real, specific answer — matching
+the same evolving-answer shape as `gods`/`mishakal`/`faith`. The Disks
+entry uses `disks`/`tablets` as its keywords, deliberately *not*
+`mishakal`, to avoid colliding with the true-gods pair's own `mishakal`
+keyword (a real distinction, not just a collision dodge: one is the
+theological "are the gods real" question, the other is "what is that
+specific platinum object").
+
+**Takhisis moved to the always-true set (5.2), not gated, for a concrete
+reason: her proper name never appears anywhere in this project's novel
+library** (`.research/dat_full.txt` has zero hits for `Takhisis` — the
+name exists only in `.research/dla_layout.txt`, the Dragonlance Adventures
+*rulebook*, not a scene). The novels only ever use "the Queen of
+Darkness"/"the Dark Queen," and that title is already in play from the
+book's own opening prologue epigraph (`dat_full.txt` line 44), well before
+day 0. Since there's no in-novel scene marking the moment anyone learns
+her proper name, there's nothing to gate — the `takhisis`/`queen`/
+`darkness` keyword list matches what a player might type, not a claim
+that Raistlin has heard that specific word spoken aloud.
+
+**Dropped from this pass, and why:** dragon orbs (this file's *own*
+already-shipped Xak Tsaroth content, Milestone 20, frames Raistlin's vault
+find as Fistandantilus's spellbook, not a dragon orb — "dragon orb" only
+enters this game's established lore later, at Ice Wall/Silvanesti/the
+Tower; forcing Raistlin into contact with the concept here would be
+inventing to fill a gap, the same restraint this file names repeatedly);
+Astinus and Laurana (both first appear well past Raistlin's own last
+talkable window — `silvanesti 25 30`; `palanthas 83 83` has no `SAY` — so
+no in-game moment exists where the player could ask him about either).
+**Also intentionally left for a later pass, despite being well-grounded**
+(the user's own explicit scoping call, not a sourcing gap): a dedicated
+`fistandantilus` name-keyword subject, `draconians`, `bupu`, `cyan`/
+`bloodbane`, `lorac`, and `alhana`/`starbreeze` — see
+`docs/MILESTONES.md`'s NEXT UP for the citations already on file for each.
+
+**Shipped on exactly one window so far** *(historical — see "Widened to a
+character-level pool" above for the current state)*: Raistlin's `PRESENCE
+solace 0 1` (`data/timeline.txt`), the proof of concept for this mechanic.
+Three real subjects — `kitiara`/`kit`/`sister`/`half-sister` (freshly
+written, grounded in `.research/dat_full.txt`'s actual Inn-of-the-Last-Home
+letter scene: "Who knows with Kitiara? ... she has sworn allegiance to
+another. She is, after all, a mercenary."), `caramon`/`brother`, and
+`magic`/`test`/`towers`/
 `sorcery`/`tower` (a keyword-reachable variant of the existing `TOPIC "The
 Towers of High Sorcery"` lore, not a duplicate content change to that
 `TOPIC`) — plus a `SUBJECT_UNKNOWN` in his own dismissive voice. No other
