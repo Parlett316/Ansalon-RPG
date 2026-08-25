@@ -2,20 +2,22 @@
 
 Nothing in flight.
 
-Milestone 75 (Raistlin's deferred second "ask about anything" group --
-draconians, Fistandantilus, Bupu, Alhana Starbreeze, Cyan Bloodbane, Lorac)
-just shipped -- see `docs/MILESTONES.md`'s Milestone 75 entry and
+Milestone 76 (widened "ask about anything" to the other seven Heroes --
+Tanis, Caramon, Flint, Goldmoon, Riverwind, Sturm, Tasslehoff) just
+shipped -- see `docs/MILESTONES.md`'s Milestone 76 entry and
 `docs/TIMELINE_NOTES.md`'s "Ask about anything" section for the full
-mechanism and sourcing. In brief: six new character-level `SUBJECT_WHEN`
-pairs added to `data/timeline.txt`'s `CHARACTER raistlin` block, each gated
-at the day the window establishing it opens (`darken_wood`/`xak_tsaroth`/
-`tarsis`/`silvanesti`). Pure data, no `.cpp`/`.h` changes, no new grammar.
-Verified via a clean rebuild (zero new warnings) and the piped smoke test,
-including confirming no new `TimelineLoader` keyword-collision warnings.
-**Interactive verification still needs the user's own keyboard** -- asking
-Raistlin about each new subject, both before and after its gate day, in a
-real playthrough.
+mechanism, gating table, and sourcing. Pure data (`data/timeline.txt`,
+~85 new `SUBJECT`/`SUBJECT_WHEN` lines across the seven `CHARACTER`
+blocks), no `.cpp`/`.h`/grammar changes. Verified via a clean rebuild
+(zero new warnings) and the piped smoke test, confirming stderr shows no
+new `TimelineLoader` keyword-collision warnings from any of the new
+content. **Interactive verification still needs the user's own
+keyboard** -- asking each of the seven Heroes about themselves, each
+other, and testing that the Sturm/81, Raistlin/83, and Flint/103 gated
+answers actually change on the right side of each boundary, in a real
+playthrough.
 
-Next backlog candidate (not started, not committed): widening "ask about
-anything" to the other seven Heroes' own character-level pools -- see
-`docs/MILESTONES.md`'s NEXT UP item 6.
+Next backlog candidates (not started, not committed) -- see
+`docs/MILESTONES.md`'s NEXT UP: widening the color palette further
+(item 6), or zone-NPC `SUBJECT` content beyond Milestone 71's initial
+pass (item 7).

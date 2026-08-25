@@ -388,6 +388,63 @@ already been found and left on file in `docs/MILESTONES.md`'s NEXT UP; this
 pass re-verified each one directly against the `.research/*.txt`
 extractions before writing.
 
+**Widened to the other seven Heroes — as of Milestone 76.** Tanis,
+Caramon, Flint, Goldmoon, Riverwind, Sturm, and Tasslehoff each gained
+their own character-level `SUBJECT` pool (`data/timeline.txt`, between
+`NAME` and their first `PRESENCE`, same layout Raistlin's pool already
+uses): 1–2 self-identity subjects grounded in that character's own
+existing `PRESENCE`/`SAY`/`TOPIC` lines generalized into an always-askable
+form (the same "promote a window `TOPIC` into the character pool" move
+Milestone 72 used for Raistlin's Solace-only magic/towers content — e.g.
+Goldmoon's Solace-only `TOPIC "The Blue Crystal Staff"` became a
+character-level `staff,crystal,blue` subject, Flint's Solace-only `TOPIC
+"The Cataclysm"` became `dwarf,hill,thorbardin,cataclysm`), plus one
+opinion `SUBJECT` about each of the other seven Heroes, plus a
+`SUBJECT_UNKNOWN` in their own voice. No fresh PDF extraction was needed —
+every fact and relationship beat was already sourced and shipped in this
+project's own existing dialogue for these seven; this pass only
+generalizes it, adding no new canon claims.
+
+**Day-gating, applied only where an ungated answer would go stale or
+contradict a later window.** Three plot events this file's own schedule
+already fixes mean an asker whose tracked schedule extends past the
+boundary needs a `SUBJECT_WHEN` pair, not a single `SUBJECT`, same
+principle as the Khisanth/Verminaard/Disks group above:
+
+- **Sturm**: not-yet-a-Knight through day 75, sworn Knight in fact from
+  day 76 (`high_clerist_tower 76 80`'s own `PRESENCE` start); dies day 81
+  (`high_clerist_tower 81 81`, no `SAY` — his own already-shipped device).
+  Sturm's own `knighthood,knights,solamnia,code,measure,vow` self-subject
+  is gated at day 76. Every other Hero's opinion-of-Sturm subject is gated
+  at day 81 *except* Sturm's own schedule needs no gate on anyone else
+  (his last talkable day is 80, before Raistlin's day-83 collapse or
+  Flint's day-103 death).
+- **Raistlin**: ambiguous collapse at `palanthas 83 83` (no `SAY` —
+  already shipped, deliberately unresolved, never confirmed dead). Every
+  other Hero whose own schedule extends past day 83 gets their
+  opinion-of-Raistlin subject gated there, framed as worry and
+  uncertainty on the far side, never as mourning — matching the existing
+  ambiguous framing from Milestone 44 and Tasslehoff's own Palanthas
+  `TOPIC` content.
+- **Flint**: dies day 103 (`godshome 103 103`, no `SAY` — already
+  shipped). Only Tanis, Caramon, and Tasslehoff's schedules extend past
+  day 103 (to `neraka 105 107`), so only their opinion-of-Flint subjects
+  are gated there; Goldmoon and Riverwind's own schedules end at
+  `kalaman 100 100`, before the boundary, so their opinion-of-Flint stays
+  a single ungated `SUBJECT`.
+
+Post-boundary answers stay consistent with what was already shipped:
+Sturm and Flint spoken of with grief in past tense (matching the existing
+`kalaman 100 100`/`godshome 103 103` `TOPIC` content), Raistlin spoken of
+with worry, never confirmed dead. Verified clean — the piped smoke test's
+stderr showed no new `TimelineLoader` keyword-collision warnings from any
+of the roughly 85 new `SUBJECT`/`SUBJECT_WHEN` lines; the collision check
+runs per-`CHARACTER` block, so the seven new pools can't collide with each
+other or with Raistlin's, only within their own pool, and each was kept
+collision-free by construction (the one warning that does still fire, the
+pre-existing Solace-window Kitiara override on Raistlin's own pool,
+predates this milestone).
+
 **Shipped on exactly one window so far** *(historical — see "Widened to a
 character-level pool" above for the current state)*: Raistlin's `PRESENCE
 solace 0 1` (`data/timeline.txt`), the proof of concept for this mechanic.
@@ -398,10 +455,12 @@ another. She is, after all, a mercenary."), `caramon`/`brother`, and
 `magic`/`test`/`towers`/
 `sorcery`/`tower` (a keyword-reachable variant of the existing `TOPIC "The
 Towers of High Sorcery"` lore, not a duplicate content change to that
-`TOPIC`) — plus a `SUBJECT_UNKNOWN` in his own dismissive voice. No other
-Hero, window, or zone NPC has `SUBJECT` content yet — same "prove it out
-narrow, widen later" restraint `SAY_IF`/`TOPIC` (Milestone 19),
-`TALK_AFTER`, and `TALK_BEFORE` each followed.
+`TOPIC`) — plus a `SUBJECT_UNKNOWN` in his own dismissive voice. At the
+time, no other Hero, window, or zone NPC had any `SUBJECT` content — same
+"prove it out narrow, widen later" restraint `SAY_IF`/`TOPIC` (Milestone
+19), `TALK_AFTER`, and `TALK_BEFORE` each followed (the other seven Heroes
+got their own character-level pools at Milestone 76, per above; zone NPCs
+remain untouched).
 
 **Scoped to Solace, and to the 8 Heroes — as of Milestone 19.** This pass
 went deep on the single richest scene already in the game (the Inn of the

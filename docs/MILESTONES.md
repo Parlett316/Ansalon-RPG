@@ -1841,6 +1841,40 @@ section).
     keyboard, same `_getch()` limitation as every prior dialogue milestone.
     See `docs/TIMELINE_NOTES.md`'s "Ask about anything" section.
 
+76. Widened "ask about anything" to the other seven Heroes -- the NEXT UP
+    item 6 Milestone 75 deferred, built all seven at once rather than
+    proving the pattern on one first (asked directly, user's explicit
+    choice). Tanis, Caramon, Flint, Goldmoon, Riverwind, Sturm, and
+    Tasslehoff each gained a character-level `SUBJECT` pool in
+    `data/timeline.txt` -- 1-2 self-identity subjects generalized from
+    that character's own existing `PRESENCE`/`SAY`/`TOPIC` content (the
+    same "promote a window `TOPIC` into the character pool" move
+    Milestone 72 used for Raistlin), one opinion subject about each of
+    the other seven Heroes, and a `SUBJECT_UNKNOWN` in their own voice --
+    roughly 85 new `SUBJECT`/`SUBJECT_WHEN` lines, zero `.cpp`/`.h`/
+    grammar changes. No fresh PDF extraction needed: every fact and
+    relationship beat was already sourced and shipped in this project's
+    own existing dialogue for these seven; this pass only generalizes it.
+    Day-gated only the specific (asker, subject) pairs where an ungated
+    answer would otherwise contradict a later window: Sturm's own
+    knighthood self-subject (day 76, aspirant vs. sworn) and every
+    surviving Hero's opinion-of-Sturm (day 81, his death),
+    opinion-of-Raistlin (day 83, his ambiguous Palanthas collapse -- never
+    confirmed dead, matching the existing Milestone 44 framing), and
+    opinion-of-Flint (day 103, his death, only for Tanis/Caramon/
+    Tasslehoff, whose schedules actually extend past it) -- see
+    `docs/TIMELINE_NOTES.md`'s "Ask about anything" section for the full
+    per-boundary breakdown. Verified via a clean `/W4` rebuild (zero new
+    warnings, pure data) and the piped smoke test, confirming stderr shows
+    no new `TimelineLoader` keyword-collision warnings (the collision
+    check runs per-`CHARACTER` block, so the seven new pools can't
+    collide with each other or Raistlin's; the one warning that still
+    fires, the pre-existing Kitiara Solace-window override, predates this
+    milestone). No throwaway self-test needed -- pure data, existing
+    grammar, same precedent as Milestones 47-50/75. Real in-terminal
+    free-text asking across all seven still needs the user's own keyboard,
+    same `_getch()` limitation as every prior dialogue milestone.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1891,23 +1925,16 @@ session's work.
    the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
    Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
    future pass.
-6. **Widen "ask about anything" to the other seven Heroes** -- Milestone 71
-   shipped the engine; Milestone 72 shipped the character-level
-   subject-pool mechanism (`SUBJECT_WHEN`, day-gating) and a full pass for
-   Raistlin (always-true content plus his gated Khisanth/Verminaard/
-   Disks-of-Mishakal/true-gods/Takhisis group); Milestone 75 shipped
-   Raistlin's second deferred group (draconians/Fistandantilus/Bupu/Alhana/
-   Cyan Bloodbane/Lorac). What's left is the other seven Heroes' own
-   character-level pools from scratch -- same "prove it out narrow, widen
-   later" pattern `TALK_AFTER`/`TALK_BEFORE` already followed, and the same
-   scope-first conversation Milestone 75 had before starting (pick one Hero
-   to prove the pattern generalizes, or go wide -- ask, don't assume). See
-   `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full mechanism.
-   Zone-NPC `SUBJECT` content beyond what Milestone 71 already shipped
-   remains untouched either way.
-7. **Widen the "Bob's game" color palette to the remaining plain organic
+6. **Widen the "Bob's game" color palette to the remaining plain organic
    screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
    combat only; the character sheet, spellbook, shop, inventory, journal,
    help, and ask-input screens all still render in plain uncolored text
    through `writeBoxed`'s original overload. Only worth doing if the user
    actually wants full coverage -- ask first, don't assume.
+7. **Zone-NPC `SUBJECT` content beyond Milestone 71's initial pass** --
+   all eight Heroes now have full character-level "ask about anything"
+   pools (Milestones 72/75/76), but zone-native NPCs (Otik, Tika, the
+   Seeker Guard, the Forestmaster, the Fortress Guard, etc.) still only
+   have whatever `SUBJECT` content Milestone 71 originally shipped for
+   them. A widening pass here would need its own scope-first conversation
+   the same way Milestone 76 got one.
