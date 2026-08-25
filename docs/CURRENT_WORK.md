@@ -2,13 +2,13 @@
 
 Nothing in flight.
 
-Milestone 69 (character creation redesign: screen-per-step, colorized,
-Method V dice) just shipped -- see `docs/MILESTONES.md`'s Milestone 69
-entry, `docs/CHARACTER_NOTES.md`'s "Ability score generation" section,
-and `docs/ARCHITECTURE.md`'s matching Milestone 69 addendum for the full
-design/rationale. Verified via a throwaway self-test
-(`roll4d6DropLowest()` bounds and average), a clean `/W4` rebuild, and a
-complete scripted piped run through the real executable end-to-end
-(confirmed correct screens/colors/race-adjustment math, and that the
-resulting character reaches the real game loop). Actually seeing the
-colors in a real terminal still needs the user's own keyboard.
+Milestone 70 (widened aftermath dialogue -- `TALK_AFTER` -- to Haven's
+Seeker Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel,
+and Kalaman's City Watchman) just shipped -- see `docs/MILESTONES.md`'s
+Milestone 70 entry and `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section
+for the full list and rationale. Pure data content, no `.cpp`/`.h`
+changes. Verified via a clean `/W4` rebuild (zero new warnings) and the
+piped smoke test (confirms all four modified zone files still parse).
+Interactive verification (walking to each zone after its `PRESENCE`
+window(s) have closed, confirming the aftermath line fires once and falls
+back to `TALK_AGAIN` after) still needs the user's own keyboard.

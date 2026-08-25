@@ -1543,6 +1543,41 @@ section).
     clean `/W4` rebuild, zero new warnings. Actually *looking* at the
     colors in a real terminal is left to the user.
 
+70. Widened aftermath dialogue (`TALK_AFTER`) beyond Otik -- the direct
+    follow-up NEXT UP item #5 named after Milestone 66 shipped the
+    mechanism as a single proof of concept. Four more POIs, picked exactly
+    from that item's own named candidates: `data/zones/haven.txt`'s `G`
+    (Seeker Guard, reacting to the shared `PRESENCE haven 2 3` window),
+    `data/zones/xak_tsaroth.txt`'s `S` (Ruin-Scavenger, `PRESENCE
+    xak_tsaroth 4 6`), `data/zones/qualinesti.txt`'s `E` (Elven Sentinel,
+    `PRESENCE qualinesti 7 9`), and `data/zones/kalaman.txt`'s `G` (City
+    Watchman, covering both `PRESENCE kalaman 90 92` and `100 100` in one
+    line, since `latestDayEnd` only fires once every window at that
+    location has closed). Every line reframes a detail already established
+    in that location's own `PRESENCE` flavor text or the POI's own existing
+    voice rather than inventing new lore -- the Seeker Guard's line
+    callbacks to Tasslehoff's `PRESENCE` line badgering that exact guard
+    with theology questions (and the guard's own pre-existing "headache"
+    joke); the Ruin-Scavenger's line callbacks to Tasslehoff diving down a
+    stairwell to poke through the ruins, a fellow scavenger in effect; the
+    Elven Sentinel's line callbacks to Tasslehoff being trailed by two
+    elven sentries (her being one of them); and the City Watchman's line
+    callbacks to his own established "light fingers"/purses joke and the
+    zone's already-existing locked Cartographer's Stall POI, which
+    Tasslehoff's own `PRESENCE` line has him picking. Same "reframe an
+    existing NPC's established voice, don't invent a new one" approach the
+    quest-widening pass (Milestone 52) already used successfully. Pure data
+    content -- zero `.cpp`/`.h` changes, since the `TALK_AFTER` grammar,
+    parser, and runtime behavior were already generic and zone-agnostic.
+    Verified via a clean `/W4` rebuild (zero new warnings) and the piped
+    smoke test (confirms all four modified zone files still parse); no
+    throwaway self-test needed, same call Milestone 47 made for a similarly
+    pure-content pass. Interactive verification (reaching each zone after
+    its `latestDayEnd`, confirming the aftermath line fires once and falls
+    back to `TALK_AGAIN` after) still needs the user's own keyboard, same
+    limitation every prior `TALK_AFTER`/`TALK_BEFORE` milestone has flagged.
+    See `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1580,10 +1615,9 @@ session's work.
    game logic (`World`, `ZoneCatalog`, `Timeline`, `MonsterCatalog`,
    combat, quests) stays untouched. See `docs/ARCHITECTURE.md`'s "Why
    `Console` is the only platform-specific file."
-5. **Widen aftermath dialogue (`TALK_AFTER`) beyond Otik** -- Milestone 66
-   shipped the mechanism with one proof-of-concept POI. Every other zone
-   with a talkable NPC and real `PRESENCE` content (Haven's Seeker Guard,
-   Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel, Kalaman's City
-   Watchman, etc.) is a candidate -- same "reframe an existing NPC's
-   established voice, don't invent a new one" approach the quest-widening
-   pass (Milestone 52) already used successfully.
+5. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 70 took
+   four of the five candidates named above; every other zone with a
+   talkable NPC and real `PRESENCE` content (Darken Wood's Forestmaster,
+   the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
+   Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
+   future pass.

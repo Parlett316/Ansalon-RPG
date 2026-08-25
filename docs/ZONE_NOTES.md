@@ -470,16 +470,26 @@ and it only applies to zone-native POIs, never a `TIMELINE_ANCHOR` candidate
 encounters" above) -- same one-flat-mechanism-first restraint `BOAT`/
 `GRANTS_ITEM`/`BED` each shipped with.
 
-As of this feature's introduction, exactly one POI carries `TALK_AFTER`:
-`data/zones/solace_inn.txt`'s `O` (Otik), referencing the shared `PRESENCE
+Shipped on five POIs so far. `data/zones/solace_inn.txt`'s `O` (Otik) was the
+original Milestone 66 proof of concept, referencing the shared `PRESENCE
 solace 0 1` window (all 8 Heroes) and the day 2-3 Haven/Darken Wood split
 that follows it (`docs/TIMELINE_NOTES.md`) -- deliberately hedged ("some say
 ... others swear ...") rather than picking one, matching that same window's
-own established two-versions-of-one-leg ambiguity. Widening this to other
-zones (Haven's Seeker Guard, Xak Tsaroth, Kalaman's Watchman, etc.) is
-natural follow-up work, not done this pass -- same "one proof-of-concept
-first" precedent `road_wolves` set for the quest engine (Milestone 51, widened
-in Milestone 52).
+own established two-versions-of-one-leg ambiguity. Milestone 70 then widened
+it to four more, same "reframe an existing NPC's established voice" approach
+the quest-widening pass (Milestone 52) already used successfully:
+`data/zones/haven.txt`'s `G` (Seeker Guard, `PRESENCE haven 2 3`),
+`data/zones/xak_tsaroth.txt`'s `S` (Ruin-Scavenger, `PRESENCE xak_tsaroth 4
+6`), `data/zones/qualinesti.txt`'s `E` (Elven Sentinel, `PRESENCE qualinesti
+7 9`), and `data/zones/kalaman.txt`'s `G` (City Watchman, covering both
+`PRESENCE kalaman 90 92` and `100 100`, since `latestDayEnd` only fires once
+every window at that location has closed). Each ties back into a detail from
+that character's own `PRESENCE` flavor text or the POI's own established
+voice -- e.g. the Watchman's line callbacks to his own "light fingers" joke
+and the zone's existing locked Cartographer's Stall POI, and the Seeker
+Guard's line callbacks to Tasslehoff's `PRESENCE` line badgering that exact
+guard with theology questions. Every other zone with a talkable NPC and real
+`PRESENCE` content remains a candidate for a future pass.
 
 ## Anticipation dialogue: POIs that react before the Heroes arrive
 

@@ -114,9 +114,11 @@ real reactive dialogue based on your own race/class/alignment, branching
 topics to ask about, and real memory of whether you've spoken before, not
 just one static line forever — carried whether you met them out in the
 open or found them indoors. Arrive somewhere after the Heroes have already
-moved on and it shows: Otik at the Inn of the Last Home has his own thing
-to say the first time you talk to him once their stay there has passed,
-even if you'd already met him before they ever arrived. Some places, like Ice Wall Castle, sit on
+moved on and it shows: Otik at the Inn of the Last Home, Haven's Seeker
+Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel, and
+Kalaman's City Watchman each have their own thing to say the first time you
+talk to them once the Heroes' stay there has passed, even if you'd already
+met them before the Heroes ever arrived. Some places, like Ice Wall Castle, sit on
 their own sea-locked landmass with no road to them at all — talk to the
 Knight's Runner in Tarsis to arrange passage, and you can then cross open
 water the same way you cross any other terrain (the ocean itself, not a
