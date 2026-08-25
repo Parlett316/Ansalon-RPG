@@ -2215,6 +2215,29 @@ section).
     limitation every prior combat/content milestone has flagged. See
     `docs/COMBAT_NOTES.md`'s "Town-proximity monster pools".
 
+84. Zeroed shallow water's encounter chance -- a follow-up bug the user hit
+    immediately after Milestone 83, this time on the water: sailing (via
+    `GameState::hasBoat`, Milestone 36) was triggering "a lot of monster
+    battles in ocean squares." True ocean (`~`) and the Blood Sea (`!`)
+    were already 0% in `world::Terrain.cpp`'s `kTable`, explicitly because
+    "no sea monsters exist in the monster roster yet" -- but shallow water
+    (`r`) still carried a leftover 5%, set at Milestone 27 before boats
+    existed. `docs/MAP_NOTES.md` already documents that `r` in the
+    generated grid is essentially always coastal water, not real river
+    fords (thin river lines never survived the discovery-phase
+    downsampling), so a boat route along any coastline crosses a long run
+    of `r` tiles, each independently rolling that 5% -- exactly the "land
+    monster ambushes you mid-voyage" problem the ocean/Blood Sea 0% was
+    already written to prevent, just missed for this one code. Fixed by
+    zeroing `r`'s `encounterChancePercent` in `Terrain.cpp`'s `kTable`
+    (was 5), bringing all water terrain in line. A single invented-tuning
+    constant, not a new mechanism -- no self-test needed (nothing to
+    assert beyond what the compiler already checks for a table-literal
+    edit); verified via a clean `/W4` rebuild (zero new warnings) and the
+    piped smoke test (real save moved aside, hash-confirmed identical
+    afterward). See `docs/COMBAT_NOTES.md`'s "Encounters: a per-terrain
+    chance while traveling".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

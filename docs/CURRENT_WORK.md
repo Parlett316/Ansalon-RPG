@@ -2,24 +2,18 @@
 
 Nothing in flight.
 
-Milestone 83 (town-proximity monster gating -- a new `MIN_TOWN_DISTANCE`
-field keeps Ogre and the higher-tier Draconians (Kapak/Bozak/Sivak/Aurak)
-away from Solace and the other civilian towns, and Thanoi's `TERRAIN_BIAS`
-toward glacier was tightened to a hard `ONLY_TERRAIN` lock) shipped
-2026-08-25, prompted directly by the user hitting the gap in play: too many
-high-powered Draconians/Ogres turning up right outside Solace, and Thanoi
-appearing outside its sourced Icewall Glacier habitat. Real engine change
-(`combat::Monster`/`MonsterCatalog`/`MonsterLoader`, one new
-`GameLoop::tryMoveOverworld` distance computation) plus a `data/
-monsters.txt` content pass -- verified via a throwaway self-test (16
-assertions, deleted afterward), a clean `/W4` rebuild, and the piped smoke
-test (real save moved aside and restored byte-identical afterward). See
-`docs/MILESTONES.md` and `docs/COMBAT_NOTES.md`'s "Town-proximity monster
-pools" for what shipped, the exact distance values, and what was
-deliberately left alone. Interactive verification (actually walking near
-vs. far from Solace and confirming which monsters turn up) still needs the
-user's own keyboard, same limitation every prior combat/content milestone
-has flagged.
+Milestones 83-84 (2026-08-25) both shipped from the same session, both
+prompted directly by the user hitting gaps in play: Milestone 83 added
+town-proximity monster gating (`MIN_TOWN_DISTANCE`, `ONLY_TERRAIN`) so
+Ogre/high-tier Draconians stay away from Solace and Thanoi is glacier-only;
+Milestone 84 zeroed shallow water's leftover 5% encounter chance, which was
+ambushing the player with land monsters while sailing. Both verified via
+clean `/W4` rebuilds and the piped smoke test (real save protected each
+time). See `docs/MILESTONES.md` for full writeups and
+`docs/COMBAT_NOTES.md`'s "Town-proximity monster pools"/"Encounters"
+sections for what shipped and what's still deliberately left alone.
+Interactive confirmation (walking/sailing and watching which monsters turn
+up) still needs the user's own keyboard.
 
 **Note on the live save**: `build/Debug/save.txt` is still the
 hand-edited maxed-stat (all six scores 18) Human Fighter built for the

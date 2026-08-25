@@ -309,7 +309,17 @@ Milestone 27 the chance varies by terrain — `world::TerrainInfo` gained an
 `encounterChancePercent` field alongside the existing `minutesToCross`,
 filled in per terrain in `Terrain.cpp`'s `kTable` (roads safest at 2%,
 mountains/forest riskiest at 12%/11%; ocean/Blood Sea/uncharted are 0,
-though they're impassable anyway so it never gets checked). Like
+though ocean/Blood Sea were impassable anyway when this was written so it
+never got checked). **All water terrain is 0% as of Milestone 84** —
+shallow water (`r`) still had a nonzero 5% until then, an oversight from
+before `GameState::hasBoat` (Milestone 36) existed: per
+`docs/MAP_NOTES.md`, `r` is essentially always coastal water in the
+generated grid (real river fords never survived downsampling), so any
+boat route along a coastline crossed a long run of `r` tiles, each
+independently rolling that 5% — reported directly by the user as "a lot
+of monster battles in ocean squares." Zeroed to match ocean/Blood Sea's
+already-established reasoning: no sea monsters exist in the roster, so a
+nonzero chance here can only draw a land monster into the water. Like
 `minutesToCross`, these numbers are tuned for pacing, not sourced from
 anything. Monster *selection* is terrain-weighted as of Milestone 57 — see
 "Terrain-specific monster pools" below.
