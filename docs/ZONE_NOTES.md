@@ -564,11 +564,21 @@ alongside Sturm/Flint/Tasslehoff), `data/zones/silvanesti.txt`'s `W`
 without naming Alhana Starbreeze or Tika), and `data/zones/palanthas.txt`'s
 `K` (Knight of the Watch, covering both `83 83` and `83 89` -- Raistlin's
 ambiguous collapse tied to Laurana's rise to Golden General, a detail his
-own pre-existing `TOPIC K "A City Under Watch"` already referenced). Three
-real candidates remain (Pax Tharkas's Fortress Guard, Tarsis's Old Sailor/
-Knight's Runner, Neraka's Deserting Guard); Godshome has no talkable
-zone-native NPC at all and stays out of scope regardless -- see
-`docs/MILESTONES.md`'s NEXT UP item 5.
+own pre-existing `TOPIC K "A City Under Watch"` already referenced).
+Milestone 80 then closed out the backlog with the last three real
+candidates: `data/zones/pax_tharkas.txt`'s `G` (Fortress Guard,
+`PRESENCE pax_tharkas 10 12` -- the Sla-Mori/chain-room climax, kept in
+his own understated, uninvolved voice), `data/zones/tarsis.txt`'s `S`
+(Old Sailor, `PRESENCE tarsis 20 22` -- ties into his own established
+wizard/outsider hostility, with Raistlin's library hunt getting the most
+attention), and `data/zones/neraka.txt`'s `G` (Deserting Guard,
+`PRESENCE neraka 105 107` -- only the characters actually present at
+Neraka, not all eight, filtered through his own shaken,
+too-busy-running-to-ask voice); Tarsis's other candidate, the Knight's
+Runner, was deliberately left alone to keep the established "one
+`TALK_AFTER` per zone" pattern intact. Thirteen POIs now, and every real
+candidate is done -- Godshome has no talkable zone-native NPC at all and
+stays out of scope permanently.
 
 ## Anticipation dialogue: POIs that react before the Heroes arrive
 

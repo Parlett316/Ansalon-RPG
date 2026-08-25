@@ -2,13 +2,17 @@
 
 Nothing in flight.
 
-Milestone 79 (zone-NPC `SUBJECT` content -- "ask about anything" widened to
-all 21 talkable zone-native NPCs) shipped 2026-08-25. Pure data, zero
-`.cpp`/`.h` changes, verified via a clean rebuild and the piped smoke
-test -- see `docs/MILESTONES.md` and `docs/ZONE_NOTES.md`'s "Ask about
-anything" section for what shipped and why. Real in-terminal free-text
-asking across the 21 new NPCs still needs the user's own keyboard
-(`_getch()` can't be piped), same limitation every prior `SUBJECT`/picker
+Milestone 80 (aftermath dialogue `TALK_AFTER` widened to the last three
+real zones -- Pax Tharkas's Fortress Guard, Tarsis's Old Sailor, Neraka's
+Deserting Guard) shipped 2026-08-25. Pure data, zero `.cpp`/`.h` changes,
+verified via a clean rebuild and the piped smoke test (real save moved
+aside and restored byte-identical afterward) -- see `docs/MILESTONES.md`
+and `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section for what shipped
+and why. This closes the `TALK_AFTER` backlog entirely: every real
+candidate is done, Godshome permanently out of scope (no talkable
+zone-native NPC). Real in-terminal verification (reaching each zone after
+its `latestDayEnd`, confirming each line fires once) still needs the
+user's own keyboard, same `_getch()` limitation every prior `TALK_AFTER`
 milestone has flagged.
 
 **Note on the live save**: `build/Debug/save.txt` is still the
@@ -22,6 +26,5 @@ the user starts over.
 Next backlog candidates (not started, not committed) -- see
 `docs/MILESTONES.md`'s NEXT UP: an instant-defeat spell's interactive
 verification (item 1), real Draconian mechanics (item 2), SFML-backed
-rendering revisit with real sprite art (item 3), widening `TALK_AFTER` to
-three remaining zones (item 4), or widening the color palette further
-(item 5).
+rendering revisit with real sprite art (item 3), or widening the color
+palette further (item 4).

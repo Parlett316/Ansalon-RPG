@@ -2016,6 +2016,43 @@ section).
     user's own keyboard, same `_getch()` limitation every prior
     `SUBJECT`/picker milestone has flagged. See `docs/ZONE_NOTES.md`'s
     "Ask about anything" section.
+80. Widened aftermath dialogue (`TALK_AFTER`) to the last three real zones --
+    NEXT UP item 4, closing out the backlog Milestone 66 started and
+    Milestones 70/77 widened. `data/zones/pax_tharkas.txt`'s `G` (Fortress
+    Guard, `PRESENCE pax_tharkas 10 12`), `data/zones/tarsis.txt`'s `S` (Old
+    Sailor, `PRESENCE tarsis 20 22`), and `data/zones/neraka.txt`'s `G`
+    (Deserting Guard, `PRESENCE neraka 105 107`) each gained a `TALK_AFTER`
+    line, same "reframe an existing NPC's established voice using details
+    already in that location's own `PRESENCE` text, epithets not names"
+    technique Milestones 66/70/77 all used. The Fortress Guard's line covers
+    the fortress's Sla-Mori/chain-room climax (all 8 Heroes, Laurana, and
+    Fizban) in his own understated, uninvolved voice; the Old Sailor's line
+    ties into his own pre-existing wizard/outsider hostility (`SUBJECT S
+    wizards,mages,magic`), giving Raistlin's on-page library hunt the most
+    attention since it's the detail his established voice would actually
+    fixate on; the Deserting Guard's line covers only the characters
+    actually present at Neraka per Milestones 46/49 (Tanis, Caramon,
+    Tasslehoff, Laurana, Fizban -- not all eight), filtered through his own
+    shaken, too-busy-running-to-ask voice already established in his
+    `TALK`/`TOPIC`. Tarsis's other named candidate, the Knight's Runner, was
+    deliberately left alone to keep the established "one `TALK_AFTER` per
+    zone" pattern (10/10 prior examples) intact rather than doing two at one
+    zone. Pure data content -- zero `.cpp`/`.h` changes, same generic,
+    zone-agnostic `TALK_AFTER` grammar/parser/`Timeline::latestDayEnd`
+    runtime as every prior milestone in this series; no fresh PDF research
+    needed, since all three lines draw on `PRESENCE` flavor text already in
+    `data/timeline.txt`. Verified via a clean `/W4` rebuild (zero new
+    warnings; no source recompilation at all, pure data) and the piped smoke
+    test (confirms all three edited zone files still parse cleanly, real
+    save moved aside and restored byte-identical afterward); no throwaway
+    self-test needed, same call every prior `TALK_AFTER` content pass made.
+    Interactive verification (reaching each zone after its `latestDayEnd`,
+    confirming each line fires once and falls back to `TALK_AGAIN` after)
+    still needs the user's own keyboard, same limitation every prior
+    `TALK_AFTER` milestone has flagged. Every real `TALK_AFTER` candidate is
+    now done -- Godshome has no talkable zone-native NPC at all and stays
+    out of scope permanently. See `docs/ZONE_NOTES.md`'s "Aftermath
+    dialogue" section.
 
 ## NEXT UP
 
@@ -2054,15 +2091,7 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
-4. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 77 shipped
-   the five candidates named above (Milestone 70 had already taken the four
-   before that). Three real candidates remain, confirmed by direct
-   inspection: Pax Tharkas's Fortress Guard (`G`), Tarsis's Old Sailor (`S`)
-   and/or Knight's Runner (`R`), and Neraka's Deserting Guard (`G`) -- each
-   already talkable, none the zone's own `TIMELINE_ANCHOR`. Godshome has no
-   talkable zone-native NPC at all (deliberately sparse, Milestone 45), so
-   it stays out of scope for this mechanism regardless.
-5. **Widen the "Bob's game" color palette to the remaining plain organic
+4. **Widen the "Bob's game" color palette to the remaining plain organic
    screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
    combat only; the character sheet, spellbook, shop, inventory, journal,
    help, and ask-input screens all still render in plain uncolored text

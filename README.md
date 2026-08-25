@@ -129,11 +129,14 @@ general one. Every talkable zone-native NPC (Otik, Tika, Astinus, every
 zone-native guard/knight/warder, and more — 21 in all) has the same
 "ask about anything" ability too, two subjects each drawn from their own
 established voice. Arrive somewhere after the Heroes have already
-moved on and it shows: Otik at the Inn of the Last Home, Haven's Seeker
-Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel, and
-Kalaman's City Watchman each have their own thing to say the first time you
-talk to them once the Heroes' stay there has passed, even if you'd already
-met them before the Heroes ever arrived. Some places, like Ice Wall Castle, sit on
+moved on and it shows, on thirteen POIs now: Otik at the Inn of the Last
+Home, Haven's Seeker Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's
+Elven Sentinel, Darken Wood's Forestmaster, the Tower's Garrison Knight,
+Ice Wall's Young Knight, the Silvanesti Warder, Palanthas's Knight of the
+Watch, Kalaman's City Watchman, Pax Tharkas's Fortress Guard, Tarsis's Old
+Sailor, and Neraka's Deserting Guard each have their own thing to say the
+first time you talk to them once the Heroes' stay there has passed, even
+if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle, sit on
 their own sea-locked landmass with no road to them at all — talk to the
 Knight's Runner in Tarsis to arrange passage, and you can then cross open
 water the same way you cross any other terrain (the ocean itself, not a
