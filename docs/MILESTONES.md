@@ -1875,6 +1875,42 @@ section).
     free-text asking across all seven still needs the user's own keyboard,
     same `_getch()` limitation as every prior dialogue milestone.
 
+77. Widened aftermath dialogue (`TALK_AFTER`) to five more zones -- NEXT UP
+    item 5, picked exactly from its own named candidates: `data/zones/
+    darken_wood.txt`'s `U` (the unicorn/Forestmaster, `PRESENCE darken_wood
+    2 3`, all eight Heroes), `data/zones/high_clerist_tower.txt`'s `K`
+    (Garrison Knight, covering both `76 80` and `81 81`), `data/zones/
+    ice_wall.txt`'s `K` (Young Knight, `38 42`), `data/zones/silvanesti.txt`'s
+    `W` (Silvanesti Warder, `25 30`), and `data/zones/palanthas.txt`'s `K`
+    (Knight of the Watch, covering both `83 83` and `83 89`). Same "reframe
+    an existing NPC's established voice using details already in that
+    location's own `PRESENCE` text, refer to Heroes by epithet not name"
+    approach Milestone 70 used successfully -- the Forestmaster's line counts
+    off all eight Heroes' own `darken_wood 2 3` flavor text through her
+    established judging-by-what-a-life-gives-vs-takes voice; the Tower's
+    Garrison Knight's line covers Sturm's Knighting and death, Flint's hand on
+    the ambush lever, and Laurana's eulogy in one witness account; Ice Wall's
+    Young Knight's line covers Laurana's stillness against the Ice Reaver's
+    fear magic alongside Sturm/Flint/Tasslehoff; the Silvanesti Warder's line
+    covers the five-Hero subgroup's river crossing without naming Alhana
+    Starbreeze or Tika, preserving Milestone 59's precedent of keeping this
+    POI generic and separate from her; and Palanthas's Knight of the Watch's
+    line ties Raistlin's ambiguous collapse at the library together with
+    Laurana's rise to Golden General, a detail his own pre-existing `TOPIC
+    K "A City Under Watch"` already referenced. Pure data content -- zero
+    `.cpp`/`.h` changes, since the `TALK_AFTER` grammar, parser, and
+    `Timeline::latestDayEnd`-keyed runtime were already generic and
+    zone-agnostic. Verified via a clean `/W4` rebuild (zero new warnings) and
+    the piped smoke test (confirms all five edited zone files still parse;
+    the one warning in stderr, the pre-existing Kitiara Solace-window
+    override, predates this milestone); no throwaway self-test needed, same
+    call Milestone 70 made for an identical pure-content pass. Interactive
+    verification (reaching each zone after its `latestDayEnd`, confirming
+    each line fires once and falls back to `TALK_AGAIN` after) still needs
+    the user's own keyboard, same limitation every prior `TALK_AFTER`
+    milestone has flagged. See `docs/ZONE_NOTES.md`'s "Aftermath dialogue"
+    section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1919,12 +1955,14 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
-5. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 70 took
-   four of the five candidates named above; every other zone with a
-   talkable NPC and real `PRESENCE` content (Darken Wood's Forestmaster,
-   the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
-   Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
-   future pass.
+5. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 77 shipped
+   the five candidates named above (Milestone 70 had already taken the four
+   before that). Three real candidates remain, confirmed by direct
+   inspection: Pax Tharkas's Fortress Guard (`G`), Tarsis's Old Sailor (`S`)
+   and/or Knight's Runner (`R`), and Neraka's Deserting Guard (`G`) -- each
+   already talkable, none the zone's own `TIMELINE_ANCHOR`. Godshome has no
+   talkable zone-native NPC at all (deliberately sparse, Milestone 45), so
+   it stays out of scope for this mechanism regardless.
 6. **Widen the "Bob's game" color palette to the remaining plain organic
    screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
    combat only; the character sheet, spellbook, shop, inventory, journal,

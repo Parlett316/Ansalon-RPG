@@ -503,7 +503,7 @@ and it only applies to zone-native POIs, never a `TIMELINE_ANCHOR` candidate
 encounters" above) -- same one-flat-mechanism-first restraint `BOAT`/
 `GRANTS_ITEM`/`BED` each shipped with.
 
-Shipped on five POIs so far. `data/zones/solace_inn.txt`'s `O` (Otik) was the
+Shipped on ten POIs so far. `data/zones/solace_inn.txt`'s `O` (Otik) was the
 original Milestone 66 proof of concept, referencing the shared `PRESENCE
 solace 0 1` window (all 8 Heroes) and the day 2-3 Haven/Darken Wood split
 that follows it (`docs/TIMELINE_NOTES.md`) -- deliberately hedged ("some say
@@ -521,8 +521,24 @@ that character's own `PRESENCE` flavor text or the POI's own established
 voice -- e.g. the Watchman's line callbacks to his own "light fingers" joke
 and the zone's existing locked Cartographer's Stall POI, and the Seeker
 Guard's line callbacks to Tasslehoff's `PRESENCE` line badgering that exact
-guard with theology questions. Every other zone with a talkable NPC and real
-`PRESENCE` content remains a candidate for a future pass.
+guard with theology questions. Milestone 77 then widened it to five more,
+the same technique again: `data/zones/darken_wood.txt`'s `U` (the unicorn/
+Forestmaster, `PRESENCE darken_wood 2 3`, all eight Heroes -- reframed
+through her own established "certainty, not a voice" judging voice),
+`data/zones/high_clerist_tower.txt`'s `K` (Garrison Knight, covering both
+`76 80` and `81 81` -- Sturm's Knighting and death, Flint's hand on the
+ambush lever, Laurana's eulogy), `data/zones/ice_wall.txt`'s `K` (Young
+Knight, `38 42` -- Laurana's stillness against the Ice Reaver's fear magic
+alongside Sturm/Flint/Tasslehoff), `data/zones/silvanesti.txt`'s `W`
+(Silvanesti Warder, `25 30` -- the five-Hero river-crossing subgroup,
+without naming Alhana Starbreeze or Tika), and `data/zones/palanthas.txt`'s
+`K` (Knight of the Watch, covering both `83 83` and `83 89` -- Raistlin's
+ambiguous collapse tied to Laurana's rise to Golden General, a detail his
+own pre-existing `TOPIC K "A City Under Watch"` already referenced). Three
+real candidates remain (Pax Tharkas's Fortress Guard, Tarsis's Old Sailor/
+Knight's Runner, Neraka's Deserting Guard); Godshome has no talkable
+zone-native NPC at all and stays out of scope regardless -- see
+`docs/MILESTONES.md`'s NEXT UP item 5.
 
 ## Anticipation dialogue: POIs that react before the Heroes arrive
 
