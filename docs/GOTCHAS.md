@@ -130,7 +130,13 @@ you hit something surprising — that's the whole point of it existing.
   keyword was already claimed" — read the warning's two line numbers
   before assuming it's fine. Author keyword lists specific-before-general
   (e.g. `orb`/`orbs` before anything claiming the bare `dragon`) to avoid
-  the accidental kind.
+  the accidental kind. **This check is off by default** —
+  `TimelineLoader::loadFromFile`'s `reportCollisionWarnings` parameter, set
+  by `main.cpp` only when launched with `--check-timeline` — because a
+  deliberate override (like Raistlin's `kitiara` entries) would otherwise
+  warn on *every single launch forever*, which is not something a player
+  should ever see. Pass `--check-timeline` after editing `timeline.txt` to
+  see these warnings again.
 
 ## Toolchain
 

@@ -118,7 +118,8 @@ void reportKeywordCollisions(const std::string& path, const std::vector<SubjectR
 
 } // namespace
 
-void TimelineLoader::loadFromFile(const std::string& path, Timeline& outTimeline) {
+void TimelineLoader::loadFromFile(const std::string& path, Timeline& outTimeline,
+                                   bool reportCollisionWarnings) {
     std::ifstream file(path);
     if (!file) {
         throw std::runtime_error("Could not open timeline data file: " + path);
@@ -300,7 +301,9 @@ void TimelineLoader::loadFromFile(const std::string& path, Timeline& outTimeline
                 current.schedule.back().subjectUnknown = text;
             }
         } else if (keyword == "END") {
-            reportKeywordCollisions(path, subjectRecords);
+            if (reportCollisionWarnings) {
+                reportKeywordCollisions(path, subjectRecords);
+            }
             outTimeline.addCharacter(std::move(current));
             inCharacter = false;
         } else {

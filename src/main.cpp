@@ -35,7 +35,18 @@ namespace {
 constexpr const char* kStartingLocationId = "solace";
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    // Opt-in diagnostics for a content author checking data/timeline.txt
+    // after an edit -- see TimelineLoader::loadFromFile and
+    // docs/TIMELINE_NOTES.md's "Keyword-collision warning". Off by
+    // default so a normal player launch never prints loader-internal
+    // advisories to the console.
+    bool checkTimeline = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--check-timeline") checkTimeline = true;
+    }
+
+
     // Console's constructor enables ANSI/VT100 escape processing for the
     // lifetime of this scope (Windows only -- see render/Console.cpp) and
     // restores the original console mode when it goes out of scope at the
@@ -84,7 +95,7 @@ int main() {
         // above -- loaded fresh every run, never touched by GameState/save
         // data. See timeline::Timeline and docs/TIMELINE_NOTES.md.
         timeline::Timeline timeline;
-        timeline::TimelineLoader::loadFromFile(dataDir + "/timeline.txt", timeline);
+        timeline::TimelineLoader::loadFromFile(dataDir + "/timeline.txt", timeline, checkTimeline);
 
         // Static content too, same treatment -- see combat::MonsterCatalog
         // and docs/COMBAT_NOTES.md.

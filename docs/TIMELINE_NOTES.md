@@ -271,6 +271,15 @@ day ranges overlap. Authoring rule: order specific keywords before general
 ones (`orb`/`orbs` before anything claiming the bare `dragon`). See
 `docs/GOTCHAS.md`.
 
+This check is **opt-in, off by default** (`TimelineLoader::loadFromFile`'s
+`reportCollisionWarnings` parameter) — a deliberate override like
+Raistlin's `kitiara` entries above fires this warning on *every* load
+forever, since the loader can't tell "deliberate" from "accidental," and
+that's not something a player should see on every launch. Run the exe
+with `--check-timeline` (`ansalon_rpg.exe --check-timeline`, or piped:
+`echo "" | ./build/Debug/ansalon_rpg.exe --check-timeline`) after editing
+`timeline.txt` to see these warnings again.
+
 **The hyphen in `half-sister`.** `game::tokenizeAskInput` keeps a literal
 hyphen inside a word rather than splitting on it or stripping it out —
 confirmed by a throwaway self-test, see `docs/GOTCHAS.md`. Typing
