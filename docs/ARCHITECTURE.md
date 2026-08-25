@@ -1037,6 +1037,82 @@ around already. Safe because `render::Console`'s constructor (which
 enables `ENABLE_VIRTUAL_TERMINAL_PROCESSING` on Windows) always runs at
 the top of `main()`, before `CharacterCreator::run()` is ever called.
 
+## Colored dialogue/picker/combat screens, and re-picking after a talk (Milestone 73)
+
+Two small, unrelated-but-overlapping-scope changes to `GameLoop::pickAndTalk`
+and the "organic" (bordered) screens, requested together.
+
+**The "Bob's game" palette (`\x1b[93m` yellow, `\x1b[96m` cyan, `\x1b[97m`
+white — already used by `drawOverworldFrame`/`drawZoneFrame`'s status panel
+since Milestone 43, and by `CharacterCreator` since Milestone 69) now also
+reaches `drawDialogueFrame`, `drawPickerFrame`, and `drawCombatFrame`** —
+the three "organic" screens a player actually sees while talking to someone
+or fighting. `drawCharacterSheet`/`drawSpellbookFrame`/`drawShopFrame`/
+`drawInventoryFrame`/`drawJournalFrame`/`drawHelpFrame`/`drawAskInputFrame`
+deliberately stay plain, unchanged — narrower scope than "every organic
+screen," matching what was actually asked.
+
+**Why a new `BoxLine` type instead of coloring the existing
+`std::vector<std::string>` pipeline in place**: `colorLine` (Milestone 43)
+only ever colors an already-*exactly-width* line — it pads first, then
+wraps the padded result in a set/reset pair, so the visible width never
+changes. `writeBoxed`'s existing pipeline measures each raw line's width
+*before* padding (to size the box), and `wrapText`'s word-wrap also counts
+by raw character length. Feeding a pre-colored string through either would
+miscount invisible escape bytes as visible ones — the exact trap
+`writeBoxed`'s own comment already warns about for the map/log rows. `struct
+BoxLine { std::string text; const char* color = nullptr; }` sidesteps this:
+a second, parallel `wrapLongLines`/`writeBoxed` overload wraps/measures/pads
+`BoxLine.text` exactly like the plain overload always has, and only applies
+`colorLine` (color-after-padding) when assembling the final exact-width
+`exact` vector, for any line carrying a non-null color. The original plain
+`std::vector<std::string>` overloads are untouched, so every screen not
+listed above needed zero changes.
+
+**Where color landed, and why each choice**: `drawDialogueFrame` colors
+the speaker's name — on its own line, not a colored `"Name: text"` prefix,
+since `BoxLine` can only color a *whole* line safely (same constraint as
+above) — bright yellow, reusing the "named thing in the world" meaning
+`colorLine` already gave `Standing On:` and location/POI glyphs, rather
+than picking a new color arbitrarily. `drawPickerFrame` colors the
+selected row's cursor+text bright white, matching the player's own `@`
+glyph's "must always read clearly" convention — since every "talking to
+someone" picker (Talk to whom?, Ask about..., quest Accept/Decline) and
+Look's own picker share this one function, all of them picked this up for
+free, not just the ones the request named. `drawCombatFrame` colors the
+player's stat line bright white (same "this is you" convention as the
+picker cursor) and the monster's stat line bright red (`\x1b[91m`, not
+previously used anywhere in the project) — a genuinely new color, since
+nothing existing meant "hostile." Combat's own scrolling log lines stay
+plain, matching the precedent that the main screen's action log entries
+are plain too (only labels/named-things are colored, never free-form
+prose).
+
+**Verified via the throwaway self-test pattern**, not by eye: a
+`ColorSelfTest.cpp` calling the three changed functions with sample data,
+piped to a file and inspected with escape codes visible (`cat -v`) —
+confirmed every set code is immediately followed by `\x1b[0m` before the
+line's trailing padding (see `docs/GOTCHAS.md` on color bleed) and that
+every bordered row's closing `|` still lines up column-for-column across
+colored and uncolored lines in the same box. Deleted after use, per
+CLAUDE.md. Real in-terminal color rendering (as opposed to correct escape-
+code structure) still needs the user's own eyes — same limitation as every
+prior color/layout milestone.
+
+**`pickAndTalk`'s "Talk to whom?" loop no longer exits after one
+conversation.** Previously, picking a name, finishing that conversation
+(however it ended — the topic menu's "Nothing, thanks"/`q`, or no topics at
+all), and returning from `talkTo` fell all the way back to the explore
+screen, even when other candidates were still standing right there —
+talking to a second present NPC meant re-pressing `t` and re-triggering
+`handleTalk`'s whole candidate-gathering query. Fixed by dropping the
+`return` after `talkTo(candidates[selected])` inside the picker's `Enter`
+branch: the loop simply redraws the same "Talk to whom?" picker afterward.
+`q`/`Quit` at that picker (not reached mid-conversation) is unchanged and
+still returns to explore. One line removed, `pickAndLook`'s equivalent loop
+was deliberately left alone — the request was specifically about talking,
+and Look has no multi-step conversation to return from.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can

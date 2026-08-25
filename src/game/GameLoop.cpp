@@ -731,8 +731,13 @@ void GameLoop::pickAndTalk(const std::vector<TalkCandidate>& candidates) {
         } else if (key == render::Key::South) {
             selected = (selected + 1) % static_cast<int>(names.size());
         } else if (key == render::Key::Enter) {
+            // Deliberately no return here: talkTo runs its own dialogue/topic
+            // loop and returns whenever the player backs out of it (topic
+            // menu's "Nothing, thanks"/Quit, or no topics at all) -- looping
+            // back to this same picker instead of falling through to the
+            // explore screen lets the player talk to a second present NPC
+            // without re-pressing Talk and re-triggering candidate lookup.
             talkTo(candidates[selected]);
-            return;
         } else if (key == render::Key::Quit) {
             return;
         }

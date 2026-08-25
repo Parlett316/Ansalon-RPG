@@ -42,7 +42,11 @@ the game (character sheet, combat, shop, inventory, dialogue, pickers,
 the full log) still renders inside a plain-ASCII `+`/`-`/`|` window
 border with its own title bar, so nothing floats loose against the raw
 terminal; the whole frame sizes itself to your actual terminal window at
-launch rather than assuming a fixed size. The whole continent is a
+launch rather than assuming a fixed size. Talking to someone colors their
+name, and any cursor-list picker (who to talk to, what to ask about,
+Accept/Decline) colors its selected row; a fight colors your own stat line
+and the monster's separately — the same palette used elsewhere, not a
+separate look. The whole continent is a
 480×320 tile grid,
 generated from
 the reference map image, walked tile-by-tile in real time; named locations

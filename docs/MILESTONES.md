@@ -1732,6 +1732,51 @@ section).
     See `docs/TIMELINE_NOTES.md`'s "Character-level subject pools and
     day-gated knowledge".
 
+73. Colored dialogue/picker/combat screens, and re-picking after a talk --
+    two small requests bundled together: extend the "Bob's game" ANSI
+    palette (`docs/ARCHITECTURE.md`'s Milestones 43/69) beyond the
+    overworld/zone status panel and character creation to the screens a
+    player actually sees while talking to someone or fighting
+    (`drawDialogueFrame`/`drawPickerFrame`/`drawCombatFrame`), and fix
+    `GameLoop::pickAndTalk` so finishing a conversation with multiple
+    people present returns to the "Talk to whom?" picker instead of
+    dropping all the way back to the explore screen. A new `BoxLine`
+    (text + optional whole-line ANSI color) and a parallel colored
+    `wrapLongLines`/`writeBoxed` overload extend `writeBoxed`'s existing
+    box-hugging pipeline without touching the plain-text overload every
+    other "organic" screen still uses (character sheet, spellbook, shop,
+    inventory, journal, help, the ask-input prompt -- deliberately left
+    plain, narrower scope than "every screen"). Dialogue's speaker name
+    (bright yellow, reusing "named thing in the world," the same meaning
+    `colorLine` already gives `Standing On:`/location glyphs) sits on its
+    own colored line rather than a colored "Name: text" prefix -- a whole-
+    line-only constraint inherited from `colorLine` itself (pads to width,
+    *then* wraps in the ANSI pair, so a substring can't be tinted without
+    miscounting escape bytes as visible ones). The picker's selected row
+    (bright white, matching the player's own `@` glyph) is colored inside
+    the one shared `drawPickerFrame`, so every screen that reuses it --
+    Talk to whom?, Ask about... topic menus, quest Accept/Decline, and
+    Look's own picker -- picked it up for free. Combat colors the
+    player's stat line bright white (same convention) and the monster's
+    bright red (`\x1b[91m`, a genuinely new code -- nothing existing meant
+    "hostile"); the scrolling combat log itself stays plain, matching the
+    precedent that free-form log prose is never colored, only labels/
+    named things. The `pickAndTalk` fix is one line: dropping the `return`
+    after `talkTo(candidates[selected])` in the picker's `Enter` branch so
+    the loop redraws the same picker instead of exiting; `q`/Quit at the
+    picker itself is unchanged. Verified via the throwaway self-test
+    pattern (a `ColorSelfTest.cpp` calling all three changed draw
+    functions, output inspected with escape codes visible via `cat -v`,
+    confirming every color-set code is immediately followed by its reset
+    before the border and that bordered rows still align column-for-
+    column across colored and uncolored lines -- see `docs/GOTCHAS.md`),
+    a clean `/W4` rebuild (zero new warnings), and the piped smoke test.
+    Real in-terminal color rendering, and the `pickAndTalk` fix's actual
+    keypress behavior, still need the user's own keyboard -- same
+    `_getch()` limitation as every prior interactive-UI milestone. See
+    `docs/ARCHITECTURE.md`'s "Colored dialogue/picker/combat screens, and
+    re-picking after a talk".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1787,9 +1832,10 @@ session's work.
    character-level subject-pool mechanism (`SUBJECT_WHEN`, day-gating), a
    full always-true content pass for Raistlin, and his gated Khisanth/
    Verminaard/Disks-of-Mishakal/true-gods/Takhisis content. What's left:
-   (a) the other seven Heroes' own character-level pools (Milestone 73,
-   same "prove it out narrow, widen later" pattern `TALK_AFTER`/
-   `TALK_BEFORE` already followed), and (b) a second Raistlin group the
+   (a) the other seven Heroes' own character-level pools (same "prove it
+   out narrow, widen later" pattern `TALK_AFTER`/`TALK_BEFORE` already
+   followed -- Milestone 73 went to an unrelated color/UI request
+   instead, so this is still unclaimed), and (b) a second Raistlin group the
    user deliberately deferred rather than authored in Milestone 72, even
    though the sourcing pass already found solid citations for each --
    re-verify nothing's drifted before using these, but no fresh research
@@ -1815,3 +1861,9 @@ session's work.
    See `docs/TIMELINE_NOTES.md`'s "Ask about anything" for the full
    Milestone 72 writeup this list summarizes. Zone-NPC `SUBJECT` content
    beyond what Milestone 71 already shipped remains untouched either way.
+7. **Widen the "Bob's game" color palette to the remaining plain organic
+   screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
+   combat only; the character sheet, spellbook, shop, inventory, journal,
+   help, and ask-input screens all still render in plain uncolored text
+   through `writeBoxed`'s original overload. Only worth doing if the user
+   actually wants full coverage -- ask first, don't assume.

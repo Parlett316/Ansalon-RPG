@@ -254,6 +254,66 @@ void writeBoxed(std::ostringstream& out, const std::string& title, const std::ve
     writeBorder(out, title, width, exact);
 }
 
+// Colors reused by the "talking to an NPC" and combat screens below,
+// extending the same bright-ANSI palette drawOverworldFrame/
+// buildStatusPanel already use for the player (bright white, the '@'
+// glyph) and for named things in the world (bright yellow, "Standing On"
+// and location/POI glyphs) -- see docs/GOTCHAS.md on why every set code
+// needs its paired reset, handled by colorLine below.
+constexpr const char* kNpcNameColor = "\x1b[93m";       // bright yellow, matches "Standing On" / location glyphs
+constexpr const char* kSelectedItemColor = "\x1b[97m";  // bright white, matches the player's own '@' glyph
+constexpr const char* kPlayerCombatColor = "\x1b[97m";  // bright white, same "this is you" convention
+constexpr const char* kMonsterCombatColor = "\x1b[91m"; // bright red -- the threat
+
+// A line of "organic" screen content (see writeBoxed above) that also
+// carries an optional whole-line ANSI color, applied after wrapping and
+// padding -- same "pad first, colorize the already-correct-width result"
+// contract as colorLine, so a colored line's visible width still matches
+// its plain neighbors exactly. nullptr means plain, uncolored text (the
+// vast majority of any screen's lines -- footers, blank spacers, prose
+// body text). Lets the dialogue/picker/combat screens below pick up the
+// palette above without touching the plain writeBoxed(vector<string>)
+// callers above (character sheet, spellbook, shop, inventory, journal,
+// help).
+struct BoxLine {
+    std::string text;
+    const char* color = nullptr;
+};
+
+// Same wrapping as the plain wrapLongLines above, but a wrapped line's
+// color tag carries forward to every physical line it produces.
+std::vector<BoxLine> wrapLongLines(const std::vector<BoxLine>& lines) {
+    std::vector<BoxLine> result;
+    for (const BoxLine& line : lines) {
+        if (static_cast<int>(line.text.size()) > kProseWrapWidth) {
+            for (std::string& wrapped : wrapText(line.text, kProseWrapWidth)) {
+                result.push_back({std::move(wrapped), line.color});
+            }
+        } else {
+            result.push_back(line);
+        }
+    }
+    return result;
+}
+
+// Same box-hugging shape as the plain writeBoxed above, but colorLine's
+// pad-then-wrap treatment is applied to any line carrying a color tag
+// instead of a bare padPlain.
+void writeBoxed(std::ostringstream& out, const std::string& title, const std::vector<BoxLine>& rawLines) {
+    std::vector<BoxLine> wrapped = wrapLongLines(rawLines);
+    int width = static_cast<int>(title.size()) + 2;
+    for (const BoxLine& line : wrapped) width = std::max(width, static_cast<int>(line.text.size()));
+    width = std::clamp(width, kSecondaryBoxMinWidth, kSecondaryBoxMaxWidth);
+
+    std::vector<std::string> exact;
+    exact.reserve(wrapped.size());
+    for (const BoxLine& line : wrapped) {
+        exact.push_back(line.color != nullptr ? colorLine(line.text, line.color, width) : padPlain(line.text, width));
+    }
+
+    writeBorder(out, title, width, exact);
+}
+
 } // namespace
 
 bool MapRenderer::configureLayout(int columns, int rows) {
@@ -581,26 +641,26 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
 void MapRenderer::drawCombatFrame(const character::Character& character, const combat::Monster& monster,
                                    int monsterHp, int monsterMaxHp, const std::vector<std::string>& log,
                                    long long currentDay) {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     std::ostringstream playerLine;
     playerLine << character.name << " -- HP " << character.currentHp << "/" << character.maxHp << "   AC "
                << character.armorClass << "   Weapon: " << character.weaponName;
-    lines.push_back(playerLine.str());
+    lines.push_back({playerLine.str(), kPlayerCombatColor});
 
     std::ostringstream monsterLine;
     monsterLine << monster.name << " -- HP " << std::max(0, monsterHp) << "/" << monsterMaxHp << "   AC "
                 << monster.armorClass;
-    lines.push_back(monsterLine.str());
-    lines.push_back("");
+    lines.push_back({monsterLine.str(), kMonsterCombatColor});
+    lines.push_back({"", nullptr});
 
     // Only the tail fits comfortably in the viewport -- older lines scroll
     // off, same "most recent last" convention as a chat/console log.
     constexpr size_t kMaxLogLines = 12;
     size_t start = log.size() > kMaxLogLines ? log.size() - kMaxLogLines : 0;
-    for (size_t i = start; i < log.size(); ++i) lines.push_back(log[i]);
+    for (size_t i = start; i < log.size(); ++i) lines.push_back({log[i], nullptr});
 
-    lines.push_back("");
+    lines.push_back({"", nullptr});
     std::ostringstream footer;
     footer << "Enter=attack";
     // Only hinted when a spell is actually memorized and unspent today --
@@ -622,7 +682,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
         footer << "   i=use brooch";
     }
     footer << "   f=flee";
-    lines.push_back(footer.str());
+    lines.push_back({footer.str(), nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -729,14 +789,19 @@ void MapRenderer::drawInventoryFrame(const character::Character& character, int 
 
 void MapRenderer::drawPickerFrame(const std::string& title, const std::vector<std::string>& items,
                                    int selectedIndex, const std::string& footer) {
-    std::vector<std::string> lines;
+    // The selected row is colored (bright white, matching the player's own
+    // '@' glyph) so the cursor reads clearly at a glance -- every screen
+    // that reuses this picker (Talk to whom?, topic menus, Look at whom?,
+    // quest Accept/Decline) picks this up for free.
+    std::vector<BoxLine> lines;
     for (size_t i = 0; i < items.size(); ++i) {
+        bool isSelected = static_cast<int>(i) == selectedIndex;
         std::ostringstream itemLine;
-        itemLine << (static_cast<int>(i) == selectedIndex ? "> " : "  ") << items[i];
-        lines.push_back(itemLine.str());
+        itemLine << (isSelected ? "> " : "  ") << items[i];
+        lines.push_back({itemLine.str(), isSelected ? kSelectedItemColor : nullptr});
     }
-    lines.push_back("");
-    lines.push_back(footer);
+    lines.push_back({"", nullptr});
+    lines.push_back({footer, nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -763,14 +828,20 @@ void MapRenderer::drawAskInputFrame(const std::string& npcName) {
 }
 
 void MapRenderer::drawDialogueFrame(const std::vector<DialogueLine>& dialogueLines) {
-    std::vector<std::string> lines;
+    // The speaker's name gets its own colored line (bright yellow, matching
+    // "Standing On" and location/POI glyphs -- the same "notable named
+    // thing" convention) rather than a colored "Name: text" prefix --
+    // colorLine only ever colors a whole already-padded line (see BoxLine
+    // above); safely tinting just a prefix before wrapText/padPlain have
+    // measured the line's real width isn't possible without miscounting
+    // invisible escape bytes as visible ones.
+    std::vector<BoxLine> lines;
     for (const auto& line : dialogueLines) {
-        std::ostringstream speechLine;
-        speechLine << line.speaker << ": " << line.text;
-        lines.push_back(speechLine.str());
-        lines.push_back("");
+        lines.push_back({line.speaker + ":", kNpcNameColor});
+        lines.push_back({line.text, nullptr});
+        lines.push_back({"", nullptr});
     }
-    lines.push_back("(press any key to continue)");
+    lines.push_back({"(press any key to continue)", nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
