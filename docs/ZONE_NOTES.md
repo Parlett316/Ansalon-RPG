@@ -289,6 +289,28 @@ conversation, so neither one got a `SUBJECT` pool. Godshome has no
 talkable NPC at all (deliberately sparse, Milestone 45) and stays out of
 scope for the same reason it's out of scope for `TALK_AFTER`.
 
+Milestone 82 followed up on a real gap this left: several NPCs' own
+`TOPIC` entries already covered material (the Tower siege, the Golden
+General, Cyan Bloodbane, the Knights' Trial, and similar) that had no
+matching `SUBJECT` keyword, so asking about it directly fell through to
+the generic `SUBJECT_UNKNOWN` brush-off even though the NPC clearly had an
+opinion. 11 of the 21 got 1-2 more `SUBJECT` entries each, every one
+paraphrased from that same POI's own already-shipped `TOPIC` (never
+`TALK_AFTER` -- see the day-range-gate note below) or, for Haven's Seeker
+Guard, `TALK_BEFORE`. The other 10 were deliberately left untouched: High
+Clerist's Tower's Sword/Circle/Rose Knights have no `TOPIC` at all --
+their terseness is a characterization choice ("keeps to himself for now"),
+not a content gap -- and the rest (Plains of Dust's Rider, Qualinesti's
+Sentinel, Xak Tsaroth's Scavenger, both Tarsis NPCs, Solace's blacksmith)
+had no unaddressed `TOPIC` material to draw from. The same pass fixed two
+latent parsing bugs found while re-reading every `SUBJECT` line in scope:
+`neraka.txt`'s `temple,dark queen` and `xak_tsaroth.txt`'s
+`ruins,city,xak tsaroth` each had a space inside the keyword-list token,
+which `ZoneLoader`'s `iss >> keywordList` read (whitespace-delimited)
+silently truncates -- the word after the space leaked into the *displayed
+dialogue text* instead of becoming a matchable keyword. Both are now
+comma-joined (`temple,dark,queen` / `ruins,city,xak,tsaroth`).
+
 **Zone-file `SUBJECT` has no day-range gate**, unlike `data/timeline.txt`'s
 character-level `SUBJECT_WHEN` (Milestone 72) -- it's reachable on any day
 the player visits. Milestone 79's content deliberately stays within what

@@ -33,6 +33,7 @@ SAY_IF U evil The certainty turns colder, and it lingers a moment longer than be
 TOPIC U "Guardian of the Wood" The thought that answers is unhurried, ancient. "I am not the wood's only guardian, but I am the one who receives those who cross into it uninvited. I judge what I am shown -- not by wealth, not by strength, but by what a life has given more than it has taken. Some who enter here are turned back gently. Some are not turned back at all. You may judge for yourself which you have been."
 SUBJECT U ruins,stones The stones you passed were old before this wood learned your kind's name for it. Something stood there once. The wood remembers only that it does not stand there now, and asks no more of the ground than that.
 SUBJECT U trail,path,lost The path that confused you was never lost. You were. The wood does not rearrange itself for cruelty's sake -- only to see who keeps walking anyway, and who turns back to blame the trees.
+SUBJECT U guardian,judge,judgment The certainty that answers carries no doubt at all. "I judge everyone who crosses into this wood uninvited, and I have never once judged by strength or wealth or the cut of a traveler's cloth. Only by what a life has given more than it has taken. Most who ask this question already suspect the answer they will not like."
 SUBJECT_UNKNOWN U The certainty in your thoughts goes still, unanswering. Whatever you asked, the wood has not yet decided it is yours to know.
 TIMELINE_ANCHOR F
 END

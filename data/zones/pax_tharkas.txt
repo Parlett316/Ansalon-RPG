@@ -38,6 +38,7 @@ SAY_IF G fighter The guard's posture doesn't relax, exactly, but it shifts -- so
 TOPIC G "A Fortress Between Masters" He looks past you, out toward the pass, rather than at you. "Pax Tharkas has outlasted every banner that's ever flown over it. Dwarves cut it, elves mortared it, and I couldn't begin to tell you how many armies have marched through since and called it theirs for a season. The mountain doesn't much care whose flag is up that week. Neither, most days, do I. I just watch the road."
 SUBJECT G mine,tharkadan,ore Whoever actually owns that mine changes depending on who you ask and which week it is. Meantime the ore backs up and nobody digs, and towns downroad go without steel while the argument sorts itself out. I just watch the road. Not my argument to settle.
 SUBJECT G towers,twin Two towers, same age as the pass itself, flanking it same as they always have regardless of whose banner's flying that season. Outlasted every army that's marched through here. I expect they'll outlast this one too.
+SUBJECT G dwarves,elves,built "Dwarves cut this fortress, elves mortared it, and between them it's outlasted every army that's ever marched through and called it theirs for a season." He looks past you, toward the pass. "The mountain doesn't much care whose flag is up that week. Neither, most days, do I."
 SUBJECT_UNKNOWN G He shrugs, eyes still on the road south. "Wouldn't know. Ask somebody who's not just watching."
 TIMELINE_ANCHOR M
 END

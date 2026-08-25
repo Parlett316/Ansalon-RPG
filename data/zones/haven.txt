@@ -33,6 +33,7 @@ SAY_IF G cleric The guard's wariness sharpens into something closer to unease wh
 TOPIC G "The Highseeker's Line" He jerks a thumb back toward the temple steps without much enthusiasm. "Petitioners, same as every day. Farmers wanting rain blessed, merchants wanting luck blessed, at least one fellow last week wanting his mother-in-law blessed somewhere unpleasant. The Highseeker hears every one of them like it's the first time he's heard it. I don't know if that's devotion or just very good acting. Either way, it's a long line and a longer headache."
 SUBJECT G temple,seekers,highseeker Highseeker hears every petitioner like it's the first time he's heard it, day after day. I used to think that was devotion. Some days I still do. Other days it just looks like a very patient kind of tired.
 SUBJECT G market,stalls,idols Vendors two streets over will sell you a clay god for a copper piece, no questions asked about which one you're buying. Good business. I try not to think too hard about the theology.
+SUBJECT G war,dragons,army,armies He lowers his voice, like even a temple guard doesn't like saying it too loud. "Word from every direction says there's a war building, dragons and all, though nobody official's said so outright. All I know for certain is the roads are busier than they used to be, and the new faces aren't pilgrims. Draw your own conclusions. I've mostly stopped needing to draw mine."
 SUBJECT_UNKNOWN G The guard shakes his head. "Not my department, that one. Try the temple. Bring patience -- the line's long."
 TIMELINE_ANCHOR K
 SHOP K

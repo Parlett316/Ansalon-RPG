@@ -38,6 +38,8 @@ TOPIC W "The Green Dragon" Her jaw tightens. "Cyan Bloodbane. It came when the c
 TOPIC W "A Land That Keeps to Itself" "We closed our borders to your kind generations before the Cataclysm, and to the Qualinesti not long after -- our own kin, and still we shut the gate." Her expression is unreadable. "I used to think that caution had kept us safe. I no longer know what it's kept us safe from, if this is what waited for us anyway."
 SUBJECT W ferry,landing,crossing The ferry's the only crossing this river allows -- too wide, too cold for anything else. It looks unused because almost nothing crosses it anymore. That should tell you something about how welcome you actually are.
 SUBJECT W tower,king,lorac Our king has not left that tower in longer than anyone outside these woods will ever know, holding a crystal too heavy for any one soul to carry alone. I do not speak of him further. Not to outsiders.
+SUBJECT W dragon,cyan,bloodbane Her jaw tightens. "Cyan Bloodbane. It came when the crystal called it, and it has not left since -- guarding something it was never invited to guard, in a home it was never invited to enter. We are not accustomed to being unable to drive an intruder from our own woods."
+SUBJECT W qualinesti,kin,borders "We closed our borders to your kind generations before the Cataclysm, and to the Qualinesti not long after -- our own kin, and still we shut the gate." Her expression is unreadable. "I used to think that caution had kept us safe. I no longer know what it kept us safe from, if this is what waited for us regardless."
 SUBJECT_UNKNOWN W Her eyes don't leave the tree line. "I will not answer that. Ask something a human is permitted to know."
 QUEST W kin_beyond_the_border
 TIMELINE_ANCHOR T

@@ -35,6 +35,7 @@ TALK_AFTER G The watchman's easy manner cools somewhere deeper than usual, the w
 TOPIC G "The War's Turn" The watchman's easy manner cools. "You'll have heard the news same as anyone -- a Golden General, dragonlances, silver and gold dragons driving the evil ones out of the sky. Good news, all of it. I'd feel better about it if I didn't keep noticing how many soldiers we're still burying."
 SUBJECT G cartographer,stall Been locked up tight as long as I've walked this beat. Whatever's behind that door, the owner trusts the lock more than the neighborhood -- and given what I see most days in this market, can't say I blame him.
 SUBJECT G harbor,ships,port Harbor remembers being busier. Safer, too, if the old-timers are to be believed. These days half those ships ride at anchor doing nothing, which tells you plenty about how the war's going without me saying a word of it.
+SUBJECT G war,dragons,dragonlance,general His easy manner cools. "You'll have heard the news same as anyone -- a Golden General, dragonlances, silver and gold dragons driving the evil ones out of the sky. Good news, all of it. I'd feel better about it if I didn't keep noticing how many soldiers we're still burying."
 SUBJECT_UNKNOWN G The watchman shrugs, eyes still on the crowd. "Wouldn't know. Ask somebody who isn't paid to watch pockets, not answer questions."
 QUEST G bazaar_road_raiders
 TIMELINE_ANCHOR M

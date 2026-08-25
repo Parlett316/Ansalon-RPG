@@ -2097,6 +2097,67 @@ section).
     milestone. See `docs/ARCHITECTURE.md`'s "Widening the palette to the
     remaining organic screens".
 
+82. Widened zone-native NPC `SUBJECT` coverage -- a real gap Milestone 79
+    left open, caught during interactive play: the user asked the Palanthas
+    Knight of the Watch about the Tower siege and the Golden General --
+    material his own `TOPIC "A City Under Watch"` already covers -- and got
+    the generic `SUBJECT_UNKNOWN` brush-off, since his `SUBJECT` list only
+    covered the harbor and the Shoikan Grove. Investigating confirmed the
+    "Ask about something else..." row is correctly gated (never shown for
+    an NPC with zero `SUBJECT` entries -- verified directly against
+    `GameLoop::talkTo` and every zone file); the real issue was content
+    depth, not gating. Asked the user which fix they wanted (widen coverage
+    vs. suppress the option below some content floor) and how far to take
+    it: widen, and review all 21 Milestone-79 NPCs rather than just
+    Palanthas. 11 of the 21 got 1-2 new `SUBJECT` entries each (17 lines
+    total) -- darken_wood's Unicorn, haven's Seeker Guard, ice_wall's Young
+    Knight, high_clerist_tower's Garrison Knight, neraka's Deserting Guard,
+    palanthas's Knight of the Watch and Astinus, kalaman's City Watchman,
+    pax_tharkas's Fortress Guard, silvanesti's Warder, and both solace_inn
+    NPCs (Otik and Tika) -- every new line paraphrased (not copied
+    verbatim) from that same POI's own already-shipped `TOPIC` text, or for
+    the Seeker Guard, `TALK_BEFORE`; deliberately never from `TALK_AFTER`,
+    which stays untapped on purpose since it's gated to fire only once a
+    canon-character window closes and reusing it in an ungated `SUBJECT`
+    would leak spoilers (see `docs/ZONE_NOTES.md`'s "Ask about anything").
+    The other 10 NPCs were deliberately left alone: High Clerist's Tower's
+    Sword/Circle/Rose Knights have no `TOPIC` authored for any of them at
+    all -- their terseness ("keeps to himself for now", "hasn't decided
+    anything he's willing to say out loud") is a characterization choice,
+    not a content gap, and widening them would work against their own
+    established voice; Plains of Dust's Rider, Qualinesti's Sentinel, Xak
+    Tsaroth's Scavenger, both Tarsis NPCs, and Solace's blacksmith had no
+    unaddressed `TOPIC` material to draw from. Pax Tharkas's Ore Cart and
+    Solace's Notice Board (objects, not people) correctly still have no
+    `SUBJECT`/ask option at all, matching the user's own original request
+    exactly. Found and fixed two latent parsing bugs while re-reading every
+    `SUBJECT` line in scope: `neraka.txt`'s `temple,dark queen` and
+    `xak_tsaroth.txt`'s `ruins,city,xak tsaroth` each had a space inside
+    the keyword-list token, which `ZoneLoader`'s `iss >> keywordList`
+    (whitespace-delimited) silently truncates -- the word after the space
+    was leaking into the *displayed dialogue text* rather than becoming a
+    matchable keyword. Both fixed by comma-joining instead
+    (`temple,dark,queen` / `ruins,city,xak,tsaroth`). Pure data content,
+    zero `.cpp`/`.h` changes -- same grammar, same loader, same runtime as
+    Milestone 79. Verified via a throwaway self-test
+    (`ZoneLoaderSelfTest.cpp`, a minimal `world::Zone`/`ZoneLoader`/
+    `ZoneTile`-only CMake target -- deliberately not linking `GameLoop.cpp`
+    just to reach `matchSubject`/`tokenizeAskInput`, which would have
+    pulled in character/combat/quest/timeline/render as a dependency for
+    two free functions; a local reimplementation of the same
+    tokenize-then-exact-token-match logic was used instead) covering all 35
+    new/bugfixed keyword lookups across every edited POI plus a
+    no-keyword-collision check per POI, all passing before the file and its
+    temporary CMake target block were deleted; a clean `/W4` rebuild (zero
+    new warnings -- pure data, nothing to recompile); and the piped smoke
+    test (confirms all 11 edited zone files still parse cleanly end-to-end
+    through the real startup path, real save moved aside and restored
+    byte-identical afterward). Interactive verification (actually asking
+    these NPCs the new keywords in a real playthrough) still needs the
+    user's own keyboard, same limitation every prior `SUBJECT`/`TOPIC`
+    content milestone has flagged. See `docs/ZONE_NOTES.md`'s "Ask about
+    anything".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

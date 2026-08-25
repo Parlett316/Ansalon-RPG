@@ -35,6 +35,8 @@ TOPIC K "The Walrus-Men" "Thanoi, the Ice Barbarians call them -- and barbarian'
 TOPIC K "The Voyage South" "Our ship makes for Sancrist next, with the orb and whatever's left of us aboard." He nods vaguely southeast. "The captain says we'll pass within sight of Southern Ergoth on the way -- elves living there now, he tells me, driven off their own lands by the dragonarmies. I can't say I'll be sorry to see any coastline that isn't this one."
 SUBJECT K dragon,silver Sealed in that ice since before any of us got here, far as anyone can tell. No rage on its face, just something sadder than that. Scraps of harness at its shoulders say somebody rode it once. Nobody's found who.
 SUBJECT K feal-thas,dragonlord Called himself Dragonlord, guarded that orb like it was worth dying for. Turned out he was right about the dying part. I try not to think too hard about the rest of what he called himself.
+SUBJECT K thanoi,walrus-men,walrus "Thanoi, the Ice Barbarians call them," he says, voice tightening. "Tusked, vicious, and they don't tire of a fight the way a man does. We lost two of our own clearing this hall of them before you ever walked in. I'd rather not describe the rest."
+SUBJECT K sancrist,ergoth,voyage,ship "Our ship makes for Sancrist next, orb and all," he says, nodding vaguely southeast. "Captain says we'll pass within sight of Southern Ergoth on the way -- elves living there now, driven off their own lands by the dragonarmies. Can't say I'll be sorry to see any coastline that isn't this one."
 SUBJECT_UNKNOWN K The young knight's spear hand tightens slightly. "Don't know that one. This place teaches you fast which questions are worth asking twice."
 QUEST K frostreaver_salvage
 TIMELINE_ANCHOR F
