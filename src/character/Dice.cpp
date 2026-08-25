@@ -36,4 +36,16 @@ int roll(int count, int sides) {
     return total;
 }
 
+int roll4d6DropLowest() {
+    std::uniform_int_distribution<int> die(1, 6);
+    int lowest = die(rng());
+    int total = lowest;
+    for (int i = 0; i < 3; ++i) {
+        int value = die(rng());
+        total += value;
+        if (value < lowest) lowest = value;
+    }
+    return total - lowest;
+}
+
 } // namespace character

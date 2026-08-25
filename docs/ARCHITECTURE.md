@@ -966,6 +966,43 @@ deliberately NOT abstracted yet" section above for why the fix
 bus it might sound like, and `docs/QUEST_NOTES.md`'s "Proactive readiness
 notification" for the full mechanism.
 
+## Character creation redesign: screen-per-step, colorized (Milestone 69)
+
+Prompted by two reference screenshots — `References/abilityscore.png`
+(a "STEP 1: ABILITY SCORES" wizard screen from another terminal RPG) and
+`References/Bobs_Game.png`, the same "Bob's game" already cited above for
+Milestone 43's overworld/zone color palette. `CharacterCreator.cpp`
+gained per-step cleared screens (`STEP n: TITLE`) and that same ANSI
+palette (`\x1b[93m` yellow, `\x1b[96m` cyan, `\x1b[97m` white, plus one
+new code, `\x1b[92m` bright green, for assigned/confirmed values) —
+reused verbatim from `MapRenderer.cpp`, not a new palette invented for
+this one file. Full design rationale (including the dice-method change
+this triggered — PHB Method V, superseding a previously documented
+Method I decision) is in `docs/CHARACTER_NOTES.md`'s "Ability score
+generation" and `docs/MILESTONES.md`'s Milestone 69 entry; the two things
+worth knowing before touching this file again:
+
+**Still plain `std::cin`/`std::cout`, on purpose.** The "Character
+creation" section above explains why: it's the one part of the game a
+piped/redirected script can drive end-to-end. The reference screenshot's
+live-highlighted arrow-key cursor was adapted to a numbered-list
+`promptChoice`, the same interaction the race/class/alignment menus
+already used — no live-cursor rendering was added, and none should be
+without first solving the same piped-testability problem
+`docs/GOTCHAS.md` already documents for the real `render::Console::readKey()`-driven
+game loop.
+
+**Screen-clearing is inline, not a `render::Console` call.** Both
+`CharacterCreator.cpp` and `MapRenderer.cpp` now emit the same raw
+`\x1b[2J\x1b[H` VT100 sequence directly rather than the former calling
+`render::Console::clearScreen()`. This keeps `character/` at zero
+dependencies on `render/`, preserving the one-way dependency graph in
+the "Module map" section above — a real constraint this file's own
+"Character creation" section documents `CharacterCreator` was designed
+around already. Safe because `render::Console`'s constructor (which
+enables `ENABLE_VIRTUAL_TERMINAL_PROCESSING` on Windows) always runs at
+the top of `main()`, before `CharacterCreator::run()` is ever called.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can

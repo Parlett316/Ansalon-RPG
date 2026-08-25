@@ -23,6 +23,8 @@ struct AbilityScores {
     void adjust(Ability a, int delta);
 };
 
+const char* abilityName(Ability a);
+
 // The only two derived ability modifiers this milestone needs: Constitution
 // affects hit points, Dexterity affects AC, and those are the only two
 // numbers currently computed on a character sheet. STR (to-hit/damage),

@@ -60,12 +60,28 @@ one-line fix.
 
 ## Ability score generation
 
-**3d6, straight down the line** (STR, DEX, CON, INT, WIS, CHA, fixed
-order — 2e's "Method I" dice, confirmed verbatim on PHB p.19), with a
-house-rule: the player may **reroll the whole set of six as many times as
-they like** before accepting. Not Method II (4d6, drop lowest, arrange to
-taste) — the project owner specifically chose Method I's dice with free
-rerolling instead. See `character::CharacterCreator::run`.
+**4d6, drop the lowest die, six times, assign to taste** — 2e's "Method
+V" dice, confirmed verbatim on PHB p.19 ("Roll four six-sided dice (4d6).
+Discard the lowest die and total the remaining three. Repeat this five
+more times, then assign the six numbers to the character's abilities
+however you want"), with the pre-existing house rule kept: the player may
+**reroll the whole set of six as many times as they like** before
+assigning. Implemented as `character::roll4d6DropLowest()`
+(`character/Dice.h`/`.cpp`) plus an interactive assignment loop in
+`character::CharacterCreator::run`.
+
+**Supersedes an earlier decision, deliberately.** This project previously
+used Method I (3d6 straight down the line, fixed STR→CHA order, same free
+whole-set reroll) specifically chosen *over* Method II (4d6 drop lowest,
+arrange to taste). A Milestone 69 request to redesign character creation
+as a colorized, screen-per-step wizard modeled on a reference screenshot
+(`References/abilityscore.png`) turned out to depict exactly Method V's
+assign-to-taste interaction ("Assigning: Strength", pick from the pool of
+rolled values) — confirmed against the real PHB page (rendered as an
+image; this page's two-column layout mis-orders under `pdftotext
+-layout`) rather than assumed from the screenshot alone. Asked directly,
+the project owner chose to switch. See `docs/MILESTONES.md`'s Milestone
+69 entry.
 
 ## Racial magic resistance (Dwarf, Gnome, Halfling, Kender)
 
@@ -198,8 +214,8 @@ exists (see "No demihuman level limits" above).
 option, even though it's in the source book (p.69) and was on this
 project's own "extend later" list. The book generates Gully Dwarf ability
 scores with an entirely different method (e.g. Strength 4d4+2, Intelligence
-2d4+1) instead of 3d6 — incompatible with this project's settled
-3d6-down-the-line-with-reroll house rule. Approximating it with a flat
+2d4+1) instead of this project's own 4d6-drop-lowest-assign-to-taste
+generation. Approximating it with a flat
 ability adjustment (the way every other subrace works) would misrepresent
 a genuinely different generation method rather than honestly model it, so
 it's left as clearly-flagged future work instead of a fudged approximation.
@@ -1217,8 +1233,8 @@ stored in `GameState::character` and never reassigned after that; pressing
   spell-sphere restrictions and moon-phase (Solinari/Lunitari/Nuitari)
   bonuses still need a spell system to attach to.
 - **Gully Dwarf**: needs its own ability-score generation method (e.g.
-  Strength 4d4+2) instead of 3d6 — see "Elf and Dwarf subraces" above for
-  why it wasn't approximated instead.
+  Strength 4d4+2) instead of this project's 4d6-drop-lowest — see "Elf
+  and Dwarf subraces" above for why it wasn't approximated instead.
 - **Ability score ranges and class level limits** for every race/subrace
   (not just Kender) — a real 2e/Dragonlance mechanic, consistently left
   unenforced across this whole project so far; would need a decision on

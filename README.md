@@ -15,13 +15,16 @@ with or endorsed by Wizards of the Coast / the Dragonlance IP holders.
 ## Status
 
 Starting the game begins with a saved-character continue prompt (if
-`save.txt` exists) or, failing that, an interactive text-prompt character
-creation wizard (roll 3d6-down-the-line ability scores, reroll as many
-times as you like, pick a race — Elf and Dwarf prompt a Dragonlance
-subrace — class, and alignment; qualifying Fighters can join the Knights
-of Solamnia, and Gnomes are always Tinkers) before dropping you into the
-world with a real character behind the `@`. Progress autosaves
-continuously. The overworld/zone screen is a wide, frameless, side-by-side
+`save.txt` exists) or, failing that, an interactive, colorized,
+screen-per-step character creation wizard: roll 4d6-drop-lowest ability
+scores six times (reroll the whole set as many times as you like), then
+freely assign each roll to an ability; a race screen — Elf and Dwarf
+prompt a Dragonlance subrace, with the resulting ability adjustments shown
+before/after — a class screen, and an alignment screen (qualifying
+Fighters can join the Knights of Solamnia, and Gnomes are always
+Tinkers), your scores carried along and visible at every step, before
+dropping you into the world with a real character behind the `@`.
+Progress autosaves continuously. The overworld/zone screen is a wide, frameless, side-by-side
 view — no box border, just `=`/`-` rule dividers — a one-line header
 (name/class, an ASCII HP bar, in-game day/hour) above, the walkable map on
 the left, and a labeled status panel on the right (current mode, the

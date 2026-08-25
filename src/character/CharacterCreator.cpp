@@ -3,13 +3,47 @@
 #include "character/Equipment.h"
 
 #include <algorithm>
+#include <array>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace character {
 
 namespace {
+
+// ANSI palette reused verbatim from render/MapRenderer.cpp's existing
+// convention (bright yellow for headers/standout names, bright cyan for
+// status labels, bright white for "must always read clearly") plus one
+// new code, bright green, for confirmed/assigned values -- matching the
+// two reference screenshots (References/abilityscore.png,
+// References/Bobs_Game.png) this screen redesign is modeled on.
+constexpr const char* kColorHeader = "\x1b[93m";
+constexpr const char* kColorLabel = "\x1b[96m";
+constexpr const char* kColorSelect = "\x1b[92m";
+constexpr const char* kColorName = "\x1b[97m";
+
+std::string color(const std::string& text, const char* code) {
+    return std::string(code) + text + "\x1b[0m";
+}
+
+// Same VT100 sequence as render::Console::clearScreen()/MapRenderer.cpp's
+// own inline uses -- emitted directly rather than calling into
+// render::Console so character/ keeps its zero-dependency-on-render/
+// status (see docs/ARCHITECTURE.md's module map). Safe here because
+// render::Console's constructor (which enables
+// ENABLE_VIRTUAL_TERMINAL_PROCESSING on Windows) already ran at the top
+// of main() before CharacterCreator::run() is ever called.
+void clearScreen() {
+    std::cout << "\x1b[2J\x1b[H";
+}
+
+void printStepHeader(int step, const std::string& title) {
+    clearScreen();
+    std::cout << color("STEP " + std::to_string(step) + ": " + title, kColorHeader) << "\n\n";
+}
 
 // Throws on EOF/stream failure rather than returning an empty line: without
 // this check, a closed/exhausted stdin (a piped script running out, or a
@@ -60,42 +94,119 @@ bool promptYesNo(const std::string& prompt) {
     }
 }
 
-AbilityScores rollScores() {
-    AbilityScores scores;
-    scores.strength = roll(3, 6);
-    scores.dexterity = roll(3, 6);
-    scores.constitution = roll(3, 6);
-    scores.intelligence = roll(3, 6);
-    scores.wisdom = roll(3, 6);
-    scores.charisma = roll(3, 6);
-    return scores;
+// Used only where a screen would otherwise be overwritten by the next
+// step's clearScreen before the player has had a chance to read it (the
+// race-adjustments recap below is the one such spot -- every other
+// transition already ends on a promptChoice/promptYesNo that serves as
+// its own "read this, then respond" gate).
+void pauseForEnter() {
+    promptLine("\n(Press Enter to continue) ");
 }
+
+constexpr std::array<Ability, 6> kAbilityOrder = {
+    Ability::Strength, Ability::Dexterity, Ability::Constitution,
+    Ability::Intelligence, Ability::Wisdom, Ability::Charisma,
+};
 
 void printScores(const AbilityScores& s) {
     std::cout << "  STR " << s.strength << "  DEX " << s.dexterity << "  CON " << s.constitution
                << "  INT " << s.intelligence << "  WIS " << s.wisdom << "  CHA " << s.charisma << "\n";
 }
 
+// Recap block shown at the top of the race/class/alignment screens so
+// the player's scores stay visible across steps rather than being
+// something they have to remember or scroll back for.
+void printScoresRecap(const AbilityScores& s) {
+    std::cout << color("Ability Scores:", kColorLabel) << "\n";
+    printScores(s);
+    std::cout << "\n";
+}
+
+void printAbilityMethodHeader() {
+    printStepHeader(1, "ABILITY SCORES");
+    std::cout << "Method V: 4d6, drop lowest die, six times.\n";
+    std::cout << "Assign each rolled score to an ability.\n\n";
+}
+
+// Method V (PHB p.19, confirmed against the rendered page image -- see
+// docs/CHARACTER_NOTES.md): roll 4d6-drop-lowest six times, then let the
+// player assign the six results to abilities however they want. The
+// house-rule whole-set reroll from the project's prior Method I era is
+// kept, applied to these six rolls before assignment.
+std::vector<int> rollAndKeepPool() {
+    std::vector<int> pool;
+    for (;;) {
+        printAbilityMethodHeader();
+        pool.clear();
+        for (int i = 0; i < 6; ++i) pool.push_back(roll4d6DropLowest());
+
+        std::cout << "Rolled: ";
+        for (size_t i = 0; i < pool.size(); ++i) {
+            std::cout << (i == 0 ? "" : ", ") << pool[i];
+        }
+        std::cout << "\n\n";
+
+        if (promptYesNo("Keep these rolls? (y/n) ")) break;
+    }
+    return pool;
+}
+
+// Interactive "Assigning: <Ability>" loop -- the actual interaction the
+// reference screenshot depicts, adapted from a live arrow-key cursor to a
+// numbered-list choice. See docs/ARCHITECTURE.md's "Character creation"
+// section for why: CharacterCreator deliberately stays on plain
+// std::cin/std::cout (not render::Console::readKey()) so it remains the
+// one part of the game a piped/redirected test script can drive
+// end-to-end, and a live-highlighted cursor would need real single-key
+// input to work.
+AbilityScores assignPoolToAbilities(std::vector<int> pool) {
+    AbilityScores scores;
+    std::array<bool, kAbilityOrder.size()> filled{};
+
+    for (Ability ability : kAbilityOrder) {
+        printAbilityMethodHeader();
+
+        for (Ability shown : kAbilityOrder) {
+            size_t idx = static_cast<size_t>(shown);
+            std::cout << "  " << std::left << std::setw(14) << abilityName(shown);
+            if (filled[idx]) {
+                std::cout << color(std::to_string(scores.get(shown)), kColorSelect) << "\n";
+            } else {
+                std::cout << "--\n";
+            }
+        }
+
+        std::cout << "\n" << color(std::string("Assigning: ") + abilityName(ability), kColorLabel) << "\n\n";
+        for (size_t i = 0; i < pool.size(); ++i) {
+            std::cout << "  " << (i + 1) << ". " << pool[i] << "\n";
+        }
+
+        int choice = promptChoice("\n> ", 1, static_cast<int>(pool.size()));
+        int picked = pool[static_cast<size_t>(choice - 1)];
+        pool.erase(pool.begin() + (choice - 1));
+
+        scores.adjust(ability, picked);
+        filled[static_cast<size_t>(ability)] = true;
+    }
+
+    return scores;
+}
+
 } // namespace
 
 Character CharacterCreator::run() {
-    std::cout << "\n=== Character Creation (2nd Edition AD&D) ===\n\n";
+    clearScreen();
+    std::cout << color("=== Character Creation (2nd Edition AD&D) ===", kColorHeader) << "\n\n";
 
     Character character;
     character.name = promptName();
 
-    // Method I dice (3d6, straight down the line, fixed STR/DEX/CON/INT/
-    // WIS/CHA order) with a house-rule reroll-the-whole-set option, per the
-    // project owner's preference -- not Method II's drop-lowest/arrange.
-    AbilityScores scores;
-    for (;;) {
-        std::cout << "\nRolling 3d6 down the line...\n";
-        scores = rollScores();
-        printScores(scores);
-        if (promptYesNo("Keep these scores? (y/n) ")) break;
-    }
+    AbilityScores scores = assignPoolToAbilities(rollAndKeepPool());
 
-    std::cout << "\nChoose a race:\n";
+    printStepHeader(2, "RACE");
+    printScoresRecap(scores);
+
+    std::cout << "Choose a race:\n";
     for (size_t i = 0; i < kAllRaces.size(); ++i) {
         std::cout << "  " << (i + 1) << ". " << raceInfo(kAllRaces[i]).name << "\n";
     }
@@ -119,11 +230,26 @@ Character CharacterCreator::run() {
         int choice = promptChoice("> ", 1, static_cast<int>(kDwarfSubraces.size()));
         character.subrace = kDwarfSubraces[static_cast<size_t>(choice - 1)];
     }
-    applyRacialOrSubracialAdjustments(character.race, character.subrace, scores);
 
-    std::cout << "\nYour ability scores after racial adjustments:\n";
-    printScores(scores);
+    AbilityScores beforeRaceAdjustments = scores;
+    applyRacialOrSubracialAdjustments(character.race, character.subrace, scores);
     character.scores = scores;
+
+    std::cout << "\n" << color("Race Adjustments:", kColorLabel) << "\n";
+    bool anyAdjustment = false;
+    for (Ability a : kAbilityOrder) {
+        int before = beforeRaceAdjustments.get(a);
+        int after = scores.get(a);
+        if (before == after) continue;
+        anyAdjustment = true;
+        std::string delta = (after > before ? "+" : "") + std::to_string(after - before);
+        std::cout << "  " << std::left << std::setw(14) << abilityName(a) << before << " -> "
+                   << color(std::to_string(after), kColorSelect) << " (" << delta << ")\n";
+    }
+    if (!anyAdjustment) {
+        std::cout << "  No adjustments for this race.\n";
+    }
+    pauseForEnter();
 
     // Gnomes are forced into the Tinker class, not offered a choice --
     // Dragonlance Adventures (TSR 2021, p.57) states "Gnomes in Krynn can
@@ -132,14 +258,20 @@ Character CharacterCreator::run() {
     // races could also pick (see docs/CHARACTER_NOTES.md).
     if (character.race == RaceId::Gnome) {
         character.charClass = ClassId::Tinker;
-        std::cout << "\nAs a Gnome, you are a Tinker -- Krynn's gnomes know no other calling.\n";
+        printStepHeader(3, "CLASS");
+        printScoresRecap(scores);
+        std::cout << "As a Gnome, you are a Tinker -- Krynn's gnomes know no other calling.\n";
+        pauseForEnter();
     } else {
+        printStepHeader(3, "CLASS");
+        printScoresRecap(scores);
+
         bool raceCanBeMage = effectiveCanBeMage(character.race, character.subrace);
         // Krynn-specific Mage prerequisite on top of the base INT 9+
         // (Dragonlance Adventures p.35, "Student Wizard Minimum Scores"):
         // Dexterity 6+.
         bool mageDexOk = scores.dexterity >= 6;
-        std::cout << "\nChoose a class:\n";
+        std::cout << "Choose a class:\n";
         for (size_t i = 0; i < kAllClasses.size(); ++i) {
             const ClassInfo& c = classInfo(kAllClasses[i]);
             bool qualifies = scores.get(c.primeRequisite) >= c.primeRequisiteMinimum;
@@ -167,7 +299,10 @@ Character CharacterCreator::run() {
         character.exceptionalStrengthPercentile = roll(1, 100);
     }
 
-    std::cout << "\nChoose an alignment:\n";
+    printStepHeader(4, "ALIGNMENT");
+    printScoresRecap(scores);
+
+    std::cout << "Choose an alignment:\n";
     for (int i = 0; i < 9; ++i) {
         std::cout << "  " << (i + 1) << ". " << alignmentName(static_cast<Alignment>(i)) << "\n";
     }
@@ -203,7 +338,8 @@ Character CharacterCreator::run() {
         chosenClass.steelMultiplier;
 
     const SubraceInfo* sub = subraceInfo(character.subrace);
-    std::cout << "\n=== " << character.name << " ===\n";
+    clearScreen();
+    std::cout << color("=== " + character.name + " ===", kColorName) << "\n";
     std::cout << (sub != nullptr ? sub->name : raceInfo(character.race).name) << " " << chosenClass.name
                << ", " << alignmentName(character.alignment) << "\n";
     if (character.knightOrder != KnightOrder::None) {
@@ -213,6 +349,7 @@ Character CharacterCreator::run() {
         std::cout << "An unaffiliated student of the arcane -- a Robe and Order of High Sorcery\n"
                       "await at higher levels.\n";
     }
+    std::cout << "\n" << color("Ability Scores:", kColorLabel) << "\n";
     printScores(character.scores);
     if (character.exceptionalStrengthPercentile > 0) {
         std::cout << "  (exceptional Strength: 18/";
@@ -225,7 +362,7 @@ Character CharacterCreator::run() {
         }
         std::cout << ")\n";
     }
-    std::cout << "HP " << character.maxHp << "   AC " << character.armorClass
+    std::cout << "\nHP " << character.maxHp << "   AC " << character.armorClass
                << "   THAC0 " << character.thac0 << "\n";
     std::cout << "Weapon: " << character.weaponName << "\n";
     std::cout << "Saves -- " << saveCategoryName(SaveCategory::ParalyzationPoisonDeath) << ": "

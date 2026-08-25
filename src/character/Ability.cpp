@@ -25,6 +25,18 @@ void AbilityScores::adjust(Ability a, int delta) {
     }
 }
 
+const char* abilityName(Ability a) {
+    switch (a) {
+        case Ability::Strength: return "Strength";
+        case Ability::Dexterity: return "Dexterity";
+        case Ability::Constitution: return "Constitution";
+        case Ability::Intelligence: return "Intelligence";
+        case Ability::Wisdom: return "Wisdom";
+        case Ability::Charisma: return "Charisma";
+    }
+    return "";
+}
+
 int hpAdjustmentForConstitution(int constitution, bool isWarrior) {
     if (constitution <= 3) return -2;
     if (constitution <= 6) return -1;

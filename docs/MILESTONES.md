@@ -1470,6 +1470,78 @@ section).
     `TALK`/`TALK_AGAIN`) still needs the user's own keyboard. See
     `docs/ZONE_NOTES.md`'s "Anticipation dialogue" section and
     `docs/TIMELINE_NOTES.md`'s own section on `earliestDayStart`.
+69. Character creation redesign: screen-per-step, colorized, Method V
+    dice -- a user request to mimic two reference screenshots
+    (`References/abilityscore.png`, a "STEP 1: ABILITY SCORES" wizard
+    screen; `References/Bobs_Game.png`, the same "Bob's game" already
+    cited in Milestone 43 for its color palette). Two changes bundled
+    together: ability scores, race, class, and alignment each became
+    their own cleared screen (`STEP n: TITLE`, bright yellow) with the
+    running scores recapped at the top of every later step and, new for
+    race, a "Race Adjustments" recap showing each changed ability's
+    before/after/delta; and the whole wizard picked up the project's
+    existing ANSI palette (`\x1b[93m` yellow headers, `\x1b[96m` cyan
+    labels, `\x1b[97m` white name banner, plus one new code, `\x1b[92m`
+    bright green, for assigned/confirmed values), reusing exactly what
+    `MapRenderer.cpp` already established rather than inventing a new
+    palette. The reference screenshot's own flavor line ("Choose wisely,
+    Echoborn" — tied to that other game's race name) was dropped per the
+    user's explicit instruction.
+
+    **The dice method changed too, deliberately, not incidentally.** The
+    reference screen's actual interaction ("Assigning: Strength", pick
+    from a pool of rolled values) turned out to be a specific named PHB
+    method once checked against the real rulebook (rendered as a page
+    image, since this page's two-column layout mis-orders under
+    `pdftotext -layout`): Method V, "roll 4d6 six times, drop the lowest
+    die each time, assign the six results to abilities however you
+    want" (PHB p.19, verbatim). This directly reopened a previously
+    documented decision -- `docs/CHARACTER_NOTES.md` recorded that the
+    project owner had specifically chosen Method I (3d6 straight down
+    the fixed line, free whole-set reroll) *over* Method II (4d6 drop
+    lowest, arrange to taste) in the past. Surfaced directly rather than
+    assumed either way; the user confirmed switching to Method V. New
+    `character::roll4d6DropLowest()` (`character/Dice.h`/`.cpp`); the
+    pre-existing free-whole-set-reroll house rule carries over unchanged,
+    now applied to the six Method V rolls before assignment. See
+    `docs/CHARACTER_NOTES.md`'s "Ability score generation" for the full
+    sourcing and the superseded-decision note.
+
+    **No live arrow-key cursor.** `docs/ARCHITECTURE.md`'s "Character
+    creation" section explains why `CharacterCreator::run()` deliberately
+    stays on plain `std::cin`/`std::cout` rather than
+    `render::Console::readKey()`: it's the one part of the game a
+    piped/redirected script can drive end-to-end (`docs/GOTCHAS.md`). The
+    reference screenshot's live-highlighted green `>` needs real
+    single-keypress input to work, so the "Assigning: Strength" screen
+    instead shows the remaining rolled-value pool as a numbered list and
+    the player types the number -- the same `promptChoice` interaction
+    the race/class/alignment menus already used, just applied one more
+    place. Screen-clearing uses the raw `\x1b[2J\x1b[H` VT100 sequence
+    emitted inline (matching how `MapRenderer.cpp` already does it)
+    rather than calling `render::Console::clearScreen()`, specifically so
+    `character/` keeps its zero-dependency-on-`render/` status from
+    `docs/ARCHITECTURE.md`'s module map -- no new `#include`, nothing to
+    update there. Also added `character::abilityName(Ability)`
+    (`character/Ability.h`/`.cpp`), the same "one name() function per
+    enum with a display name" pattern `alignmentName`/`saveCategoryName`
+    already established.
+
+    Verified two ways beyond the usual pair: a throwaway self-test
+    confirmed `roll4d6DropLowest()` stays in `[3, 18]` with a measured
+    200,000-trial average of 12.243 (PHB Method V's known ~12.24, not
+    `roll(3,6)`'s flat 10.5 in disguise); and, because this module fully
+    tolerates piped `std::cin` unlike the rest of the game, a complete
+    scripted run (name, keep-rolls, six assignment picks, an Elf +
+    Silvanesti-heritage race pick to exercise the subrace/adjustments
+    path, Fighter, Lawful Good) was piped through the real executable
+    end-to-end and inspected -- confirming every screen, color code, and
+    the race-adjustments math (Silvanesti Elf: Dex 9→10 (+1), Con 13→12
+    (-1)) rendered correctly, and that the resulting character
+    successfully reached the real game loop afterward. `save.txt` was
+    moved aside first and restored after, per project convention. Also a
+    clean `/W4` rebuild, zero new warnings. Actually *looking* at the
+    colors in a real terminal is left to the user.
 
 ## NEXT UP
 
