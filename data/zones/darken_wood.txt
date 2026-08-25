@@ -31,5 +31,8 @@ TALK_AFTER U The certainty that follows is slower this time, as though turning o
 SAY_IF U good The certainty that arrives in your thoughts this time carries something almost like warmth. "Your weight is a light one. Not all who enter Darken Wood come to take -- some, rarer than you'd think, come only to give, or to give more than they take. I have not forgotten how rare that is."
 SAY_IF U evil The certainty turns colder, and it lingers a moment longer than before, as if measuring you twice. "I have judged your kind before, and let some pass regardless -- not all who enter here mean harm to the wood itself, whatever harm they mean elsewhere. Do not mistake my patience for blindness. I am not finished weighing you yet."
 TOPIC U "Guardian of the Wood" The thought that answers is unhurried, ancient. "I am not the wood's only guardian, but I am the one who receives those who cross into it uninvited. I judge what I am shown -- not by wealth, not by strength, but by what a life has given more than it has taken. Some who enter here are turned back gently. Some are not turned back at all. You may judge for yourself which you have been."
+SUBJECT U ruins,stones The stones you passed were old before this wood learned your kind's name for it. Something stood there once. The wood remembers only that it does not stand there now, and asks no more of the ground than that.
+SUBJECT U trail,path,lost The path that confused you was never lost. You were. The wood does not rearrange itself for cruelty's sake -- only to see who keeps walking anyway, and who turns back to blame the trees.
+SUBJECT_UNKNOWN U The certainty in your thoughts goes still, unanswering. Whatever you asked, the wood has not yet decided it is yours to know.
 TIMELINE_ANCHOR F
 END

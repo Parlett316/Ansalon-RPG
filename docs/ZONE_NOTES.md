@@ -273,11 +273,32 @@ the full mechanism (keyword matching, the free-text input frame, and why
 it deliberately avoids mixing `std::cin` into `GameLoop`'s `_getch()`-based
 input loop).
 
-No zone-native POI has `SUBJECT` content yet -- this mechanic's proof of
-concept shipped entirely on the timeline side (Raistlin's `PRESENCE solace
-0 1` window), same "one location first" restraint every reactive-dialogue
-feature in this project has followed. Widening to a zone NPC needs no
-engine change, only content.
+This mechanic's proof of concept originally shipped entirely on the
+timeline side (Raistlin's `PRESENCE solace 0 1` window, Milestone 71),
+same "one location first" restraint every reactive-dialogue feature in
+this project has followed. Milestone 79 widened it to all 21 talkable
+zone-native NPCs at once (Otik, Tika, every zone-native guard/knight/
+warder, etc.), each with 2 `SUBJECT` entries and a `SUBJECT_UNKNOWN`,
+generalized from that NPC's own existing `TALK`/`TOPIC`/`SAY_IF`/POI-
+description text -- no engine change, pure content, same technique
+Milestone 76 used for the Heroes. Two POIs with a `TALK` line were
+deliberately left out: Solace's Notice Board (`solace.txt:B`) and Pax
+Tharkas's Ore Cart (`pax_tharkas.txt:O`) are objects, not people --
+"ask about anything" doesn't fit an object the same way it fits a
+conversation, so neither one got a `SUBJECT` pool. Godshome has no
+talkable NPC at all (deliberately sparse, Milestone 45) and stays out of
+scope for the same reason it's out of scope for `TALK_AFTER`.
+
+**Zone-file `SUBJECT` has no day-range gate**, unlike `data/timeline.txt`'s
+character-level `SUBJECT_WHEN` (Milestone 72) -- it's reachable on any day
+the player visits. Milestone 79's content deliberately stays within what
+each NPC's own un-gated `TALK`/`TOPIC` material already treats as always
+true (their identity, opinions, and immediate surroundings) rather than
+pulling from that same POI's `TALK_AFTER` block, which exists specifically
+*because* it's gated to fire only once the relevant canon-character window
+has closed -- reusing that material in an ungated `SUBJECT` would leak
+retrospective/spoiler content about the Heroes before it's actually
+happened in-game.
 
 ## Zone-interior encounters (Milestone 23)
 

@@ -33,5 +33,8 @@ SHOP G
 POI S "Flint's Smithy" A stocky dwarf hunches over the forge, muttering at a half-finished blade. He doesn't look up, but he's clearly listening.
 TALK S "Whoever you're looking for, it isn't me," the journeyman says, setting down his hammer just long enough to size you up. "I mind the forge when Flint's off wherever Flint's off to. Which is most of the time, these days." He nods at the half-finished blade. "Would've been done a week ago if Pax Tharkas' ore hadn't slowed to a trickle -- everyone up there's too busy arguing over who owns the mountain to dig anything out of it."
 TALK_AGAIN S The forge is still going, the blade still waiting on its ore. "Same as before," the journeyman says, without looking up this time.
+SUBJECT S flint,dwarf,forge Learned everything I know about a hammer from him, and he never once let me forget how much further I've got to go. Best smith in Solace, when he's here. Which these days is a question with more silence in it than answer.
+SUBJECT S ore,steel,blade Can't finish good steel without good ore, and the ore's not coming down from Pax Tharkas the way it used to. Half-finished blade's been sitting on that anvil a week longer than it should. I'd fix it myself if fixing it were as simple as wanting to.
+SUBJECT_UNKNOWN S The journeyman shrugs without looking up from the anvil. "Ask Flint that, when he turns up. I just mind the forge."
 QUEST S ore_for_the_forge
 END

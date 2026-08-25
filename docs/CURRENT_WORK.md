@@ -2,26 +2,26 @@
 
 Nothing in flight.
 
-Both of Milestone 78's (Frostreaver) and Milestone 62's (spellcasting UI)
-open interactive-verification gaps closed out 2026-08-25 -- see their
-entries in `docs/MILESTONES.md` for exactly what was confirmed and how.
-One narrow gap remains from the Milestone 62 pass: an instant-defeat spell
-(e.g. a Mage's Sleep) still hasn't been keyboard-verified -- see NEXT UP
-item 1.
+Milestone 79 (zone-NPC `SUBJECT` content -- "ask about anything" widened to
+all 21 talkable zone-native NPCs) shipped 2026-08-25. Pure data, zero
+`.cpp`/`.h` changes, verified via a clean rebuild and the piped smoke
+test -- see `docs/MILESTONES.md` and `docs/ZONE_NOTES.md`'s "Ask about
+anything" section for what shipped and why. Real in-terminal free-text
+asking across the 21 new NPCs still needs the user's own keyboard
+(`_getch()` can't be piped), same limitation every prior `SUBJECT`/picker
+milestone has flagged.
 
-**Note on the live save**: `build/Debug/save.txt` is currently a
-hand-edited maxed-stat (all six scores 18) Human Fighter, built
-specifically to breeze safely through the Frostreaver verification trek.
-The user's actual mid-game Fighter (EXP 967, day ~9 near Haven) was
-accidentally overwritten by a throwaway Cleric test character earlier in
-this same session and could not be recovered -- see memory for the
-incident note. This maxed character is now the de facto live save going
-forward unless the user starts over.
+**Note on the live save**: `build/Debug/save.txt` is still the
+hand-edited maxed-stat (all six scores 18) Human Fighter built for the
+Frostreaver verification trek (see Milestone 78). The user's actual
+mid-game Fighter (EXP 967, day ~9 near Haven) was accidentally overwritten
+by a throwaway Cleric test character in an earlier session and could not
+be recovered. This maxed character remains the de facto live save unless
+the user starts over.
 
 Next backlog candidates (not started, not committed) -- see
 `docs/MILESTONES.md`'s NEXT UP: an instant-defeat spell's interactive
 verification (item 1), real Draconian mechanics (item 2), SFML-backed
 rendering revisit with real sprite art (item 3), widening `TALK_AFTER` to
-three remaining zones (item 4), widening the color palette further (item
-5), or zone-NPC `SUBJECT` content beyond Milestone 71's initial pass
-(item 6).
+three remaining zones (item 4), or widening the color palette further
+(item 5).

@@ -45,6 +45,18 @@ TALK_AGAIN R The Rose Knight's attention returns to the Yard rather than to you,
 SAY_IF K fighter The knight's formal posture eases, just slightly -- soldier recognizing soldier. "Then you'll understand why I'd rather trust a blade's read of this siege than a stranger's optimism. Whatever comes through that gate, I'm glad it won't only be knights meeting it."
 TOPIC K "The Knights' Trial" The knight's voice drops, careful. "You'll have heard by now -- Lord Derek Crownguard called one of ours a coward before the whole assembly at Sancrist, and very nearly made it stick. Lord Gunthar found a door the Measure left open and walked him through it before Derek could nail it shut." He shakes his head. "Split the Order clean in half, that trial did. Half of us are still deciding which half we're standing in."
 TOPIC K "Holding the Pass" The knight doesn't look away from the northern approach. "Palanthas stands or falls on whether this Tower does. That's not boast, it's arithmetic -- there's no other way through these mountains a dragonarmy could use. We hold it as long as we're able, and we don't discuss out loud what happens to Vingaard's people if we're not able long enough."
+SUBJECT K vingaard,supplies Stopped coming weeks back, same as I told you. Don't know if it's the roads or the war eating everything Vingaard can spare. Either way, we've gotten thin up here, and thin garrisons get particular about strangers.
+SUBJECT K chapel,altar Bare since the Cataclysm, and it'll stay bare until somebody holds the office that can bless it again. Doesn't stop half this garrison from kneeling there anyway, some long nights. Can't say I blame them.
+SUBJECT_UNKNOWN K The knight's expression doesn't change. "State your business plainly, or don't. I've no patience today for riddles."
+SUBJECT S insignia,belt,order This belt's carried more than one Order's mark over the years, unpicked and resewn each time my standing changed. I could tell you the story behind every stitch. I generally don't.
+SUBJECT S crown,sword,orders Crown Knights swear first, and most stay Crown their whole lives, and there's no shame in that. Sword is a different kind of asking. Not everyone who wants it is asked, and not everyone who's asked wants it, once they understand the price.
+SUBJECT_UNKNOWN S He gives you the same unhurried look as before, and says nothing at all.
+SUBJECT L circle,order The Circle convenes when there's cause, and cause means service, not simply survival. Plenty of knights survive a great deal without ever giving the Circle a reason to notice them. I don't hold that against them. I also don't forget the difference.
+SUBJECT L campaigns,plate Every scar on this plate has a campaign behind it, and every campaign has a story my juniors only get secondhand. That's not modesty. Some stories cost more to tell again than they're worth.
+SUBJECT_UNKNOWN L He studies you a moment longer, then says nothing -- whatever you asked isn't worth the hammer yet.
+SUBJECT R rose,order My Order doesn't announce itself with rank or armor, and I've never much minded that. What I've sworn to weigh isn't the kind of thing a title communicates faster than watching does.
+SUBJECT R yourself,name Not important enough to need remembering, and I'd rather it stayed that way a while longer. Ask me something that matters instead.
+SUBJECT_UNKNOWN R Her attention returns to the Yard without answering. Whatever she's weighing, it isn't your question.
 QUEST K word_for_the_tower
 QUEST S named_in_fact
 QUEST L solamnic_armor

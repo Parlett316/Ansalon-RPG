@@ -29,4 +29,7 @@ POI F "The Council Fire" A wide ring of stones holds a bed of ash and embers, ba
 POI R "A Rider" A Plainswoman sits easy on a shaggy horse at the camp's edge, watching the horizon more than she watches you. She has the look of someone who could outrun trouble or ride straight through it, whichever the day calls for.
 TALK R Strangers on foot don't usually make it this far without an escort or a good reason. You've got neither that I can see, so I'll ask plainly: what brings you to our fires?
 TALK_AGAIN R Back again. You still haven't given me a good reason, but you also haven't caused trouble, so I suppose that's reason enough to let you sit a while.
+SUBJECT R camp,tribe,plainsfolk We move when the grass says move, and we stay when it doesn't. That tent yonder and the fire past it are most of what a stranger's allowed to see of us. The rest, you'd have to earn.
+SUBJECT R horse,riding Been riding since before I could properly walk, same as most everyone born to these plains. A horse under you changes what "far" means. Changes what "safe" means too, most days.
+SUBJECT_UNKNOWN R She watches the horizon a beat longer before answering. "Don't know that one. Ask something a rider would."
 END

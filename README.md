@@ -117,13 +117,18 @@ modules and, for the Heroes of the Lance, the Chronicles/Legends novels:
 real reactive dialogue based on your own race/class/alignment, branching
 topics to ask about, and real memory of whether you've spoken before, not
 just one static line forever — carried whether you met them out in the
-open or found them indoors. Raistlin can also be asked about anything by typing it rather than only
-picking from the topic menu, at any of his eight stops — real subjects
-(his eyes, his golden skin, the Test, the Staff of Magius, his family, his
-opinion of each companion, Kitiara) get a real, in-character answer,
-anything else gets an in-character non-answer instead of a menu that
-simply doesn't offer it. Kitiara gets a different answer at the Inn than
-everywhere else, a specific letter-scene beat overriding the general one. Arrive somewhere after the Heroes have already
+open or found them indoors. Every one of the 8 Heroes of the Lance can also be asked about anything by
+typing it rather than only picking from the topic menu — real subjects
+(self-identity, an opinion of each other Hero) get a real, in-character
+answer, anything else gets an in-character non-answer instead of a menu
+that simply doesn't offer it. Raistlin's own pool goes deepest, real
+content at any of his eight stops: his eyes, his golden skin, the Test,
+the Staff of Magius, his family, Kitiara — who gets a different answer at
+the Inn than everywhere else, a specific letter-scene beat overriding the
+general one. Every talkable zone-native NPC (Otik, Tika, Astinus, every
+zone-native guard/knight/warder, and more — 21 in all) has the same
+"ask about anything" ability too, two subjects each drawn from their own
+established voice. Arrive somewhere after the Heroes have already
 moved on and it shows: Otik at the Inn of the Last Home, Haven's Seeker
 Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel, and
 Kalaman's City Watchman each have their own thing to say the first time you
@@ -325,9 +330,9 @@ needed:
   Heroes may also react differently depending on your character's own
   race/class/alignment, and offer a follow-up topic to ask about — up/
   down selects, Enter asks, `q`/Esc leaves the conversation. Where "Ask
-  about something else..." appears on that menu (Raistlin, at any of his
-  eight stops, for now), picking it lets you type any subject instead —
-  Enter submits, Esc cancels back to the menu.
+  about something else..." appears on that menu (any of the 8 Heroes, or
+  any talkable zone-native NPC), picking it lets you type any subject
+  instead — Enter submits, Esc cancels back to the menu.
 - `p` — browse/buy at a shop POI (Solace's General Store, Haven's Market
   Stalls, or Tarsis's Old Sailor) — up/down selects an item, Enter buys
   it, `i` switches to selling gear from your inventory back for half its

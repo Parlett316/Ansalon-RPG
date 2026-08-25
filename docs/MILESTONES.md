@@ -1977,6 +1977,46 @@ section).
     `docs/ZONE_NOTES.md`'s "Quests: POIs that offer them", and
     `docs/COMBAT_NOTES.md`'s "Player actions".
 
+79. Zone-NPC `SUBJECT` content -- NEXT UP item 6, the last major gap in
+    "ask about anything" (Milestone 71's grammar): every generic
+    zone-native NPC had zero `SUBJECT` content, only the eight Heroes of
+    the Lance did (Milestones 71/72/75/76). The user picked "all zone
+    NPCs at once" over a narrower proof-of-concept pass, the same call
+    Milestone 76 made for the Heroes. All 21 talkable zone-native NPCs
+    across 15 zones (Otik, Tika, the Seeker Guard, the Ruin-Scavenger,
+    the Elven Sentinel, the City Watchman, the Forestmaster, all four
+    High Clerist's Tower knights, the Silvanesti Warder, the Knight of
+    the Watch, Astinus, the Ice Wall Young Knight, the Fortress Guard,
+    the Deserting Guard, the Old Sailor, the Knight's Runner, and the
+    Plainswoman Rider) gained exactly 2 `SUBJECT` entries and one
+    `SUBJECT_UNKNOWN`, generalized from that NPC's own already-
+    established `TALK`/`TOPIC`/`SAY_IF`/POI-description text rather than
+    fresh invention -- these are original, non-canon NPCs, so no PDF
+    research pass was needed. Two POIs with a `TALK` line were
+    deliberately excluded: Solace's Notice Board and Pax Tharkas's Ore
+    Cart are objects, not people, and free-text "ask about anything"
+    doesn't fit either one. Godshome has no talkable NPC at all
+    (deliberately sparse, Milestone 45) and stayed out of scope for the
+    same reason it's out of scope for `TALK_AFTER`. One real content
+    constraint discovered while planning: zone-file `SUBJECT` has no
+    day-range gate the way `data/timeline.txt`'s character-level
+    `SUBJECT_WHEN` does, so none of this content draws on any NPC's own
+    `TALK_AFTER` block -- that material is deliberately gated to fire
+    only once a canon-character window has closed, and reusing it in an
+    ungated `SUBJECT` would let a player learn retrospective Hero content
+    before it's happened in-game; every new subject instead stays scoped
+    to what each NPC's un-gated `TALK`/`TOPIC` material already treats as
+    always true. Pure data content across 15 `data/zones/*.txt` files --
+    zero `.cpp`/`.h` changes, same grammar Milestone 71 shipped. Verified
+    via a clean rebuild (zero new warnings; no source files even needed
+    recompiling, a pure-data change) and the piped smoke test (confirms
+    all 15 edited zone files still parse cleanly, reaching character
+    creation with no new `ZoneLoader` warnings in stderr). Real
+    in-terminal free-text asking across all 21 NPCs still needs the
+    user's own keyboard, same `_getch()` limitation every prior
+    `SUBJECT`/picker milestone has flagged. See `docs/ZONE_NOTES.md`'s
+    "Ask about anything" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2028,10 +2068,3 @@ session's work.
    help, and ask-input screens all still render in plain uncolored text
    through `writeBoxed`'s original overload. Only worth doing if the user
    actually wants full coverage -- ask first, don't assume.
-6. **Zone-NPC `SUBJECT` content beyond Milestone 71's initial pass** --
-   all eight Heroes now have full character-level "ask about anything"
-   pools (Milestones 72/75/76), but zone-native NPCs (Otik, Tika, the
-   Seeker Guard, the Forestmaster, the Fortress Guard, etc.) still only
-   have whatever `SUBJECT` content Milestone 71 originally shipped for
-   them. A widening pass here would need its own scope-first conversation
-   the same way Milestone 76 got one.

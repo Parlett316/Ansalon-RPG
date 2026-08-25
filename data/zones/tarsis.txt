@@ -27,10 +27,16 @@ POI D "The Old Dock" A stone quay runs out into open dust, its mooring rings sti
 POI S "An Old Sailor" He sits on an overturned crate near the dock's edge, mending a net that will never touch water again out of habit more than hope. He looks up at your footsteps with the flat suspicion Tarsis is famous for.
 TALK S You're not from here. Good -- keep it that way, and keep moving. We don't much care for wizards, or for outsiders who come around asking where the sea went. I'll tell you same as I tell them: it went wherever the world went wrong, and it isn't coming back for the asking.
 TALK_AGAIN S You're back, and you haven't asked me about the sea again. That's the most polite thing an outsider's done around here in years.
+SUBJECT S sea,water,ocean Went wherever the world went wrong, same as I told you, and it isn't coming back for the asking. I still mend nets some mornings anyway. Old habit dies harder than an old sea, it turns out.
+SUBJECT S wizards,mages,magic Don't much care for your kind, if that's what you are, and I don't much care for outsiders who come around asking where the water went either. Tarsis has reasons for both. Long reasons. I won't be the one to tell them to you.
+SUBJECT_UNKNOWN S He doesn't look up from the net. "Keep moving. Wasn't a question I had an answer for anyway."
 SHOP S
 POI R "A Knight's Runner" A boy barely old enough to squire jogs between the ruined streets, Solamnic crest half-hidden under a borrowed cloak, looking for anyone who might still be worth talking to.
 TALK R "You there -- are you with the strangers who came in before the dragons? Sir Derek's compliments. His knights have found passage south, and he says there's room for you aboard, if you'll come now and ask no questions about where the ship came from." He's already glancing back over his shoulder, waiting on your answer.
 TALK_AGAIN R "The ship's still holding for you, if you've changed your mind. It won't hold forever."
+SUBJECT R derek,knights Sir Derek's compliments, like I said. His knights found passage south and he's vouching for whoever comes aboard with me. That's more than most strangers get out of him. Don't waste it asking me questions instead of answering.
+SUBJECT R dragons,ship Ship came in ahead of the dragons, and it'll leave the same way if we're lucky. I don't know where it's bound past "away from here." Didn't ask. Wasn't my place to.
+SUBJECT_UNKNOWN R He's already glancing back over his shoulder. "No time for that. Ship's waiting, and so am I."
 BOAT R
 TIMELINE_ANCHOR D
 END
