@@ -1195,12 +1195,17 @@ section).
     direct load of the user's real save (a Fighter, so spellcasting itself
     is untouched by their character, but the save's legacy `SPELLSTODAY`
     line needed to keep loading regardless). **Interactive verification
-    (the Rest re-memorize prompt, the multi-level spell picker, the
-    in-combat cast picker, an instant-defeat spell, a this-fight
-    buff/debuff) still needs the user's own keyboard** -- `_getch()` can't
-    be piped, same limitation every UI-touching milestone has flagged. See
-    `docs/CHARACTER_NOTES.md`'s "Spellcasting" section for the full spell
-    census and every citation.
+    completed 2026-08-25** via a throwaway Cleric character run from an
+    isolated copy of the exe (the user's real Fighter save was never
+    touched): the first-rest spell-loadout picker offered a real choice
+    among multiple spells (not just one), the in-combat `m`/`M` cast
+    picker appeared and the user chose Bless (confirming the this-fight
+    buff/debuff path, not just the damage/heal branches), and the second
+    rest correctly asked "Keep the same spells memorized? (Y/n)" instead
+    of re-running the picker. An instant-defeat spell (e.g. a Mage's
+    Sleep) still hasn't been keyboard-verified -- the Cleric run had no
+    occasion to cast one. See `docs/CHARACTER_NOTES.md`'s "Spellcasting"
+    section for the full spell census and every citation.
 
     Two same-session follow-up refinements, both user-requested after the
     above shipped: the Rest flavor line is now class-specific ("You
@@ -1955,12 +1960,22 @@ section).
     before/after). Interactive verification (accepting the quest as a
     Strength-13+ character, killing 2 Thanoi, turning in, equipping the
     Frostreaver, and confirming the +4 applies on a glacier tile but not
-    off it) still needs the user's own keyboard -- the one place this
-    milestone most needs real playtesting, since the terrain-gating is new,
-    untested-by-precedent logic. See `docs/CHARACTER_NOTES.md`'s "Magic
-    items", `docs/QUEST_NOTES.md`'s "Shipped quests", `docs/ZONE_NOTES.md`'s
-    "Quests: POIs that offer them", and `docs/COMBAT_NOTES.md`'s "Player
-    actions".
+    off it) **completed 2026-08-25** via a maxed-stat throwaway Human
+    Fighter (all scores 18, hand-patched into the save after a real
+    character-creation run -- see below), played by the user from Solace to
+    Tarsis to Ice Wall Castle over a real ~20-day in-game journey. Along
+    the way this also exercised a quest-engine path never previously
+    hit in real play: `monsterKills` is a lifetime tally, so the 2 Thanoi
+    kills that happened before the quest was ever accepted still counted,
+    and accepting it immediately flipped straight to `ReadyToTurnIn`
+    (`GameLoop::checkQuestReadiness`'s "already-satisfied on accept" case) --
+    confirmed working exactly as designed. The log line ("Your Frostreaver's
+    edge bites keener than steel, sharpened by the glacier's own cold.")
+    was confirmed present when fighting on glacier and absent when fighting
+    off it, verifying the terrain-gated +4. See `docs/CHARACTER_NOTES.md`'s
+    "Magic items", `docs/QUEST_NOTES.md`'s "Shipped quests",
+    `docs/ZONE_NOTES.md`'s "Quests: POIs that offer them", and
+    `docs/COMBAT_NOTES.md`'s "Player actions".
 
 ## NEXT UP
 
@@ -1968,12 +1983,12 @@ Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Interactive verification of Milestone 62's spellcasting UI** -- the
-   Rest re-memorize prompt, the multi-level spell-loadout picker, and the
-   in-combat cast picker were all built and self-tested this pass but
-   never actually driven by a real keypress (`_getch()` can't be piped).
-   A real playthrough as a Mage or Cleric would confirm the pickers read
-   right and the buff/debuff/block spells feel right in an actual fight.
+1. **Interactive verification of an instant-defeat spell** -- Milestone
+   62's Rest re-memorize prompt, multi-level spell-loadout picker, and
+   in-combat cast picker (including a this-fight buff/debuff, Bless) were
+   all confirmed working 2026-08-25 via a throwaway Cleric playtest. The
+   one spell category still unverified is an instant-defeat spell (e.g. a
+   Mage's Sleep) -- would need a throwaway Mage run instead.
 2. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
    added all three to the roster, but their spellcasting, shapeshifting,
    and mind control/dimension door/breath weapon all stayed flavor-only.
