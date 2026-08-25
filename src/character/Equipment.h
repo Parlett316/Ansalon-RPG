@@ -319,6 +319,34 @@ bool staffCureAvailableToday(const Character& character, long long today);
 // already false.
 PurchaseResult useStaffCure(Character& character, long long today);
 
+// Frostreaver (Dragonlance Adventures p.94, visually confirmed via a
+// rendered page image) -- see docs/CHARACTER_NOTES.md's "Magic items"
+// section. A quest reward (data/quests.txt's frostreaver_salvage,
+// REQUIRE str_13), tied to the already-shipped Ice Wall Castle location
+// and Thanoi monster (data/monsters.txt, TERRAIN_BIAS toward glacier).
+// DLA's own text: "the equivalent of a heavy battle axe +4... can only be
+// wielded by a character with a Strength of 13 or greater." The PHB's
+// Table 44 (Weapons, p.94) has no separate "heavy battle axe" line -- its
+// one axe entry, plain "Battle axe," is 1d8 -- so that's the base damage
+// die the "+4" applies on top of.
+//
+// DLA also gives the item a real weakness -- above-freezing temperatures
+// melt it useless within a day (1d6 hours in a warm environment). This
+// project has no "item destroyed by environment" mechanic anywhere and
+// won't build one just for this weapon (see CLAUDE.md's "no premature
+// abstraction") -- simplified instead to "only carries its +4 bonus while
+// standing on glacier terrain," which is why kFrostreaverMagicBonus below
+// is NOT baked into the granted InventoryItem's weaponMagicBonus (that
+// stays 0, its true off-glacier baseline -- just a mundane heavy battle
+// axe). game::GameLoop::runCombat applies the +4 as a this-fight-only
+// local bonus when the terrain is glacier, the same mechanism already
+// used for spell buffs (see combat::AttackOutcome's doc comment on
+// thac0Bonus/damageBonus) -- not a permanent character stat.
+inline constexpr const char* kFrostreaverName = "Frostreaver";
+constexpr int kFrostreaverDamageSides = 8; // PHB Table 44, "Battle axe": 1d8
+constexpr int kFrostreaverMagicBonus = 4;  // "+4" to both hit and damage, glacier-only
+constexpr int kFrostreaverMinStrength = 13;
+
 // A quest item (ItemKind::QuestItem) -- a real, granted-in-the-world
 // object carried toward a quest::ObjectiveKind::Deliver objective, never
 // sold and never equipped (see docs/QUEST_NOTES.md's "DELIVER"). Unlike

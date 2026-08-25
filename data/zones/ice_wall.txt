@@ -33,5 +33,6 @@ TALK_AFTER K The young knight's watchfulness eases into something closer to disb
 SAY_IF K fighter He looks you over, spear easing a fraction. "You've the look of someone who's held a line before. Good. We lost two of ours clearing this hall -- Thanoi, winter wolves, worse. I'd rather not lose a third to bad company in the dark."
 TOPIC K "The Walrus-Men" "Thanoi, the Ice Barbarians call them -- and barbarian's the wrong word for people who've survived out here since before this castle had a roof. The Thanoi are the real terror of this coast: tusked, vicious, and they don't tire of a fight the way a man does." He shudders. "We were glad of every wall still standing between us and them."
 TOPIC K "The Voyage South" "Our ship makes for Sancrist next, with the orb and whatever's left of us aboard." He nods vaguely southeast. "The captain says we'll pass within sight of Southern Ergoth on the way -- elves living there now, he tells me, driven off their own lands by the dragonarmies. I can't say I'll be sorry to see any coastline that isn't this one."
+QUEST K frostreaver_salvage
 TIMELINE_ANCHOR F
 END

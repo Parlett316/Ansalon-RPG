@@ -419,6 +419,52 @@ needs one.
 
 ## Shipped quests
 
+### Dragonlance magical items, continued: `frostreaver_salvage`
+
+The third item-granting quest reward, following `staff_of_striking_curing`'s
+exact shape. Picked from `docs/MILESTONES.md`'s NEXT UP list -- a real gap
+the Dragonlance-magical-items milestone had already sourced (DLA p.94,
+visually confirmed) and flagged as buildable but deferred in favor of the
+Staff. Offered by Ice Wall's *existing* Young Knight POI (`K`, `data/zones/
+ice_wall.txt`) rather than a new NPC -- he already carries established
+Thanoi-flavor dialogue (`TALK K`/`TOPIC K "The Walrus-Men"`), and the
+quest frames the axe as battlefield salvage ("an Ice Folk raider we found
+dead near the wall, killed by thanoi, not us") rather than inventing a
+talking Ice Folk character never actually placed at Ice Wall Castle in the
+novel's own scene there -- the same restraint that's kept Alhana/Derek/
+Gunthar off-stage (see `docs/TIMELINE_NOTES.md`). Gated by `REQUIRE
+str_13` (`c.scores.strength >= character::kFrostreaverMinStrength`), a new
+`game::conditionMatches` token and this project's first quest requirement
+keyed on a raw ability score rather than race/class/knight-rank, so the
+quest is never offered to a character who couldn't wield the reward
+anyway. One `SLAY thanoi 2` objective -- Thanoi are tough (157 XP each,
+`data/monsters.txt`), so 2 is calibrated down from the 3-kill baseline
+weaker monsters use, matching `bazaar_road_raiders`'/
+`staff_of_striking_curing`'s own 2-kill count against a comparably tough
+target, and the Thanoi's own `TERRAIN_BIAS :` (glacier) means the fight
+genuinely happens on the same terrain the axe's bonus is gated to. Reward:
+50 steel, 120 XP -- same modest tier as `solamnic_armor`/
+`staff_of_striking_curing`, since the item is the real reward -- plus a
+new bare `REWARD_FROSTREAVER` quest flag granting a `character::
+ItemKind::Weapon` InventoryItem named `character::kFrostreaverName` (1d8
+base, `weaponMagicBonus = 0` -- its honest off-glacier baseline; see
+`docs/CHARACTER_NOTES.md`'s "Magic items" for the terrain-gated +4
+mechanism, this milestone's one genuinely new wrinkle beyond the
+Solamnic-Armor/Staff pattern). `SaveGame.cpp` touches: none -- the
+`MAGICWEAPON` line format is already fully generic over weapon name.
+Verified via a throwaway self-test (`QuestLoader` parsing the real,
+now-eleven-quest `data/quests.txt`, confirming `frostreaver_salvage`'s
+requirement/objective/reward shape and `REWARD_FROSTREAVER`'s fail-fast
+trailing-argument case), a clean `/W4` rebuild (zero new warnings), and
+the piped smoke test (confirms `main.cpp`'s cross-validation accepts the
+new `QUEST K frostreaver_salvage` zone binding). Interactive verification
+(accepting the quest as a Strength-13+ character, killing 2 Thanoi,
+turning in, equipping the Frostreaver, and confirming the +4 applies on a
+glacier tile but not off it) still needs the user's own keyboard, the
+same `_getch()` limitation flagged for every quest milestone so far --
+and the one place this milestone most needs real playtesting, since the
+terrain-gating is new, untested-by-precedent logic.
+
 ### Dragonlance magical items, continued: `staff_of_striking_curing`
 
 The second item-granting quest reward, following `solamnic_armor`'s exact

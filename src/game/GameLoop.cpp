@@ -167,6 +167,10 @@ bool conditionMatches(const std::string& condition, const character::Character& 
         return c.knightOrder == character::KnightOrder::Sword && c.level >= 4 &&
                character::meetsKnightOfRoseRequirements(c.scores);
     }
+    // Gates frostreaver_salvage (docs/QUEST_NOTES.md) -- Dragonlance
+    // Adventures p.94's own printed minimum to wield a Frostreaver, so the
+    // quest is never offered to a character who couldn't use the reward.
+    if (condition == "str_13") return c.scores.strength >= character::kFrostreaverMinStrength;
     return false;
 }
 
@@ -1038,6 +1042,16 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
             character::kStaffDamageSides, 0, character::kStaffMagicBonus});
         pushLog("You are granted the Staff of Striking/Curing. Press 'i' to equip it.");
     }
+    if (q->rewardFrostreaver) {
+        // weaponMagicBonus is 0 here on purpose -- the Frostreaver's +4
+        // only applies while standing on glacier terrain, applied as a
+        // this-fight-only local bonus in runCombat, not baked into the
+        // item itself. See character::kFrostreaverMagicBonus.
+        state_.character.inventory.push_back(character::InventoryItem{
+            character::ItemKind::Weapon, character::ArmorId::None, character::kFrostreaverName,
+            character::kFrostreaverDamageSides, 0, 0});
+        pushLog("You are granted a Frostreaver. Press 'i' to equip it.");
+    }
 }
 
 void GameLoop::checkQuestReadiness() {
@@ -1277,6 +1291,21 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     int playerAcBonus = 0;
     int monsterThac0Penalty = 0;
     int monsterDamagePenalty = 0;
+    // Frostreaver (see character::kFrostreaverName/kFrostreaverMagicBonus
+    // and docs/CHARACTER_NOTES.md's "Magic items"): DLA p.94 says it only
+    // holds its "+4" while it's glacier ice, not melted slush -- modeled
+    // as a this-fight-only local bonus, same mechanism as a spell buff,
+    // rather than a permanent Character stat. runCombat's only call site
+    // is tryMoveOverworld, so state_.x/state_.y are always the tile this
+    // fight is happening on.
+    if (state_.character.weaponName == character::kFrostreaverName) {
+        const world::TerrainInfo& hereTerrain = world::terrainFor(grid_.terrainCodeAt(state_.x, state_.y));
+        if (std::string(hereTerrain.name) == "glacier") {
+            playerThac0Bonus += character::kFrostreaverMagicBonus;
+            playerDamageBonus += character::kFrostreaverMagicBonus;
+            log.push_back("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
+        }
+    }
     auto playerAttacks = [&]() {
         combat::AttackOutcome outcome =
             combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);

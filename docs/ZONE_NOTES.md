@@ -468,6 +468,15 @@ all already spoken for), same Muster Yard row. Completes the Crown->
 Sword->Rose chain; see `docs/QUEST_NOTES.md`'s "Shipped quests" and
 `docs/CHARACTER_NOTES.md`'s "Knights of Solamnia".
 
+The Frostreaver milestone added an eighth, reusing an *existing* POI
+rather than adding a new one: `data/zones/ice_wall.txt`'s `K` (the Young
+Knight, see "Ice Wall Castle" below), offering `frostreaver_salvage`. Like
+`solamnic_armor`, its turn-in grants an item (`REWARD_FROSTREAVER`) rather
+than steel/XP/a rank; unlike every prior `QUEST`, it's gated by `REQUIRE
+str_13`, a raw ability-score check rather than race/class/knight-rank —
+see `docs/QUEST_NOTES.md`'s "Shipped quests" and `docs/CHARACTER_NOTES.md`'s
+"Magic items".
+
 ## Aftermath dialogue: POIs that react once the Heroes have moved on
 
 `TALK_AFTER <char> <dialogue...>` marks a POI's reaction to the Heroes of the

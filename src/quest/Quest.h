@@ -117,6 +117,12 @@ struct Quest {
     // compile-time flag" shape as rewardSolamnicArmor above, not a generic
     // item-reward mapping.
     bool rewardStaffOfStrikingCuring = false;
+    // True if turning this quest in grants the Frostreaver (a
+    // character::ItemKind::Weapon InventoryItem named
+    // character::kFrostreaverName, see game::GameLoop::offerOrTurnInQuest)
+    // -- same "named, specific, compile-time flag" shape as
+    // rewardStaffOfStrikingCuring above.
+    bool rewardFrostreaver = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and

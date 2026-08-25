@@ -1133,6 +1133,64 @@ absent, re-verified directly against the user's real save). No inventory
 format change — the staff's weapon stats ride the existing `MAGICWEAPON`
 line unchanged, same as any other named magic weapon.
 
+**Frostreaver**, DLA's next magic item after the Staff of Striking/Curing,
+sourced from p.94 (Weapons), visually confirmed via a rendered page image
+(the item this project's own NEXT UP backlog had already flagged as a
+real, buildable gap when the Staff was picked instead — see the
+"Extending this later" section below, now trimmed). A quest reward
+(`data/quests.txt`'s `frostreaver_salvage`), tied to the already-shipped
+Ice Wall Castle location and Thanoi monster: *"the equivalent of a heavy
+battle axe +4... can only be wielded by a character with a Strength of 13
+or greater."* The PHB's Table 44 (Weapons, p.94) has no separate "heavy
+battle axe" entry — its one axe line, plain "Battle axe," is 1d8 — so
+that's the base damage die the "+4" sits on top of. Gated by
+`REQUIRE str_13`, a new `game::conditionMatches` token
+(`c.scores.strength >= character::kFrostreaverMinStrength`) — this
+project's first quest requirement keyed on a raw ability score rather than
+race/class/knight-rank, so the quest is never offered to a character who
+couldn't wield the reward anyway.
+
+The book gives Frostreaver a real weakness: above-freezing temperatures
+melt it useless within a day (1d6 hours in a warm environment). This
+engine has no "item destroyed by its environment" mechanic anywhere, and
+building one just for this weapon would be exactly the premature
+abstraction CLAUDE.md warns against — **simplified to "only carries its
++4 bonus while standing on glacier terrain,"** the exact deviation this
+project's own earlier NEXT UP note already proposed. The granted
+`InventoryItem` therefore carries `weaponMagicBonus = 0` (its honest
+off-glacier baseline — just a mundane heavy battle axe, and
+`inventoryItemLabel` shows it that way, "Frostreaver (1d8)," no "+N to
+hit" suffix). The +4 is applied instead as a **this-fight-only local
+bonus inside `game::GameLoop::runCombat`**, the identical mechanism
+already used for spell buffs (`playerThac0Bonus`/`playerDamageBonus`, see
+`combat::AttackOutcome`'s doc comment in `Combat.h`) — never written into
+the character's permanent stats. `runCombat`'s only call site is
+`tryMoveOverworld`, so the terrain the fight is happening on is always
+`state_.x`/`state_.y`, recomputed with the same `world::terrainFor(grid_.
+terrainCodeAt(...))` call `tryMoveOverworld` already makes; no new
+parameter or signature change was needed anywhere in `combat::Combat.h`.
+The bonus surfaces automatically in the existing "Showing the math"
+bracketed roll breakdown, plus one flavor log line the round it first
+applies.
+
+Offered by Ice Wall's existing Young Knight POI (`K`) rather than a new
+NPC — he already carries established Thanoi-flavor dialogue (`TALK
+K`/`TOPIC K "The Walrus-Men"`), and the quest frames the axe as salvage
+("an Ice Folk raider we found dead near the wall, killed by thanoi, not
+us") rather than inventing a talking Ice Folk character never actually
+placed at Ice Wall Castle in the novel's own scene there — the same
+restraint that's kept Alhana/Derek/Gunthar off-stage. `SLAY thanoi 2`
+(Thanoi are tough — 157 XP each — so 2 is calibrated down from the 3-kill
+baseline weaker monsters use, matching `bazaar_road_raiders`'/
+`staff_of_striking_curing`'s own 2-kill count against a comparably tough
+target). Reward: 50 steel, 120 XP — same modest tier as `solamnic_armor`/
+`staff_of_striking_curing`, since the item itself is the real reward.
+Unsellable, same as the Staff — falls through `resaleValueStl`'s existing
+`ItemKind::Weapon` case to `sellable = false` since "Frostreaver" matches
+neither the class's mundane upgrade nor its `MagicWeapon`, no
+special-casing needed. `SaveGame.cpp` touches: none — the `MAGICWEAPON`
+line format is already fully generic over weapon name.
+
 ### Quest items (the DELIVER milestone)
 
 `ItemKind::QuestItem`, the first inventory kind that isn't a piece of
@@ -1206,17 +1264,11 @@ stored in `GameState::character` and never reassigned after that; pressing
   right (Plate of Solamnus, alignment-scaled), or unique named artifacts
   (Dragonlance, Mantooth, Nightbringer, Wyrmsbane, Wyrmslayer, Shield of
   Huma), out of scope for the same reason as "Special Magical Items of
-  Krynn"'s entries (see "Magic items" above). One real exception the
-  later re-read surfaced and the user chose not to build this pass:
-  **Frostreaver** (p.94, Weapons) — a heavy battle axe of Icewall Glacier
-  ice, forged by the Ice Folk's clerics who compete with the Thanoi for
-  the glacier (ties directly to the already-shipped Ice Wall location and
-  Thanoi monster). Not a unique artifact, so not excluded by the above —
-  buildable mostly from existing patterns (a Str-13 `REQUIRE` condition,
-  a terrain check at attack time simplifying the book's "melts above
-  freezing" weakness to "only carries its bonus on glacier"), just not
-  this milestone's pick. None of the still-out-of-scope items are being
-  built just to place one — see CLAUDE.md's "no premature abstraction."
+  Krynn"'s entries (see "Magic items" above). Frostreaver (p.94, Weapons),
+  the one real exception the later re-read surfaced, has since shipped —
+  see "Magic items" above. None of the remaining still-out-of-scope items
+  are being built just to place one — see CLAUDE.md's "no premature
+  abstraction."
 - **Sword Knight's real healing/foresight/clerical-spell abilities and
   weekly fasting/meditation ritual** (p.18-19): not modeled, same
   "flavor-only, needs a fuller spell system" treatment already given to

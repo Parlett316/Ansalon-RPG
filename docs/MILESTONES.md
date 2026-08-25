@@ -1910,6 +1910,57 @@ section).
     the user's own keyboard, same limitation every prior `TALK_AFTER`
     milestone has flagged. See `docs/ZONE_NOTES.md`'s "Aftermath dialogue"
     section.
+78. Frostreaver -- NEXT UP item 1, deferred once already (in favor of the
+    Staff of Striking/Curing) since the Dragonlance-magical-items milestone
+    first read DLA's "Magical Items of Krynn" chapter closely. Sourced from
+    DLA p.94 (Weapons) and PHB Table 44 (Weapons, p.94), both visually
+    confirmed via rendered page images this session (`pdftoppm`, previously
+    flagged unavailable in this environment, was re-checked and works
+    fine): *"the equivalent of a heavy battle axe +4... can only be wielded
+    by a character with a Strength of 13 or greater"* -- the PHB has no
+    separate "heavy battle axe" line, so its one axe entry (1d8) is the
+    base weapon the "+4" applies on top of. A quest reward
+    (`data/quests.txt`'s `frostreaver_salvage`, `REQUIRE str_13` -- a new
+    `game::conditionMatches` token and this project's first quest
+    requirement keyed on a raw ability score), offered by Ice Wall's
+    *existing* Young Knight POI rather than a new NPC (he already carries
+    established Thanoi-flavor dialogue; the axe is framed as salvage from a
+    dead Ice Folk raider, avoiding a talking Ice Folk character never
+    actually placed at Ice Wall Castle in the novel's own scene there,
+    same restraint keeping Alhana/Derek/Gunthar off-stage), `SLAY thanoi
+    2` (already `TERRAIN_BIAS`-tied to glacier, so the fight genuinely
+    happens on the terrain the axe's bonus needs). This milestone's one
+    real engine wrinkle: DLA's own weakness for the item (melts useless
+    above freezing within a day) has no analog anywhere in this project (no
+    "item destroyed by its environment" mechanic exists), simplified
+    instead to "only carries its +4 bonus while standing on glacier
+    terrain," exactly the deviation the earlier NEXT UP note had already
+    proposed. Modeled as a **this-fight-only local bonus inside
+    `game::GameLoop::runCombat`**, the identical mechanism already used for
+    spell buffs (`playerThac0Bonus`/`playerDamageBonus`) -- the granted
+    item itself carries `weaponMagicBonus = 0` (its honest off-glacier
+    baseline), so no change was needed to `combat::Combat.h`'s
+    `resolvePlayerAttack` signature or any other caller; `runCombat`'s only
+    call site (`tryMoveOverworld`) means the fight's own tile is always
+    `state_.x`/`state_.y`, recomputed with the same `world::terrainFor`
+    call movement already makes. Verified via a throwaway self-test
+    (`QuestLoader` parsing the real, now-eleven-quest `data/quests.txt`,
+    confirming the new quest's requirement/objective/reward shape and
+    `REWARD_FROSTREAVER`'s fail-fast trailing-argument case), a clean
+    `/W4` rebuild (zero new warnings), and the piped smoke test (confirms
+    `main.cpp`'s cross-validation accepts the new `QUEST K
+    frostreaver_salvage` zone binding, and that the user's real
+    executable-relative save still loads unchanged -- this milestone made
+    no `SaveGame.cpp` changes, re-confirmed by a byte-identical checksum
+    before/after). Interactive verification (accepting the quest as a
+    Strength-13+ character, killing 2 Thanoi, turning in, equipping the
+    Frostreaver, and confirming the +4 applies on a glacier tile but not
+    off it) still needs the user's own keyboard -- the one place this
+    milestone most needs real playtesting, since the terrain-gating is new,
+    untested-by-precedent logic. See `docs/CHARACTER_NOTES.md`'s "Magic
+    items", `docs/QUEST_NOTES.md`'s "Shipped quests", `docs/ZONE_NOTES.md`'s
+    "Quests: POIs that offer them", and `docs/COMBAT_NOTES.md`'s "Player
+    actions".
 
 ## NEXT UP
 
@@ -1917,27 +1968,20 @@ Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Frostreaver** (DLA p.94) -- a heavy battle axe of Icewall Glacier ice,
-   tied to the already-shipped Ice Wall location and Thanoi monster (see
-   Milestone 65). Buildable mostly from existing patterns: a Str-13
-   `REQUIRE` condition and a terrain check at attack time (terrain code is
-   already available where combat is resolved), simplifying the book's
-   "melts above freezing" weakness to "only carries its magic bonus on
-   glacier." See `docs/CHARACTER_NOTES.md`'s "Extending this later."
-2. **Interactive verification of Milestone 62's spellcasting UI** -- the
+1. **Interactive verification of Milestone 62's spellcasting UI** -- the
    Rest re-memorize prompt, the multi-level spell-loadout picker, and the
    in-combat cast picker were all built and self-tested this pass but
    never actually driven by a real keypress (`_getch()` can't be piped).
    A real playthrough as a Mage or Cleric would confirm the pickers read
    right and the buff/debuff/block spells feel right in an actual fight.
-3. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
+2. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
    added all three to the roster, but their spellcasting, shapeshifting,
    and mind control/dimension door/breath weapon all stayed flavor-only.
    Each would need its own new subsystem (monster spellcasting,
    shapeshifting, a mind-affecting-status mechanic) -- real engine work,
    not a quick content pass. See `docs/COMBAT_NOTES.md`'s "Extending this
    later."
-4. **SFML-backed rendering, in place of the raw Windows console** — tried
+3. **SFML-backed rendering, in place of the raw Windows console** — tried
    as an isolated stage-1 trial (2026-08-24, its own branch, never merged,
    fully reverted): a second `ansalon_sfml_trial` CMake target (SFML 3.0.0
    via `FetchContent`) rendering the real overworld data as colored
@@ -1955,7 +1999,7 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
-5. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 77 shipped
+4. **Widen aftermath dialogue (`TALK_AFTER`) further** -- Milestone 77 shipped
    the five candidates named above (Milestone 70 had already taken the four
    before that). Three real candidates remain, confirmed by direct
    inspection: Pax Tharkas's Fortress Guard (`G`), Tarsis's Old Sailor (`S`)
@@ -1963,13 +2007,13 @@ session's work.
    already talkable, none the zone's own `TIMELINE_ANCHOR`. Godshome has no
    talkable zone-native NPC at all (deliberately sparse, Milestone 45), so
    it stays out of scope for this mechanism regardless.
-6. **Widen the "Bob's game" color palette to the remaining plain organic
+5. **Widen the "Bob's game" color palette to the remaining plain organic
    screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
    combat only; the character sheet, spellbook, shop, inventory, journal,
    help, and ask-input screens all still render in plain uncolored text
    through `writeBoxed`'s original overload. Only worth doing if the user
    actually wants full coverage -- ask first, don't assume.
-7. **Zone-NPC `SUBJECT` content beyond Milestone 71's initial pass** --
+6. **Zone-NPC `SUBJECT` content beyond Milestone 71's initial pass** --
    all eight Heroes now have full character-level "ask about anything"
    pools (Milestones 72/75/76), but zone-native NPCs (Otik, Tika, the
    Seeker Guard, the Forestmaster, the Fortress Guard, etc.) still only

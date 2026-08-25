@@ -27,6 +27,11 @@
 # reward after solamnic_armor -- REQUIRE cleric and REWARD_STAFF_OF_
 # STRIKING_CURING, granting character::kStaffOfStrikingCuringName (see
 # docs/CHARACTER_NOTES.md's "Magic items").
+# frostreaver_salvage (below) is this project's third item-granting reward
+# -- REQUIRE str_13 and REWARD_FROSTREAVER, granting
+# character::kFrostreaverName (see docs/CHARACTER_NOTES.md's "Magic
+# items"). First quest to gate on a raw ability score rather than
+# race/class/knight-rank.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -157,4 +162,18 @@ SLAY skeleton 2 Clear whatever has nested in the well shaft below Xak Tsaroth
 REWARD_STEEL 40
 REWARD_XP 100
 REWARD_STAFF_OF_STRIKING_CURING
+END
+
+QUEST frostreaver_salvage
+NAME A Blade None of Us Can Lift
+OFFER "You want to see something useless?" The young knight leads you to a corner where a heavy axe of blue-white ice leans against the stone, dark stains still crusted along the haft. "Pulled it off an Ice Folk raider we found frozen by the east wall -- thanoi got him before we did, tusks through the throat, whatever quarrel he died in the middle of. None of us can so much as lift the thing off the ground. If the walrus-men are still testing our gate on his account, thin their numbers and it's yours. Better used than melting in a corner."
+ACCEPT You understand the trade plainly enough: two thanoi dead, and a dead man's axe you might actually be strong enough to swing.
+PROGRESS "Still leaning right where I left it," the young knight says, glancing toward the corner. "The walrus-men haven't thinned themselves yet, far as I've heard."
+COMPLETE "Two, you said?" He looks almost disappointed not to have counted them himself. "That's more thanoi than my whole watch has managed since the ice took Feal-thas." He nods toward the corner. "Take it, then. Wield it better than the man we found it on ever got the chance to."
+GIVER the Young Knight at Ice Wall Castle
+REQUIRE str_13
+SLAY thanoi 2 Thin the thanoi still testing Ice Wall's gate
+REWARD_STEEL 50
+REWARD_XP 120
+REWARD_FROSTREAVER
 END

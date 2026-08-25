@@ -400,6 +400,17 @@ character's real saved `armorClass`/`thac0`. Thief, Fighter, and Tinker
 never see the `m=cast` option at all (`drawCombatFrame` only shows it for
 `canCastSpells` classes with something memorized).
 
+The same `playerThac0Bonus`/`playerDamageBonus` locals also carry
+**Frostreaver's terrain-gated +4** (`docs/CHARACTER_NOTES.md`'s "Magic
+items"): seeded once at the top of `runCombat`, not by a spell effect, if
+the character's equipped weapon is the Frostreaver and the fight's tile
+(`state_.x`/`state_.y`, always the overworld tile just stepped onto —
+`runCombat`'s only call site is `tryMoveOverworld`) is glacier terrain.
+Mechanically identical to a standing buff spell that happens to already be
+"cast" before the fight starts, rather than a permanent weapon stat —
+picked specifically to avoid a new `resolvePlayerAttack` parameter or any
+change to `combat::AttackOutcome`/`Combat.h`.
+
 **`render::Key::Inventory` (`'i'`), reinterpreted locally as "drink a
 potion" (Milestone 42)**, new alongside the Potion of Healing item (see
 `docs/CHARACTER_NOTES.md`'s "Potions"): same "swap a lambda in for
