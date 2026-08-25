@@ -32,6 +32,18 @@ struct PresenceWindow {
     // Topics offered after the greeting, in authored order -- empty means
     // no topic menu at all. Set via zero or more TOPIC lines.
     std::vector<std::pair<std::string, std::string>> topics;
+    // Free-text "ask about..." subjects, in authored order -- each pairs a
+    // comma-separated keyword-alias list with its dialogue text. Empty means
+    // no free-text asking is offered for this window. Set via zero or more
+    // SUBJECT lines; game::GameLoop does the actual keyword matching (see
+    // game::matchSubject) so this stays a plain data holder, same
+    // decoupling reasoning as conditionalDialogue above. See
+    // docs/TIMELINE_NOTES.md's "Ask about anything".
+    std::vector<std::pair<std::vector<std::string>, std::string>> subjects;
+    // Shown when a free-typed subject matches none of the above -- empty
+    // means fall back to game::GameLoop::talkTo's generic line. Set via an
+    // optional SUBJECT_UNKNOWN line.
+    std::string subjectUnknown;
 };
 
 struct CanonCharacter {

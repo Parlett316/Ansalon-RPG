@@ -20,16 +20,38 @@ namespace game {
 // see docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md for the underlying
 // SAY/SAY_IF/SAY_AGAIN/TOPIC and TALK/TALK_AGAIN grammar.
 struct Speech {
+    // One SUBJECT entry: matches if any of `keywords` equals a word in the
+    // player's free-typed "ask about..." input (see matchSubject below) --
+    // docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md's "Ask about anything".
+    struct SubjectEntry {
+        std::vector<std::string> keywords;
+        std::string text;
+    };
+
     std::string greeting;                                          // plain SAY/TALK
     std::vector<std::pair<std::string, std::string>> conditional;  // SAY_IF (timeline or zone)
     std::string again;                                             // SAY_AGAIN/TALK_AGAIN, may be empty
     std::vector<std::pair<std::string, std::string>> topics;       // TOPIC (timeline or zone)
+    std::vector<SubjectEntry> subjects;                            // SUBJECT (timeline or zone)
+    std::string subjectUnknown;    // SUBJECT_UNKNOWN override; empty means fall back to a generic line
 };
 
 // SAY_IF's condition vocabulary -- see docs/TIMELINE_NOTES.md. A free
 // function (not a GameLoop member) so it's directly unit-testable without
 // constructing a whole GameLoop.
 bool conditionMatches(const std::string& condition, const character::Character& character);
+
+// Lowercases `raw`, strips anything that isn't a letter/digit/hyphen/
+// apostrophe, and splits on the remaining whitespace -- the free-typed
+// "ask about..." input's tokenization. A free function (not a GameLoop
+// member) for the same direct-unit-testability reason as conditionMatches.
+std::vector<std::string> tokenizeAskInput(const std::string& raw);
+
+// The first SubjectEntry (authored order, same "first match wins"
+// convention as SAY_IF) any of whose keywords equals a word tokenized from
+// `raw`, or nullptr if none match -- see docs/TIMELINE_NOTES.md /
+// docs/ZONE_NOTES.md's "Ask about anything".
+const Speech::SubjectEntry* matchSubject(const std::vector<Speech::SubjectEntry>& subjects, const std::string& raw);
 
 // How far GameState satisfies one quest::Objective: kills so far for Slay
 // (capped display-side, never above Objective::count), else 1 if the

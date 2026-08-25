@@ -110,6 +110,15 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // its POI never shows up or has no TALK line to react against.
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> sayIfLines;
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> topicLines;
+    // SUBJECT gets the same "collected by POI char, zero or more per POI"
+    // treatment as topicLines -- first element of each tuple is the raw,
+    // still-comma-separated keyword-list token (split in the application
+    // loop below, so a malformed list fails fast at load time). See
+    // docs/ZONE_NOTES.md's "Ask about anything".
+    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> subjectLines;
+    // SUBJECT_UNKNOWN gets the same "applied after the whole file is
+    // parsed, one per POI" treatment as talkAgainLines.
+    std::unordered_map<char, std::pair<std::string, int>> subjectUnknownLines;
     // TIMELINE_ANCHOR -- see docs/TIMELINE_NOTES.md. At most one per zone;
     // validated against declared POIs after the whole file is parsed, same
     // as TALK/SHOP/PORTAL above.
@@ -301,6 +310,32 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "TOPIC is missing its text");
                 }
                 topicLines[codeToken[0]].emplace_back(label, text, lineNumber);
+            } else if (keyword == "SUBJECT") {
+                std::istringstream iss(rest);
+                std::string codeToken, keywordList;
+                if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> keywordList)) {
+                    fail(path, lineNumber, "malformed SUBJECT (expected: SUBJECT <char> <keyword1,keyword2,...> <text>)");
+                }
+                std::string text;
+                std::getline(iss, text);
+                text = trim(text);
+                if (text.empty()) {
+                    fail(path, lineNumber, "SUBJECT is missing its dialogue text");
+                }
+                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber);
+            } else if (keyword == "SUBJECT_UNKNOWN") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed SUBJECT_UNKNOWN (expected: SUBJECT_UNKNOWN <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "SUBJECT_UNKNOWN is missing its dialogue text");
+                }
+                subjectUnknownLines[codeToken[0]] = {dialogue, lineNumber};
             } else if (keyword == "TIMELINE_ANCHOR") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -330,7 +365,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
                          "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, TALK_AFTER, TALK_BEFORE, SHOP, "
-                         "BOAT, GRANTS_ITEM, BED, SAY_IF, TOPIC, TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
+                         "BOAT, GRANTS_ITEM, BED, SAY_IF, TOPIC, SUBJECT, SUBJECT_UNKNOWN, TIMELINE_ANCHOR, "
+                         "TIMELINE_LOCATION, QUEST, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -528,6 +564,48 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         for (const auto& entry : entries) {
             it->second.topics.emplace_back(std::get<0>(entry), std::get<1>(entry));
         }
+    }
+    // Same rule for SUBJECT as TOPIC: reactive, free-text-askable content,
+    // same "must already have a TALK line to react against" requirement --
+    // see docs/ZONE_NOTES.md's "Ask about anything" section. The keyword-
+    // list token is split on commas here (not by game::GameLoop at
+    // talk-time) so a malformed SUBJECT line fails fast at load time.
+    for (const auto& [code, entries] : subjectLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, std::get<2>(entries.front()),
+                 "SUBJECT '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, std::get<2>(entries.front()),
+                 "SUBJECT '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        for (const auto& entry : entries) {
+            const std::string& keywordList = std::get<0>(entry);
+            std::vector<std::string> keywords;
+            std::istringstream kiss(keywordList);
+            std::string token;
+            while (std::getline(kiss, token, ',')) {
+                token = trim(token);
+                if (!token.empty()) keywords.push_back(token);
+            }
+            if (keywords.empty()) {
+                fail(path, std::get<2>(entry), "SUBJECT '" + std::string(1, code) + "' has an empty keyword list");
+            }
+            it->second.subjects.emplace_back(std::move(keywords), std::get<1>(entry));
+        }
+    }
+    // Same rule for SUBJECT_UNKNOWN as TALK_AGAIN: an optional per-POI
+    // override, applied after the whole file is parsed. No TALK-line
+    // requirement of its own beyond what SUBJECT already needs to be
+    // reachable at all.
+    for (const auto& [code, dialogueAndLine] : subjectUnknownLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "SUBJECT_UNKNOWN '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.subjectUnknown = dialogueAndLine.first;
     }
     // Same rule for TIMELINE_ANCHOR: it must point at a real, already-
     // declared POI (the anchor's own name/description come from that POI;

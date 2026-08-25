@@ -57,6 +57,15 @@ TOPIC "<label>" <text>     optional, zero or more -- if this window has
                           any, a topic picker follows the greeting;
                           label is quoted (same convention as ZoneLoader's
                           POI name) since it may contain spaces
+SUBJECT <keywords> <text> optional, zero or more -- a free-text-askable
+                          subject (see "Ask about anything" below);
+                          <keywords> is one whitespace-free,
+                          comma-separated token (e.g.
+                          "kitiara,kit,sister"), matched against words in
+                          whatever the player types, case-insensitively
+SUBJECT_UNKNOWN <text>    optional -- shown when the player's typed
+                          subject matches no SUBJECT above; omitting this
+                          falls back to a generic engine line (see below)
 END                        closes the block
 ```
 
@@ -141,6 +150,49 @@ greeting: `talkTo` shows each topic's label in a `drawPickerFrame` with a
 trailing "Nothing, thanks" entry, loops back to the menu after showing a
 topic's text (so a player can ask about more than one thing per visit),
 and exits on "Nothing, thanks" or `Key::Quit`.
+
+## Ask about anything: free-text subjects
+
+`SUBJECT`/`SUBJECT_UNKNOWN` (see grammar above) add a second, parallel
+content source alongside the curated `TOPIC` menu: the player can type any
+subject at all, not just pick from an authored list. `game::GameLoop::talkTo`
+shows one more picker row, "Ask about something else...", whenever a window
+(or zone POI — see `docs/ZONE_NOTES.md`) has any `SUBJECT` entries at all.
+Selecting it opens a free-text prompt (`render::MapRenderer::drawAskInputFrame`
++ `render::Console::readLine`); the typed text is lowercased, stripped of
+punctuation, and split into words (`game::tokenizeAskInput`), then checked
+against each `SUBJECT`'s comma-separated keyword-alias list in authored
+order — the first one with a matching word wins (`game::matchSubject`), same
+"checked in order, first match wins" convention as `SAY_IF`. No fuzzy
+matching or synonyms beyond what's explicitly authored; widening a keyword
+list is a content-only change, not an engine one.
+
+If nothing matches, `speech.subjectUnknown` (the window's own
+`SUBJECT_UNKNOWN`, if authored) is shown; otherwise a single generic
+hardcoded line. This is deliberately not treated as an error state: it
+covers both genuinely unrelated questions and ones the timeline hasn't
+reached yet (e.g. asking Raistlin about a title from later in his own
+in-universe arc that this project's Chronicles-only scope doesn't model) —
+an in-character non-answer either way, no special-casing needed.
+
+**Free-text input avoids `std::cin` entirely.** `Console::readLine` reads
+raw characters one at a time via the same `_getch()` primitive `readKey()`
+uses, rather than `std::cin`/`getline` — see `docs/GOTCHAS.md` for why
+mixing the two inside `GameLoop`'s live loop is unproven territory this
+project has deliberately avoided rather than tested and relied on.
+
+**Shipped on exactly one window so far**: Raistlin's `PRESENCE solace 0 1`
+(`data/timeline.txt`), the proof of concept for this mechanic. Three real
+subjects — `kitiara`/`kit`/`sister`/`half-sister` (freshly written, grounded
+in `.research/dat_full.txt`'s actual Inn-of-the-Last-Home letter scene: "Who
+knows with Kitiara? ... she has sworn allegiance to another. She is, after
+all, a mercenary."), `caramon`/`brother`, and `magic`/`test`/`towers`/
+`sorcery`/`tower` (a keyword-reachable variant of the existing `TOPIC "The
+Towers of High Sorcery"` lore, not a duplicate content change to that
+`TOPIC`) — plus a `SUBJECT_UNKNOWN` in his own dismissive voice. No other
+Hero, window, or zone NPC has `SUBJECT` content yet — same "prove it out
+narrow, widen later" restraint `SAY_IF`/`TOPIC` (Milestone 19),
+`TALK_AFTER`, and `TALK_BEFORE` each followed.
 
 **Scoped to Solace, and to the 8 Heroes — as of Milestone 19.** This pass
 went deep on the single richest scene already in the game (the Inn of the

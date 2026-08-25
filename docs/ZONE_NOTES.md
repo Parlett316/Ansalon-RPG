@@ -101,6 +101,19 @@ TOPIC <char> "<label>" <dialogue...>    optional, zero or more per POI --
                                         follows the greeting/again line;
                                         same POI-and-TALK-must-exist rule
                                         as SAY_IF
+SUBJECT <char> <keywords> <dialogue...> optional, zero or more per POI --
+                                        a free-text-askable subject (see
+                                        "Ask about anything" below);
+                                        <keywords> is one whitespace-free,
+                                        comma-separated token, matched
+                                        case-insensitively against words
+                                        the player types; same
+                                        POI-and-TALK-must-exist rule as
+                                        SAY_IF/TOPIC
+SUBJECT_UNKNOWN <char> <dialogue...>    optional, at most one per POI --
+                                        shown when a typed subject matches
+                                        no SUBJECT above; omitting this
+                                        falls back to a generic engine line
 SHOP <char>                             optional, marks a POI as
                                         browsable -- pressing 'p' on that
                                         tile opens the shop screen (see
@@ -245,6 +258,26 @@ zone NPC with a `TALK` line has a matching `TALK_AGAIN` as of Milestone
 do (`PointOfInterest` only has a `char` local to its own zone file), so
 `GameLoop` synthesizes one as `"<zoneId>:<char>"` (e.g. `"solace_inn:O"`
 for Otik) -- no zone-file grammar change needed for this.
+
+## Ask about anything: free-text subjects
+
+`SUBJECT`/`SUBJECT_UNKNOWN` (see grammar above) let the player type any
+subject at all to ask a talkable POI about, not just pick from the curated
+`TOPIC` menu -- the zone-native counterpart to `data/timeline.txt`'s own
+`SUBJECT`/`SUBJECT_UNKNOWN` lines. `game::GameLoop::talkTo` is the single,
+source-agnostic executor for both (same "always was source-agnostic; what
+was missing was purely loader parsing and a field to hold the parsed
+value" precedent `TOPIC`/`SAY_IF` themselves already established at
+Milestone 26) -- see `docs/TIMELINE_NOTES.md`'s "Ask about anything" for
+the full mechanism (keyword matching, the free-text input frame, and why
+it deliberately avoids mixing `std::cin` into `GameLoop`'s `_getch()`-based
+input loop).
+
+No zone-native POI has `SUBJECT` content yet -- this mechanic's proof of
+concept shipped entirely on the timeline side (Raistlin's `PRESENCE solace
+0 1` window), same "one location first" restraint every reactive-dialogue
+feature in this project has followed. Widening to a zone NPC needs no
+engine change, only content.
 
 ## Zone-interior encounters (Milestone 23)
 

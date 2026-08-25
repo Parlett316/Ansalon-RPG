@@ -11,6 +11,7 @@
 #include "world/ZoneTile.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <functional>
 #include <sstream>
@@ -38,6 +39,10 @@ Speech speechFromWindow(const timeline::PresenceWindow& window) {
     speech.conditional = window.conditionalDialogue;
     speech.again = window.dialogueAgain;
     speech.topics = window.topics;
+    for (const auto& [keywords, text] : window.subjects) {
+        speech.subjects.push_back(Speech::SubjectEntry{keywords, text});
+    }
+    speech.subjectUnknown = window.subjectUnknown;
     return speech;
 }
 
@@ -50,6 +55,10 @@ Speech speechFromPoi(const world::PointOfInterest& poi) {
     speech.conditional = poi.conditionalDialogue;
     speech.again = poi.dialogueAgain;
     speech.topics = poi.topics;
+    for (const auto& [keywords, text] : poi.subjects) {
+        speech.subjects.push_back(Speech::SubjectEntry{keywords, text});
+    }
+    speech.subjectUnknown = poi.subjectUnknown;
     return speech;
 }
 
@@ -113,6 +122,45 @@ bool conditionMatches(const std::string& condition, const character::Character& 
                character::meetsKnightOfRoseRequirements(c.scores);
     }
     return false;
+}
+
+// Lowercases and splits on anything that isn't a letter/digit/hyphen/
+// apostrophe -- deliberately simple keyword tokenization, not NLP, matching
+// this project's plain, fail-fast data-driven style. Hyphens/apostrophes
+// are kept as word characters so a keyword like "half-sister" can still
+// match a literally-hyphenated typed word, though authored SUBJECT keyword
+// lists don't rely on that (see docs/TIMELINE_NOTES.md's "Ask about
+// anything").
+std::vector<std::string> tokenizeAskInput(const std::string& raw) {
+    std::vector<std::string> tokens;
+    std::string current;
+    for (char c : raw) {
+        char lower = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        bool isWordChar = std::isalnum(static_cast<unsigned char>(lower)) != 0 || lower == '-' || lower == '\'';
+        if (isWordChar) {
+            current.push_back(lower);
+        } else if (!current.empty()) {
+            tokens.push_back(current);
+            current.clear();
+        }
+    }
+    if (!current.empty()) tokens.push_back(current);
+    return tokens;
+}
+
+const Speech::SubjectEntry* matchSubject(const std::vector<Speech::SubjectEntry>& subjects, const std::string& raw) {
+    std::vector<std::string> tokens = tokenizeAskInput(raw);
+    for (const auto& subject : subjects) {
+        for (const std::string& keyword : subject.keywords) {
+            std::string lowerKeyword = keyword;
+            std::transform(lowerKeyword.begin(), lowerKeyword.end(), lowerKeyword.begin(),
+                           [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            for (const std::string& token : tokens) {
+                if (token == lowerKeyword) return &subject;
+            }
+        }
+    }
+    return nullptr;
 }
 
 int objectiveProgress(const quest::Objective& objective, const GameState& state) {
@@ -774,9 +822,21 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
         offerOrTurnInQuest(candidate.questId, name);
     }
 
-    if (!speech.topics.empty()) {
+    bool canAskAnything = !speech.subjects.empty();
+    if (!speech.topics.empty() || canAskAnything) {
         std::vector<std::string> labels;
         for (const auto& [label, topicText] : speech.topics) labels.push_back(label);
+        // "Ask about something else..." (free-text) sits between the
+        // curated topics and "Nothing, thanks" -- only shown when this
+        // window/POI has any SUBJECT content at all. See
+        // docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md's "Ask about
+        // anything".
+        int askAnythingIndex = -1;
+        if (canAskAnything) {
+            askAnythingIndex = static_cast<int>(labels.size());
+            labels.push_back("Ask about something else...");
+        }
+        int nothingThanksIndex = static_cast<int>(labels.size());
         labels.push_back("Nothing, thanks");
         int selected = 0;
         for (;;) {
@@ -788,7 +848,25 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
             } else if (key == render::Key::South) {
                 selected = (selected + 1) % static_cast<int>(labels.size());
             } else if (key == render::Key::Enter) {
-                if (selected == static_cast<int>(speech.topics.size())) return; // "Nothing, thanks"
+                if (selected == nothingThanksIndex) return;
+                if (selected == askAnythingIndex) {
+                    render::MapRenderer::drawAskInputFrame(name);
+                    std::string input = render::Console::readLine(60);
+                    if (!input.empty()) {
+                        const Speech::SubjectEntry* match = matchSubject(speech.subjects, input);
+                        std::string response;
+                        if (match != nullptr) {
+                            response = match->text;
+                        } else if (!speech.subjectUnknown.empty()) {
+                            response = speech.subjectUnknown;
+                        } else {
+                            response = name + " gives you a blank look. \"I'm not sure what you mean by that.\"";
+                        }
+                        render::MapRenderer::drawDialogueFrame({{name, response}});
+                        render::Console::readKey();
+                    }
+                    continue;
+                }
                 render::MapRenderer::drawDialogueFrame({{name, speech.topics[selected].second}});
                 render::Console::readKey();
             } else if (key == render::Key::Quit) {

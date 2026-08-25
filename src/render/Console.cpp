@@ -163,4 +163,45 @@ Key Console::readKey() {
 #endif
 }
 
+std::string Console::readLine(std::size_t maxLength) {
+#ifdef _WIN32
+    std::string buffer;
+    for (;;) {
+        int c = _getch();
+        if (c == 0 || c == 0xE0) {
+            _getch(); // eat the extended-key second byte -- see readKey's own comment above
+            continue;  // arrows/function keys have no meaning while typing free text
+        }
+        if (c == 13) { // Enter
+            std::fputc('\n', stdout);
+            return buffer;
+        }
+        if (c == 27) { // Esc -- cancel; deliberately not 'q', see the header doc comment
+            std::fputc('\n', stdout);
+            return "";
+        }
+        if (c == 8) { // Backspace
+            if (!buffer.empty()) {
+                buffer.pop_back();
+                std::fputs("\b \b", stdout);
+                std::fflush(stdout);
+            }
+            continue;
+        }
+        // True 7-bit ASCII only (see docs/GOTCHAS.md) -- anything else is
+        // silently ignored rather than echoed as garbage.
+        if (c >= 0x20 && c < 0x7F && buffer.size() < maxLength) {
+            buffer.push_back(static_cast<char>(c));
+            std::fputc(c, stdout);
+            std::fflush(stdout);
+        }
+    }
+#else
+    std::string line;
+    if (!std::getline(std::cin, line)) return "";
+    if (line.size() > maxLength) line.resize(maxLength);
+    return line;
+#endif
+}
+
 } // namespace render

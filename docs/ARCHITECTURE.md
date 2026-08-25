@@ -95,6 +95,17 @@ need an alternate implementation of `Console`, never a change to `World`,
 non-Windows branch of `Console::readKey` is a line-based fallback, not a
 real raw-input implementation — see `docs/GOTCHAS.md`.)
 
+`Console::readLine` (the "ask about..." free-text prompt — see
+`docs/TIMELINE_NOTES.md`'s "Ask about anything") is the one other input
+primitive in `Console`, added alongside `readKey` rather than reusing
+`CharacterCreator`'s plain `std::cin`/`getline` approach: it stays inside
+the same raw-`_getch()` input model `readKey` already uses (reading one
+character at a time and echoing manually) specifically to avoid mixing two
+different console input APIs while `GameLoop` is live — a combination this
+codebase has never needed and hasn't tested (see `docs/GOTCHAS.md`).
+Consequence: like the rest of `GameLoop`'s input, it can't be driven by a
+piped/redirected script either.
+
 **Flagged future direction, not a commitment:** if real cross-platform
 builds or sprite rendering ever become an actual goal, this isolation is
 exactly what would make an SFML-backed `Console`/renderer a contained

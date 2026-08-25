@@ -166,6 +166,14 @@ public:
     static void drawPickerFrame(const std::string& title, const std::vector<std::string>& items,
                                  int selectedIndex, const std::string& footer);
 
+    // Draws the "ask about something else..." free-text prompt: a boxed
+    // instruction line naming `npcName`, then a plain (unboxed) "> " prompt
+    // printed immediately below with no trailing newline, so the cursor is
+    // left right after it -- render::Console::readLine's raw per-keystroke
+    // echo prints directly there. See game::GameLoop::talkTo and
+    // docs/TIMELINE_NOTES.md's "Ask about anything".
+    static void drawAskInputFrame(const std::string& npcName);
+
     // Renders the shop screen: `shopName` (the POI's own name, e.g.
     // "General Store" or "Market Stalls") as the heading, the character's
     // steel, and either `buyItems` (character::availableShopItems) or

@@ -744,6 +744,24 @@ void MapRenderer::drawPickerFrame(const std::string& title, const std::vector<st
     std::cout << out.str();
 }
 
+void MapRenderer::drawAskInputFrame(const std::string& npcName) {
+    std::vector<std::string> lines;
+    lines.push_back("Type a subject to ask " + npcName + " about, then press Enter.");
+    lines.push_back("(Esc cancels.)");
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    writeBoxed(out, "Ask " + npcName + " About...", lines);
+    // Deliberately outside the box -- writeBoxed's lines are always padded
+    // to exact width and newline-terminated, so there's no clean way to
+    // leave the cursor mid-line inside it. A plain prompt below the box
+    // keeps this simple and correct instead of fighting absolute
+    // ANSI cursor positioning for a cosmetic gain.
+    out << "\n> ";
+    std::cout << out.str();
+    std::cout.flush();
+}
+
 void MapRenderer::drawDialogueFrame(const std::vector<DialogueLine>& dialogueLines) {
     std::vector<std::string> lines;
     for (const auto& line : dialogueLines) {

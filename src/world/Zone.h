@@ -59,6 +59,19 @@ struct PointOfInterest {
     // docs/ZONE_NOTES.md), which must reference a POI that also has a
     // TALK line.
     std::vector<std::pair<std::string, std::string>> topics;
+    // Free-text "ask about..." subjects, in authored order -- each pairs a
+    // comma-separated keyword-alias list with its dialogue text. Empty means
+    // no free-text asking is offered for this POI. Set via zero or more
+    // SUBJECT lines (see docs/ZONE_NOTES.md's "Ask about anything"), which
+    // must reference a POI that also has a TALK line, same rule as TOPIC.
+    // game::GameLoop does the actual keyword matching (see
+    // game::matchSubject) so this stays a plain data holder, same
+    // decoupling reasoning as conditionalDialogue above.
+    std::vector<std::pair<std::vector<std::string>, std::string>> subjects;
+    // Shown when a free-typed subject matches none of the above -- empty
+    // means fall back to game::GameLoop::talkTo's generic line. Set via an
+    // optional SUBJECT_UNKNOWN line.
+    std::string subjectUnknown;
     // True if the player can press 'b' (shop) while standing on this tile
     // to browse/buy from character::Equipment's catalog -- set via a SHOP
     // line in the zone file, which must reference an already-declared POI

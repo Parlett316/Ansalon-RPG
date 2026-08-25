@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 
 namespace render {
@@ -73,6 +74,22 @@ public:
     // the quest journal, 'f' to flee combat, 'm' to cast in combat, 'r' to
     // rest, 'z' to fully heal at a bed POI, 'q'/Esc to quit.
     static Key readKey();
+
+    // Blocks reading a free-typed line of text, echoing it as the player
+    // types (used by the "ask about something else..." free-text prompt --
+    // see game::GameLoop::talkTo and docs/TIMELINE_NOTES.md's "Ask about
+    // anything"). Deliberately reads via the same raw _getch() primitive
+    // readKey() uses, one character at a time, rather than std::cin/
+    // std::getline -- those are only ever used pre-GameLoop, by
+    // CharacterCreator, and mixing them with a live _getch() loop is
+    // unproven territory this project has never needed before (see
+    // docs/GOTCHAS.md). Enter submits and returns the typed text (capped at
+    // `maxLength`, extra keystrokes past the cap are ignored); Backspace
+    // edits; Esc cancels and returns an empty string. **Esc, not 'q', is
+    // cancel here** -- a deliberate deviation from this game's usual Quit
+    // convention, since 'q' is a perfectly ordinary character to type in a
+    // free-text question (see docs/GOTCHAS.md).
+    static std::string readLine(std::size_t maxLength);
 
     // Directory containing the running executable (no trailing slash), used
     // to locate data/ and save.txt next to a distributed build instead of a

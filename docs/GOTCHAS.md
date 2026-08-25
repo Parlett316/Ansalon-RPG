@@ -92,6 +92,23 @@ you hit something surprising — that's the whole point of it existing.
   (racial adjustments, prime requisite checks, HP/AC/saves/starting steel) was
   confirmed correct before a human ever ran it. The moment `GameLoop`
   starts, the game goes back to needing a real keyboard.
+- **`render::Console::readLine` (the free-text "ask about..." prompt, see
+  `docs/TIMELINE_NOTES.md`'s "Ask about anything") deliberately does NOT use
+  `std::cin`/`getline`, even though `CharacterCreator` already does.** The
+  difference: `CharacterCreator` only ever runs *before* `GameLoop`'s
+  `_getch()` loop starts (see above) — the two have never been interleaved
+  in the same session anywhere in this codebase, so there's no established
+  precedent that mixing buffered `std::cin` reads with raw `_getch()` reads
+  inside one live session is safe. Rather than gamble on that, `readLine`
+  reads one raw character at a time via `_getch()` itself (same primitive
+  `readKey()` uses) and echoes/backspaces manually. If a future change ever
+  wants real `std::cin` input *during* `GameLoop`, treat that as new,
+  untested territory, not something this precedent already covers.
+- **`readLine`'s cancel key is Esc, not `q`, unlike everywhere else in this
+  game.** Every other screen uses `q`/Esc interchangeably to mean Quit/
+  cancel, but `readLine` is reading arbitrary free text — `q` is a
+  perfectly ordinary character to type in a real question (e.g. "ask about
+  the Test") and can't be reserved. Esc is the only cancel key while typing.
 
 ## Toolchain
 

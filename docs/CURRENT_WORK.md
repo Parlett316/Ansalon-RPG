@@ -2,13 +2,18 @@
 
 Nothing in flight.
 
-Milestone 70 (widened aftermath dialogue -- `TALK_AFTER` -- to Haven's
-Seeker Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's Elven Sentinel,
-and Kalaman's City Watchman) just shipped -- see `docs/MILESTONES.md`'s
-Milestone 70 entry and `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section
-for the full list and rationale. Pure data content, no `.cpp`/`.h`
-changes. Verified via a clean `/W4` rebuild (zero new warnings) and the
-piped smoke test (confirms all four modified zone files still parse).
-Interactive verification (walking to each zone after its `PRESENCE`
-window(s) have closed, confirming the aftermath line fires once and falls
-back to `TALK_AGAIN` after) still needs the user's own keyboard.
+Milestone 71 ("Ask about anything" -- free-text `SUBJECT`/`SUBJECT_UNKNOWN`
+conversation subjects, new grammar in both `data/timeline.txt` and
+`data/zones/*.txt`, a new `Console::readLine` raw-`_getch()` text-entry
+primitive, and one proof-of-concept window on Raistlin's `PRESENCE solace
+0 1`) just shipped -- see `docs/MILESTONES.md`'s Milestone 71 entry and
+`docs/TIMELINE_NOTES.md`/`docs/ZONE_NOTES.md`'s "Ask about anything"
+sections for the full mechanism and rationale. Verified via a throwaway
+self-test (tokenizing/keyword-matching), a clean `/W4` rebuild (zero new
+warnings), and the piped smoke test (confirms the new timeline grammar
+parses). **Interactive verification of the free-text prompt itself still
+needs the user's own keyboard** -- typing "Kitiara" at Raistlin, typing
+something unrelated (e.g. "Master of Past and Present") to confirm the
+fallback, Backspace/Enter/Esc while typing, and confirming the existing
+curated `TOPIC` menu still works unchanged alongside the new "Ask about
+something else..." row.

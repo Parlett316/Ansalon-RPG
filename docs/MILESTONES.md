@@ -1578,6 +1578,58 @@ section).
     limitation every prior `TALK_AFTER`/`TALK_BEFORE` milestone has flagged.
     See `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section.
 
+71. "Ask about anything" -- free-text conversation subjects, at the user's
+    explicit request to go deep on NPC dialogue: instead of only picking
+    from a curated `TOPIC` menu, the player can now type any subject at
+    all. New `SUBJECT <keywords> <text>`/`SUBJECT_UNKNOWN <text>` grammar
+    (char-prefixed for zone files, same as `SAY_IF`/`TOPIC`) in both
+    `data/timeline.txt` and `data/zones/*.txt`, a new `Speech::SubjectEntry`
+    list on the existing `Speech` struct, and two new free functions
+    (`game::tokenizeAskInput`/`game::matchSubject`, unit-tested via the
+    throwaway self-test pattern) doing simple lowercase/punctuation-
+    stripped whole-word keyword matching -- no NLP, no fuzzy matching,
+    same "checked in authored order, first match wins" convention as
+    `SAY_IF`. `GameLoop::talkTo`'s existing topic picker (already labeled
+    "Ask <name> about...") gained one more row, "Ask about something
+    else...", shown whenever any `SUBJECT` content exists, opening a new
+    free-text prompt (`MapRenderer::drawAskInputFrame` +
+    `Console::readLine`). `Console::readLine` deliberately reads via the
+    same raw `_getch()` primitive `readKey()` already uses rather than
+    `std::cin`/`getline` -- `CharacterCreator`'s own `std::cin` usage only
+    ever runs *before* `GameLoop`'s raw-keypress loop starts, so mixing the
+    two inside one live session is untested territory this project has
+    never needed before, and `readLine` sidesteps it entirely rather than
+    gambling on it (see `docs/GOTCHAS.md`). Its cancel key is Esc, not `q`,
+    a deliberate deviation from this game's usual Quit convention since `q`
+    is an ordinary character a player might type in a real question.
+    Content shipped as a single proof of concept, same "prove it out
+    narrow, widen later" restraint `SAY_IF`/`TOPIC` (Milestone 19),
+    `TALK_AFTER` (Milestone 66), and `TALK_BEFORE` (Milestone 68) each
+    followed: Raistlin's `PRESENCE solace 0 1` window gained three real
+    `SUBJECT` entries -- Kitiara (freshly written, sourced from
+    `.research/dat_full.txt`'s actual Inn-of-the-Last-Home letter scene:
+    "Who knows with Kitiara? ... she has sworn allegiance to another. She
+    is, after all, a mercenary."), Caramon (leveraging the twin dynamic
+    already established in this same window), and magic/the Test (a
+    keyword-reachable variant of the existing `TOPIC "The Towers of High
+    Sorcery"`, not a change to that `TOPIC` itself) -- plus a
+    `SUBJECT_UNKNOWN` in his own dismissive voice, which doubles as the
+    natural in-character answer to a forward-referencing question the
+    timeline hasn't reached yet (e.g. a title from later in his own
+    in-universe arc) without any special-casing. No other Hero, window, or
+    zone NPC has `SUBJECT` content yet. Verified via a throwaway self-test
+    (tokenization/matching: case-insensitivity, punctuation stripping,
+    whole-word-only matching, first-match-wins ordering), a clean `/W4`
+    rebuild (zero new warnings), and the piped smoke test (confirms
+    `data/timeline.txt`'s new grammar still parses). **Interactive
+    verification of the free-text prompt itself (typing "Kitiara," typing
+    something unrelated, Backspace/Enter/Esc while typing) still needs the
+    user's own keyboard** -- piped stdin can't drive `_getch()`, and this
+    feature adds a second raw-input mode on top of that, same limitation
+    every prior picker/quest-UI milestone has flagged. See
+    `docs/TIMELINE_NOTES.md`'s and `docs/ZONE_NOTES.md`'s "Ask about
+    anything" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -1628,3 +1680,12 @@ session's work.
    the Tower's Garrison Knight, Ice Wall's young Knight, Silvanost's
    Warder, Palanthas's Knight of the Watch, etc.) remains a candidate for a
    future pass.
+6. **Widen "ask about anything" (`SUBJECT`) beyond Raistlin's Solace
+   window** -- Milestone 71 shipped the engine and one proof-of-concept
+   window; every other Hero's existing `PRESENCE` window (and any zone NPC
+   with real `TALK`/`TOPIC` content) is a candidate for real `SUBJECT`
+   entries next, same "prove it out narrow, widen later" pattern
+   `TALK_AFTER`/`TALK_BEFORE` already followed. Likely needs a fresh
+   sourcing pass per character/window, same discipline every dialogue
+   milestone in this project has followed -- not something to fill in from
+   memory.

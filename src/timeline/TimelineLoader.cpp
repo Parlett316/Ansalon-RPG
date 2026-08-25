@@ -133,6 +133,41 @@ void TimelineLoader::loadFromFile(const std::string& path, Timeline& outTimeline
                 fail(path, lineNumber, "TOPIC is missing its text");
             }
             current.schedule.back().topics.emplace_back(label, text);
+        } else if (keyword == "SUBJECT") {
+            if (current.schedule.empty()) {
+                fail(path, lineNumber, "SUBJECT must follow a PRESENCE line in the same CHARACTER block");
+            }
+            std::istringstream iss(rest);
+            std::string keywordList;
+            if (!(iss >> keywordList)) {
+                fail(path, lineNumber, "malformed SUBJECT (expected: SUBJECT <keyword1,keyword2,...> <text>)");
+            }
+            std::string text;
+            std::getline(iss, text);
+            text = trim(text);
+            if (text.empty()) {
+                fail(path, lineNumber, "SUBJECT is missing its dialogue text");
+            }
+            std::vector<std::string> keywords;
+            std::istringstream kiss(keywordList);
+            std::string token;
+            while (std::getline(kiss, token, ',')) {
+                token = trim(token);
+                if (!token.empty()) keywords.push_back(token);
+            }
+            if (keywords.empty()) {
+                fail(path, lineNumber, "SUBJECT has an empty keyword list");
+            }
+            current.schedule.back().subjects.emplace_back(std::move(keywords), text);
+        } else if (keyword == "SUBJECT_UNKNOWN") {
+            if (current.schedule.empty()) {
+                fail(path, lineNumber, "SUBJECT_UNKNOWN must follow a PRESENCE line in the same CHARACTER block");
+            }
+            std::string text = trim(rest);
+            if (text.empty()) {
+                fail(path, lineNumber, "SUBJECT_UNKNOWN is missing its dialogue text");
+            }
+            current.schedule.back().subjectUnknown = text;
         } else if (keyword == "END") {
             outTimeline.addCharacter(std::move(current));
             inCharacter = false;
