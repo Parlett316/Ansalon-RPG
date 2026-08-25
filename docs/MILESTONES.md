@@ -2054,6 +2054,49 @@ section).
     out of scope permanently. See `docs/ZONE_NOTES.md`'s "Aftermath
     dialogue" section.
 
+81. Widened the "Bob's game" color palette to the remaining plain organic
+    screens -- NEXT UP item 4, explicitly flagged "only worth doing if the
+    user actually wants it," picked by the user this session via
+    `AskUserQuestion`. Milestone 73 colored dialogue/picker/combat and
+    deliberately left character sheet, spellbook, shop, inventory, journal,
+    help, and the ask-input prompt plain; this milestone converts six of
+    those seven (`drawCharacterSheet`/`drawSpellbookFrame`/`drawShopFrame`/
+    `drawInventoryFrame`/`drawJournalFrame`/`drawHelpFrame`) from the plain
+    `std::vector<std::string>` `writeBoxed` overload to the `BoxLine`
+    overload Milestone 73 introduced, using strictly the palette that
+    already existed -- no new color, no new meaning invented. A new named
+    constant, `kSectionLabelColor` (`"\x1b[96m"`, the same bright cyan
+    `buildStatusPanel` already used inline for `MODE:`), formalizes "fixed
+    section/category label" as a third reusable meaning and lands on six
+    section headers across these screens (`Saving Throws:`, each
+    spellbook `Level N (...):`, the shop's `-- Buying --`/`-- Selling --`,
+    the inventory's `Carried items:`, the journal's `Completed:`, and
+    Help's three category headers). The shop/inventory selected cursor row
+    reuses `drawPickerFrame`'s existing bright-white convention directly,
+    since both are the same cursor-list shape; journal quest titles reuse
+    the bright-yellow "named thing" convention, the clearest analog to an
+    NPC/location name outside dialogue. Everything else on these screens
+    (ability scores, HP/AC/THAC0, weapon/armor, spell lists, item labels,
+    footers, free-form messages) stays plain, matching Milestone 73's own
+    "only label sections/named-things/the selection, never free-form
+    prose" restraint. `drawAskInputFrame` was deliberately left unchanged
+    -- neither of its two lines is purely a section label, a named thing,
+    or a selected row, and `BoxLine` still only colors a whole line
+    (Milestone 73's unchanged constraint), so tinting just the NPC's name
+    inline would mean restructuring the sentence rather than widening the
+    existing palette. Verified via a throwaway self-test
+    (`ColorSelfTest2.cpp`, same pattern as Milestone 73's own
+    `ColorSelfTest.cpp` -- all six changed functions called with sample
+    data, output inspected via `cat -v` confirming every color-set code is
+    immediately followed by its reset and that bordered rows stay aligned
+    column-for-column between colored and plain lines, deleted afterward
+    along with its temporary CMake target), a clean `/W4` rebuild (zero new
+    warnings), and the piped smoke test (real save moved aside and
+    restored byte-identical afterward). Real in-terminal color rendering
+    still needs the user's own eyes, same limitation as every prior color
+    milestone. See `docs/ARCHITECTURE.md`'s "Widening the palette to the
+    remaining organic screens".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2091,9 +2134,3 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
-4. **Widen the "Bob's game" color palette to the remaining plain organic
-   screens** -- Milestone 73 deliberately scoped color to dialogue/picker/
-   combat only; the character sheet, spellbook, shop, inventory, journal,
-   help, and ask-input screens all still render in plain uncolored text
-   through `writeBoxed`'s original overload. Only worth doing if the user
-   actually wants full coverage -- ask first, don't assume.

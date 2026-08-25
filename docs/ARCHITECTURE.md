@@ -1113,6 +1113,54 @@ still returns to explore. One line removed, `pickAndLook`'s equivalent loop
 was deliberately left alone — the request was specifically about talking,
 and Look has no multi-step conversation to return from.
 
+## Widening the palette to the remaining organic screens (Milestone 81)
+
+The seven screens Milestone 73 deliberately left plain narrowed to one:
+character sheet, spellbook, shop, and inventory (`drawCharacterSheet`/
+`drawSpellbookFrame`/`drawShopFrame`/`drawInventoryFrame`) and journal/help
+(`drawJournalFrame`/`drawHelpFrame`) were converted from the plain
+`std::vector<std::string>`/`writeBoxed` overload to the `BoxLine`/`writeBoxed`
+overload Milestone 73 introduced, picking up color strictly from the palette
+that already existed — no new color, no new meaning invented:
+
+- A new named constant, `kSectionLabelColor` (`"\x1b[96m"`, the same bright
+  cyan `buildStatusPanel` already used inline for `MODE:`), formalizes
+  "fixed section/category label" as a third reusable meaning alongside
+  `kNpcNameColor` ("named thing") and `kSelectedItemColor` ("this is you/
+  selected"). Applied to: the character sheet's `Saving Throws:` header,
+  the spellbook's `Level N (...):` headers, the shop's `-- Buying --`/
+  `-- Selling --` headers, the inventory's `Carried items:` header, the
+  journal's `Completed:` header, and the Help screen's three category
+  headers (`Movement:`/`Overworld / zone:`/`Combat:`).
+- The shop and inventory screens' selected cursor row (`> ...`) now colors
+  bright white via `kSelectedItemColor` — a direct reuse of
+  `drawPickerFrame`'s existing cursor convention, since both screens are the
+  same "cursor list" shape.
+- Journal quest titles color bright yellow via `kNpcNameColor` — the
+  clearest "named thing" analog outside an NPC/location name.
+- Everything else on these screens (ability scores, HP/AC/THAC0, weapon/
+  armor lines, spell lists, item labels, footers, free-form messages) stays
+  plain, matching the "only label sections, named things, and the
+  selection — never free-form prose" restraint Milestone 73 established.
+
+`drawAskInputFrame` was deliberately left unchanged: both its lines are
+short instructional prose with no line that's purely a section label, a
+named thing, or a selected row, and `BoxLine`/`colorLine` still only ever
+color a *whole* padded line (Milestone 73's constraint, unchanged) — so
+tinting just the NPC's name inline would mean restructuring the sentence,
+out of scope for "widen the existing palette to existing lines."
+
+**Verified the same throwaway self-test way as Milestone 73**: a
+`ColorSelfTest2.cpp` calling all six changed draw functions with sample
+data (a Mage and a Knight-of-the-Crown Fighter for the sheet, a shop in
+both buy/sell mode with a selected row, an inventory with a selected
+potion, a journal with one active and one completed quest), piped to a
+file and inspected with `cat -v` — confirmed every set code is immediately
+followed by `\x1b[0m` and that bordered rows stay aligned column-for-column
+between colored and plain lines. Deleted after use, along with the
+temporary CMake target, per CLAUDE.md. Real in-terminal rendering still
+needs the user's own eyes, same limitation as every prior color milestone.
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can

@@ -2,18 +2,17 @@
 
 Nothing in flight.
 
-Milestone 80 (aftermath dialogue `TALK_AFTER` widened to the last three
-real zones -- Pax Tharkas's Fortress Guard, Tarsis's Old Sailor, Neraka's
-Deserting Guard) shipped 2026-08-25. Pure data, zero `.cpp`/`.h` changes,
-verified via a clean rebuild and the piped smoke test (real save moved
-aside and restored byte-identical afterward) -- see `docs/MILESTONES.md`
-and `docs/ZONE_NOTES.md`'s "Aftermath dialogue" section for what shipped
-and why. This closes the `TALK_AFTER` backlog entirely: every real
-candidate is done, Godshome permanently out of scope (no talkable
-zone-native NPC). Real in-terminal verification (reaching each zone after
-its `latestDayEnd`, confirming each line fires once) still needs the
-user's own keyboard, same `_getch()` limitation every prior `TALK_AFTER`
-milestone has flagged.
+Milestone 81 (widening the "Bob's game" color palette to the remaining
+plain organic screens -- character sheet, spellbook, shop, inventory,
+journal, help; `drawAskInputFrame` deliberately left plain) shipped
+2026-08-25. Pure `MapRenderer.cpp` presentation change, zero new
+`.h`/other-`.cpp` files, verified via a throwaway self-test (`cat -v`-
+inspected escape codes and alignment), a clean `/W4` rebuild, and the
+piped smoke test (real save moved aside and restored byte-identical
+afterward) -- see `docs/MILESTONES.md` and `docs/ARCHITECTURE.md`'s
+"Widening the palette to the remaining organic screens" for what shipped
+and why. Real in-terminal color rendering still needs the user's own
+eyes, same limitation every prior color/UI milestone has flagged.
 
 **Note on the live save**: `build/Debug/save.txt` is still the
 hand-edited maxed-stat (all six scores 18) Human Fighter built for the
@@ -25,6 +24,5 @@ the user starts over.
 
 Next backlog candidates (not started, not committed) -- see
 `docs/MILESTONES.md`'s NEXT UP: an instant-defeat spell's interactive
-verification (item 1), real Draconian mechanics (item 2), SFML-backed
-rendering revisit with real sprite art (item 3), or widening the color
-palette further (item 4).
+verification (item 1), real Draconian mechanics (item 2), or an
+SFML-backed rendering revisit with real sprite art (item 3).

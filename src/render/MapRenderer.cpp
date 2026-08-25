@@ -264,6 +264,12 @@ constexpr const char* kNpcNameColor = "\x1b[93m";       // bright yellow, matche
 constexpr const char* kSelectedItemColor = "\x1b[97m";  // bright white, matches the player's own '@' glyph
 constexpr const char* kPlayerCombatColor = "\x1b[97m";  // bright white, same "this is you" convention
 constexpr const char* kMonsterCombatColor = "\x1b[91m"; // bright red -- the threat
+// Bright cyan, same value buildStatusPanel already uses inline for
+// "MODE:" -- named here (Milestone 81) for reuse as the generic "fixed
+// section/category label" meaning across the organic screens below
+// (Saving Throws:, Level N:, -- Buying/Selling --, Carried items:,
+// Completed:, and the Help screen's category headers).
+constexpr const char* kSectionLabelColor = "\x1b[96m";
 
 // A line of "organic" screen content (see writeBoxed above) that also
 // carries an optional whole-line ANSI color, applied after wrapping and
@@ -468,26 +474,26 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
     const auto& cls = character::classInfo(c.charClass);
     const character::SubraceInfo* sub = character::subraceInfo(c.subrace);
 
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     std::ostringstream classLine;
     classLine << (sub != nullptr ? sub->name : race.name) << " " << cls.name << ", level " << c.level << " ("
               << c.experience << " XP)";
-    lines.push_back(classLine.str());
-    lines.push_back(character::alignmentName(c.alignment));
+    lines.push_back({classLine.str(), nullptr});
+    lines.push_back({character::alignmentName(c.alignment), nullptr});
     if (c.knightOrder != character::KnightOrder::None) {
-        lines.push_back(character::knightOrderName(c.knightOrder));
+        lines.push_back({character::knightOrderName(c.knightOrder), nullptr});
     }
     if (c.charClass == character::ClassId::Mage) {
         if (c.robeColor == character::RobeColor::None) {
-            lines.push_back("Unaffiliated student of the arcane");
+            lines.push_back({"Unaffiliated student of the arcane", nullptr});
         } else {
             std::ostringstream robeLine;
             robeLine << character::robeColorName(c.robeColor) << ", sworn to " << character::robeMoonName(c.robeColor);
-            lines.push_back(robeLine.str());
+            lines.push_back({robeLine.str(), nullptr});
         }
     }
-    lines.push_back("");
+    lines.push_back({"", nullptr});
 
     std::ostringstream abilities1;
     abilities1 << "STR " << c.scores.strength;
@@ -498,16 +504,16 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
         abilities1 << "/" << (pct == 100 ? "00" : (pct < 10 ? "0" : "")) << (pct == 100 ? "" : std::to_string(pct));
     }
     abilities1 << "   DEX " << c.scores.dexterity << "   CON " << c.scores.constitution;
-    lines.push_back(abilities1.str());
+    lines.push_back({abilities1.str(), nullptr});
 
     std::ostringstream abilities2;
     abilities2 << "INT " << c.scores.intelligence << "   WIS " << c.scores.wisdom << "   CHA " << c.scores.charisma;
-    lines.push_back(abilities2.str());
-    lines.push_back("");
+    lines.push_back({abilities2.str(), nullptr});
+    lines.push_back({"", nullptr});
 
     std::ostringstream hpLine;
     hpLine << "HP " << c.currentHp << "/" << c.maxHp << "   AC " << c.armorClass << "   THAC0 " << c.thac0;
-    lines.push_back(hpLine.str());
+    lines.push_back({hpLine.str(), nullptr});
 
     std::ostringstream weaponLine;
     weaponLine << "Weapon: " << c.weaponName;
@@ -520,21 +526,21 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
             weaponLine << "Shield only";
         }
     }
-    lines.push_back(weaponLine.str());
-    lines.push_back("");
+    lines.push_back({weaponLine.str(), nullptr});
+    lines.push_back({"", nullptr});
 
-    lines.push_back("Saving Throws:");
+    lines.push_back({"Saving Throws:", kSectionLabelColor});
     for (int i = 0; i < static_cast<int>(character::SaveCategory::Count); ++i) {
         auto category = static_cast<character::SaveCategory>(i);
         std::ostringstream saveLine;
         saveLine << "  " << character::saveCategoryName(category) << ": " << c.saves.at(category);
-        lines.push_back(saveLine.str());
+        lines.push_back({saveLine.str(), nullptr});
     }
-    lines.push_back("");
+    lines.push_back({"", nullptr});
 
     std::ostringstream steelLine;
     steelLine << "Steel: " << c.steelPieces << " stl";
-    lines.push_back(steelLine.str());
+    lines.push_back({steelLine.str(), nullptr});
 
     std::ostringstream carriedLine;
     carriedLine << "Carried: ";
@@ -547,18 +553,18 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
         }
         carriedLine << " (press 'i' to equip)";
     }
-    lines.push_back(carriedLine.str());
+    lines.push_back({carriedLine.str(), nullptr});
 
     if (character::canCastSpells(c.charClass)) {
-        lines.push_back("");
+        lines.push_back({"", nullptr});
         if (character::maxAccessibleSpellLevel(c) == 0) {
-            lines.push_back("Spells: cannot cast arcane magic");
+            lines.push_back({"Spells: cannot cast arcane magic", nullptr});
         } else if (c.spellsCastDay != currentDay) {
             // Not memorized today -- see character::memorizeSpells /
             // game::GameLoop::handleRest ('r').
-            lines.push_back("Spells: not memorized today -- rest to prepare");
+            lines.push_back({"Spells: not memorized today -- rest to prepare", nullptr});
         } else if (c.memorizedSpellIds.empty()) {
-            lines.push_back("Spells: none remaining today -- rest to re-prepare");
+            lines.push_back({"Spells: none remaining today -- rest to re-prepare", nullptr});
         } else {
             std::ostringstream spellLine;
             spellLine << "Spells memorized: ";
@@ -576,15 +582,15 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
                 spellLine << (spell != nullptr ? spell->name : distinctIds[i]);
                 if (count > 1) spellLine << " (x" << count << ")";
             }
-            lines.push_back(spellLine.str());
+            lines.push_back({spellLine.str(), nullptr});
         }
     }
 
-    lines.push_back("");
+    lines.push_back({"", nullptr});
     if (character::canCastSpells(c.charClass)) {
-        lines.push_back("(s=view spells known, any other key to continue)");
+        lines.push_back({"(s=view spells known, any other key to continue)", nullptr});
     } else {
-        lines.push_back("(press any key to continue)");
+        lines.push_back({"(press any key to continue)", nullptr});
     }
 
     std::ostringstream out;
@@ -594,11 +600,11 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
 }
 
 void MapRenderer::drawSpellbookFrame(const character::Character& c, long long currentDay) {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     int maxLevel = character::maxAccessibleSpellLevel(c);
     if (maxLevel == 0) {
-        lines.push_back("Cannot cast arcane magic.");
+        lines.push_back({"Cannot cast arcane magic.", nullptr});
     } else {
         bool memorizedToday = c.spellsCastDay == currentDay;
         for (int lvl = 1; lvl <= maxLevel; ++lvl) {
@@ -611,7 +617,7 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
             std::ostringstream header;
             header << "Level " << lvl << " (" << character::spellSlotsPerDay(c, lvl) << " slot"
                    << (character::spellSlotsPerDay(c, lvl) == 1 ? "" : "s") << "/day):";
-            lines.push_back(header.str());
+            lines.push_back({header.str(), kSectionLabelColor});
             for (const auto* spell : atLevel) {
                 std::ostringstream line;
                 line << "  " << spell->name;
@@ -624,13 +630,13 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
                         line << ")";
                     }
                 }
-                lines.push_back(line.str());
+                lines.push_back({line.str(), nullptr});
             }
         }
     }
 
-    lines.push_back("");
-    lines.push_back("(press any key to return)");
+    lines.push_back({"", nullptr});
+    lines.push_back({"(press any key to return)", nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -699,48 +705,48 @@ void MapRenderer::drawShopFrame(const character::Character& character, const std
                                  const std::vector<character::ShopItem>& buyItems,
                                  const std::vector<character::SellItem>& sellItems, bool sellMode,
                                  int selectedIndex, const std::string& message) {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     std::ostringstream steelLine;
     steelLine << "Steel: " << character.steelPieces << " stl";
-    lines.push_back(steelLine.str());
-    lines.push_back("");
+    lines.push_back({steelLine.str(), nullptr});
+    lines.push_back({"", nullptr});
 
     if (sellMode) {
-        lines.push_back("-- Selling --");
+        lines.push_back({"-- Selling --", kSectionLabelColor});
         for (size_t i = 0; i < sellItems.size(); ++i) {
             const character::SellItem& item = sellItems[i];
+            bool isSelected = static_cast<int>(i) == selectedIndex;
             std::ostringstream itemLine;
-            itemLine << (static_cast<int>(i) == selectedIndex ? "> " : "  ") << item.label << " -- "
-                     << item.valueStl << " stl";
+            itemLine << (isSelected ? "> " : "  ") << item.label << " -- " << item.valueStl << " stl";
             if (!item.sellable) itemLine << "  (cannot sell)";
-            lines.push_back(itemLine.str());
+            lines.push_back({itemLine.str(), isSelected ? kSelectedItemColor : nullptr});
         }
     } else {
-        lines.push_back("-- Buying --");
+        lines.push_back({"-- Buying --", kSectionLabelColor});
         for (size_t i = 0; i < buyItems.size(); ++i) {
             const character::ShopItem& item = buyItems[i];
+            bool isSelected = static_cast<int>(i) == selectedIndex;
             std::ostringstream itemLine;
-            itemLine << (static_cast<int>(i) == selectedIndex ? "> " : "  ") << item.label << " -- "
-                     << item.costStl << " stl";
+            itemLine << (isSelected ? "> " : "  ") << item.label << " -- " << item.costStl << " stl";
             if (item.alreadyOwned) {
                 itemLine << "  (owned)";
             } else if (!item.buyable) {
                 itemLine << "  (cannot use)";
             }
-            lines.push_back(itemLine.str());
+            lines.push_back({itemLine.str(), isSelected ? kSelectedItemColor : nullptr});
         }
     }
 
     if (!message.empty()) {
-        lines.push_back("");
-        lines.push_back(message);
+        lines.push_back({"", nullptr});
+        lines.push_back({message, nullptr});
     }
-    lines.push_back("");
+    lines.push_back({"", nullptr});
     std::ostringstream footer;
     footer << "up/down=select   Enter=" << (sellMode ? "sell" : "buy")
            << "   i=" << (sellMode ? "view buy list" : "view sell list") << "   q=leave";
-    lines.push_back(footer.str());
+    lines.push_back({footer.str(), nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -749,7 +755,7 @@ void MapRenderer::drawShopFrame(const character::Character& character, const std
 }
 
 void MapRenderer::drawInventoryFrame(const character::Character& character, int selectedIndex) {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     // Shown mainly so drinking a potion here (see GameLoop::handleInventory)
     // is visibly reflected the same way equipping already is via the
@@ -757,34 +763,34 @@ void MapRenderer::drawInventoryFrame(const character::Character& character, int 
     // parameter the way drawShopFrame does.
     std::ostringstream hpLine;
     hpLine << "HP: " << character.currentHp << "/" << character.maxHp;
-    lines.push_back(hpLine.str());
+    lines.push_back({hpLine.str(), nullptr});
 
     std::ostringstream weaponLine;
     weaponLine << "Weapon: " << character.weaponName;
-    lines.push_back(weaponLine.str());
+    lines.push_back({weaponLine.str(), nullptr});
 
     std::ostringstream armorLine;
     armorLine << "Armor: "
               << (character.equippedArmor == character::ArmorId::None ? "none"
                                                                         : character::armorInfo(character.equippedArmor).name)
               << (character.hasShield ? " + Shield" : "");
-    lines.push_back(armorLine.str());
-    lines.push_back("");
+    lines.push_back({armorLine.str(), nullptr});
+    lines.push_back({"", nullptr});
 
     if (character.inventory.empty()) {
-        lines.push_back("(nothing carried)");
+        lines.push_back({"(nothing carried)", nullptr});
     } else {
-        lines.push_back("Carried items:");
+        lines.push_back({"Carried items:", kSectionLabelColor});
         for (size_t i = 0; i < character.inventory.size(); ++i) {
+            bool isSelected = static_cast<int>(i) == selectedIndex;
             std::ostringstream itemLine;
-            itemLine << (static_cast<int>(i) == selectedIndex ? "> " : "  ")
-                     << character::inventoryItemLabel(character.inventory[i]);
-            lines.push_back(itemLine.str());
+            itemLine << (isSelected ? "> " : "  ") << character::inventoryItemLabel(character.inventory[i]);
+            lines.push_back({itemLine.str(), isSelected ? kSelectedItemColor : nullptr});
         }
     }
 
-    lines.push_back("");
-    lines.push_back("up/down=select   Enter=equip/use   q=leave");
+    lines.push_back({"", nullptr});
+    lines.push_back({"up/down=select   Enter=equip/use   q=leave", nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -893,35 +899,35 @@ int MapRenderer::drawLogFrame(const std::vector<std::string>& log, int scrollOff
 }
 
 void MapRenderer::drawJournalFrame(const std::vector<JournalEntry>& entries) {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
     if (entries.empty()) {
-        lines.push_back("(no quests yet)");
+        lines.push_back({"(no quests yet)", nullptr});
     } else {
         bool anyActive = false;
         for (const auto& entry : entries) {
             if (entry.complete) continue;
             anyActive = true;
-            lines.push_back(entry.title);
-            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back("  " + objectiveLine);
-            lines.push_back("");
+            lines.push_back({entry.title, kNpcNameColor});
+            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back({"  " + objectiveLine, nullptr});
+            lines.push_back({"", nullptr});
         }
-        if (!anyActive) lines.push_back("(no quests active)");
+        if (!anyActive) lines.push_back({"(no quests active)", nullptr});
 
         bool anyComplete = false;
         for (const auto& entry : entries) {
             if (!entry.complete) continue;
             if (!anyComplete) {
-                lines.push_back("Completed:");
+                lines.push_back({"Completed:", kSectionLabelColor});
                 anyComplete = true;
             }
-            lines.push_back(entry.title);
-            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back("  " + objectiveLine);
-            lines.push_back("");
+            lines.push_back({entry.title, kNpcNameColor});
+            for (const auto& objectiveLine : entry.objectiveLines) lines.push_back({"  " + objectiveLine, nullptr});
+            lines.push_back({"", nullptr});
         }
     }
 
-    lines.push_back("(press any key to continue)");
+    lines.push_back({"(press any key to continue)", nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -930,26 +936,26 @@ void MapRenderer::drawJournalFrame(const std::vector<JournalEntry>& entries) {
 }
 
 void MapRenderer::drawHelpFrame() {
-    std::vector<std::string> lines;
+    std::vector<BoxLine> lines;
 
-    lines.push_back("Movement:");
-    lines.push_back("  wasd = move (no diagonals)");
-    lines.push_back("");
-    lines.push_back("Overworld / zone:");
-    lines.push_back("  l = look around        t = talk to someone here");
-    lines.push_back("  Enter = step in/out     c = character sheet");
-    lines.push_back("  p = shop (at a shop)    i = inventory / equip");
-    lines.push_back("  v = full event log      g = quest journal");
-    lines.push_back("  r = rest                z = bed rest (at a bed)");
-    lines.push_back("  ? = this help screen");
-    lines.push_back("");
-    lines.push_back("Combat:");
-    lines.push_back("  Enter = attack          m = cast (if a caster)");
-    lines.push_back("  i = drink a potion      f = flee");
-    lines.push_back("");
-    lines.push_back("q / Esc = quit (or leave the current screen)");
-    lines.push_back("");
-    lines.push_back("(press any key to continue)");
+    lines.push_back({"Movement:", kSectionLabelColor});
+    lines.push_back({"  wasd = move (no diagonals)", nullptr});
+    lines.push_back({"", nullptr});
+    lines.push_back({"Overworld / zone:", kSectionLabelColor});
+    lines.push_back({"  l = look around        t = talk to someone here", nullptr});
+    lines.push_back({"  Enter = step in/out     c = character sheet", nullptr});
+    lines.push_back({"  p = shop (at a shop)    i = inventory / equip", nullptr});
+    lines.push_back({"  v = full event log      g = quest journal", nullptr});
+    lines.push_back({"  r = rest                z = bed rest (at a bed)", nullptr});
+    lines.push_back({"  ? = this help screen", nullptr});
+    lines.push_back({"", nullptr});
+    lines.push_back({"Combat:", kSectionLabelColor});
+    lines.push_back({"  Enter = attack          m = cast (if a caster)", nullptr});
+    lines.push_back({"  i = drink a potion      f = flee", nullptr});
+    lines.push_back({"", nullptr});
+    lines.push_back({"q / Esc = quit (or leave the current screen)", nullptr});
+    lines.push_back({"", nullptr});
+    lines.push_back({"(press any key to continue)", nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
