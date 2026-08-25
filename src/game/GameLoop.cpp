@@ -583,7 +583,24 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     // chance per move -- see docs/COMBAT_NOTES.md.
     if (here == nullptr && monsters_.size() > 0 &&
         character::roll(1, 100) <= terrain.encounterChancePercent) {
-        runCombat(monsters_.randomMonster(terrain.code));
+        // Distance to the nearest civilian town, so MonsterCatalog can keep
+        // high-danger monsters (Ogre, higher-tier Draconians) away from
+        // starting towns -- see docs/COMBAT_NOTES.md's "Town-proximity
+        // monster pools". Computed inline rather than sharing nearestTown()
+        // (line ~540): that function returns a Location* for a different
+        // purpose (post-knockout respawn), and this is its only other call
+        // site.
+        long long bestDistSq = -1;
+        for (const world::Location& loc : world_.allLocations()) {
+            if (!loc.isTown) continue;
+            long long ddx = loc.x - state_.x;
+            long long ddy = loc.y - state_.y;
+            long long distSq = ddx * ddx + ddy * ddy;
+            if (bestDistSq < 0 || distSq < bestDistSq) bestDistSq = distSq;
+        }
+        int townDistance = bestDistSq < 0 ? 0
+                                           : static_cast<int>(std::llround(std::sqrt(static_cast<double>(bestDistSq))));
+        runCombat(monsters_.randomMonster(terrain.code, townDistance));
     }
 }
 

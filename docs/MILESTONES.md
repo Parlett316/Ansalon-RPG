@@ -2158,6 +2158,63 @@ section).
     content milestone has flagged. See `docs/ZONE_NOTES.md`'s "Ask about
     anything".
 
+83. Town-proximity monster gating and a Thanoi hard terrain lock -- a real
+    engine gap the user hit directly in play: high-HD Ogres and Draconians
+    turning up right outside Solace, a brand-new character's starting
+    town, because `combat::MonsterCatalog::randomMonster`'s Milestone-57
+    terrain weighting has no notion of "near civilization" at all -- Ogre
+    and all five Draconians carried neither `EXCLUDE_TERRAIN` nor
+    `TERRAIN_BIAS`, so they were uniformly eligible on every passable tile
+    across the whole 480x320 map. Two small additions to the existing
+    data-driven mechanism, not a new subsystem: `MIN_TOWN_DISTANCE <n>`
+    (`combat::Monster::minTownDistance`, a hard exclusion below `n` tiles
+    straight-line from the nearest `world::Location::isTown`) and
+    `ONLY_TERRAIN <codes>` (`onlyTerrain`, the inverse of the existing
+    `EXCLUDE_TERRAIN` -- a hard lock to *only* the listed terrain).
+    `MonsterCatalog::randomMonster` gained a second parameter,
+    `distanceToNearestTown`, computed inline in
+    `GameLoop::tryMoveOverworld` right before the encounter roll (the
+    destination tile's `state_.x`/`state_.y` are already current at that
+    point) against the same `world::Location::isTown` set
+    `nearestTown()`'s post-knockout respawn already uses, but as its own
+    small inline loop rather than sharing that function (different return
+    type, different purpose, one extra call site -- not worth the
+    indirection). Applied via `data/monsters.txt` content changes, tuned
+    to a rough danger-scaled curve confirmed with the user (Kapak grouped
+    with the high-powered tier despite being HD3, since its real
+    paralysis-poison bite is disproportionately punishing for a low-level
+    character): Ogre and Kapak Draconian at `MIN_TOWN_DISTANCE 20`, Bozak
+    at `25`, Sivak at `35`, Aurak at `45`. Thanoi's existing `TERRAIN_BIAS
+    :` (Milestone 64) was tightened to `ONLY_TERRAIN :`, a hard glacier
+    lock -- unlike everything else in this pass, explicitly *not* claimed
+    as book-sourced (Dragonlance Adventures prints no Climate/Terrain
+    field for the Thanoi at all), just an honest, user-requested gameplay
+    restriction. Left deliberately untouched: Goblin, Kobold, Hobgoblin,
+    Timber Wolf, Giant Spider, Baaz Draconian, Bugbear, Gnoll, Ghoul,
+    Skeleton, Zombie -- "lower hit die monsters around Solace and other
+    cities" (the user's own framing) falls out naturally once the HD4+
+    threats and Kapak are excluded near town, without needing a second,
+    positive-bias mechanism. Known, accepted limitation: this only keeps
+    danger away from *civilian* towns, not toward actual war-front
+    locations (High Clerist's Tower, Neraka, Pax Tharkas) -- a
+    location/faction-aware placement system is real future-engine
+    territory, out of scope for a data-only tuning pass; a fortress that
+    happens to sit close to a `TOWN` (the Tower is ~16 tiles from
+    Palanthas) gets the same civilian safety bubble as anywhere else near
+    a town. Verified via a throwaway self-test (`MonsterSelfTest.cpp`, a
+    minimal `Monster`/`MonsterCatalog`/`MonsterLoader`-only CMake target;
+    16 assertions against the real `data/monsters.txt` covering the new
+    near-town exclusion, far-from-town eligibility, the glacier hard lock,
+    and confirming existing `EXCLUDE_TERRAIN`/`TERRAIN_BIAS` behavior --
+    Gnoll's salt-flat exclusion, forest bias -- is unchanged; all passing
+    before the file and its temporary CMake target were deleted), a clean
+    `/W4` rebuild (zero new warnings), and the piped smoke test (real save
+    moved aside and restored byte-identical afterward). Interactive
+    verification (actually walking near vs. far from Solace and observing
+    which monsters turn up) still needs the user's own keyboard, same
+    limitation every prior combat/content milestone has flagged. See
+    `docs/COMBAT_NOTES.md`'s "Town-proximity monster pools".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

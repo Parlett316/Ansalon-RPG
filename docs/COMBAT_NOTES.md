@@ -147,12 +147,16 @@ was chosen and checked with that constraint in mind.
   usual" — both numbers directly sourced, combined as 1d8+2. THAC0 derived
   as 17, the same HD-4 bracket as the Bozak above. XP 85 + 4/hp. The
   walrus-men of Icewall Glacier — already referenced as flavor-only
-  dialogue at Ice Wall since Milestone 36, now a real roster entry, and
-  the first monster to carry `TERRAIN_BIAS` toward glacier (`:`), closing
-  the gap Milestone 57 left open (see "Terrain-specific monster pools"
-  below). No `EXCLUDE_TERRAIN`: unlike Gnoll's real Monstrous Manual
-  Climate/Terrain field, *Dragonlance Adventures* prints no such field for
-  the Thanoi to hang a hard exclusion on. Real cold immunity (natural and
+  dialogue at Ice Wall since Milestone 36, now a real roster entry.
+  Originally shipped (Milestone 64) with `TERRAIN_BIAS` toward glacier
+  (`:`, 3x weight there but still eligible everywhere else); tightened at
+  Milestone 83, at the user's explicit request, to a hard `ONLY_TERRAIN :`
+  lock, since a walrus-man turning up in ordinary grassland read wrong.
+  **This is an invented gameplay restriction, not a sourced one** — unlike
+  Gnoll's real Monstrous Manual Climate/Terrain field, *Dragonlance
+  Adventures* prints no Climate/Terrain field for the Thanoi at all, so
+  there's no book text to hang a hard restriction on; it's honestly the
+  user's own call, not a transcription. Real cold immunity (natural and
   magical), extra fire/heat damage, and HD loss in warm climates are all
   unmodeled — no damage-type or elemental-exposure system exists for
   anyone yet, same flavor-only restraint as Skeleton's/Zombie's immunities.
@@ -312,12 +316,14 @@ anything. Monster *selection* is terrain-weighted as of Milestone 57 — see
 
 ## Terrain-specific monster pools
 
-`combat::MonsterCatalog::randomMonster(char terrainCode)` (Milestone 57)
-weights which monster gets picked by the terrain that triggered the
-encounter, instead of the flat uniform-random pick every earlier milestone
-used. Two separate, honestly-labeled data sources feed it, both as optional
-lines in a `data/monsters.txt` `MONSTER` block (grammar documented in that
-file's own header comment):
+`combat::MonsterCatalog::randomMonster(char terrainCode, int
+distanceToNearestTown)` (Milestone 57, gained its second parameter at
+Milestone 83 — see "Town-proximity monster pools" below) weights which
+monster gets picked by the terrain that triggered the encounter, instead
+of the flat uniform-random pick every earlier milestone used. Two
+separate, honestly-labeled data sources feed the terrain half of this,
+both as optional lines in a `data/monsters.txt` `MONSTER` block (grammar
+documented in that file's own header comment):
 
 - **`EXCLUDE_TERRAIN <codes>`** — a real, sourced Climate/Terrain hard
   restriction. Re-checking every roster monster's actual Monstrous Manual
@@ -343,12 +349,17 @@ file's own header comment):
   "nothing in the roster is Arctic-flavored," so glacier fell back to the
   full uniform pool. The Thanoi (`data/monsters.txt`) closes that gap --
   Icewall Glacier's own walrus-men, sourced from Dragonlance Adventures
-  p.78, carrying `TERRAIN_BIAS :`. It's bias, not a hard lock (the rest of
-  the roster can still turn up on glacier, same as every other biased
-  terrain) -- same "not invented beyond what the book supports" restraint
-  as everywhere else in this section, since DLA gives Thanoi no formal
-  Climate/Terrain field either, so this stays a `TERRAIN_BIAS`, not an
-  `EXCLUDE_TERRAIN`.
+  p.78. Originally carried `TERRAIN_BIAS :` (bias, not a hard lock — the
+  rest of the roster could still turn up on glacier, same as every other
+  biased terrain), the same "not invented beyond what the book supports"
+  restraint as everywhere else in this section, since DLA gives Thanoi no
+  formal Climate/Terrain field either.
+  **Tightened to `ONLY_TERRAIN :` at Milestone 83**, at the user's
+  explicit request: unlike every other line in this section, this one is
+  *not* claimed as book-supported restraint — it's an invented, purely
+  gameplay-driven hard lock (see `ONLY_TERRAIN` below and "Town-proximity
+  monster pools"), because a walrus-man turning up outside its sourced
+  glacier habitat read wrong in play.
 - **`TERRAIN_BIAS <codes>`** — invented flavor weighting (a biased monster
   is 3x as likely to be picked on that terrain as an unbiased one,
   `combat::kBiasWeight` in `Monster.cpp`), informed by each monster's real
@@ -358,12 +369,68 @@ file's own header comment):
   terrain); Timber Wolf leans forest/grassland; Giant Spider leans
   forest/bog (web-spinner ambush terrain); Bugbear leans hills/mountains (a
   proxy for its real "any subterranean"); Gnoll leans forest/hills/bog;
-  Thanoi leans glacier (see below). Hobgoblin, Ogre, Baaz, Kapak, Bozak,
-  Sivak, Aurak, Ghoul, Skeleton, and Zombie are left deliberately uniform —
-  Ogre's own book text says "found anywhere, from deep caverns to
-  mountaintops," the three undead have no ecological terrain link, and the
-  five draconians' real differentiator (faction/location) isn't one this
-  system can express without forcing it.
+  Thanoi leaned glacier this way until Milestone 83 (see below). Hobgoblin,
+  Ogre, Baaz, Kapak, Bozak, Sivak, Aurak, Ghoul, Skeleton, and Zombie are
+  left deliberately uniform (terrain-wise) — Ogre's own book text says
+  "found anywhere, from deep caverns to mountaintops," the three undead
+  have no ecological terrain link, and the five draconians' real
+  differentiator (faction/location) isn't one this system can express
+  without forcing it.
+- **`ONLY_TERRAIN <codes>`** (Milestone 83) — the inverse of
+  `EXCLUDE_TERRAIN`: a hard restriction to *only* the listed codes, not
+  weighting. Unlike every other line in this list, this one is not framed
+  as book-sourced restraint — it exists purely as an invented gameplay
+  restriction (only Thanoi carries it, locked to glacier `:`; see "Glacier
+  gap closed" above and "Town-proximity monster pools" below).
+
+## Town-proximity monster pools
+
+Milestone 83, prompted directly by the user hitting it in play: high-HD
+Ogres and Draconians could appear one step outside Solace, a brand-new
+character's starting town, because the terrain-only system above has no
+notion of "near civilization" at all — Ogre and all five Draconians carry
+neither `EXCLUDE_TERRAIN` nor `TERRAIN_BIAS`, so they were uniformly
+eligible on every passable tile on the entire 480x320 map.
+
+A new optional `data/monsters.txt` line, `MIN_TOWN_DISTANCE <n>`: the
+monster is never eligible unless the encounter tile is at least `n` tiles
+(straight-line, `combat::Monster::minTownDistance`) from the nearest
+civilian town (`world::Location::isTown` — Solace, Haven, Kalaman, Tarsis,
+Palanthas). `GameLoop::tryMoveOverworld` computes this distance inline
+right before rolling an encounter (state_.x/y are already updated to the
+destination tile at that point) and passes it into
+`MonsterCatalog::randomMonster`'s new second parameter, which folds it
+into the same eligibility filter as `EXCLUDE_TERRAIN`/`ONLY_TERRAIN`
+(same "fall back to the full roster if everything gets excluded"
+defensive behavior as before). Invented gameplay tuning, not sourced —
+same honesty as `encounterChancePercent`/`kBiasWeight` above.
+
+Applied to the tier the user called out as "too many high-powered
+Draconians/Ogres near Solace," tuned to a rough danger-scaled distance
+curve: **Ogre** and **Kapak Draconian** (`MIN_TOWN_DISTANCE 20`) — Kapak
+is only HD3, weaker on paper than Ogre's HD4+1, but its real
+paralysis-poison bite is disproportionately punishing for a low-level
+character, so the user asked for it grouped with the higher tier rather
+than left with Baaz; **Bozak Draconian** (`25`); **Sivak Draconian**
+(`35`); **Aurak Draconian** (`45`, the most powerful thing in the roster,
+kept farthest out). Left deliberately untouched — no `MIN_TOWN_DISTANCE`,
+same as ever: Goblin, Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz
+Draconian, Bugbear, Gnoll, Ghoul, Skeleton, Zombie — the HD1-3 "line
+troop"/wildlife tier. "Lower hit die monsters around Solace and other
+cities" (the user's own framing) falls out naturally from this exclusion
+list rather than needing a second, positive-bias mechanism: once the HD4+
+threats and Kapak are gated out near town, the remaining uniform pool
+*is* the low/mid-HD tier.
+
+**Known limitation, not addressed by this pass**: this only keeps
+dangerous monsters away from *civilian* population centers. It does not
+attempt to place Draconians preferentially near actual war-front
+locations (High Clerist's Tower, Neraka, Pax Tharkas, Kalaman) — that
+would need a location/faction-aware placement system, real future-engine
+territory, not a data-only tuning pass. Fortresses that happen to sit
+close to a `TOWN` location (e.g. the High Clerist's Tower is ~16 tiles
+from Palanthas) get the same civilian safety-bubble effect as everywhere
+else near a town; this is an accepted simplification, not a bug.
 
 ## Player actions: Attack, Cast, Drink a Potion, and Flee
 

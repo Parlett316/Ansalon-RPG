@@ -41,6 +41,17 @@
 #                          from) the monster's real Habitat/Society text,
 #                          same "tuned, not sourced" honesty as
 #                          encounterChancePercent (see docs/COMBAT_NOTES.md).
+# ONLY_TERRAIN <codes>     optional; space-separated terrain codes -- the
+#                          inverse of EXCLUDE_TERRAIN, a hard restriction to
+#                          ONLY these codes. Invented gameplay restriction,
+#                          not a sourced Climate/Terrain field. Only Thanoi
+#                          has one (glacier), see docs/COMBAT_NOTES.md.
+# MIN_TOWN_DISTANCE <n>    optional; the monster is never eligible unless the
+#                          encounter tile is at least <n> tiles (straight-
+#                          line) from the nearest civilian town -- invented
+#                          gameplay tuning to keep high-danger monsters away
+#                          from starting towns, not sourced. See
+#                          docs/COMBAT_NOTES.md.
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 
@@ -138,6 +149,11 @@ THAC0 17
 DAMAGE 1 10 0
 STEEL 2 10 0
 XP 270
+# Too dangerous a HD4+1 threat to wander right outside a starting town --
+# invented gameplay tuning at the user's request, not a sourced
+# restriction (the book's own "found anywhere, from deep caverns to
+# mountaintops" is why no TERRAIN_BIAS/EXCLUDE_TERRAIN is used instead).
+MIN_TOWN_DISTANCE 20
 DESC A nine-foot brute in stinking, ill-cured hides shoulders a crude, knotted club and roars a challenge.
 END
 
@@ -152,6 +168,11 @@ STEEL 2 8 0
 # to a flat value near the average roll (3d8 averages ~13.5), same
 # treatment as the Baaz's XP simplification above.
 XP 145
+# Grouped with the high-powered tier below despite being HD3 -- its real
+# paralysis-poison bite (unmodeled, see above) is disproportionately
+# punishing for a low-level character, so it's kept away from starting
+# towns too. Invented gameplay tuning, user-requested, not sourced.
+MIN_TOWN_DISTANCE 20
 DESC A wiry, hunched draconian licks its blade before it strikes, venom glistening along the edge.
 END
 
@@ -237,6 +258,11 @@ XP 247
 # yet), same restraint as Baaz's unmodeled magic resistance. Its
 # bone-explosion death trait (1d6 dmg/10 ft) is also unmodeled, same
 # treatment as the Kapak's acid-pool-on-death.
+# An officer-tier draconian (real spellcasting, HD4) -- too dangerous for a
+# starting town's doorstep. Invented gameplay tuning, user-requested, not
+# sourced (Dragonlance Adventures gives draconians no Climate/Terrain field
+# to hang a real restriction on -- see docs/COMBAT_NOTES.md).
+MIN_TOWN_DISTANCE 25
 DESC A crested draconian levels a clawed hand crackling with raw magic, sizing you up like a problem to be solved.
 END
 
@@ -263,6 +289,9 @@ XP 512
 # it is modeled (no shapeshifting or status-effect system exists for
 # anyone yet); left as flavor-only, same restraint as every other
 # draconian's unmodeled traits.
+# HD6, deeper into elite-tier than the Bozak above -- kept farther from
+# towns accordingly. Invented gameplay tuning, user-requested, not sourced.
+MIN_TOWN_DISTANCE 35
 DESC A heavily armored draconian unslings a pair of wicked blades, its long tail lashing behind it like a whip.
 END
 
@@ -294,6 +323,10 @@ XP 2160
 # restraint as its lesser cousins above. Its real three-stage death
 # (immolation, then a lightning-ball transformation, then an explosion)
 # is likewise unmodeled.
+# HD8, the most powerful thing in the roster -- kept the farthest from
+# towns of any monster. Invented gameplay tuning, user-requested, not
+# sourced.
+MIN_TOWN_DISTANCE 45
 DESC A tall, wingless draconian regards you with unsettling stillness, a voice that isn't yours already forming inside your skull.
 END
 
@@ -315,14 +348,16 @@ STEEL 2 8 0
 # above.
 XP 157
 # The walrus-men of Icewall Glacier -- already referenced as flavor-only
-# dialogue at Ice Wall since Milestone 36, now a real roster entry. First
-# monster to carry TERRAIN_BIAS toward glacier, closing the documented gap
-# Milestone 57 left open ("nothing in the roster is Arctic-flavored"). No
-# EXCLUDE_TERRAIN: unlike Gnoll's real Monstrous Manual Climate/Terrain
-# field, Dragonlance Adventures prints no such field for the Thanoi to
-# hang a hard exclusion on -- only the sourced, narratively-grounded bias
-# below is added.
-TERRAIN_BIAS :
+# dialogue at Ice Wall since Milestone 36, now a real roster entry.
+# Originally shipped with TERRAIN_BIAS toward glacier (3x weight there,
+# but still eligible everywhere else); changed to a hard ONLY_TERRAIN
+# glacier lock at the user's explicit request, since a walrus-man turning
+# up in ordinary grassland or forest read wrong. This is an invented
+# gameplay restriction, not a sourced one: Dragonlance Adventures prints
+# no Climate/Terrain field for the Thanoi at all (unlike Gnoll's real
+# Monstrous Manual field), so there's nothing to transcribe -- the
+# restriction is honestly the user's own call, not book text.
+ONLY_TERRAIN :
 # Thanoi are immune to cold (natural and magical), take extra damage from
 # fire/heat attacks, and lose 1 Hit Die per week if kept somewhere above
 # freezing -- none of it modeled (no damage-type or elemental-exposure

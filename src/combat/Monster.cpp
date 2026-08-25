@@ -23,20 +23,23 @@ void MonsterCatalog::addMonster(Monster monster) {
     monsters_.push_back(std::move(monster));
 }
 
-const Monster& MonsterCatalog::randomMonster(char terrainCode) const {
+const Monster& MonsterCatalog::randomMonster(char terrainCode, int distanceToNearestTown) const {
     if (monsters_.empty()) {
         throw std::runtime_error("MonsterCatalog::randomMonster called on an empty catalog");
     }
 
     std::vector<const Monster*> eligible;
     for (const auto& monster : monsters_) {
-        if (!contains(monster.excludedTerrain, terrainCode)) {
+        bool terrainOk = !contains(monster.excludedTerrain, terrainCode) &&
+                          (monster.onlyTerrain.empty() || contains(monster.onlyTerrain, terrainCode));
+        bool distanceOk = monster.minTownDistance <= 0 || distanceToNearestTown >= monster.minTownDistance;
+        if (terrainOk && distanceOk) {
             eligible.push_back(&monster);
         }
     }
-    // Defensive fallback: can't happen with today's data (only Gnoll
-    // excludes anything), but stay safe if a future terrain excludes every
-    // monster in the roster rather than throwing mid-encounter.
+    // Defensive fallback: can't happen with today's data, but stay safe if a
+    // future terrain/town-distance combination excludes every monster in the
+    // roster rather than throwing mid-encounter.
     if (eligible.empty()) {
         for (const auto& monster : monsters_) {
             eligible.push_back(&monster);

@@ -109,6 +109,11 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
             parseTerrainCodes(path, lineNumber, rest, "EXCLUDE_TERRAIN", current.excludedTerrain);
         } else if (keyword == "TERRAIN_BIAS") {
             parseTerrainCodes(path, lineNumber, rest, "TERRAIN_BIAS", current.terrainBias);
+        } else if (keyword == "ONLY_TERRAIN") {
+            parseTerrainCodes(path, lineNumber, rest, "ONLY_TERRAIN", current.onlyTerrain);
+        } else if (keyword == "MIN_TOWN_DISTANCE") {
+            std::istringstream iss(rest);
+            if (!(iss >> current.minTownDistance)) fail(path, lineNumber, "malformed MIN_TOWN_DISTANCE");
         } else if (keyword == "DESC") {
             current.description = rest;
         } else if (keyword == "END") {

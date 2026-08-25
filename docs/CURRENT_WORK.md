@@ -2,21 +2,24 @@
 
 Nothing in flight.
 
-Milestone 82 (widening zone-native NPC `SUBJECT` coverage -- 11 of the 21
-Milestone-79 NPCs gained 1-2 new free-text-askable entries each,
-paraphrased from their own already-shipped `TOPIC` text, plus two latent
-`ZoneLoader` keyword-parsing bugs found and fixed along the way) shipped
-2026-08-25, prompted directly by the user hitting the gap in play (asking
-the Palanthas Knight of the Watch about the Tower siege got a canned
-brush-off despite his own `TOPIC` covering it). Pure data content, zero
-`.cpp`/`.h` changes, verified via a throwaway `ZoneLoader`-only self-test
-(35 checks, all passing, deleted afterward), a clean `/W4` rebuild, and
-the piped smoke test (real save moved aside and restored byte-identical
-afterward) -- see `docs/MILESTONES.md` and `docs/ZONE_NOTES.md`'s "Ask
-about anything" for what shipped, what was deliberately left alone, and
-why. Interactive verification (actually asking these NPCs the new
-keywords) still needs the user's own keyboard, same limitation every prior
-`SUBJECT`/`TOPIC` content milestone has flagged.
+Milestone 83 (town-proximity monster gating -- a new `MIN_TOWN_DISTANCE`
+field keeps Ogre and the higher-tier Draconians (Kapak/Bozak/Sivak/Aurak)
+away from Solace and the other civilian towns, and Thanoi's `TERRAIN_BIAS`
+toward glacier was tightened to a hard `ONLY_TERRAIN` lock) shipped
+2026-08-25, prompted directly by the user hitting the gap in play: too many
+high-powered Draconians/Ogres turning up right outside Solace, and Thanoi
+appearing outside its sourced Icewall Glacier habitat. Real engine change
+(`combat::Monster`/`MonsterCatalog`/`MonsterLoader`, one new
+`GameLoop::tryMoveOverworld` distance computation) plus a `data/
+monsters.txt` content pass -- verified via a throwaway self-test (16
+assertions, deleted afterward), a clean `/W4` rebuild, and the piped smoke
+test (real save moved aside and restored byte-identical afterward). See
+`docs/MILESTONES.md` and `docs/COMBAT_NOTES.md`'s "Town-proximity monster
+pools" for what shipped, the exact distance values, and what was
+deliberately left alone. Interactive verification (actually walking near
+vs. far from Solace and confirming which monsters turn up) still needs the
+user's own keyboard, same limitation every prior combat/content milestone
+has flagged.
 
 **Note on the live save**: `build/Debug/save.txt` is still the
 hand-edited maxed-stat (all six scores 18) Human Fighter built for the

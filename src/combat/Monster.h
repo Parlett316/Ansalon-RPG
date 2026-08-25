@@ -40,6 +40,19 @@ struct Monster {
     std::vector<char> excludedTerrain;
     std::vector<char> terrainBias;
 
+    // onlyTerrain is the inverse of excludedTerrain: a hard restriction to
+    // ONLY the listed terrain codes, empty = no restriction. Currently only
+    // Thanoi has one (glacier), a deliberate invented gameplay restriction,
+    // not a sourced Climate/Terrain field -- see docs/COMBAT_NOTES.md.
+    std::vector<char> onlyTerrain;
+
+    // 0 = no restriction. Otherwise the monster is never eligible unless the
+    // encounter tile is at least this many tiles (straight-line) from the
+    // nearest civilian town (world::Location::isTown) -- invented gameplay
+    // tuning, not sourced, same honesty as encounterChancePercent/
+    // terrainBias. See docs/COMBAT_NOTES.md.
+    int minTownDistance = 0;
+
     int steelDiceCount = 0;
     int steelDiceSides = 0;
     int steelFlatBonus = 0;
@@ -57,10 +70,11 @@ class MonsterCatalog {
 public:
     void addMonster(Monster monster);
 
-    // Picks a monster weighted for the given terrain (see
-    // Monster::excludedTerrain/terrainBias and docs/COMBAT_NOTES.md). Only
-    // call when size() > 0.
-    const Monster& randomMonster(char terrainCode) const;
+    // Picks a monster weighted for the given terrain and gated by distance
+    // from the nearest town (see Monster::excludedTerrain/terrainBias/
+    // onlyTerrain/minTownDistance and docs/COMBAT_NOTES.md). Only call when
+    // size() > 0.
+    const Monster& randomMonster(char terrainCode, int distanceToNearestTown) const;
 
     size_t size() const { return monsters_.size(); }
 
