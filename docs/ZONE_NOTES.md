@@ -1190,7 +1190,7 @@ See `docs/TIMELINE_NOTES.md`'s "Thorbardin" section for the full
 sourcing and the `PRESENCE thorbardin 13 19` content shipped for all 8
 Heroes.
 
-## Sancrist Isle (Milestone 86, gained a talkable NPC + departure Milestone 92)
+## Sancrist Isle (Milestone 86, gained a talkable NPC + departure Milestone 92, topic depth Milestone 97)
 
 `data/zones/sancrist_isle.txt` — a 40×16 grid, full `#` border (a real
 castle, same fortress idiom as Pax Tharkas/Ice Wall/Neraka). Three
@@ -1228,6 +1228,15 @@ relevant once Sancrist was reachable at all. See `docs/ARCHITECTURE.md`'s
 This reverses this project's own prior "deliberately not modeled" call
 for Sancrist Isle — see `docs/TIMELINE_NOTES.md`'s "Sancrist Isle"
 section for the full reasoning, the reversal, and complete sourcing.
+
+**Milestone 97 split the Embarkation Officer's `derek,alfred,brightblade,
+sturm` `SUBJECT` group into three** (`derek,crownguard,rose` /
+`alfred,markenin,sword` / `brightblade,sturm,crown`), each re-sourced from
+the same trial/muster passage rather than one shared reply — found during
+this project's first real interactive playtest of this POI, which
+surfaced the original grouping (correct by Milestone 92's own precedent,
+but noticeably thinner once actually played) as worth expanding.
+`palanthas,tower,army` is unchanged.
 
 ## Crossing (Milestone 93)
 

@@ -2762,23 +2762,61 @@ section).
     ZONE_NOTES.md`, and `docs/TIMELINE_NOTES.md`'s "Port Balifor and
     Flotsam" sections.
 
+97. Interactive confirmation of Milestone 92's boat flow, plus Embarkation
+    Officer topic depth -- closes NEXT UP's long-open item 1, the one piece
+    of Milestone 92 that had only ever been structurally verified (self-test,
+    rebuild, piped smoke test) rather than actually played. Walked the full
+    chain -- Tarsis's Knight's Runner, Ice Wall's Ice Barbarian Guide,
+    Southern Ergoth's Silvanesti Sentry, and Sancrist Isle's Embarkation
+    Officer -- on the user's real save slot 2 ("Mason"), confirming at each
+    stop that declining falls through to that POI's topics/`SUBJECT`
+    content instead of ending the conversation, and that accepting still
+    boards correctly; at the final Sancrist Isle -> Palanthas leg
+    specifically, confirmed the travel log correctly reads "northeast" (not
+    the old hardcoded "south" Milestone 92 fixed) and the clock advances the
+    full 96 hours, landing at Palanthas. Along the way, the user flagged
+    `data/zones/sancrist_isle.txt`'s `E "An Embarkation Officer"` as feeling
+    thin in practice: his own dialogue names seven proper nouns (Derek,
+    Alfred, Brightblade, Sturm, Palanthas, Tower, army) but only 2 authored
+    `SUBJECT` topics existed to ask about (3 distinct replies counting the
+    `SUBJECT_UNKNOWN` fallback) -- functioning exactly as designed (an
+    identical 2-topic pattern to Tarsis's Knight Runner, from the same
+    milestone) but reading as unusually compressed once actually played,
+    especially collapsing three distinct named knights into one shared
+    reply. Split `derek,alfred,brightblade,sturm` into three separate
+    topics -- `derek,crownguard,rose`, `alfred,markenin,sword`,
+    `brightblade,sturm,crown` -- each re-sourced from the same
+    `.research/dwn_full.txt` trial/muster passage (lines ~10600-10740)
+    Milestone 92 already cited for this POI: Derek Crownguard as High
+    Commander for the Order of the Rose who stormed out over the Council's
+    verdict; Alfred MarKenin commanding for the Order of the Sword, angrier
+    at the trial than he let on to Sturm's face; Sturm Brightblade himself
+    as the odd man out, made third-in-command over half the Council's
+    objections. Not new research -- a closer read of material already on
+    file for this exact POI. `palanthas,tower,army` was left untouched.
+    Verified via a clean rebuild (zero new warnings, no `.cpp`/`.h`
+    changes -- pure data content), the piped smoke test against an isolated
+    scratch copy (confirms the zone file's fail-fast loader accepts the new
+    lines without touching the user's real saves), and, for the first time
+    on this exact content, real interactive confirmation via the user's own
+    keyboard -- the three new topics each returning distinct replies. Real
+    `save1.txt`/`save2.txt`/`save3.txt` were backed up before the session
+    began. See `docs/ZONE_NOTES.md`'s "Sancrist Isle" section and
+    `docs/MILESTONES.md` entry 92.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Interactive confirmation of Milestone 92's boat decline option and new
-   Sancrist Isle -> Palanthas leg** -- verified structurally only (self-test,
-   clean rebuild, piped smoke test, real-save backward compatibility), same
-   limitation every prior `BOAT` milestone has flagged. Needs a character
-   walked to Tarsis to confirm: declining the Knight's Runner's offer falls
-   through to its `derek,knights`/`dragons,ship` topics instead of sailing,
-   then accepting still works as before; at Sancrist Isle, the new
-   Embarkation Officer offers the same decline/topics flow, then accepting
-   lands the player at Palanthas, logs the corrected direction word
-   (northeast, not the old hardcoded "south"), and advances the clock by 96
-   hours.
+1. ~~**Interactive confirmation of Milestone 92's boat decline option and new
+   Sancrist Isle -> Palanthas leg**~~ -- confirmed at Milestone 97, via the
+   user's own keyboard on real save slot 2: decline/topics/accept works
+   correctly at all four legs, the "northeast" direction line and 96-hour
+   clock advance are both correct. Also surfaced and fixed the Embarkation
+   Officer's thin topic coverage in the same session. See
+   `docs/MILESTONES.md` entry 97.
 2. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
    added all three to the roster, but their spellcasting, shapeshifting,
    and mind control/dimension door/breath weapon all stayed flavor-only.

@@ -2,6 +2,24 @@
 
 Nothing in flight.
 
+Milestone 97 (2026-08-26) confirmed Milestone 92's boat decline flow and
+Sancrist Isle -> Palanthas leg via real interactive playtesting for the
+first time -- closing NEXT UP's longest-open item. Walked the full chain
+(Tarsis's Knight's Runner, Ice Wall's Ice Barbarian Guide, Southern
+Ergoth's Silvanesti Sentry, Sancrist Isle's Embarkation Officer) on the
+user's real save slot 2: decline-then-topics-then-accept confirmed
+correct at each stop, and the final leg's "northeast" direction line and
+96-hour clock advance to Palanthas both confirmed correct. Along the
+way, the user flagged the Embarkation Officer's dialogue as feeling thin
+(7 named proper nouns, only 2 authored `SUBJECT` topics/3 replies) --
+working as designed but worth expanding, so `derek,alfred,brightblade,
+sturm` was split into three separate topics, each re-sourced from the
+same trial/muster passage Milestone 92 already cited. Verified via a
+clean rebuild, the piped smoke test against an isolated scratch copy,
+and real interactive confirmation of the three new distinct replies.
+Real saves backed up before the session began. See `docs/MILESTONES.md`
+entry 97 and `docs/ZONE_NOTES.md`'s "Sancrist Isle" section.
+
 Milestone 96 (2026-08-26) added Port Balifor and Flotsam: closes the
 second real gap the Milestone 95 research pass turned up, and a
 deliberate reversal of a "don't invent to fill a gap" call this project
@@ -25,8 +43,9 @@ assumed) that Ice Wall's old glacier-patch-reapplication caveat no longer
 applies -- retired at Milestone 85. Verified via a throwaway self-test
 (49 assertions), a clean `/W4` rebuild, and the piped smoke test with the
 user's real saves confirmed byte-identical afterward. Interactive
-verification (walking the new roads, talking to the new POIs, confirming
-the new dialogue in sequence) still needs the user's own keyboard. See
+verification of Port Balifor/Flotsam's own new roads and POIs (as
+distinct from Milestone 97's playtest, which covered the older Tarsis ->
+... -> Palanthas boat chain) still needs the user's own keyboard. See
 `docs/MILESTONES.md` entry 96, `docs/MAP_NOTES.md`/`docs/ZONE_NOTES.md`/
 `docs/TIMELINE_NOTES.md`'s "Port Balifor and Flotsam" sections.
 
