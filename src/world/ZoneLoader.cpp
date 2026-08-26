@@ -2,6 +2,7 @@
 #include "world/Zone.h"
 #include "world/ZoneTile.h"
 
+#include <array>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -90,9 +91,13 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // docs/ZONE_NOTES.md's "Anticipation dialogue" section.
     std::unordered_map<char, std::pair<std::string, int>> talkBeforeLines;
     // Same "applied after the whole file is parsed" treatment as talkLines
-    // above -- keyed by code, value is the line number SHOP appeared on,
-    // for a clear error if its POI never shows up.
-    std::unordered_map<char, int> shopLines;
+    // above -- keyed by code, value is {catalog name ("general" if the
+    // optional second token is omitted), the line number SHOP appeared on}.
+    std::unordered_map<char, std::pair<std::string, int>> shopLines;
+    // SHOP_LOCKED gets the same "applied after the whole file is parsed"
+    // treatment as shopLines -- keyed by code, value is {quest-id, the
+    // line number SHOP_LOCKED appeared on}. See docs/ZONE_NOTES.md.
+    std::unordered_map<char, std::pair<std::string, int>> shopLockLines;
     // Same "applied after the whole file is parsed" treatment as shopLines
     // above -- keyed by code, value is {destination location id, voyage
     // hours, the line number BOAT appeared on}.
@@ -243,11 +248,36 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 talkBeforeLines[codeToken[0]] = {dialogue, lineNumber};
             } else if (keyword == "SHOP") {
                 std::istringstream iss(rest);
-                std::string codeToken;
+                std::string codeToken, catalogToken;
                 if (!(iss >> codeToken) || codeToken.size() != 1) {
-                    fail(path, lineNumber, "malformed SHOP (expected: SHOP <char>)");
+                    fail(path, lineNumber, "malformed SHOP (expected: SHOP <char> [catalog])");
                 }
-                shopLines[codeToken[0]] = lineNumber;
+                std::string catalog = "general";
+                if (iss >> catalogToken) {
+                    static const std::array<std::string, 6> kValidCatalogs = {
+                        "general", "armory", "market", "salvage", "bazaar", "harbor"};
+                    bool validCatalog = false;
+                    for (const auto& catalogName : kValidCatalogs) {
+                        if (catalogToken == catalogName) {
+                            validCatalog = true;
+                            break;
+                        }
+                    }
+                    if (!validCatalog) {
+                        fail(path, lineNumber,
+                             "SHOP '" + codeToken + "' has unrecognized catalog '" + catalogToken +
+                                 "' (expected general, armory, market, salvage, bazaar, or harbor)");
+                    }
+                    catalog = catalogToken;
+                }
+                shopLines[codeToken[0]] = {catalog, lineNumber};
+            } else if (keyword == "SHOP_LOCKED") {
+                std::istringstream iss(rest);
+                std::string codeToken, questId;
+                if (!(iss >> codeToken >> questId) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed SHOP_LOCKED (expected: SHOP_LOCKED <char> <quest-id>)");
+                }
+                shopLockLines[codeToken[0]] = {questId, lineNumber};
             } else if (keyword == "BOAT") {
                 std::istringstream iss(rest);
                 std::string codeToken, destinationId;
@@ -369,8 +399,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 fail(path, lineNumber,
                      "unexpected '" + keyword +
                          "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, TALK_AFTER, TALK_BEFORE, SHOP, "
-                         "BOAT, GRANTS_ITEM, BED, SAY_IF, TOPIC, SUBJECT, SUBJECT_UNKNOWN, TIMELINE_ANCHOR, "
-                         "TIMELINE_LOCATION, QUEST, or END)");
+                         "SHOP_LOCKED, BOAT, GRANTS_ITEM, BED, SAY_IF, TOPIC, SUBJECT, SUBJECT_UNKNOWN, "
+                         "TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -470,12 +500,29 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     }
     // Same rule for SHOP: a browsable POI still needs a name/description
     // via POI, SHOP only marks it as also being able to open the shop screen.
-    for (const auto& [code, lineNum] : shopLines) {
+    for (const auto& [code, catalogAndLine] : shopLines) {
         auto it = pois.find(code);
         if (it == pois.end()) {
-            fail(path, lineNum, "SHOP '" + std::string(1, code) + "' has no matching POI declaration");
+            fail(path, catalogAndLine.second, "SHOP '" + std::string(1, code) + "' has no matching POI declaration");
         }
         it->second.isShop = true;
+        it->second.shopCatalog = catalogAndLine.first;
+    }
+    // SHOP_LOCKED must reference a POI that's already a SHOP -- locking
+    // something that isn't a shop at all would be dead grammar, nothing
+    // else reads it. Whether the quest id itself is real is validated
+    // later in main.cpp, once quest::QuestCatalog exists, same deferred-
+    // validation shape as QUEST/BOAT above (ZoneLoader can't see it).
+    std::unordered_map<char, std::string> shopLocks;
+    for (const auto& [code, idAndLine] : shopLockLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, idAndLine.second, "SHOP_LOCKED '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (!it->second.isShop) {
+            fail(path, idAndLine.second, "SHOP_LOCKED '" + std::string(1, code) + "' has no SHOP line to lock");
+        }
+        shopLocks[code] = idAndLine.first;
     }
     // Same rule for BOAT, but -- like SAY_IF/TOPIC -- it must also already
     // have a TALK line: the voyage triggers as a side effect of talking to
@@ -627,7 +674,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     }
 
     return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois), std::move(portals),
-                timelineAnchorCode, std::move(timelineLocationId), std::move(quests), std::move(boatVoyages));
+                timelineAnchorCode, std::move(timelineLocationId), std::move(quests), std::move(boatVoyages),
+                std::move(shopLocks));
 }
 
 } // namespace world

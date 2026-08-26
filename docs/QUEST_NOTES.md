@@ -234,6 +234,16 @@ quest still turned in cleanly on first contact — confirming the design
 intent that the grant and the quest wanting it are independent state,
 not a special-cased link (see "DELIVER" above).
 
+**A second payoff added later (per-location shop wares milestone)**:
+completing `ore_for_the_forge` now also unlocks Flint's Smithy itself as
+a real shop (`SHOP S armory` + `SHOP_LOCKED S ore_for_the_forge` in
+`data/zones/solace.txt`) — the first quest reward that gates world state
+(a shop opening) rather than granting steel/XP/an item/a title. See
+`docs/ZONE_NOTES.md`'s "SHOP_LOCKED" and `docs/CHARACTER_NOTES.md`'s "Six
+shops, six catalogs". The quest's own `REWARD_STEEL`/`REWARD_XP` are
+unchanged — the shop unlock is a `game::GameLoop::handleShop`-side check
+against `QuestStatus::Complete`, not a new `quests.txt` reward keyword.
+
 ## The met-id trap
 
 `TALK <met-id>` does **not** take a character's display name or a

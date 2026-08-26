@@ -91,6 +91,16 @@ struct PointOfInterest {
     // line in the zone file, which must reference an already-declared POI
     // char (see docs/ZONE_NOTES.md).
     bool isShop = false;
+    // Which character::ShopCatalog this shop offers, stored as the plain
+    // name string from the zone file's optional SHOP <char> <catalog>
+    // second token ("general" if omitted) -- world:: never references
+    // character::ShopCatalog itself (stays decoupled from character::,
+    // see docs/ARCHITECTURE.md); game::GameLoop::handleShop translates
+    // the string right before calling into character::Equipment. Only
+    // meaningful when isShop is true. Validated against the fixed set of
+    // known catalog names by ZoneLoader itself -- no cross-file lookup
+    // needed, unlike shopLockQuestId below (see docs/ZONE_NOTES.md).
+    std::string shopCatalog = "general";
     // True if the player can press 'z' (bed rest) while standing on this
     // tile to fully heal and advance 8 hours -- set via a BED line in the
     // zone file, which must reference an already-declared POI char, same
@@ -122,11 +132,17 @@ public:
     // see docs/TIMELINE_NOTES.md. `quests` maps a POI char to the id of a
     // quest::Quest it offers -- see docs/QUEST_NOTES.md. `boatVoyages` maps
     // a POI char to the scripted sea voyage it grants -- see BoatVoyage above.
+    // `shopLocks` maps a shop POI char to the id of a quest::Quest that
+    // must be Complete before the shop will open (see docs/ZONE_NOTES.md's
+    // SHOP_LOCKED) -- same "id payload needing cross-file validation"
+    // shape as quests above, not a plain PointOfInterest bool, since only
+    // main.cpp can confirm the quest id is real.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
          std::unordered_map<char, PointOfInterest> pois,
          std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
          std::string timelineLocationId, std::unordered_map<char, std::string> quests,
-         std::unordered_map<char, BoatVoyage> boatVoyages);
+         std::unordered_map<char, BoatVoyage> boatVoyages,
+         std::unordered_map<char, std::string> shopLocks);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -161,6 +177,16 @@ public:
     // docs/QUEST_NOTES.md).
     const std::unordered_map<char, std::string>& quests() const { return quests_; }
 
+    // Returns the quest id that must be Complete before (x, y)'s shop will
+    // open, or nullptr if that tile isn't a shop-lock POI (either not a
+    // shop at all, or a shop with no SHOP_LOCKED line).
+    const std::string* shopLockAt(int x, int y) const;
+
+    // Every shop lock declared in this zone, keyed by POI char -- for
+    // main.cpp to cross-validate each id against the loaded
+    // quest::QuestCatalog at startup, same reasoning as quests() above.
+    const std::unordered_map<char, std::string>& shopLocks() const { return shopLocks_; }
+
     // Returns the boat voyage granted at (x, y), or nullptr if the tile
     // there doesn't grant one.
     const BoatVoyage* boatAt(int x, int y) const;
@@ -193,6 +219,7 @@ private:
     std::string timelineLocationId_;
     std::unordered_map<char, std::string> quests_;
     std::unordered_map<char, BoatVoyage> boatVoyages_;
+    std::unordered_map<char, std::string> shopLocks_;
 };
 
 } // namespace world

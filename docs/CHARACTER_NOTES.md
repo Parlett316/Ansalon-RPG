@@ -804,11 +804,10 @@ search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
   `Quit` locally (cursor up/down, buy or sell depending on the active
   view, toggle buy/sell, exit the shop — not the whole game) rather than
   adding new `Key` values for item selection. The shop's on-screen title
-  is the POI's own name, not a hardcoded string — Solace's General Store,
-  Haven's Market Stalls, and Tarsis's Old Sailor all reuse the exact same
-  `handleShop`/`availableShopItems` code, so what's for sale is identical
-  everywhere (a deliberate scope cut, see "Three shops now" below, not an
-  oversight).
+  is the POI's own name, not a hardcoded string — every shop reuses the
+  exact same `handleShop`/`availableShopItems` code, parameterized per
+  shop by a `character::ShopCatalog` (see "Six shops, six catalogs"
+  below) rather than each shop having its own bespoke logic.
 - **No downgrading protection.** Nothing stops buying a worse item by
   mistake. Same minimalism as one weapon/spell/dialogue-line precedent
   elsewhere in this project.
@@ -842,21 +841,63 @@ in any shop and has no established price, so it's marked unsellable
 ("cannot sell") rather than assigned an invented number for something
 that was never actually for sale.
 
-### Three shops now, one shared catalog
+### Six shops, six catalogs
 
-Haven's Market Stalls (`K`) and Tarsis's Old Sailor (`S`) each gained a
-`SHOP` line alongside their existing `POI`/`TALK` content — no new POIs or
-zone-grid changes, reusing already-written, already-justified tiles rather
-than inventing new merchant characters with no grounding (Haven's stalls
-already sell goods to passersby; Steel Pieces are established lore as "the
-universal equivalent," so even Tarsis's xenophobic-toward-outsiders sailor
-plausibly deals in it — see "Gold -> Steel" below). `K` was already the
-zone's `TIMELINE_ANCHOR`; `SHOP` and `TIMELINE_ANCHOR` are independent
-flags on the same POI, so this doesn't interfere with canon-character
-encounters there. All three shops sell from the exact same
-`availableShopItems` catalog — there's no per-location wares (Haven
-doesn't sell anything Solace doesn't) — a real, documented scope cut, see
-"Extending this later" below.
+Milestone-100-era shops all sold from the exact same `availableShopItems`
+catalog — "there's no per-location wares" was a documented scope cut.
+Closed at the user's explicit request: `character::ShopItem` now carries
+a `ShopItemKind` (`ArmorTier`/`Shield`/`WeaponUpgrade`/`MagicWeapon`/
+`Potion`/`Webnet`/`Brooch`), and `availableShopItems`/`purchaseItem` take
+a `character::ShopCatalog` that filters which of those kinds a given shop
+offers (`Equipment.cpp`'s file-local `catalogDef` table). This also
+replaced `purchaseItem`'s old fragile position-based offset math
+(`armorCount + 1`-style arithmetic assuming one fixed, unfiltered
+sequence) with a direct switch on `item.kind` — a correctness cleanup
+the filtering needed anyway.
+
+**Which catalog is invented gameplay tuning, not sourced content** — same
+honesty as `docs/COMBAT_NOTES.md`'s `encounterChancePercent`/
+`kBiasWeight`. Six catalogs, one per shop, chosen from each POI's own
+already-written flavor text rather than arbitrary assignment:
+
+| Catalog | Shop | Contents |
+|---|---|---|
+| `general` | Solace's General Store (`G`) | unchanged baseline: all 3 armor tiers, shield, class weapon upgrade, magic weapon, potion, webnet/brooch |
+| `armory` | Solace's Flint's Smithy (`S`, new) | all 3 armor tiers, shield, class weapon upgrade, magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
+| `market` | Haven's Market Stalls (`K`) | Leather armor, shield, potion only — a pedestrian goods market |
+| `salvage` | Tarsis's Old Sailor (`S`) | potion, magic weapon only — extends the existing "scavenged pre-Cataclysm relic" framing (see "Potions" below) to a salvaged enchanted weapon too; no mundane armor/weapon/shield, a ruined port isn't an armorer |
+| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Chain Mail armor, shield, class weapon upgrade, potion — a real bazaar, but no enchanted goods |
+| `harbor` | Palanthas's Harbor (`H`, new) | Leather + Chain + Splint Mail armor, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade) |
+
+**Webnet/Brooch of Imog are now General-Store-exclusive** — a real
+behavior change from Milestone 56, which sold them at every shop. Called
+out explicitly rather than silently: a Mage who wants either now has to
+be in Solace.
+
+**Flint's Smithy is gated behind a quest** (`SHOP_LOCKED`, see
+`docs/ZONE_NOTES.md`): it won't open at all until `ore_for_the_forge` is
+turned in, a real payoff for already-shipped content (the smithy's own
+`TALK` text has always been about a stalled ore supply) rather than an
+invented new mechanic. Known minor gap: the smithy's `TALK`/`TALK_AGAIN`
+lines don't yet change once the quest completes and the shop unlocks —
+same "not addressed by this pass" honesty as other documented
+limitations in this project, not an oversight to hide.
+
+Haven's Market Stalls (`K`) and Kalaman's Market Square (`M`) were/are
+already each zone's `TIMELINE_ANCHOR`; `SHOP` and `TIMELINE_ANCHOR` are
+independent flags on the same POI, so neither interferes with
+canon-character encounters there. Palanthas's Harbor (`H`) and Kalaman's
+Market Square needed no new `POI`/grid changes — both already existed as
+flavor-appropriate, unclaimed POIs, reusing already-written tiles rather
+than inventing new merchant characters with no grounding.
+
+Three other `TOWN`-flagged locations (Crossing, Port Balifor, Flotsam)
+were deliberately left without a shop: Crossing is a two-POI ferry
+waypoint, not a town square; Port Balifor's harbor is explicitly
+draconian-guarded, not a free market; Flotsam is a smugglers'/pirates'
+haven whose captains "ask no questions," not a storefront. Same
+"restraint over completeness" discipline as Plains of Dust/Tarsis having
+no timeline content.
 
 ### Carried inventory and equip/unequip (Milestone 21)
 
@@ -905,8 +946,8 @@ see `docs/GOTCHAS.md`.
 
 A new `ItemKind::Potion` (`character/Equipment.h`), alongside
 Armor/Shield/Weapon: exactly one real item, a Potion of Healing, sold at
-every shop's already-shared catalog (see "Three shops now, one shared
-catalog" above). Sourced from the actual scanned DMG
+every shop as of this milestone (every catalog includes it -- see "Six
+shops, six catalogs" above). Sourced from the actual scanned DMG
 (`pdftotext -layout`, page-image rendering unavailable in this
 environment — `pdftoppm` isn't installed): the effect, "the potion
 restores 2d4+2 hit points of damage," is clearly legible on p.142; the
@@ -1243,12 +1284,12 @@ stored in `GameState::character` and never reassigned after that; pressing
   this project's Robe assignment is still flavor-only) -- a real design
   call, not an oversight, see "Spellcasting" above.
 - **Equipment/inventory, past what exists now**: armor/weapon purchases,
-  a carried inventory, sell-back, three shops (Solace, Haven, Tarsis), a
-  Potion, a "+1" magic weapon/Solamnic Armor, (Milestone 56) a Webnet/
-  Brooch of Imog, and (the DELIVER milestone) real quest items all exist
-  now (see "Equipment", "Magic items", and "Quest items" above).
-  Still missing: per-location wares (every shop sells the identical
-  catalog) and armor weight/encumbrance. Milestone 56 read the rest of
+  a carried inventory, sell-back, six shops across five towns with real
+  per-location catalogs (see "Six shops, six catalogs" above), a Potion, a
+  "+1" magic weapon/Solamnic Armor, (Milestone 56) a Webnet/Brooch of
+  Imog, and (the DELIVER milestone) real quest items all exist now (see
+  "Equipment", "Magic items", and "Quest items" above).
+  Still missing: armor weight/encumbrance. Milestone 56 read the rest of
   DLA's "Magical Items of Krynn" chapter closely (Rods/Staves/Wands,
   Crystals and Gems, Miscellaneous Magic, Armor and Shields, Weapons); a
   later pass (see "Magic items" above) re-read the same chapter directly

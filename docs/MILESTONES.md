@@ -2967,6 +2967,57 @@ section).
     "Accuracy: what's sourced, what's invented" and "Extending this later"
     sections.
 
+101. Per-location shop wares -- closes a scope cut documented since
+    Milestone 28 ("there's no per-location wares"), at the user's
+    explicit request that every town carry a distinct shop with real
+    class-relevant weapons/armor. `character::ShopItem` gained a
+    `ShopItemKind` discriminant and `purchaseItem` now dispatches
+    directly on it instead of the old fragile `armorCount + 1`-style
+    offset math; a new `character::ShopCatalog` (`General`/`Armory`/
+    `MarketGoods`/`Salvage`/`Bazaar`/`HarborTrade`) filters which item
+    kinds `availableShopItems` returns, via a small `catalogDef` lookup
+    table in `Equipment.cpp`. Six shops now exist across five towns, each
+    catalog picked from that POI's own already-written flavor text rather
+    than an arbitrary assignment: Solace's General Store (`general`,
+    unchanged baseline) and a new second shop, Flint's Smithy (`armory`
+    -- all armor/weapon upgrades, no potions/arcane items); Haven's
+    Market Stalls (`market` -- Leather + shield + potion only); Tarsis's
+    Old Sailor (`salvage` -- potion + magic weapon only, extending the
+    existing "scavenged relic" framing); two new shops at towns that
+    previously had none, Kalaman's Market Square (`bazaar`) and
+    Palanthas's Harbor (`harbor`). `world::PointOfInterest` gained a
+    plain `shopCatalog` string (validated by `ZoneLoader` against the six
+    known names, but never referencing `character::ShopCatalog` itself --
+    `world::` stays decoupled from `character::`, per
+    `docs/ARCHITECTURE.md` -- `game::GameLoop::handleShop` does the
+    string->enum translation). Flint's Smithy is also this project's
+    first quest-gated shop: a new zone-grammar line, `SHOP_LOCKED <char>
+    <quest-id>` (modeled directly on `QUEST`, cross-validated against
+    `quest::QuestCatalog` in `main.cpp` the same way), keeps it closed
+    until `ore_for_the_forge` (Milestone-era `DELIVER` quest) is turned
+    in -- a real payoff for already-shipped content instead of an
+    invented mechanic. Deliberately left out: Crossing, Port Balifor, and
+    Flotsam, three other `TOWN`-flagged locations with no plausible
+    friendly-merchant POI (a ferry waypoint, a draconian-guarded harbor,
+    and a smugglers' haven, respectively) -- same restraint-over-
+    completeness discipline as ever, flagged to the user during planning
+    rather than silently cut. Webnet/Brooch of Imog are now
+    General-Store-exclusive, a real behavior change from Milestone 56
+    (previously sold everywhere) called out explicitly in docs. Verified
+    via a throwaway self-test (all 6 catalogs' item filtering, the new
+    `kind`-based `purchaseItem` dispatch across several catalogs,
+    `ZoneLoader` parsing `SHOP <char> <catalog>`/`SHOP_LOCKED` plus their
+    fail-fast cases), a clean `/W4` rebuild, and the piped smoke test
+    (confirms all 5 edited zone files and `main.cpp`'s new `SHOP_LOCKED`
+    cross-validation loop parse the real data end-to-end). **Interactive
+    verification still needed** (same limitation as every prior
+    quest/shop-UI milestone): confirming Flint's Smithy is locked before
+    `ore_for_the_forge` and opens after turn-in, and that each of the 6
+    shops shows its intended catalog in `drawShopFrame`. See
+    `docs/ZONE_NOTES.md`'s "Shops"/"SHOP_LOCKED", `docs/CHARACTER_NOTES.md`'s
+    "Six shops, six catalogs", and `docs/QUEST_NOTES.md`'s
+    `ore_for_the_forge` entry.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

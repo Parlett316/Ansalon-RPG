@@ -39,4 +39,5 @@ SUBJECT G war,dragons,dragonlance,general His easy manner cools. "You'll have he
 SUBJECT_UNKNOWN G The watchman shrugs, eyes still on the crowd. "Wouldn't know. Ask somebody who isn't paid to watch pockets, not answer questions."
 QUEST G bazaar_road_raiders
 TIMELINE_ANCHOR M
+SHOP M bazaar
 END

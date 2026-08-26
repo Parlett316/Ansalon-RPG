@@ -42,6 +42,45 @@ const MagicWeapon kThiefMagicWeapon{"Ensorcelled Long Sword", 8, 0, 1, 400};
 const MagicWeapon kMageMagicWeapon{"Ensorcelled Dagger", 4, 0, 1, 500};
 const MagicWeapon kTinkerMagicWeapon{"Ensorcelled Wrench", 4, 0, 1, 500};
 
+// Which slots each ShopCatalog offers -- see docs/CHARACTER_NOTES.md's
+// "Six shops, six catalogs" for the reasoning behind each one. armorTiers
+// is aligned with kBuyableArmor (Leather, Chain Mail, Splint Mail).
+struct ShopCatalogDef {
+    std::array<bool, 3> armorTiers;
+    bool shield;
+    bool weaponUpgrade;
+    bool magicWeapon;
+    bool potion;
+    bool webnetBrooch;
+};
+
+const ShopCatalogDef& catalogDef(ShopCatalog catalog) {
+    // Solace's General Store -- the original, unchanged baseline.
+    static const ShopCatalogDef kGeneral{{true, true, true}, true, true, true, true, true};
+    // Flint's Smithy (Solace) -- an armorer: everything wearable/wieldable,
+    // nothing consumable or arcane.
+    static const ShopCatalogDef kArmory{{true, true, true}, true, true, true, false, false};
+    // Haven's Market Stalls -- a pedestrian goods market, not a smith.
+    static const ShopCatalogDef kMarketGoods{{true, false, false}, true, false, false, true, false};
+    // Tarsis's Old Sailor -- a ruined port trading in scavenged relics, not
+    // mundane armor/weapons.
+    static const ShopCatalogDef kSalvage{{false, false, false}, false, false, true, true, false};
+    // Kalaman's Market Square -- a real bazaar, but no enchanted goods.
+    static const ShopCatalogDef kBazaar{{true, true, false}, true, true, false, true, false};
+    // Palanthas's Harbor -- the one surviving great port, trades in
+    // finished goods rather than smithing its own weapon upgrades.
+    static const ShopCatalogDef kHarborTrade{{true, true, true}, true, false, true, true, false};
+    switch (catalog) {
+        case ShopCatalog::General: return kGeneral;
+        case ShopCatalog::Armory: return kArmory;
+        case ShopCatalog::MarketGoods: return kMarketGoods;
+        case ShopCatalog::Salvage: return kSalvage;
+        case ShopCatalog::Bazaar: return kBazaar;
+        case ShopCatalog::HarborTrade: return kHarborTrade;
+    }
+    return kGeneral; // unreachable given ShopCatalog only has the values above
+}
+
 } // namespace
 
 const ArmorInfo& armorInfo(ArmorId id) {
@@ -208,13 +247,18 @@ bool ownsBrooch(const Character& character) {
 
 } // namespace
 
-std::vector<ShopItem> availableShopItems(const Character& character) {
+std::vector<ShopItem> availableShopItems(const Character& character, ShopCatalog catalog) {
     std::vector<ShopItem> items;
     bool wearsArmor = canWearArmor(character.charClass);
+    const ShopCatalogDef& def = catalogDef(catalog);
 
-    for (ArmorId id : kBuyableArmor) {
+    for (size_t i = 0; i < kBuyableArmor.size(); ++i) {
+        if (!def.armorTiers[i]) continue;
+        ArmorId id = kBuyableArmor[i];
         const ArmorInfo& info = armorInfo(id);
         ShopItem item;
+        item.kind = ShopItemKind::ArmorTier;
+        item.armorId = id;
         item.label = std::string(info.name) + " (AC " + std::to_string(info.armorClass) + ")";
         item.costStl = info.costStl;
         item.alreadyOwned = ownsArmor(character, id);
@@ -222,30 +266,38 @@ std::vector<ShopItem> availableShopItems(const Character& character) {
         items.push_back(std::move(item));
     }
 
-    ShopItem shield;
-    shield.label = "Shield (-1 AC)";
-    shield.costStl = kShieldCostStl;
-    shield.alreadyOwned = ownsShield(character);
-    shield.buyable = wearsArmor && !shield.alreadyOwned;
-    items.push_back(std::move(shield));
+    if (def.shield) {
+        ShopItem shield;
+        shield.kind = ShopItemKind::Shield;
+        shield.label = "Shield (-1 AC)";
+        shield.costStl = kShieldCostStl;
+        shield.alreadyOwned = ownsShield(character);
+        shield.buyable = wearsArmor && !shield.alreadyOwned;
+        items.push_back(std::move(shield));
+    }
 
-    if (const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass)) {
-        ShopItem weapon;
-        weapon.label = std::string(upgrade->name) + " (1d" + std::to_string(upgrade->damageSides) +
-                        (upgrade->damageBonus > 0 ? "+" + std::to_string(upgrade->damageBonus) : "") + ")";
-        weapon.costStl = upgrade->costStl;
-        weapon.alreadyOwned = ownsWeapon(character, upgrade->name);
-        weapon.buyable = !weapon.alreadyOwned;
-        items.push_back(std::move(weapon));
+    if (def.weaponUpgrade) {
+        if (const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass)) {
+            ShopItem weapon;
+            weapon.kind = ShopItemKind::WeaponUpgrade;
+            weapon.label = std::string(upgrade->name) + " (1d" + std::to_string(upgrade->damageSides) +
+                            (upgrade->damageBonus > 0 ? "+" + std::to_string(upgrade->damageBonus) : "") + ")";
+            weapon.costStl = upgrade->costStl;
+            weapon.alreadyOwned = ownsWeapon(character, upgrade->name);
+            weapon.buyable = !weapon.alreadyOwned;
+            items.push_back(std::move(weapon));
+        }
     }
 
     // The class's "+1" enchanted weapon -- see Equipment.h's MagicWeapon.
-    // Unlike weaponUpgradeFor, this is never absent: every class (including
-    // Mage/Tinker, who have no mundane upgrade above) gets one.
-    {
+    // Unlike weaponUpgradeFor, this is never absent for a class: every
+    // class (including Mage/Tinker, who have no mundane upgrade above)
+    // has one, gated only by whether this shop's catalog carries it.
+    if (def.magicWeapon) {
         const MagicWeapon& magic = magicWeaponFor(character.charClass);
         int totalDamageBonus = magic.damageBonus + magic.magicBonus;
         ShopItem weapon;
+        weapon.kind = ShopItemKind::MagicWeapon;
         weapon.label = std::string(magic.name) + " (1d" + std::to_string(magic.damageSides) +
                         (totalDamageBonus > 0 ? "+" + std::to_string(totalDamageBonus) : "") +
                         ", +" + std::to_string(magic.magicBonus) + " to hit)";
@@ -259,38 +311,47 @@ std::vector<ShopItem> availableShopItems(const Character& character) {
     // framing. Stackable (alreadyOwned always false, unlike armor/weapons
     // which block owning a duplicate) and open to every class (no
     // canWearArmor-style restriction).
-    ShopItem potion;
-    potion.label = "Potion of Healing (2d4+2 hp)";
-    potion.costStl = kHealingPotionCostStl;
-    potion.alreadyOwned = false;
-    potion.buyable = true;
-    items.push_back(std::move(potion));
+    if (def.potion) {
+        ShopItem potion;
+        potion.kind = ShopItemKind::Potion;
+        potion.label = "Potion of Healing (2d4+2 hp)";
+        potion.costStl = kHealingPotionCostStl;
+        potion.alreadyOwned = false;
+        potion.buyable = true;
+        items.push_back(std::move(potion));
+    }
 
     // Webnet and Brooch of Imog -- Mage-only per their own DLA text (see
     // Equipment.h), always listed (buyable=false for other classes) same
     // "show it, but grey it out" precedent as armor/shield for a Mage.
-    // Stackable like the Potion above -- alreadyOwned always false.
-    bool isMage = character.charClass == ClassId::Mage;
+    // Stackable like the Potion above -- alreadyOwned always false. As of
+    // the per-location-wares pass, only the General catalog carries these
+    // -- see docs/CHARACTER_NOTES.md for why.
+    if (def.webnetBrooch) {
+        bool isMage = character.charClass == ClassId::Mage;
 
-    ShopItem webnet;
-    webnet.label = "Webnet (negates the foe's next attack)";
-    webnet.costStl = kWebnetCostStl;
-    webnet.alreadyOwned = false;
-    webnet.buyable = isMage;
-    items.push_back(std::move(webnet));
+        ShopItem webnet;
+        webnet.kind = ShopItemKind::Webnet;
+        webnet.label = "Webnet (negates the foe's next attack)";
+        webnet.costStl = kWebnetCostStl;
+        webnet.alreadyOwned = false;
+        webnet.buyable = isMage;
+        items.push_back(std::move(webnet));
 
-    ShopItem brooch;
-    brooch.label = "Brooch of Imog (blocks all attacks for the rest of a fight, once/day)";
-    brooch.costStl = kBroochOfImogCostStl;
-    brooch.alreadyOwned = ownsBrooch(character);
-    brooch.buyable = isMage && !brooch.alreadyOwned;
-    items.push_back(std::move(brooch));
+        ShopItem brooch;
+        brooch.kind = ShopItemKind::Brooch;
+        brooch.label = "Brooch of Imog (blocks all attacks for the rest of a fight, once/day)";
+        brooch.costStl = kBroochOfImogCostStl;
+        brooch.alreadyOwned = ownsBrooch(character);
+        brooch.buyable = isMage && !brooch.alreadyOwned;
+        items.push_back(std::move(brooch));
+    }
 
     return items;
 }
 
-PurchaseResult purchaseItem(Character& character, int index) {
-    std::vector<ShopItem> items = availableShopItems(character);
+PurchaseResult purchaseItem(Character& character, int index, ShopCatalog catalog) {
+    std::vector<ShopItem> items = availableShopItems(character, catalog);
     if (index < 0 || index >= static_cast<int>(items.size())) {
         return {false, "Nothing to buy there."};
     }
@@ -309,44 +370,45 @@ PurchaseResult purchaseItem(Character& character, int index) {
 
     // Buying only adds to inventory now -- equipping is a separate,
     // deliberate action via GameLoop::handleInventory ('i'). See
-    // docs/CHARACTER_NOTES.md.
-    int armorCount = static_cast<int>(kBuyableArmor.size());
-    const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass);
-    int weaponIndex = upgrade != nullptr ? armorCount + 1 : -1;
-    // The magic weapon line always follows the (optional) mundane upgrade
-    // line -- see availableShopItems.
-    int magicWeaponIndex = upgrade != nullptr ? armorCount + 2 : armorCount + 1;
-    // Potion, Webnet, and Brooch of Imog are always the final three lines,
-    // in that fixed order -- see availableShopItems.
-    int potionIndex = magicWeaponIndex + 1;
-    int webnetIndex = potionIndex + 1;
-    int broochIndex = potionIndex + 2;
+    // docs/CHARACTER_NOTES.md. Dispatches directly on item.kind rather
+    // than a recomputed position, since different catalogs now include
+    // different subsets of these slots (see ShopItemKind/ShopCatalog).
     bool isPotion = false;
-    if (index < armorCount) {
-        character.inventory.push_back(InventoryItem{ItemKind::Armor, kBuyableArmor[index], "", 0, 0});
-    } else if (index == armorCount) {
-        character.inventory.push_back(InventoryItem{ItemKind::Shield, ArmorId::None, "", 0, 0});
-    } else if (index == weaponIndex) {
-        character.inventory.push_back(
-            InventoryItem{ItemKind::Weapon, ArmorId::None, upgrade->name, upgrade->damageSides, upgrade->damageBonus});
-    } else if (index == magicWeaponIndex) {
-        const MagicWeapon& magic = magicWeaponFor(character.charClass);
-        character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, magic.name,
-                                                      magic.damageSides, magic.damageBonus, magic.magicBonus});
-    } else if (index == webnetIndex) {
-        character.inventory.push_back(InventoryItem{ItemKind::Webnet, ArmorId::None, "", 0, 0});
-    } else if (index == broochIndex) {
-        character.inventory.push_back(InventoryItem{ItemKind::BroochOfImog, ArmorId::None, "", 0, 0});
-    } else {
-        // The one remaining catalog line -- the Potion of Healing.
-        character.inventory.push_back(InventoryItem{ItemKind::Potion, ArmorId::None, "", 0, 0});
-        isPotion = true;
+    switch (item.kind) {
+        case ShopItemKind::ArmorTier:
+            character.inventory.push_back(InventoryItem{ItemKind::Armor, item.armorId, "", 0, 0});
+            break;
+        case ShopItemKind::Shield:
+            character.inventory.push_back(InventoryItem{ItemKind::Shield, ArmorId::None, "", 0, 0});
+            break;
+        case ShopItemKind::WeaponUpgrade: {
+            const WeaponUpgrade* upgrade = weaponUpgradeFor(character.charClass);
+            character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, upgrade->name,
+                                                          upgrade->damageSides, upgrade->damageBonus});
+            break;
+        }
+        case ShopItemKind::MagicWeapon: {
+            const MagicWeapon& magic = magicWeaponFor(character.charClass);
+            character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, magic.name,
+                                                          magic.damageSides, magic.damageBonus, magic.magicBonus});
+            break;
+        }
+        case ShopItemKind::Potion:
+            character.inventory.push_back(InventoryItem{ItemKind::Potion, ArmorId::None, "", 0, 0});
+            isPotion = true;
+            break;
+        case ShopItemKind::Webnet:
+            character.inventory.push_back(InventoryItem{ItemKind::Webnet, ArmorId::None, "", 0, 0});
+            break;
+        case ShopItemKind::Brooch:
+            character.inventory.push_back(InventoryItem{ItemKind::BroochOfImog, ArmorId::None, "", 0, 0});
+            break;
     }
 
     std::string hint = ". Press 'i' to equip it.";
     if (isPotion) {
         hint = ". Press 'i' to drink it.";
-    } else if (index == webnetIndex || index == broochIndex) {
+    } else if (item.kind == ShopItemKind::Webnet || item.kind == ShopItemKind::Brooch) {
         hint = ". Press 'i' in combat to use it.";
     }
     return {true, "Bought " + item.label + hint};

@@ -24,6 +24,7 @@ GRID
 ########################################
 ENDGRID
 POI H "The Harbor" White-winged sails crowd a harbor deep enough for real ships of the line -- the one true port on this coast to survive the Cataclysm intact, dwarven-cut quays still holding true after all these centuries.
+SHOP H harbor
 POI P "The Lord's Palace" A palace of pale stone rises on high ground at the city's heart, its round map room said to hold the finest view in Palanthas -- save for one window, kept permanently curtained. Lord Amothus governs here: a well-meaning, easily-distracted man, these days much occupied with an army, its wounded, and a war he never expected to be fighting.
 POI L "The Great Library" Cool marble halls climb in silence behind a locked, glass-paned door, the realm of an order that admits almost no one. Past the vestibule a single lamp burns steady over a desk where history is being written down, one patient word at a time, by a man who has never once looked up in time to be thanked for it.
 POI W "The Old City Wall" Stone steps climb to the battlements, each block cut and fitted with a precision that speaks for itself -- dwarven work, unmistakably, holding up a wall that has stood since long before the Cataclysm without needing to be told how impressive that is.

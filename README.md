@@ -209,31 +209,38 @@ fully heal overnight instead, the same 8 hours as ordinary rest — see
 `docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" section. Winning
 fights earns Steel Pieces (Krynn's own
 post-Cataclysm currency, not gold) and experience, and that steel now has
-somewhere to go — press `p` at a shop (Solace's General Store, Haven's
-Market Stalls, or Tarsis's Old Sailor — all three sell the same catalog)
-to buy real armor (Leather/Chain Mail/Splint Mail) and a weapon upgrade
-(Mages and Tinkers can't wear armor at all, per the PHB's own rule), or
-press `i` inside the shop to switch to selling gear back for half its
-price. Purchases land in a real carried inventory rather than being worn
-automatically — press `i` outside a shop to see what you're carrying and
-equip it, which actually changes your AC and damage in the next fight,
-swapping whatever you had on back into your pack rather than losing it —
-see `docs/CHARACTER_NOTES.md`'s "Equipment" section. Every shop also
-carries a Potion of Healing (2d4+2 hp, 200 stl, DMG-sourced and priced) —
-framed as a scavenged pre-Cataclysm relic rather than a merchant's own
-brew, since real clerical healing magic doesn't return to Krynn until
-Goldmoon's Disks of Mishakal early in the story; drink one from the
-inventory screen (`i`, `Enter`) or mid-fight (`i` again, spending your
-round on it instead of attacking) — see `docs/CHARACTER_NOTES.md`'s
-"Potions" section. Every shop also carries a "+1" enchanted weapon, one
-per class (an Ensorcelled version of your class's own upgrade weapon, or,
-for a Mage or Tinker who has no mundane upgrade at all, their first
-weapon upgrade of any kind) — sourced from the DMG's magic-item tables
-and Dragonlance Adventures' own "Magical Items of Krynn" chapter, and the
-first thing in the game to add a real to-hit bonus beyond Strength. A Mage
-can also buy a Webnet (negates a foe's next attack) or a Brooch of Imog
-(blocks every attack for the rest of a fight, once per day) — both used
-the same way as drinking a potion mid-combat — see
+somewhere to go — press `p` at a shop to buy real gear. Six shops now
+exist across five towns, each with its own distinct catalog rather than
+one shared list: Solace's General Store (the flagship, everything below)
+and Flint's Smithy (armor/weapons only, locked until you deliver ore for
+the `ore_for_the_forge` quest), Haven's Market Stalls (Leather armor and
+a potion), Tarsis's Old Sailor (a potion and a salvaged enchanted
+weapon), Kalaman's Market Square (Leather/Chain armor, a weapon upgrade,
+a potion), and Palanthas's Harbor (all three armor tiers, an enchanted
+weapon, a potion). Where armor's on offer you can buy real Leather/Chain
+Mail/Splint Mail (Mages and Tinkers can't wear armor at all, per the
+PHB's own rule) and a weapon upgrade, or press `i` inside the shop to
+switch to selling gear back for half its price. Purchases land in a real
+carried inventory rather than being worn automatically — press `i`
+outside a shop to see what you're carrying and equip it, which actually
+changes your AC and damage in the next fight, swapping whatever you had
+on back into your pack rather than losing it — see
+`docs/CHARACTER_NOTES.md`'s "Equipment" section. Every shop carries a
+Potion of Healing (2d4+2 hp, 200 stl, DMG-sourced and priced) — framed as
+a scavenged pre-Cataclysm relic rather than a merchant's own brew, since
+real clerical healing magic doesn't return to Krynn until Goldmoon's
+Disks of Mishakal early in the story; drink one from the inventory screen
+(`i`, `Enter`) or mid-fight (`i` again, spending your round on it instead
+of attacking) — see `docs/CHARACTER_NOTES.md`'s "Potions" section. Most
+shops also carry a "+1" enchanted weapon, one per class (an Ensorcelled
+version of your class's own upgrade weapon, or, for a Mage or Tinker who
+has no mundane upgrade at all, their first weapon upgrade of any kind) —
+sourced from the DMG's magic-item tables and Dragonlance Adventures' own
+"Magical Items of Krynn" chapter, and the first thing in the game to add
+a real to-hit bonus beyond Strength. At Solace's General Store only, a
+Mage can also buy a Webnet (negates a foe's next attack) or a Brooch of
+Imog (blocks every attack for the rest of a fight, once per day) — both
+used the same way as drinking a potion mid-combat — see
 `docs/CHARACTER_NOTES.md`'s "Magic items" section. A Cleric who earns it
 can wield the Staff of Striking/Curing instead: a permanent +3 weapon that
 also calls on a once-per-day self-heal, mid-combat, the same way. A
@@ -379,11 +386,11 @@ needed:
   about something else..." appears on that menu (any of the 8 Heroes, or
   any talkable zone-native NPC), picking it lets you type any subject
   instead — Enter submits, Esc cancels back to the menu.
-- `p` — browse/buy at a shop POI (Solace's General Store, Haven's Market
-  Stalls, or Tarsis's Old Sailor) — up/down selects an item, Enter buys
-  it, `i` switches to selling gear from your inventory back for half its
-  price, `q`/Esc leaves the shop. Purchases go to your carried inventory,
-  not straight onto your body.
+- `p` — browse/buy at a shop POI (six now, across five towns, each with
+  its own catalog — see "Status" above) — up/down selects an item, Enter
+  buys it, `i` switches to selling gear from your inventory back for half
+  its price, `q`/Esc leaves the shop. Purchases go to your carried
+  inventory, not straight onto your body.
 - `i` — outside a shop: view your carried items and equip one — up/down
   selects, Enter equips (swapping in whatever you were wearing before),
   `q`/Esc leaves

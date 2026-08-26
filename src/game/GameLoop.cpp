@@ -20,6 +20,22 @@ namespace game {
 
 namespace {
 
+// Translates a zone file's plain SHOP catalog name into
+// character::ShopCatalog -- lives here, not in world::, because world::
+// stays decoupled from character:: (see docs/ARCHITECTURE.md); GameLoop
+// already depends on both, same bridging role game::conditionMatches
+// plays for SAY_IF/TOPIC condition strings. ZoneLoader already rejected
+// anything outside these six names at load time, so the fallback below is
+// unreachable in practice, not a silent default.
+character::ShopCatalog shopCatalogFor(const std::string& name) {
+    if (name == "armory") return character::ShopCatalog::Armory;
+    if (name == "market") return character::ShopCatalog::MarketGoods;
+    if (name == "salvage") return character::ShopCatalog::Salvage;
+    if (name == "bazaar") return character::ShopCatalog::Bazaar;
+    if (name == "harbor") return character::ShopCatalog::HarborTrade;
+    return character::ShopCatalog::General;
+}
+
 // Grid y grows downward (row 0 is the top), so "north" is negative dy --
 // easy to get backwards, worth calling out.
 const char* compassDirection(int dx, int dy) {
@@ -1164,12 +1180,27 @@ void GameLoop::handleShop() {
         pushLog("There's nothing to buy here.");
         return;
     }
+    // SHOP_LOCKED (see docs/ZONE_NOTES.md) -- a shop can require a quest
+    // to be Complete before it opens at all, e.g. Flint's Smithy waiting
+    // on ore_for_the_forge. Checked here rather than baked into isShop
+    // itself so the POI's own TALK/TOPIC content stays fully reachable
+    // regardless of lock state.
+    if (const std::string* requiredQuestId = zone->shopLockAt(state_.zoneX, state_.zoneY)) {
+        auto it = state_.quests.find(*requiredQuestId);
+        if (it == state_.quests.end() || it->second != QuestStatus::Complete) {
+            pushLog("There's nothing to buy here yet.");
+            return;
+        }
+    }
+    // Translates the zone file's plain catalog name into
+    // character::ShopCatalog once per shop visit -- see shopCatalogFor.
+    character::ShopCatalog catalog = shopCatalogFor(poi->shopCatalog);
 
     int selected = 0;
     bool sellMode = false;
     std::string shopMessage;
     for (;;) {
-        std::vector<character::ShopItem> buyItems = character::availableShopItems(state_.character);
+        std::vector<character::ShopItem> buyItems = character::availableShopItems(state_.character, catalog);
         std::vector<character::SellItem> sellItems = character::sellableItems(state_.character);
         size_t activeSize = sellMode ? sellItems.size() : buyItems.size();
         render::MapRenderer::drawShopFrame(state_.character, poi->name, buyItems, sellItems, sellMode,
@@ -1193,7 +1224,7 @@ void GameLoop::handleShop() {
                     shopMessage = result.message;
                 }
             } else if (!buyItems.empty()) {
-                character::PurchaseResult result = character::purchaseItem(state_.character, selected);
+                character::PurchaseResult result = character::purchaseItem(state_.character, selected, catalog);
                 shopMessage = result.message;
             }
         } else if (key == render::Key::Inventory) {

@@ -369,25 +369,58 @@ note.
 
 ## Shops: POIs you can buy from
 
-`SHOP <char>` marks a POI as a place the player can press `p` to browse
-and buy from (`game::GameLoop::handleShop`, `character::Equipment`) --
-same "TALK layers an ability on top of an existing POI" pattern, just for
-buying instead of talking. Unlike `TALK`, `SHOP` carries no payload of its
-own (no dialogue text) -- what's for sale is decided entirely by
-`character::availableShopItems` from the player's class/steel/gear, not
-authored per zone. The shop screen's on-screen title is the POI's own
-`name`, not a hardcoded string, so this reads correctly no matter which
-POI it's attached to.
+`SHOP <char> [catalog]` marks a POI as a place the player can press `p`
+to browse and buy from (`game::GameLoop::handleShop`,
+`character::Equipment`) -- same "TALK layers an ability on top of an
+existing POI" pattern, just for buying instead of talking. The shop
+screen's on-screen title is the POI's own `name`, not a hardcoded string,
+so this reads correctly no matter which POI it's attached to.
 
-As of Milestone 28, three POIs carry `SHOP`: `data/zones/solace.txt`'s
-`G "General Store"` (the original), `data/zones/haven.txt`'s
-`K "Market Stalls"` (which was already the zone's `TIMELINE_ANCHOR` --
-`SHOP` and `TIMELINE_ANCHOR` are independent flags on the same POI, no
-conflict), and `data/zones/tarsis.txt`'s `S "An Old Sailor"` (which
-already had `TALK`/`TALK_AGAIN`). All three sell from the identical
-catalog -- see `docs/CHARACTER_NOTES.md`'s "Equipment" section for the
-full catalog, sourcing, and the sell-back mechanic added the same
-milestone.
+**`catalog`** (optional, defaults to `general` if omitted) picks which
+subset of `character::Equipment`'s items this shop offers -- one of
+`general`, `armory`, `market`, `salvage`, `bazaar`, or `harbor`. An
+unrecognized name fails fast at load time. `world::ZoneLoader` only
+validates the name and stores it as a plain string on `PointOfInterest`
+(`world::` stays decoupled from `character::`, see
+`docs/ARCHITECTURE.md`); `game::GameLoop::handleShop` translates it into
+`character::ShopCatalog` right before calling into `character::Equipment`.
+See `docs/CHARACTER_NOTES.md`'s "Six shops, six catalogs" for what each
+catalog actually contains and why.
+
+As of the per-location-wares milestone, six POIs carry `SHOP`:
+`data/zones/solace.txt`'s `G "General Store"` (`general`, the original)
+and `S "Flint's Smithy"` (`armory`, also `SHOP_LOCKED` -- see below),
+`data/zones/haven.txt`'s `K "Market Stalls"` (`market`, which was already
+the zone's `TIMELINE_ANCHOR` -- `SHOP` and `TIMELINE_ANCHOR` are
+independent flags on the same POI, no conflict), `data/zones/tarsis.txt`'s
+`S "An Old Sailor"` (`salvage`), `data/zones/kalaman.txt`'s
+`M "Market Square"` (`bazaar`, also that zone's `TIMELINE_ANCHOR`), and
+`data/zones/palanthas.txt`'s `H "The Harbor"` (`harbor`).
+
+## SHOP_LOCKED: a shop that opens only after a quest completes
+
+`SHOP_LOCKED <char> <quest-id>` marks an already-`SHOP`-flagged POI as
+closed for business until `<quest-id>` reaches `QuestStatus::Complete`
+-- `game::GameLoop::handleShop` checks this before opening the shop
+screen at all, logging a generic "There's nothing to buy here yet."
+and returning otherwise (same early-out shape as a non-shop POI). The
+POI's own `TALK`/`TOPIC` content is completely unaffected by the lock --
+only the `p` shop screen is gated.
+
+Modeled directly on `QUEST <char> <quest-id>`: `ZoneLoader` only checks
+that the referenced POI already has a `SHOP` line (locking something
+that isn't a shop at all would be dead grammar); whether the quest id
+itself is real is validated later in `main.cpp`, once
+`quest::QuestCatalog` exists (same deferred-validation shape `QUEST`/
+`BOAT` already use, since `ZoneLoader` can't see `QuestCatalog`). Stored
+as a `Zone`-level `std::unordered_map<char, std::string>`
+(`shopLocks_`/`shopLockAt`/`shopLocks()`), not a plain bool on
+`PointOfInterest`, for the same reason `quests_` isn't -- it's an id
+payload needing cross-file validation, not a local flag.
+
+The only shop currently locked this way is Flint's Smithy
+(`data/zones/solace.txt`), behind `ore_for_the_forge` -- see
+`docs/QUEST_NOTES.md`.
 
 ## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92)
 

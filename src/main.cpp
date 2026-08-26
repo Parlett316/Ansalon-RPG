@@ -243,6 +243,21 @@ int main(int argc, char** argv) {
             }
         }
 
+        // Same reasoning as the QUEST cross-check above, for a zone's
+        // SHOP_LOCKED <char> <quest-id> line -- ZoneLoader only validated
+        // that the POI already has a SHOP line, not that the quest id is
+        // real.
+        for (const auto& [zoneId, zone] : zones.allZones()) {
+            for (const auto& [code, questId] : zone.shopLocks()) {
+                if (quests.find(questId) == nullptr) {
+                    std::cerr << "Zone '" << zoneId << "' locks the shop at POI '" << code
+                               << "' behind quest '" << questId << "', but no such quest is defined in "
+                               << dataDir << "/quests.txt.\n";
+                    return 1;
+                }
+            }
+        }
+
         const world::Location* start = world.getLocation(kStartingLocationId);
         if (!start) {
             std::cerr << "World data does not define the starting location '" << kStartingLocationId << "'.\n";

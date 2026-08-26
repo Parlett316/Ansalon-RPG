@@ -37,4 +37,6 @@ SUBJECT S flint,dwarf,forge Learned everything I know about a hammer from him, a
 SUBJECT S ore,steel,blade Can't finish good steel without good ore, and the ore's not coming down from Pax Tharkas the way it used to. Half-finished blade's been sitting on that anvil a week longer than it should. I'd fix it myself if fixing it were as simple as wanting to.
 SUBJECT_UNKNOWN S The journeyman shrugs without looking up from the anvil. "Ask Flint that, when he turns up. I just mind the forge."
 QUEST S ore_for_the_forge
+SHOP S armory
+SHOP_LOCKED S ore_for_the_forge
 END

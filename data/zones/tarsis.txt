@@ -31,7 +31,7 @@ TALK_AFTER S He doesn't look up from the net right away, but his hands still on 
 SUBJECT S sea,water,ocean Went wherever the world went wrong, same as I told you, and it isn't coming back for the asking. I still mend nets some mornings anyway. Old habit dies harder than an old sea, it turns out.
 SUBJECT S wizards,mages,magic Don't much care for your kind, if that's what you are, and I don't much care for outsiders who come around asking where the water went either. Tarsis has reasons for both. Long reasons. I won't be the one to tell them to you.
 SUBJECT_UNKNOWN S He doesn't look up from the net. "Keep moving. Wasn't a question I had an answer for anyway."
-SHOP S
+SHOP S salvage
 POI R "A Knight's Runner" A boy barely old enough to squire jogs between the ruined streets, Solamnic crest half-hidden under a borrowed cloak, looking for anyone who might still be worth talking to.
 TALK R "You there -- are you with the strangers who came in before the dragons? Sir Derek's compliments. His knights have found passage south, and he says there's room for you aboard, if you'll come now and ask no questions about where the ship came from." He's already glancing back over his shoulder, waiting on your answer.
 TALK_AGAIN R "The ship's still holding for you, if you've changed your mind. It won't hold forever."

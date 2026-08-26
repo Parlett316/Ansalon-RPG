@@ -36,5 +36,5 @@ SUBJECT G market,stalls,idols Vendors two streets over will sell you a clay god 
 SUBJECT G war,dragons,army,armies He lowers his voice, like even a temple guard doesn't like saying it too loud. "Word from every direction says there's a war building, dragons and all, though nobody official's said so outright. All I know for certain is the roads are busier than they used to be, and the new faces aren't pilgrims. Draw your own conclusions. I've mostly stopped needing to draw mine."
 SUBJECT_UNKNOWN G The guard shakes his head. "Not my department, that one. Try the temple. Bring patience -- the line's long."
 TIMELINE_ANCHOR K
-SHOP K
+SHOP K market
 END

@@ -153,32 +153,70 @@ bool equipInventoryItem(Character& character, int index);
 // the original `10 - acAdjustmentForDexterity(dex)` formula.
 void recomputeArmorClass(Character& character);
 
+// Which "slot" a catalog line represents -- purchaseItem dispatches on
+// this directly instead of recomputing a position from a fixed,
+// unfiltered sequence the way it used to, since different shops now
+// offer different subsets of these slots (see ShopCatalog below).
+enum class ShopItemKind {
+    ArmorTier,
+    Shield,
+    WeaponUpgrade,
+    MagicWeapon,
+    Potion,
+    Webnet,
+    Brooch,
+};
+
 // One purchasable line in the shop screen -- built fresh each time the
-// shop is opened from the character's current class/steel/gear, so
-// GameLoop::handleShop() only has to render+select, not decide what's on
-// offer (same split of responsibility Spellcasting.h already established
-// between castSpell() and GameLoop::runCombat()).
+// shop is opened from the character's current class/steel/gear and the
+// shop's own catalog (see ShopCatalog below), so GameLoop::handleShop()
+// only has to render+select, not decide what's on offer (same split of
+// responsibility Spellcasting.h already established between castSpell()
+// and GameLoop::runCombat()).
 struct ShopItem {
+    ShopItemKind kind;
+    ArmorId armorId = ArmorId::None; // meaningful only when kind == ArmorTier
     std::string label;   // e.g. "Chain Mail (AC 5)" or "Two-Handed Sword (1d10)"
     int costStl;
     bool alreadyOwned;
     bool buyable; // false if the class can't use this item at all (e.g. armor for a Mage)
 };
 
-std::vector<ShopItem> availableShopItems(const Character& character);
+// Which shop this is -- decides which ShopItemKind slots appear at all
+// (see catalogDef in Equipment.cpp) -- an honestly invented gameplay-
+// tuning decision, not sourced content, same flagged status as
+// docs/COMBAT_NOTES.md's encounterChancePercent/kBiasWeight. Set via a
+// zone file's SHOP <char> <catalog-name> line -- world::ZoneLoader
+// stores the name as a plain, validated string on PointOfInterest and
+// never references this enum, keeping world:: decoupled from
+// character:: per docs/ARCHITECTURE.md; game::GameLoop::handleShop does
+// the string->enum translation right before calling into this file. See
+// docs/CHARACTER_NOTES.md's "Six shops, six catalogs".
+enum class ShopCatalog {
+    General,
+    Armory,
+    MarketGoods,
+    Salvage,
+    Bazaar,
+    HarborTrade,
+};
+
+std::vector<ShopItem> availableShopItems(const Character& character, ShopCatalog catalog = ShopCatalog::General);
 
 struct PurchaseResult {
     bool success;
     std::string message; // shown in the shop frame either way
 };
 
-// Applies buying availableShopItems(character)[index]: deducts steel,
-// updates equippedArmor/hasShield/weaponName/weaponDamageSides/
-// weaponDamageBonus/weaponMagicBonus, and calls recomputeArmorClass. Does
-// nothing to the character if the purchase is rejected (insufficient
+// Applies buying availableShopItems(character, catalog)[index]: deducts
+// steel and adds the matching InventoryItem (dispatched on
+// ShopItem::kind, not a recomputed position -- see ShopItemKind above).
+// Does nothing to the character if the purchase is rejected (insufficient
 // steel, class can't use the item, or already owned) -- check
-// PurchaseResult::success.
-PurchaseResult purchaseItem(Character& character, int index);
+// PurchaseResult::success. catalog must match whatever availableShopItems
+// call produced the index being purchased (GameLoop::handleShop always
+// passes the same poi->shopCatalog to both).
+PurchaseResult purchaseItem(Character& character, int index, ShopCatalog catalog = ShopCatalog::General);
 
 // One line in the shop's "sell" view -- see sellableItems below.
 struct SellItem {
