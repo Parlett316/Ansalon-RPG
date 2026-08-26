@@ -2927,6 +2927,46 @@ section).
     player off). See `docs/COMBAT_NOTES.md`'s "Draconian roster" and
     "Death: knocked out, not killed" sections.
 
+100. Three more monsters -- Owlbear, Wight, Troll -- bringing the roster to
+    20, picked from `docs/COMBAT_NOTES.md`'s "Extending this later" backlog
+    at the user's request after Milestone 99 closed out the Draconian-
+    abilities NEXT UP item and left the backlog otherwise exhausted. All
+    three are generic `Monster Manual (2nd ed).pdf` entries, same precedent
+    as the existing Bugbear/Ogre/Gnoll/Ghoul/Skeleton/Zombie (this project
+    models Krynn specifically, which has no orcs, but draws non-Krynn-
+    specific creatures from the Monster Manual same as ever), visually
+    confirmed against rendered page images (`pdftoppm`, this session had it
+    available, unlike Milestone 34's text-only cross-check). **Owlbear**
+    (p.284, HD5+2): a forest apex predator, its three-hit claw/claw/beak
+    simplified to a single representative beak hit (2d6), same "one
+    representative die" treatment as the Ghoul's/Sivak's own multi-attack
+    simplifications; its real grapple-and-squeeze "hug" special attack
+    stays unmodeled (no ongoing-effect state exists for anyone yet).
+    **Wight** (p.360, HD4+3): the roster's first non-Draconian undead above
+    Ghoul/Skeleton/Zombie tier; its real level-drain touch and "hit only by
+    silver or +1-or-better magical weapons" defense both stay unmodeled,
+    same restraint as every other special attack/defense in this roster --
+    the flat XP 1,400 the book gives it (not a per-hp formula) reflects how
+    disproportionately valuable real level drain is, even though this
+    project's own Wight is mechanically just a plain 1d4 hit. **Troll**
+    (p.349, base "Troll" column only -- not the six other variants sharing
+    that page): the roster's new apex tier, HD6+6 with a simplified single
+    representative bite (1d8+4); its real regeneration (3 hp/round, stopped
+    only by fire/acid) stays unmodeled, since no per-round monster HP
+    recovery exists in `runCombat` -- also lands on a flat XP 1,400, same as
+    Wight. All three follow the existing `MIN_TOWN_DISTANCE` danger-curve
+    convention from Milestone 83 (Owlbear 20, matching Ogre's tier; Wight
+    25, matching Bozak's; Troll 35, matching Sivak's HD6 tier) rather than
+    inventing a new one. Pure data addition to `data/monsters.txt`, no
+    `.cpp`/`.h` changes -- `combat::MonsterLoader` already parses every
+    keyword these three need. Verified via a clean `/W4` rebuild (zero new
+    warnings) and the piped save-slot-menu smoke test (confirms
+    `MonsterCatalog` parses the file cleanly end-to-end, including all
+    three new blocks); no throwaway self-test needed, same reasoning as
+    every prior pure-content monster milestone. See `docs/COMBAT_NOTES.md`'s
+    "Accuracy: what's sourced, what's invented" and "Extending this later"
+    sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

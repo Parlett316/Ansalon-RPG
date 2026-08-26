@@ -7,16 +7,19 @@
 # added in Milestone 34: no page-image renderer was available that
 # session, so those four were instead cross-checked between two
 # independent text extractions of the same PDF pages (see
-# docs/COMBAT_NOTES.md for the caveat and page citations). The Giant
+# docs/COMBAT_NOTES.md for the caveat and page citations). The Owlbear,
+# Wight, and Troll (added in Milestone 100) are also visually confirmed
+# against rendered page images (Monster Manual p.284/360/349). The Giant
 # Spider's real Type F poison bite is modeled (POISON below); the Baaz's
 # 20% magic resistance, the Kapak's real paralysis-poison bite, the
 # Ghoul's real paralyzing touch, the Skeleton's/Zombie's real
 # damage-type/spell immunities, the Bozak's spellcasting, the Sivak's
 # shapeshifting, the Aurak's mind control/dimension door/breath weapon,
-# and the Thanoi's cold immunity are all different mechanics not modeled
-# the same way (see COMBAT_NOTES.md) and still not modeled; Baaz's,
-# Kapak's, Bozak's, Sivak's, Aurak's, and Thanoi's XP values are also
-# simplified, see below. This project models Krynn specifically -- no
+# the Thanoi's cold immunity, the Wight's level drain and silver/magic-only
+# vulnerability, and the Troll's regeneration are all different mechanics
+# not modeled the same way (see COMBAT_NOTES.md) and still not modeled;
+# Baaz's, Kapak's, Bozak's, Sivak's, Aurak's, and Thanoi's XP values are
+# also simplified, see below. This project models Krynn specifically -- no
 # orcs, matching Dragonlance's distinct bestiary.
 #
 # MONSTER <id>            starts a block
@@ -390,4 +393,68 @@ ONLY_TERRAIN :
 # system exists for anyone yet), same flavor-only restraint as the
 # Skeleton's/Zombie's immunities above.
 DESC A tusked, blubbery brute hauls itself up onto the ice, gripping a spear in fingers built for both weapon and walrus alike.
+END
+
+MONSTER owlbear
+NAME Owlbear
+HP 5 8 2
+AC 5
+THAC0 15
+# Real attack is three hits (claw/claw/beak, 1d6/1d6/2d6) -- simplified to
+# one representative die, same treatment as the Ghoul's claw/claw/bite
+# above: the beak, its single most distinctive and damaging attack.
+DAMAGE 2 6 0
+STEEL 2 10 0
+XP 420
+# Its real "hug" special attack (an 18+ claw hit drags the victim in for
+# 2d8 ongoing squeeze damage per round until one side dies) is left
+# unmodeled -- no grapple/ongoing-effect state exists for anyone yet, same
+# restraint as every other special attack in this roster.
+TERRAIN_BIAS %
+# HD5+2 apex forest predator -- kept away from a starting town's doorstep,
+# same invented-tuning reasoning as the Ogre above.
+MIN_TOWN_DISTANCE 20
+DESC A feathered, bear-bodied shape crashes out of the underbrush, its great owl's beak already snapping for your throat.
+END
+
+MONSTER wight
+NAME Wight
+HP 4 8 3
+AC 5
+THAC0 15
+DAMAGE 1 4 0
+STEEL 4 8 0
+# Real XP is a flat 1,400 (Monster Manual p.360, its outsized level-drain
+# ability) -- not a per-hp formula to simplify, unlike the Draconians'
+# XP lines above.
+XP 1400
+# Real Special Attacks (a level-draining touch) and Special Defenses (hit
+# only by silver or +1-or-better magical weapons) are both left unmodeled
+# -- no level-drain or weapon-enchantment-gate mechanic exists for anyone
+# yet, same restraint as the Ghoul's paralyzing touch and the Draconians'
+# unmodeled magic resistance.
+MIN_TOWN_DISTANCE 25
+DESC A grave-cold shape rises from the barrow-earth, burning eyes fixed on you with a hunger older than its own death.
+END
+
+MONSTER troll
+NAME Troll
+HP 6 8 6
+AC 4
+THAC0 13
+# Real attack is three hits (claw/claw/bite, 1d4+4/1d4+4/1d8+4) --
+# simplified to one representative die, same treatment as the Owlbear's
+# beak above: the bite, its single most distinctive and damaging attack.
+DAMAGE 1 8 4
+STEEL 4 8 0
+# Real XP is a flat 1,400 (Monster Manual p.349, base Troll column only --
+# not the Two-headed/Freshwater/Saltwater/Desert/Spectral/Giant/Ice
+# variants printed on the same page), not a per-hp formula.
+XP 1400
+# Real Special Defenses (regeneration -- 3 hp/round starting three rounds
+# after first blood, stopped only by fire or acid) is left unmodeled -- no
+# per-round monster HP recovery exists in runCombat, same restraint as
+# every other special defense in this roster.
+MIN_TOWN_DISTANCE 35
+DESC A gaunt, green-hided horror unfolds to its full height, claws flexing, wounds already knitting shut before your eyes.
 END

@@ -194,6 +194,29 @@ was chosen and checked with that constraint in mind.
   magical), extra fire/heat damage, and HD loss in warm climates are all
   unmodeled — no damage-type or elemental-exposure system exists for
   anyone yet, same flavor-only restraint as Skeleton's/Zombie's immunities.
+- **Owlbear** (Milestone 100, p.284): HD 5+2, AC 5, THAC0 15, XP 420. Real
+  attack is three hits (claw/claw/beak, 1d6/1d6/2d6) — simplified to a
+  single 2d6 hit (the beak, its most distinctive and damaging attack), same
+  "one representative die" treatment as the Ghoul's/Sivak's own multi-attack
+  simplifications above. Its real "hug" special attack (an 18+ claw hit
+  drags the victim in for 2d8 ongoing squeeze damage per round) is left
+  unmodeled — no grapple/ongoing-effect state exists for anyone yet.
+- **Wight** (Milestone 100, p.360): HD 4+3, AC 5, THAC0 15, damage 1d4, XP a
+  flat 1,400 (its outsized level-drain value, not a per-hp formula). Real
+  Special Attacks (a level-draining touch) and Special Defenses (hit only by
+  silver or +1-or-better magical weapons) are both left unmodeled — no
+  level-drain or weapon-enchantment-gate mechanic exists for anyone yet,
+  same restraint as the Ghoul's paralyzing touch and the Draconians'
+  unmodeled magic resistance.
+- **Troll** (Milestone 100, p.349, the base "Troll" column only — not the
+  Two-headed/Freshwater/Saltwater/Desert/Spectral/Giant/Ice variants sharing
+  the same page): HD 6+6, AC 4, THAC0 13, XP a flat 1,400 (same as Wight, no
+  formula to simplify). Real attack is three hits (claw/claw/bite,
+  1d4+4/1d4+4/1d8+4) — simplified to a single 1d8+4 hit (the bite), same
+  treatment as the Owlbear's beak above. Real Special Defenses
+  (regeneration — 3 hp/round starting three rounds after first blood,
+  stopped only by fire or acid) is left unmodeled — no per-round monster HP
+  recovery exists in `runCombat`.
 
 **Sourcing caveat (Milestone 64)**: none of the four draconian/Thanoi
 entries above print THAC0 (Dragonlance Adventures' stat-block format never
@@ -675,14 +698,14 @@ either.
   resistance (a related but different mechanic -- resistance to being
   targeted at all, not a saving throw) still isn't modeled for any of
   them.
-- **More monsters**: seventeen creatures are in the roster now (Goblin,
+- **More monsters**: twenty creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
-  Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi);
-  `Monster Manual (2nd ed).pdf` and *Dragonlance Adventures* still have
-  more of Krynn's actual bestiary untouched. Can be added the same way,
-  one more sourced `MONSTER` block at a time. A new monster with real
-  terrain flavor can also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines —
-  see "Terrain-specific monster pools" above.
+  Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi,
+  Owlbear, Wight, Troll); `Monster Manual (2nd ed).pdf` and *Dragonlance
+  Adventures* still have more of Krynn's actual bestiary untouched. Can be
+  added the same way, one more sourced `MONSTER` block at a time. A new
+  monster with real terrain flavor can also carry `TERRAIN_BIAS`/
+  `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above.
 - **The rest of Bozak/Sivak/Aurak's abilities** (Milestone 99 shipped the
   parts that ground out in this engine's real combat math -- Bozak's
   signature Magic Missile, Aurak's breath weapon, Sivak's death-burst; see
