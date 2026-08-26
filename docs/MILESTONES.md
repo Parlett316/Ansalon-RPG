@@ -2644,6 +2644,72 @@ section).
     restored after (timestamps confirmed unchanged). See
     `docs/ARCHITECTURE.md`'s "Save/load" section.
 
+95. Southern Ergoth -- closes a real, previously-unexplained gap in Sturm,
+    Flint, Tasslehoff, and Laurana's schedule (`ice_wall 38 42` jumped
+    straight to `sancrist_isle 55 60`), found while researching NEXT UP's
+    item 4 asking whether Nordmaar, Ergoth, or various named ports
+    deserved a real `LOCATION`. Nordmaar, Schallsea Island (the New Sea
+    one, distinct from the Strait of Schallsea Milestone 93 modeled),
+    Caergoth, and New Ports all turned out to be pure map geography, never
+    on-page in any of the three Chronicles novels -- correctly left
+    unmodeled. Sanction is real and vivid but only ever reported/flashback
+    dialogue, never visited on-page by a tracked Hero -- also stays out.
+    Southern Ergoth was different: **this project's own existing docs
+    contained an error.** `docs/TIMELINE_NOTES.md`'s Ice Wall section
+    (Milestone 36) called it "deliberately not modeled... the party never
+    lands," citing `.research/dwn_full.txt` lines 5920-5927 -- accurate as
+    cited, but the citation stopped mid-scene. Reading ~200 lines further
+    shows the white dragon Sleet attacks that exact ship and drives it
+    onto Southern Ergoth's rocks for real: Sturm, Flint, Tasslehoff, and
+    Laurana (with off-stage Derek Crownguard, Gilthanas, Elistan) are
+    captured by Silvanesti refugee elves, nearly fight them in a
+    standoff Laurana talks down by revealing the dragon orb, and are
+    escorted toward the Wilder Elves' camp, where "Silvan" is unmasked by
+    Fizban (already a tracked `CHARACTER` since Milestone 48) as
+    **Silvara**, a silver dragon living in disguise -- confirming the
+    Whitestone Council is coming "around Famine Time," the same Council
+    `sancrist_isle 55 60` already covers. New `LOCATION southern_ergoth`
+    (`POS 91 193`, `REGION Southern Ergoth` -- directly labeled on
+    `dragonlancemap2.png`, along with "Elderwild Wood" and the
+    "Silvamori"/"Qualimori" refugee camps the source text's own three-
+    elven-kindreds description matches closely; see `docs/MAP_NOTES.md`),
+    `SEA_LOCKED` with no `ROAD_PAIRS` entry, same as Ice Wall/Sancrist
+    Isle. New sparse 40x16 zone (a wrecked shore, a talkable Silvanesti
+    Sentry, and the Wilder Elves' Camp `TIMELINE_ANCHOR`), matching
+    Godshome's "deliberately sparse" precedent rather than a sprawling
+    city. `PRESENCE southern_ergoth 43 50` windows added for Sturm, Flint,
+    Tasslehoff, and Laurana (between their existing `ice_wall`/
+    `sancrist_isle` windows), a new window on Fizban's existing
+    `CHARACTER` block (his first appearance chronologically, between
+    `pax_tharkas 10 12` and `godshome 103 103`), and a new full
+    `CHARACTER silvara` block -- decided with the user before building:
+    Silvara gets Alhana Starbreeze's "real, talkable, tracked" treatment
+    (Milestone 59), not Kitiara's flavor-only one (Milestone 50), since
+    she's central to this scene with a real ongoing arc rather than a
+    background antagonist referenced only in retrospect. The sea-travel
+    chain gained a link rather than a new destination bolted on
+    separately: `data/zones/ice_wall.txt`'s existing "Ice Barbarian Guide"
+    (`B`) was repointed from `BOAT B sancrist_isle 48` to `BOAT B
+    southern_ergoth 48` -- same POI char, so `GameState::voyagesTaken`'s
+    `"ice_wall:B"` key stays correct for any save that already recorded
+    the voyage as taken (checked directly against the user's own real
+    saves, two of which already had it) -- and a new POI, "A Silvanesti
+    Sentry" (`S`), grants the continuation, `BOAT S sancrist_isle 60`.
+    Verified via a throwaway self-test (25 assertions: `LOCATION`/zone
+    loading, the repointed and new `BOAT` grants, `Timeline::presentAt`
+    day-boundary correctness across 42/43/50/51, all six expected
+    characters present, Ice Wall/Sancrist Isle's own windows untouched), a
+    clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h` changes -- pure
+    data content), and the piped smoke test with the user's real
+    `save1.txt`/`save2.txt`/`save3.txt` confirmed byte-identical
+    afterward. Interactive verification (walking the new leg, talking to
+    the new POIs) still needs the user's own keyboard, same limitation
+    every prior `BOAT`-touching milestone has flagged. See
+    `docs/MAP_NOTES.md`'s "Southern Ergoth" section, `docs/TIMELINE_NOTES.md`'s
+    "Southern Ergoth" section (including the correction to this project's
+    own prior claim), and `docs/ZONE_NOTES.md`'s "Southern Ergoth" and
+    "Boats" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2686,21 +2752,38 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
-4. **More locations surfaced by the Milestone 85 map re-derivation** --
+4. **More locations surfaced by the Milestone 85 map re-derivation --
+   mostly resolved this session (research complete, one already shipped).**
    Thorbardin and Sancrist Isle, the two strongest candidates, shipped at
    Milestone 86; the Strait of Schallsea itself gained a real waypoint
-   (Crossing) at Milestone 93. Still open: Nordmaar, Northern/Southern
-   Ergoth, and the separate Schallsea Island named in
-   `References/portcities.txt` under the New Sea (a different body of
-   water from the Strait of Schallsea Milestone 93 modeled, per the map --
-   not yet checked against the novels/sourcebooks) -- named regions
-   visible on the new map; whether any are book-significant enough to
-   warrant a location (vs. just flavor geography) hasn't been checked
-   against the novels/sourcebooks yet -- would need the same "research
-   first" pass as any other content addition before committing to
-   specifics. Also folded in here as of
-   Milestone 87: whether any of `References/portcities.txt`'s other
-   named ports (New Ports, Caergoth, Flotsam, Sanction, ...) deserve a
-   real modeled location -- that file is a geography reference the user
-   compiled, not itself a verified canon source, so any candidate would
-   need the same novels/sourcebooks check before committing to specifics.
+   (Crossing) at Milestone 93. This session checked the rest against the
+   actual novels: Nordmaar, the separate Schallsea Island named in
+   `References/portcities.txt` under the New Sea (distinct from the Strait
+   of Schallsea Milestone 93 modeled), Caergoth, and New Ports never
+   appear on-page in any of the three Chronicles novels -- pure map
+   geography, correctly left unmodeled. Sanction is real and vivid but
+   only ever reported/flashback dialogue, never visited on-page by a
+   tracked Hero -- also stays out. Southern Ergoth turned out to be a real
+   gap and shipped at Milestone 95, also correcting a standing error in
+   this project's own `docs/TIMELINE_NOTES.md`. Nothing left open from
+   this original item.
+5. **Flotsam (and Port Balifor)** -- a second real, previously-missed gap
+   found by the same research pass that turned up Southern Ergoth, sized
+   about the same (a genuine milestone, not a quick content pass). Tanis,
+   Raistlin, Caramon, Goldmoon, and Riverwind's tracked schedule currently
+   jumps straight from `silvanesti 25 30` to `palanthas 83 83`/
+   `kalaman 100 100` with nothing in between -- but `.research/
+   dwn_full.txt` (from roughly line 9950 through the end of the book) has
+   them spend a month at Port Balifor's Pig & Whistle inn (Raistlin runs a
+   traveling illusion show to fund passage; this is also where Goldmoon's
+   healing ministry visibly starts spreading), then travel on to Flotsam,
+   where *Dragons of Winter Night* ends with Kitiara arriving and
+   recognizing Tanis -- and `.research/dosd_full.txt` (*Dragons of Spring
+   Dawning*) opens directly in the same scene, staying in Flotsam for its
+   entire first act (Tanis's ~4-day captivity with Kitiara, the search for
+   Berem, the escape). Needs its own research-and-plan pass before
+   building, same as Southern Ergoth got -- day-range placement, whether
+   Port Balifor earns its own `LOCATION` or folds into Flotsam as
+   narrated/`TOPIC` content, and how much of the Kitiara captivity to
+   model directly versus leave retrospective (she's still flavor-only per
+   Milestone 50's precedent, not a tracked `CHARACTER`).

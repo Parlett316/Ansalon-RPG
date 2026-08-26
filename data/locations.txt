@@ -196,3 +196,13 @@ TOWN
 POS 200 185
 DESC A huddle of stone piers and net-hung shacks on a spit of hill jutting into the Strait of Schallsea, the narrowest crossing between Abanasinia and the Solamnic shore beyond. Flat-bottomed ferries wait at anchor for a paying deck's worth of passengers, or for the fog to lift enough to risk the crossing blind.
 END
+
+LOCATION southern_ergoth
+NAME Southern Ergoth
+REGION Southern Ergoth
+TERRAIN elf-refuge-wilds
+GLYPH E
+SEA_LOCKED
+POS 91 193
+DESC A wind-bent stretch of coastal wood on Southern Ergoth's western shore, the Elderwild at its back -- home now to three scattered peoples of elves who all fled here from somewhere else and never quite agreed on who's in charge. Ship's wreckage and old bonfire-scars mark where the sea last put someone ashore uninvited.
+END

@@ -416,8 +416,8 @@ tracked via `GameState::voyagesTaken`, not `metCharacters` (see
 `docs/ARCHITECTURE.md`'s "Sea travel" for why those can't share one flag).
 The offer comes back on every later visit until actually boarded.
 
-Three POIs carry `BOAT`, three legs of the same route (Tarsis -> Ice Wall
--> Sancrist -> Palanthas):
+Four POIs carry `BOAT`, four legs of the same route (Tarsis -> Ice Wall ->
+Southern Ergoth -> Sancrist -> Palanthas):
 
 - `data/zones/tarsis.txt`'s `R "A Knight's Runner"`, granting
   `BOAT R ice_wall 48`. Deliberately not Tarsis's existing `S "An Old
@@ -428,16 +428,30 @@ Three POIs carry `BOAT`, three legs of the same route (Tarsis -> Ice Wall
   represents passage arranged by Derek Crownguard's knights (see
   `docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
   the Old Sailor's characterization untouched.
-- `data/zones/ice_wall.txt`'s `B "An Ice Barbarian Guide"` (Milestone 91),
-  granting `BOAT B sancrist_isle 48`. Deliberately not the zone's existing
-  `K "A Young Knight"` -- he's already that zone's `frostreaver_salvage`
+- `data/zones/ice_wall.txt`'s `B "An Ice Barbarian Guide"` (Milestone 91,
+  repointed Milestone 95), granting `BOAT B southern_ergoth 48` -- was
+  `BOAT B sancrist_isle 48` until Milestone 95 found the source text has
+  this exact crossing go wrong (a white dragon wrecks the ship on Southern
+  Ergoth's coast, not a clean arrival at Sancrist -- see
+  `docs/TIMELINE_NOTES.md`'s "Southern Ergoth" section). Repointed rather
+  than replaced: same POI char, same `voyagesTaken` key
+  (`"ice_wall:B"`), so a save that already recorded this voyage as taken
+  keeps reading it that way. Deliberately not the zone's existing `K "A
+  Young Knight"` -- he's already that zone's `frostreaver_salvage`
   quest-giver and shouldn't also whisk the player away on first talk (see
   "Quests: POIs that offer them" below). The Guide represents the Ice
   Barbarians who the source text credits with helping the historical party
-  escape the castle's collapse (see `docs/TIMELINE_NOTES.md`'s "Ice Wall"
-  section for the citation) -- a different, locally-grounded hook from the
-  Runner's Solamnic-knights framing, appropriate since this is a different
-  coast and a different culture.
+  escape the castle's collapse -- a different, locally-grounded hook from
+  the Runner's Solamnic-knights framing, appropriate since this is a
+  different coast and a different culture.
+- `data/zones/southern_ergoth.txt`'s `S "A Silvanesti Sentry"` (Milestone
+  95), granting `BOAT S sancrist_isle 60`. Closes the new leg Milestone
+  95's repoint opened -- represents the Silvanesti-elf-escorted journey
+  onward to the Qualinesti refugee elders and then, eventually, Sancrist
+  itself (see `docs/TIMELINE_NOTES.md`'s "Southern Ergoth" section). No
+  explicit on-page duration exists for this leg, so 60 hours is
+  invented-for-pacing, longer than the original 48-hour estimate since it
+  now represents an overland escort plus a fresh sea crossing.
 - `data/zones/sancrist_isle.txt`'s `E "An Embarkation Officer"` (Milestone
   92), granting `BOAT E palanthas 96`. Closes the reachability gap
   Milestone 91 left open -- see "Sancrist Isle" below. Represents the
@@ -1238,6 +1252,39 @@ building: the strait's shallow water was already made foot-passable
 without a boat at Milestone 87, so Crossing doesn't need the sea-travel
 mechanism to do its job; it's a plain waypoint, reached and left on foot
 like every other location.
+
+## Southern Ergoth (Milestone 95)
+
+`data/zones/southern_ergoth.txt` — a 40×16 grid, open ground with no
+border at all (an outdoor wilderness camp, same borderless idiom as
+Godshome, not the walled-fortress idiom of Ice Wall/Sancrist/Neraka).
+Three POIs: the Wrecked Shore (`W`, flavor-only — the salvaged wreckage
+proving someone made it to land), a Silvanesti Sentry (`S`, the zone's
+one talkable NPC), and the Wilder Elves' Camp (`G`, the
+`TIMELINE_ANCHOR` — where Silvara and Fizban's tracked `PRESENCE`
+windows resolve, alongside Sturm/Flint/Tasslehoff/Laurana's own).
+
+**Deliberately sparse**, same restraint Godshome's "three POIs, not a
+sprawling city" precedent already set — this is a refugee wilderness
+camp, not a settlement, and the source material compresses cleanly into
+a shore/checkpoint/camp shape without inventing extra locations to fill
+space.
+
+The Sentry carries this project's now-standard two-`SUBJECT` "ask about
+anything" treatment (the three elven kindreds sharing this coast; the
+wreck and the stranger things that have washed up since) plus a `TOPIC`
+covering the same ground at more length, and the new `BOAT S
+sancrist_isle 60` grant — see "Boats" above. No `SHOP`, `BED`, or
+`QUEST` — none of those are sourced here, and this project doesn't add
+them speculatively.
+
+Reached only via the repointed `data/zones/ice_wall.txt` `BOAT B
+southern_ergoth 48` (see "Boats" above) — no `ROAD_PAIRS` entry, same
+`SEA_LOCKED` treatment as Ice Wall Castle and Sancrist Isle themselves.
+See `docs/MAP_NOTES.md`'s "Southern Ergoth" section for the placement and
+`docs/TIMELINE_NOTES.md`'s "Southern Ergoth" section for the full
+sourcing, including the correction to this project's own prior
+"deliberately not modeled" call.
 
 ## Adding a new zone
 

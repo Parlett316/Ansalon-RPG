@@ -955,17 +955,21 @@ reference map's own "Black Ice Valley"/"Ice Mountain Bay" labels in that
 exact spot, and cross-checked by direct pixel inspection (see
 `docs/MAP_NOTES.md`).
 
-**Southern Ergoth is deliberately not modeled, even though the original
-backlog line named it alongside Ice Wall.** Checking the actual text
-before building anything found the ship only sails *past* it on the way
+**Correction (Milestone 95): Southern Ergoth was originally called
+"deliberately not modeled" here — that was wrong.** The original writeup
+below is kept for history, struck through in spirit but not in text, since
+this file's own honesty standard is to correct in place, not silently
+erase. It read the ship as only sailing *past* Southern Ergoth on the way
 from Ice Wall to Sancrist (`dwn_full.txt` lines 5920-5927 — the captain
 points it out at a distance, mentions elves have settled there, nothing
-more). The party never lands. Per this project's standing "don't invent to
-fill a gap" rule (the same restraint that kept Plains of Dust and Tarsis
-out of scope until real material existed), a location the party only sees
-from a moving ship doesn't earn its own walkable zone — it's folded into
-the Ice Wall Knight's `TOPIC "The Voyage South"` as a forward-looking
-mention instead.
+more) and concluded the party never lands. That citation is accurate but
+stops mid-scene: continuing to read `dwn_full.txt` past line 6108 shows a
+white dragon attacks that same ship and drives it onto Southern Ergoth's
+rocks for real. See this file's own new "Southern Ergoth (Milestone 95)"
+section, immediately below, for the corrected, full sourcing — the
+location shipped after all, closing the gap between this section's
+`ice_wall 38 42` window and "Sancrist Isle"'s `sancrist_isle 55 60`
+window below.
 
 **Day-range placement.** `ice_wall 38 42` sits between the shared `tarsis
 20 22` window and the trio's `high_clerist_tower 76 80` window — another
@@ -998,6 +1002,101 @@ actual sourced duration (`BOAT B sancrist_isle 48`), unlike the first
 leg's invented-for-pacing 48 hours. No on-page boarding scene exists for
 this leg either, so the Guide's dialogue is freshly written, same
 discipline as the Runner's.
+
+## Southern Ergoth (Milestone 95)
+
+Closes the gap this file's own Ice Wall section above wrongly called
+permanent: `ice_wall 38 42` jumped straight to `sancrist_isle 55 60` with
+nothing in between, when in fact the voyage between them is where a large
+stretch of real, sourced content happens. Found while researching
+`docs/MILESTONES.md`'s NEXT UP backlog item asking whether Nordmaar,
+Ergoth, or various named ports deserved a real `LOCATION` — checking the
+actual text (rather than trusting the existing "party never lands" note)
+turned this up.
+
+**Sourcing.** `dwn_full.txt` lines 5918-9650, continuous with the ship
+that leaves Ice Wall Castle carrying Sturm, Flint, Tasslehoff, Laurana,
+and off-stage Derek Crownguard, Gilthanas, and Elistan, plus the
+recovered dragon orb and the bodies of two knights lost at Ice Wall:
+
+- Lines 6095-6224: the white dragon Sleet (sent to recover the orb)
+  freezes the ship's rigging and drives it onto Southern Ergoth's rocks.
+  Sturm carries the bedridden, seasick Flint ashore; the ship is a total
+  loss.
+- Lines 6288-6423: Silvanesti refugee elves surround the survivors on the
+  beach. Their leader strikes Gilthanas unconscious before a word of
+  explanation is offered — swords are drawn on both sides for a genuine
+  moment — until Laurana talks the standoff down by opening the chest and
+  showing them the dragon orb.
+- Lines 6560-6699: a frightened Wilder Elf refugee calling herself
+  "Silvan" tends Gilthanas's wound. The Silvanesti agree to escort the
+  party toward the Qualinesti refugee elders (Laurana's own father, the
+  Speaker of the Suns) rather than release them outright — and lay out
+  that three separate elven peoples now share this coast: Silvanesti
+  refugees (driven off by the green dragon guarding Silvanost, see this
+  file's own Silvanesti section below), Qualinesti refugees (driven off
+  by the dragonarmies), and the native Kaganesti — Wilder Elves — who
+  were living here the whole time and asked for neither arrival.
+- Lines ~9550-9650: Fizban (already a tracked `CHARACTER` as of
+  Milestone 48) confronts "Silvan" directly — "You have broken your
+  oath... you brought them here" — revealing her as Silvara, a silver
+  dragon walking in elf shape. He predicts the Whitestone Council is
+  coming "around Famine Time" (the same Council `sancrist_isle 55 60`
+  below already covers) before departing on a brief, self-contained
+  aside with Tasslehoff that this milestone doesn't model — same
+  "don't invent to fill a gap" restraint as every unnarrated stretch
+  elsewhere in this file.
+
+**Fizban gets a new `PRESENCE southern_ergoth 43 50` window** on his
+existing `CHARACTER` block, same "name him where he was already present"
+treatment Godshome and Neraka got at Milestone 48 — this is his first
+appearance chronologically, inserted between his `pax_tharkas 10 12` and
+`godshome 103 103` windows.
+
+**Silvara gets a full new `CHARACTER silvara` block**, not the
+flavor-only treatment Kitiara got at Milestone 50 — decided with the
+user before building, since she's central to this specific scene with a
+real ongoing arc (the good-dragon-egg theft, later resolved at Sanction,
+itself out of scope — see `docs/MILESTONES.md`'s NEXT UP) rather than a
+background antagonist referenced only in retrospect. Same treatment
+Alhana Starbreeze got at Milestone 59. Her own dialogue stays deliberately
+short of stating outright what she is — the player is meant to piece it
+together the way Laurana does on the page, not be told flatly in a
+flavor line.
+
+**Derek Crownguard, Gilthanas, and Elistan stay off-stage**, same
+established precedent as every recurring canon figure who isn't a Hero
+of the Lance and hasn't earned a `CHARACTER` block of their own yet —
+referenced by name in the tracked Heroes' own dialogue, same as Derek
+already was at Ice Wall and Sancrist Isle.
+
+**Day-range placement.** `southern_ergoth 43 50` sits in the previously-
+unexplained gap between `ice_wall 38 42` and `sancrist_isle 55 60`,
+leaving days 51-54 as unnarrated escort/travel time to Sancrist — same
+"soft, invented, disclosed" placement convention as every other day
+range in this file.
+
+**The sea-travel chain grows a link, not a new NPC.** `data/zones/
+ice_wall.txt`'s existing "An Ice Barbarian Guide" (`B`) is repointed —
+same POI char, so `GameState::voyagesTaken`'s `"ice_wall:B"` key and any
+save that already recorded it as taken stay correct — from `BOAT B
+sancrist_isle 48` to `BOAT B southern_ergoth 48`, representing the same
+doomed crossing rather than a different one. A new POI inside `data/
+zones/southern_ergoth.txt`, "A Silvanesti Sentry" (`S`), grants the
+continuation onward, `BOAT S sancrist_isle 60` — no explicit on-page
+duration for this leg exists, so 60 hours is invented-for-pacing, longer
+than the original 48-hour Ice-Wall-to-Sancrist estimate since it now
+represents an overland escort plus a fresh sea crossing rather than one
+direct voyage. See `docs/ZONE_NOTES.md`'s "Boats" and
+`docs/ARCHITECTURE.md`'s "Sea travel" sections.
+
+**A real save already had `ice_wall:B` recorded as taken before this
+milestone** (checked directly against the user's own save files, not
+assumed) — confirming the repoint is safe: that save correctly keeps
+reading the voyage as already spent and never sees the new Southern
+Ergoth content, the same "known accepted edge case" shape Milestone 92
+already documented for `voyagesTaken`, not a new one this milestone
+introduces.
 
 ## Sancrist Isle (Milestone 86)
 

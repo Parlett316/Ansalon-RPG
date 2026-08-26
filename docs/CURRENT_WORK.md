@@ -2,16 +2,29 @@
 
 Nothing in flight.
 
-Milestone 94 (2026-08-26) added explicit save-slot deletion: the launch
-menu now accepts `d1`/`d2`/`d3` to immediately delete a save (with its own
-`y/n` confirmation), separate from the existing decline-continue/confirm-
-overwrite flow, which only replaces a slot's file on the next autosave.
-New `game::SaveGame::remove`; `main.cpp`'s `promptSlotChoice` extended to
-a `SlotChoice{slot, deleteRequested}`. Verified via a clean `/W4` rebuild
-and a piped interactive test in an isolated `build/Debug` copy (the
-save-slot menu, like `CharacterCreator`, runs on plain `std::cin`/
-`std::cout` and is pipeable) covering delete-confirmed, delete-declined,
-and delete-on-empty-slot; plus the standard piped smoke test with the
-user's real `save1.txt`/`save2.txt`/`save3.txt` moved aside and restored
-(unchanged). See `docs/MILESTONES.md` entry 94 and `docs/ARCHITECTURE.md`'s
-"Save/load" section.
+Milestone 95 (2026-08-26) added Southern Ergoth: closes a previously-
+unexplained gap in Sturm/Flint/Tasslehoff/Laurana's schedule
+(`ice_wall 38 42` jumped straight to `sancrist_isle 55 60`) and corrects
+an error in `docs/TIMELINE_NOTES.md`'s own Ice Wall section, which had
+claimed the party never lands there. New `LOCATION southern_ergoth`
+(`SEA_LOCKED`, `POS 91 193`) and a new sparse zone (wrecked shore,
+talkable Silvanesti Sentry, Wilder Elves' Camp `TIMELINE_ANCHOR`). New
+`PRESENCE southern_ergoth 43 50` windows for Sturm, Flint, Tasslehoff,
+Laurana, and Fizban (his existing `CHARACTER` block), plus a new full
+`CHARACTER silvara` block. `data/zones/ice_wall.txt`'s existing "Ice
+Barbarian Guide" `BOAT` was repointed from `sancrist_isle` to
+`southern_ergoth` (same POI char, so `voyagesTaken` stays correct for
+saves that already took it), with a new POI granting the continuation on
+to Sancrist Isle. Verified via a throwaway self-test (25 assertions), a
+clean `/W4` rebuild, and the piped smoke test with the user's real saves
+confirmed byte-identical afterward. Interactive verification (walking the
+new leg, talking to the new POIs) still needs the user's own keyboard.
+See `docs/MILESTONES.md` entry 95, `docs/MAP_NOTES.md`/
+`docs/TIMELINE_NOTES.md`/`docs/ZONE_NOTES.md`'s "Southern Ergoth"
+sections, and `docs/ARCHITECTURE.md`'s "Sea travel" section.
+
+**Related, not started**: `docs/MILESTONES.md`'s NEXT UP item 5, Flotsam
+(+ Port Balifor) -- a second real gap of similar size, found by the same
+research pass, closing Tanis/Raistlin/Caramon/Goldmoon/Riverwind's own
+`silvanesti 25 30` -> `palanthas 83 83`/`kalaman 100 100` jump. Needs its
+own research-and-plan pass before building.

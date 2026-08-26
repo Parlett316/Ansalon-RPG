@@ -731,6 +731,43 @@ file. Its zone (`data/zones/crossing.txt`) carries no `PRESENCE`/
 this place, only the map does, same treatment Thorbardin's zone already
 got for its generic NPC.
 
+## Southern Ergoth (Milestone 95)
+
+Placed the same crop-and-grid-overlay method as every placement since
+Milestone 85, cropping a wide region of `References/dragonlancemap2.png`
+between the already-placed Ice Wall Castle (`POS 150 305`) and Sancrist
+Isle (`POS 55 154`) to find it. Unlike Darken Wood or Ice Wall's own
+first placement, this one turned out **directly legible** — the map
+labels the whole peninsula "Southern Ergoth" in large diagonal text, with
+"Elderwild Wood" (a forest region whose name maps neatly onto the
+Kaganesti/"Wilder Elves" the source novel places there) and two
+refugee-camp settlements, "Silvamori" and "Qualimori," sitting just south
+of it — a striking match to `.research/dwn_full.txt`'s own description of
+Silvanesti and Qualinesti refugees sharing this coast (see
+`docs/TIMELINE_NOTES.md`).
+
+`POS 91 193` was chosen on the coastal fringe of Elderwild Wood itself
+(pixel-derived, then confirmed directly against the live `data/
+overworld.grid` rather than assumed): the tile is `%` (forest), with open
+water (`r`, shallow coastal water) immediately to its west and solid
+forest to its east — a shipwrecked-on-the-shore placement, not a nudge
+into the settlements further south (Silvamori/Qualimori are where the
+party is being escorted *to*, not the wreck site itself). No `ROAD_PAIRS`
+entry, no hand-terrain-patch needed — `SEA_LOCKED`, same as Ice Wall
+Castle and Sancrist Isle, and the existing generated grid already
+classifies the chosen tile and its neighbors as solid, passable forest,
+confirmed by direct inspection rather than assumed.
+
+**Corrects a standing error in `docs/TIMELINE_NOTES.md`'s Ice Wall
+section (Milestone 36):** that section says the ship carrying Sturm,
+Flint, Tasslehoff, and Laurana toward Sancrist "only sails *past*"
+Southern Ergoth and "the party never lands," citing `.research/
+dwn_full.txt` lines 5920-5927. That citation is accurate as far as it
+goes but stops mid-scene — continuing to read shows a white dragon
+attacks that same ship roughly 200 lines later and drives it onto
+Southern Ergoth's rocks for real. See `docs/TIMELINE_NOTES.md`'s new
+"Southern Ergoth" section for the full, corrected sourcing.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

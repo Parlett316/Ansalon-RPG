@@ -40,11 +40,11 @@ SUBJECT K thanoi,walrus-men,walrus "Thanoi, the Ice Barbarians call them," he sa
 SUBJECT K sancrist,ergoth,voyage,ship "Our ship makes for Sancrist next, orb and all," he says, nodding vaguely southeast. "Captain says we'll pass within sight of Southern Ergoth on the way -- elves living there now, driven off their own lands by the dragonarmies. Can't say I'll be sorry to see any coastline that isn't this one."
 SUBJECT_UNKNOWN K The young knight's spear hand tightens slightly. "Don't know that one. This place teaches you fast which questions are worth asking twice."
 QUEST K frostreaver_salvage
-TALK B "You're later than the last of them, but you're breathing, which counts for something out here." She keeps one eye on the dark beyond the door. "We got the others clear before this place finished falling in on itself, put them aboard a ship bound south. It's still making the run, if you're done poking through the ice. Two days, maybe less, and you're standing on Sancrist instead of freezing on it."
+TALK B "You're later than the last of them, but you're breathing, which counts for something out here." She keeps one eye on the dark beyond the door. "We got the others clear before this place finished falling in on itself, put them aboard a ship bound for Sancrist. It's still making runs, if you're done poking through the ice -- though I'll be honest, nothing's gone quite to plan on this crossing lately. Two days, maybe less, and you'll at least be somewhere that isn't here."
 TALK_AGAIN B "Ship's still holding at the cove, if you've had your fill of this place. It won't wait past the season."
 SUBJECT B barbarians,tribe,folk "We've lived this coast since before there was a castle worth calling one," she says. "Wasn't the first ruin we've pulled strangers out of. Won't be the last, either, the way things are going."
-SUBJECT B ship,boat,voyage,sancrist "Southbound, same boat the others took," she says. "Captain says two days if the wind holds. I wouldn't wager against him -- he's made the run enough times to know its moods."
+SUBJECT B ship,boat,voyage,sancrist "Bound for Sancrist, same as the others," she says. "Captain says two days if the wind holds. I wouldn't put money on the wind holding, this stretch of sea, this time of year -- but he's made stranger crossings than this one and lived to complain about it."
 SUBJECT_UNKNOWN B "Ask that somewhere warmer than this," she says. "I've got a boat to hold."
-BOAT B sancrist_isle 48
+BOAT B southern_ergoth 48
 TIMELINE_ANCHOR F
 END

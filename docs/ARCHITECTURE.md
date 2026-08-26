@@ -840,7 +840,7 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
-## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92)
+## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92, fourth leg + repoint Milestone 95)
 
 Some locations (Ice Wall Castle, Sancrist Isle) are sea-locked — confirmed
 by direct inspection of the reference map, no land route exists — so
@@ -885,6 +885,23 @@ army sailing from Sancrist to defend Palanthas and the High Clerist's
 Tower (`.research/dwn_full.txt` lines ~10628-10731) — no explicit
 day-count exists for this leg, so 96 hours is invented-for-pacing, chosen
 longer than the two 48-hour legs since it's a materially longer crossing.
+
+**Milestone 95 repointed the second leg and added a fourth.** Fresh
+sourcing found the Ice Wall -> Sancrist crossing doesn't arrive safely in
+the source text — a white dragon wrecks the ship on Southern Ergoth's
+coast partway there (`.research/dwn_full.txt` lines 6095-6224, continuous
+with the same voyage Milestone 91 already cited). `data/zones/
+ice_wall.txt`'s "An Ice Barbarian Guide" (`B`) now grants `BOAT B
+southern_ergoth 48` instead of `BOAT B sancrist_isle 48` — same POI char,
+so `voyagesTaken`'s `"ice_wall:B"` key and any save that already recorded
+it as taken are unaffected; only the destination changed. A new fourth
+leg, `data/zones/southern_ergoth.txt`'s "A Silvanesti Sentry" (`S`),
+grants `BOAT S sancrist_isle 60`, closing the route back to the
+already-shipped Sancrist Isle content. The chain is now five POIs across
+four locations: Tarsis -> Ice Wall -> Southern Ergoth -> Sancrist Isle ->
+Palanthas. See `docs/TIMELINE_NOTES.md`'s "Southern Ergoth" section for
+the full sourcing and `docs/ZONE_NOTES.md`'s "Boats" section for the
+POI-level detail.
 
 **Decline option (Milestone 92).** The original shape above executed the
 voyage unconditionally on first talk — no way to say no, despite the

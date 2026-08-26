@@ -53,10 +53,11 @@ generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
-Isle, Crossing, ...) sit on that grid, most connected by roads baked
-into the terrain — Ice Wall and Sancrist Isle are the exceptions, two
-sea-locked stops reachable only by arranging passage on a ship, first out
-of Tarsis, then onward from Ice Wall (see below); Crossing, a ferry
+Isle, Crossing, Southern Ergoth, ...) sit on that grid, most connected by
+roads baked into the terrain — Ice Wall, Sancrist Isle, and Southern
+Ergoth are the exceptions, three sea-locked stops reachable only by
+arranging passage on a ship, first out of Tarsis, then onward from Ice
+Wall (see below); Crossing, a ferry
 waypoint on the strait north of Solace, has no road either but needs no
 ship, since the water there is shallow enough to simply walk —
 and every one of them now has a walkable interior (Enter to step in) —
@@ -68,7 +69,10 @@ eight Heroes travel together through *Dragons of Autumn Twilight* (an
 alternate path through Darken Wood, the climactic siege of Pax Tharkas,
 then together again in Tarsis as *Dragons of Winter Night* opens), then
 genuinely split for the first time — Sturm, Flint, and Tasslehoff continue
-on, first to a dragon-orb quest at Ice Wall Castle and then to the siege
+on, first to a dragon-orb quest at Ice Wall Castle, then shipwrecked by a
+white dragon onto Southern Ergoth's refugee coast — captured, nearly
+fought, and finally sheltered by elves scattered there from three
+different homelands — before reaching Sancrist and then the siege
 of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
 Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
 Silvanesti instead, into a second dragon-orb crisis of their own — and
@@ -86,17 +90,23 @@ the war's climax and ending — see `docs/TIMELINE_NOTES.md`. Fizban, the
 eccentric old wizard, is the first canon character named and made
 talkable beyond the eight Heroes themselves — travels with the party
 from Qualinesti through the siege of Pax Tharkas, then resurfaces, still
-unidentified as anything more than "Fizban," at both Godshome and Neraka.
+unidentified as anything more than "Fizban," on Southern Ergoth's
+refugee coast and again at both Godshome and Neraka.
 Laurana is the second and largest: introduced as the Speaker of the
 Suns's daughter at Qualinesti, she proves herself in the fighting at Pax
 Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
-forces the dragon orb to its limit and delivers Sturm's eulogy the day
-he dies at the High Clerist Tower, and rises to command the war itself
-as the Golden General before a final captivity and reunion at Neraka.
+talks a shipwrecked standoff back from the brink of elf killing elf on
+Southern Ergoth, forces the dragon orb to its limit and delivers Sturm's
+eulogy the day he dies at the High Clerist Tower, and rises to command
+the war itself as the Golden General before a final captivity and
+reunion at Neraka.
 Alhana Starbreeze, the Silvanesti princess who leads Tanis's half of the
 party home by griffon, is talkable throughout the Tower of the Stars
 crisis, at her father Lorac's side as he's freed from the dragon orb's
-nightmare. Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
+nightmare. Silvara, a silver dragon living disguised among Southern
+Ergoth's Wilder Elves, is talkable there too, caught between the oath
+she swore to stay out of the wars of elves and men and the shipwrecked
+strangers she couldn't bring herself to leave to the sea. Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
 captivity, stays off the talk/topic picker by design — her defining
 scenes surface as retrospective dialogue inside Tanis's, Laurana's, and
 Caramon's own `TOPIC` entries instead. Lord Derek Crownguard and Lord
@@ -108,13 +118,15 @@ a zone carries the encounter through too: find them
 gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
 Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine
 entrance at Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the
+Wilder Elves' Camp on Southern Ergoth, the
 Tower of the Stars in Silvanost, Kalaman's Market Square, Palanthas's
 Great Library, the bare stone at Godshome where Flint fell, or the ruined
 Temple Square at Neraka, not just
 standing on the overworld tile. You can actually talk to them
 (and to NPCs inside zones, like the Inn's Otik and Tika, Haven's Seeker
 Guard, Darken Wood's Forestmaster, the Tower's Garrison Knight, Ice Wall's
-own young Knight, Silvanost's Warder, Kalaman's City Watchman,
+own young Knight, a wary Silvanesti Sentry on Southern Ergoth's coast,
+Silvanost's Warder, Kalaman's City Watchman,
 Palanthas's Astinus and Knight of the Watch, and a deserting soldier
 amid Neraka's own wreckage) — press `t`, grounded in
 the original DL1-3 adventure
@@ -131,7 +143,7 @@ content at any of his eight stops: his eyes, his golden skin, the Test,
 the Staff of Magius, his family, Kitiara — who gets a different answer at
 the Inn than everywhere else, a specific letter-scene beat overriding the
 general one. Every talkable zone-native NPC (Otik, Tika, Astinus, every
-zone-native guard/knight/warder, and more — 21 in all) has the same
+zone-native guard/knight/warder, and more — 22 in all) has the same
 "ask about anything" ability too, two subjects each drawn from their own
 established voice. Arrive somewhere after the Heroes have already
 moved on and it shows, on thirteen POIs now: Otik at the Inn of the Last
@@ -141,11 +153,13 @@ Ice Wall's Young Knight, the Silvanesti Warder, Palanthas's Knight of the
 Watch, Kalaman's City Watchman, Pax Tharkas's Fortress Guard, Tarsis's Old
 Sailor, and Neraka's Deserting Guard each have their own thing to say the
 first time you talk to them once the Heroes' stay there has passed, even
-if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle and
-Sancrist Isle, sit on their own sea-locked landmasses with no road to them
-at all — talk to the Knight's Runner in Tarsis and he'll offer you passage
-to Ice Wall directly, an Ice Barbarian Guide there offers passage onward to
-Sancrist, and an Embarkation Officer at Sancrist offers passage on to
+if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle,
+Southern Ergoth, and Sancrist Isle, sit on their own sea-locked landmasses
+with no road to them at all — talk to the Knight's Runner in Tarsis and
+he'll offer you passage to Ice Wall directly, an Ice Barbarian Guide there
+offers passage onward toward Sancrist (though the crossing doesn't go as
+planned), a Silvanesti Sentry on Southern Ergoth offers passage on to
+Sancrist proper, and an Embarkation Officer there offers passage on to
 Palanthas, each leg a ship's voyage of a few days rather than a
 tile-by-tile walk across open water — you can say no and ask them about it
 first, and the offer stands until you board. Traveling the wilds now risks a random encounter — goblins, kobolds,
