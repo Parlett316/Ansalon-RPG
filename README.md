@@ -53,7 +53,8 @@ generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
-Isle, Crossing, Southern Ergoth, Port Balifor, Flotsam, ...) sit on that
+Isle, Crossing, Southern Ergoth, Port Balifor, Flotsam, Dargaard Keep,
+...) sit on that
 grid, most connected by
 roads baked into the terrain — Ice Wall, Sancrist Isle, and Southern
 Ergoth are the exceptions, three sea-locked stops reachable only by
@@ -89,8 +90,11 @@ dragon-orb escape from the Blood Sea maelstrom lands him half-dead on the
 Great Library's steps — before reaching Kalaman for its Spring Dawning
 festival, while the rest of the surviving party washes ashore after a
 shipwreck and reunites with them there, just as a Dragon Highlord's
-ultimatum arrives — and then Tanis, Caramon, Flint, and Tasslehoff travel
-on together into the hidden mountain hollow of Godshome, where Flint dies
+ultimatum arrives — that same night, Flint and Tasslehoff watch a forged
+letter lure Laurana away and lose her to an ancient, spectral knight in a
+mountain clearing below Dargaard Keep — and then Tanis, Caramon, Flint,
+and Tasslehoff travel on together into the hidden mountain hollow of
+Godshome, where Flint dies
 of a sudden, peaceful heart failure, and then Tanis, Caramon, and
 Tasslehoff carry on into the walled Temple compound of Neraka itself for
 the war's climax and ending — see `docs/TIMELINE_NOTES.md`. Fizban, the
@@ -104,9 +108,10 @@ Suns's daughter at Qualinesti, she proves herself in the fighting at Pax
 Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
 talks a shipwrecked standoff back from the brink of elf killing elf on
 Southern Ergoth, forces the dragon orb to its limit and delivers Sturm's
-eulogy the day he dies at the High Clerist Tower, and rises to command
-the war itself as the Golden General before a final captivity and
-reunion at Neraka.
+eulogy the day he dies at the High Clerist Tower, rises to command the
+war itself as the Golden General, is lured from Kalaman by a forged
+letter and taken captive below Dargaard Keep, and reunites with Tanis in
+a final captivity at Neraka.
 Alhana Starbreeze, the Silvanesti princess who leads Tanis's half of the
 party home by griffon, is talkable throughout the Tower of the Stars
 crisis, at her father Lorac's side as he's freed from the dragon orb's

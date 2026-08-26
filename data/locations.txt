@@ -226,3 +226,12 @@ TOWN
 POS 371 152
 DESC A wretched port on Blood Bay, thrown together from salvage and bad luck since the day the Cataclysm made this coastline what it is. Whoever holds the sharpest blade or the most steel runs things here today -- lately, that's the dragonarmies.
 END
+
+LOCATION dargaard_keep
+NAME Dargaard Keep
+REGION Estwilde
+TERRAIN haunted-mountain-approach
+GLYPH J
+POS 258 74
+DESC A pine-choked shelf on the lower slopes of the Northern Dargaard Mountains, a mile or so short of the keep itself. The trees grow close enough overhead to blot out most daylight even at noon. Nothing native to this stretch of mountainside cares to linger after dark.
+END

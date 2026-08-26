@@ -2804,6 +2804,64 @@ section).
     began. See `docs/ZONE_NOTES.md`'s "Sancrist Isle" section and
     `docs/MILESTONES.md` entry 92.
 
+98. Dargaard Keep -- closes the real, still-open gap Milestone 96 left
+    behind: Laurana is captured between her `kalaman 90 92` and
+    `neraka 105 107` windows, but nothing staged it, only referenced it
+    obliquely afterward. A fresh, direct re-read of `.research/
+    dosd_full.txt` (not the existing doc summary, which turned out to
+    conflate this scene with Flotsam -- corrected in the same session)
+    confirmed a real, three-Hero, on-page scene: a forged letter lures
+    Laurana, Flint, and Tasslehoff out of Kalaman the night after the
+    festival with a false claim that Tanis is dying at Dargaard Keep;
+    Bakaris, the dragonarmy officer freed as part of the trade, turns on
+    them in a forest clearing short of the keep itself; Tasslehoff kills
+    him, and an ancient, spectral Knight of Solamnia -- confirmed by
+    cross-reference to be Lord Soth, but never named to Flint or Tas
+    on-page -- paralyzes them both and carries Laurana off toward Neraka,
+    already modeled. New `LOCATION dargaard_keep` (`POS 258 74`, `REGION
+    Estwilde`, placed by cropping the reference map around the same
+    region Milestone 39 used for Kalaman, then confirmed against the live
+    `data/overworld.grid`'s own small mountain cluster southwest of
+    Kalaman's real, current tile rather than trusted from the image crop
+    alone -- a real discrepancy between the two was found and documented,
+    see `docs/MAP_NOTES.md`) and a new, sparse, walled-free zone
+    (`data/zones/dargaard_keep.txt`: a forest clearing, a cave mouth, and
+    the keep itself visible only as a distant silhouette -- no interior,
+    since no tracked Hero is ever shown conscious inside the keep anywhere
+    in the source text). `("kalaman", "dargaard_keep")` added to
+    `ROAD_PAIRS`; regenerating produced exactly 6 diff tiles (the new
+    road plus its destination), no true-water crossings, no glacier-patch
+    reapplication needed (confirmed still retired since Milestone 85).
+    `PRESENCE dargaard_keep 93 93` added for Flint and Tasslehoff only,
+    each with a real `SAY`/`SAY_AGAIN`/`TOPIC` distinct from Flint's
+    already-shipped `kalaman 100 100` retrospective regret -- Bakaris is
+    named directly (completing a naming this project had already
+    half-committed to via Laurana's own existing dialogue), the spectral
+    knight stays unnamed to them (they never learn who it was on-page, so
+    naming him in their mouths would invent knowledge the source doesn't
+    give them, even though the blanket "keep major characters unnamed"
+    policy itself was retired at Milestone 49). **No new `PRESENCE`
+    window for Laurana** -- her absence is now confirmed rather than
+    deferred: Dargaard Keep's own interior has no tracked-Hero-witnessed
+    content at all, and a no-`SAY` window would break this project's own
+    convention that device is reserved for a *permanent* schedule ending
+    (Sturm, Raistlin, Flint), which hers is not. Verified via a throwaway
+    self-test (34 assertions: `LOCATION`/zone loading, day-92/93/94
+    boundary correctness for Flint and Tasslehoff, and confirming
+    Laurana's own schedule -- including `neraka 105 107` -- is untouched),
+    a clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h` changes --
+    pure data content), and the piped smoke test. No live save currently
+    exists in `build/Debug` to risk, so no save-preservation step was
+    needed this session; the one stale `save.txt` at the repo root (not
+    on the executable's own resolved data path) was confirmed
+    byte-identical before and after regardless. Interactive verification
+    (walking the new road, finding Flint and Tasslehoff at the new
+    location) still needs the user's own keyboard, same limitation every
+    prior milestone has flagged. See `docs/MAP_NOTES.md`, `docs/
+    ZONE_NOTES.md`, and `docs/TIMELINE_NOTES.md`'s "Dargaard Keep"
+    sections, plus the correction folded into `docs/TIMELINE_NOTES.md`'s
+    existing Laurana section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2861,8 +2919,10 @@ session's work.
    gained their own `LOCATION` and zone; all five Heroes gained matching
    `port_balifor 35 64`/`flotsam 65 82` windows. Kitiara stayed flavor-only,
    per Milestone 50's precedent. See `docs/MILESTONES.md` entry 96 and
-   `docs/TIMELINE_NOTES.md`'s "Port Balifor and Flotsam" section. One
+   `docs/TIMELINE_NOTES.md`'s "Port Balifor and Flotsam" section. ~~One
    related thread stays open: Laurana's own later Flotsam/Dargaard Keep
-   captivity (between `kalaman 90 92` and `neraka 105 107`) still has no
-   `LOCATION`/`PRESENCE` window of its own -- a real, still-open gap, not
-   resolved by this milestone.
+   captivity...~~ -- resolved at Milestone 98, with a correction: she was
+   never at Flotsam at all (that was Tanis's own, separate captivity); her
+   actual capture is now staged at a new Dargaard Keep location, through
+   Flint and Tasslehoff's own witnessed account. See `docs/MILESTONES.md`
+   entry 98.

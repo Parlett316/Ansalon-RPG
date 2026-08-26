@@ -178,6 +178,7 @@ ROAD_PAIRS = [
     ("pax_tharkas", "thorbardin"),
     ("neraka", "flotsam"),
     ("flotsam", "port_balifor"),
+    ("kalaman", "dargaard_keep"),
 ]
 
 # Hand-corrected tiles (Milestone 87): pixels the NUM_COLORS=32 quantization

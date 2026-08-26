@@ -819,6 +819,65 @@ scratch file from before Milestone 85, not a sign anything is missing
 now) rather than assuming the old milestone-era instructions still
 applied.
 
+## Dargaard Keep (Milestone 98)
+
+Placed to close the Laurana-captivity gap `docs/TIMELINE_NOTES.md`
+flagged since Milestone 49 — see that file's "Dargaard Keep" section for
+the sourcing. "Dargaard Keep" is directly legible on `References/
+DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg`, right next to
+Kalaman, exactly where Milestone 39's own Kalaman writeup already noted
+it (a re-crop of that same grid region, not a blind guess).
+
+**A real finding worth recording: raw pixel-cropped estimates and a
+location's *current* recorded `POS` can drift substantially apart over a
+project's life, beyond the small "+5,+4 bias" Milestone 44 already
+documented for the Palanthas corner.** Cropping this session's own
+gridline-overlaid render of the Kalaman/Dargaard area and reading pixel
+positions directly gave a raw estimate of roughly `(241, 79)` for
+Kalaman's own map icon — some 26 grid units off from Kalaman's actual
+current `data/locations.txt` entry, `POS 267 69` (itself already changed
+once since Milestone 39's original `262 73`, presumably through
+walkability nudges and `ROAD_PAIRS`-driven regenerations since). A
+recorded `POS` is the product of placement *plus every subsequent nudge
+and regeneration*, not a stable pixel-to-grid conversion — don't trust a
+fresh image-crop estimate over a location's live `data/locations.txt`
+entry, and don't be surprised if they disagree by more than a few units.
+
+**Resolved by trusting the live `data/overworld.grid` over the image
+crop.** Kalaman's recorded `(267, 69)` checks out directly against the
+grid — the tile there is exactly where the existing `high_clerist_tower`-
+`kalaman` road already terminates, with the town proper sitting right on
+the coast. Scanning the grid immediately southwest of that (matching the
+image crop's own rough "the keep sits south/southwest of Kalaman, in the
+mountains" reading, and Milestone 39's own "Northern Dargaard Mountains
+foothills, visible on the reference map right next to the city" note)
+turned up a small real mountain (`A`) cluster at grid `(255-258, 74-75)`
+plus an outlier at `(254, 81)` — the only mountain tiles anywhere near
+Kalaman. **`POS 258 74`** was chosen: the hills (`^`) tile immediately
+east of that cluster, walkable without a nudge, matching the "at the foot
+of the mountains" framing this project has used for this exact area since
+Milestone 39.
+
+**`("kalaman", "dargaard_keep")` added to `ROAD_PAIRS`** — Kalaman is
+both the nearest already-modeled location and the one the source text
+itself starts the journey from (unlike Flotsam's Neraka-not-Kalaman case
+at Milestone 96), so no judgment call was needed. Regenerating produced
+exactly 6 diff tiles against the pre-regeneration grid (captured to a
+scratch file first, same precaution as every prior `ROAD_PAIRS` change) —
+the new road's own path plus its destination tile, same "the destination
+tile itself becomes a `#` where the road terminates" pattern already
+true of Kalaman's, Godshome's, and Flotsam's own tiles. No true-water
+tiles crossed, so no `MANUAL_TERRAIN_OVERRIDES` needed, and no glacier-
+patch reapplication either (confirmed still retired since Milestone 85,
+not assumed).
+
+**Dargaard Keep's own interior stays unmapped on purpose.** No tracked
+Hero is ever shown conscious inside the keep in the source text (see
+`docs/TIMELINE_NOTES.md`) — the `LOCATION`/zone represent only the
+wooded mountain approach below it, same "described, not modeled"
+treatment already given the Tower of the Stars and the High Clerist's
+Tower's own sealed rooms.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

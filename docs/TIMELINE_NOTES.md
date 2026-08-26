@@ -1337,6 +1337,83 @@ little the book itself lets them know at the time.
 See `docs/MAP_NOTES.md`'s "Port Balifor and Flotsam" section for
 placement and `docs/ZONE_NOTES.md`'s own section for the two new zones.
 
+## Dargaard Keep (Milestone 98)
+
+Closes the real, still-open gap the Laurana section above (Milestone 49)
+and `docs/CURRENT_WORK.md` both flagged: Laurana is captured between her
+`kalaman 90 92` and `neraka 105 107` windows, but nothing staged it —
+only referenced obliquely afterward (Flint's existing `kalaman 100 100`
+dialogue, Laurana's own `neraka 105 107` lines). Freshly re-read directly
+from `.research/dosd_full.txt` before planning anything, per this
+project's research-first rule — not from the existing doc summary, which
+turned out to conflate this scene with Flotsam (see the correction in the
+Laurana section above).
+
+**Confirmed a three-Hero scene, not Laurana alone (lines ~5000-6421).**
+The night after the Kalaman festival (`kalaman 90 92` ends day 92), a
+forged letter reaches Laurana claiming Tanis is dying at Dargaard Keep,
+offering to trade the captured dragonarmy officer Bakaris — already
+established in her own existing dialogue as the man she shot at the High
+Clerist's Tower — for him. Flint and Tasslehoff both insist on going with
+her, over her own objections. All three sneak out of Kalaman before dawn,
+are met by Bakaris's draconian contact, and are flown by wyvern toward
+the keep. Bakaris — freed as part of the trade, nursing a real grudge —
+turns on the three of them partway there, in a forest clearing short of
+the keep itself.
+
+**The ambush and its aftermath (lines ~6300-6421).** Tasslehoff stabs
+Bakaris, who falls on his own knife and dies. Before Flint or Tasslehoff
+can react further, an ancient, spectral Knight of Solamnia in
+fire-blackened armor — confirmed by cross-reference to later chapters to
+be Lord Soth, master of Dargaard Keep, but **never named to Flint or Tas
+on-page** — paralyzes them with a look, takes Laurana, and orders them
+back to Kalaman with a message: "Tell them we have the elfwoman. The Dark
+Lady will arrive tomorrow at noon."
+
+**Confirmed by further reading (lines ~11150-11360, ~13800-14630) that
+Dargaard Keep itself is only ever a brief transit point.** Every
+subsequent Laurana-captivity scene — Kitiara and Ariakas's own political
+maneuvering, Lord Soth's private bargain with Kitiara over her eventual
+fate, her presentation to the Dark Queen — happens at Neraka, already
+modeled at `neraka 105 107`. No tracked Hero is ever shown conscious
+inside the keep. This confirms scope: the only real, Hero-witnessed scene
+is the forest ambush outside it, not the keep's interior — see
+`docs/ZONE_NOTES.md`'s "Dargaard Keep" section for how the zone reflects
+that.
+
+**`PRESENCE dargaard_keep 93 93` added for Flint and Tasslehoff only** —
+the same single night, immediately following their existing
+`kalaman 90 92` window. Each gets a real `SAY`/`SAY_AGAIN`/`TOPIC`
+distinct from (not a rewrite of) Flint's already-shipped `kalaman 100 100`
+retrospective regret — this is the raw, in-the-moment account, same "more
+than one account of the same event across time" precedent the Neraka
+ridge farewell (Milestone 47) and Port Balifor/Flotsam (above) both
+already established. **Bakaris is named directly** in their dialogue,
+completing a naming this project had already half-committed to via
+Laurana's own existing High Clerist's Tower lines, same category as
+Milestone 50's Kitiara naming. **The spectral knight stays unnamed** —
+Flint and Tas never learn who it was on-page, so putting "Lord Soth" in
+their mouths would invent knowledge the source doesn't give them. This
+keeps faith with this project's sourcing discipline even though the
+blanket "keep major characters unnamed" policy itself was retired at
+Milestone 49 — that retirement was about not hiding names the *player*
+could learn, not about inventing knowledge a *character* wouldn't have.
+
+**No new `PRESENCE` window for Laurana — see the correction in the
+Laurana section above for why this is now confirmed, not deferred.**
+
+Placed by regenerating `data/overworld.grid` with a new
+`("kalaman", "dargaard_keep")` `ROAD_PAIRS` entry — see
+`docs/MAP_NOTES.md`'s "Dargaard Keep" section for the placement itself.
+Verified via a throwaway self-test (`LOCATION`/zone loading, day-92/93/94
+boundary correctness for Flint and Tasslehoff, and confirming Laurana's
+own schedule — including her `neraka 105 107` window — is untouched), a
+clean `/W4` rebuild (no `.cpp`/`.h` changes — pure data plus one new
+zone/location), and the piped smoke test. Interactive verification
+(walking the new road, finding Flint and Tasslehoff at the new location)
+still needs the user's own keyboard, same limitation every prior
+milestone has flagged.
+
 ## Sturm's death (Milestone 38)
 
 The bridging event between *Dragons of Winter Night* (this project's
@@ -1880,20 +1957,34 @@ replaced with a name to stop being anonymous; only the lines that
 functioned as an actual naming-avoidance device (a descriptive tag
 standing in for an introduction) needed the edit.
 
-**Deliberately left out.** Flotsam and Dargaard Keep, where she's lured
-and captured between `kalaman 90 92` and `neraka 105 107`, had no
-existing `LOCATION` at the time this milestone shipped — same "don't
-invent to fill a gap" restraint as Sancrist Isle, Southern Ergoth, and
-Fizban's own DWN/DOSD side arcs. Flotsam itself gained a real `LOCATION`
-at Milestone 96, for an earlier Tanis-group window (`flotsam 65 82`,
-well before her own later capture there) — that milestone didn't add a
-matching Laurana window for her own, later Flotsam scene, so this
-remains a real, still-open gap, not an oversight; Dargaard Keep has no
-`LOCATION` either way. Her
-absence from `kalaman 100 100` and `godshome 103 103` (both already
-built for the other Heroes) is for the same reason and isn't an
-oversight: Flint's and Tanis's own existing dialogue at those windows
-("who came for Laurana... and why," "her taken instead," "her at
+**Deliberately left out at this milestone; resolved (with a correction)
+at Milestone 98.** This paragraph originally said "Flotsam and Dargaard
+Keep" had no existing `LOCATION` at the time this milestone shipped. A
+fresh, direct re-read of `.research/dosd_full.txt` for Milestone 98 found
+that's imprecise: **she is never at Flotsam at all, anywhere in the
+source text.** The forged letter that lures her out (lines ~5081-5101)
+claims Tanis is dying at Dargaard Keep specifically, and the ambush that
+follows happens in the mountains a mile short of the keep itself —
+Flotsam is exclusively Tanis's own captivity location (Milestone 96's
+`flotsam 65 82` window, for the other five Heroes, at a much earlier
+point in the shared timeline than her own day-93 capture). Dargaard Keep
+now has a real `LOCATION`/zone (Milestone 98, see the "Dargaard Keep"
+section below) and the ambush itself is staged through Flint and
+Tasslehoff's own witnessed `PRESENCE dargaard_keep 93 93` window — same
+"don't invent to fill a gap" restraint as Sancrist Isle, Southern Ergoth,
+and Fizban's own DWN/DOSD side arcs, just applied to who gets the window
+rather than whether the location exists at all. **Laurana still
+correctly gets no `PRESENCE` window of her own at Dargaard Keep — now
+confirmed, not deferred:** the keep's own interior has no tracked-Hero-
+witnessed content anywhere in the source (see Milestone 98's section
+below), and giving her a window there even with no `SAY` would break
+this project's own established convention that a no-`SAY` window marks a
+*permanent* schedule ending (Sturm, Raistlin, Flint), which hers is not
+— she resumes at `neraka 105 107`. Her absence from `kalaman 100 100`
+and `godshome 103 103` (both already built for the other Heroes) is
+unaffected by this correction and remains accurate for the reason
+already given: Flint's and Tanis's own existing dialogue at those
+windows ("who came for Laurana... and why," "her taken instead," "her at
 Dargaard") already establishes she's a captive elsewhere on those exact
 days, so giving her a `PRESENCE` there would directly contradict
 already-shipped content.

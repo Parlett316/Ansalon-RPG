@@ -1341,6 +1341,45 @@ See `docs/MAP_NOTES.md`'s "Port Balifor and Flotsam" section for
 placement and `docs/TIMELINE_NOTES.md`'s own section for the full
 sourcing and day-range reasoning.
 
+## Dargaard Keep (Milestone 98)
+
+`data/zones/dargaard_keep.txt` — a sparse, open 40×16 grid (no walls,
+same "outdoor, unwalled" idiom as Godshome, since this is a forest
+clearing, not an inhabited town). Three POIs, all scenery — no `TALK`
+line on any of them: the Cave Mouth (`C`, the small cave the source text
+places at one edge of the clearing), the Forest Clearing (`G`, where the
+ambush itself happened, and this zone's `TIMELINE_ANCHOR`), and Dargaard
+Keep itself seen at a distance (`J`, a broken silhouette higher up the
+mountain — see below for why the keep's own interior isn't modeled).
+
+**No talkable NPC anywhere in this zone.** Bakaris (the officer who
+springs the ambush) is dead by the time any `PRESENCE` window opens here;
+the figure who takes Laurana (Lord Soth, confirmed by cross-reference to
+later chapters — see `docs/TIMELINE_NOTES.md`) speaks exactly one line
+and leaves, and neither Flint nor Tasslehoff ever learns his name on-page.
+Giving either one a zone-native `TALK` POI would invent an exchange the
+source text doesn't have — the whole scene is carried entirely by Flint
+and Tasslehoff's own `PRESENCE dargaard_keep 93 93` dialogue (see
+`docs/TIMELINE_NOTES.md`), reached the same way Godshome's own single-
+scene zone is: stand on the `TIMELINE_ANCHOR` tile and talk to whichever
+tracked Hero is scheduled there.
+
+**Dargaard Keep's own interior is deliberately unmapped — "described, not
+modeled," same treatment as the Tower of the Stars and the High Clerist's
+Tower's own sealed rooms.** Every subsequent scene inside the keep
+(Kitiara, Ariakas, and Lord Soth's own political maneuvering) happens
+with no tracked Hero present to witness it — confirmed by re-reading the
+source directly, not assumed — and Laurana's own captivity resolves at
+Neraka, already modeled at `neraka 105 107`. The `J` POI's flavor text
+makes this explicit in-fiction: "No path from this clearing climbs any
+closer."
+
+Reached by road from Kalaman (`("kalaman", "dargaard_keep")` in
+`ROAD_PAIRS`), not `SEA_LOCKED` — see `docs/MAP_NOTES.md`'s "Dargaard
+Keep" section for placement, and `docs/TIMELINE_NOTES.md`'s own section
+for the full sourcing and the reasoning behind giving Flint/Tasslehoff a
+window here but not Laurana.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.
