@@ -311,14 +311,18 @@ private:
     // Opens the '?' help screen listing every command, until one keypress
     // dismisses it -- same one-keypress-blocks shape as showCharacterSheet.
     void showHelp();
-    // Nearest world::Location with isTown set, by straight-line tile
-    // distance from state_.x/state_.y (no pathfinding system exists --
+    // Nearest world::Location with isTown or seaLocked set, by straight-line
+    // tile distance from state_.x/state_.y (no pathfinding system exists --
     // same restraint as minutesToCross being flat-per-tile). Used by
-    // runCombat's knockout handling to send the player to the closest
-    // civilian settlement rather than always Solace -- see
-    // docs/COMBAT_NOTES.md. Falls back to "solace" if no town is found
-    // (defensive only; can't happen with the current data).
-    const world::Location* nearestTown() const;
+    // runCombat's knockout handling to send the player to the closest safe
+    // place to wake up rather than always Solace -- see docs/COMBAT_NOTES.md.
+    // seaLocked locations (e.g. Ice Wall Castle) count too, even though
+    // they're not civilian settlements: they're reachable only by a one-time
+    // BOAT voyage, so treating them as town-only would strand a
+    // knocked-out player somewhere with no way back. Falls back to "solace"
+    // if nothing is found (defensive only; can't happen with the current
+    // data).
+    const world::Location* nearestRefuge() const;
     // Takes over rendering/input in its own loop until the fight ends
     // (victory, flee, or the player is knocked out) -- see
     // docs/ARCHITECTURE.md and docs/COMBAT_NOTES.md for why this is a

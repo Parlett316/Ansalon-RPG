@@ -278,13 +278,13 @@ HP + a log, for a feature whose whole failure mode (the user's own choice
 **User decision**, explicitly chosen over permadeath (which would have
 fit the Caves-of-Qud inspiration this project was originally built
 around): when the player's HP reaches 0, it's set to `maxHp` (a full heal,
-not just enough to stand) and they wake up at the **nearest town**
-(`GameLoop::nearestTown()`, straight-line tile distance from
-`world::Location::isTown` entries -- see below) rather than the run
-ending. There's no "you have died" screen, no save deletion, nothing
-punitive beyond the trip back to civilization.
+not just enough to stand) and they wake up at the **nearest refuge**
+(`GameLoop::nearestRefuge()`, straight-line tile distance from
+`world::Location::isTown`/`seaLocked` entries -- see below) rather than
+the run ending. There's no "you have died" screen, no save deletion,
+nothing punitive beyond the trip back to safety.
 
-**Which locations count as a "town"**: `world::Location` has a `bool
+**Which locations count as a "refuge"**: `world::Location` has a `bool
 isTown` flag, set via an optional `TOWN` line in a `data/locations.txt`
 block (see `docs/MAP_NOTES.md`). Five locations carry it -- Solace,
 Haven, Kalaman, Tarsis, Palanthas -- the ones already tagged with a
@@ -293,12 +293,26 @@ plains-city/walled-port-city). Fortresses (Pax Tharkas, High Clerist's
 Tower), ruins (Xak Tsaroth, Ice Wall), the nomadic Plains of Dust
 village, and the elven homelands (Qualinesti/Silvanesti -- Silvanesti is
 sealed to outsiders, a deliberate lore exclusion, not an oversight) are
-not towns for this purpose. `nearestTown()` picks whichever `isTown`
-location is closest by straight-line tile distance to where the player
-fell -- no pathfinding system exists in this project, same restraint
-already applied to `minutesToCross` being flat-per-tile -- falling back to
-Solace only if no town is found at all (defensive; can't happen with the
-current data).
+not towns for this purpose.
+
+**`seaLocked` (Milestone 90)**: a second, independent flag, also set via
+an optional argument-less `data/locations.txt` line (`SEA_LOCKED`),
+carried only by Ice Wall Castle. Added to close a real softlock the user
+hit: the `frostreaver_salvage` quest requires killing Thanoi, which are
+hard-locked to the glacier terrain immediately around Ice Wall Castle
+(Milestone 83), and the *only* way to reach Ice Wall Castle at all is
+Tarsis's Knight's Runner one-time `BOAT` voyage (Milestone 88, kept
+deliberately one-time -- see "Sea travel" in `docs/ARCHITECTURE.md`). A
+knockout on that glacier previously sent the player to the nearest actual
+`isTown` location (Tarsis, ~56 tiles away), stranding them for good --
+the boat back doesn't fire twice. `seaLocked` locations aren't civilian
+settlements, but they're still a valid, safe place to wake up -- treating
+them as "not a refuge" is exactly the bug. `nearestRefuge()` picks
+whichever `isTown`- or `seaLocked`-flagged location is closest by
+straight-line tile distance to where the player fell -- no pathfinding
+system exists in this project, same restraint already applied to
+`minutesToCross` being flat-per-tile -- falling back to Solace only if
+nothing is found at all (defensive; can't happen with the current data).
 
 ## Encounters: a per-terrain chance while traveling
 

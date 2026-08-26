@@ -537,11 +537,11 @@ void GameLoop::showHelp() {
     render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
-const world::Location* GameLoop::nearestTown() const {
+const world::Location* GameLoop::nearestRefuge() const {
     const world::Location* best = nullptr;
     long long bestDistSq = 0;
     for (const world::Location& loc : world_.allLocations()) {
-        if (!loc.isTown) continue;
+        if (!loc.isTown && !loc.seaLocked) continue;
         long long dx = loc.x - state_.x;
         long long dy = loc.y - state_.y;
         long long distSq = dx * dx + dy * dy;
@@ -581,9 +581,10 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
         // Distance to the nearest civilian town, so MonsterCatalog can keep
         // high-danger monsters (Ogre, higher-tier Draconians) away from
         // starting towns -- see docs/COMBAT_NOTES.md's "Town-proximity
-        // monster pools". Computed inline rather than sharing nearestTown()
-        // (line ~540): that function returns a Location* for a different
-        // purpose (post-knockout respawn), and this is its only other call
+        // monster pools". Computed inline rather than sharing nearestRefuge()
+        // (line ~540): that function also counts seaLocked locations for a
+        // different purpose (post-knockout respawn), which have no bearing on
+        // town-proximity monster weighting, and this is its only other call
         // site.
         long long bestDistSq = -1;
         for (const world::Location& loc : world_.allLocations()) {
@@ -1639,19 +1640,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
         if (state_.character.currentHp <= 0) {
             // Knocked out, not killed -- see docs/COMBAT_NOTES.md. Full-healed
-            // and carried to the nearest town rather than a real death.
-            const world::Location* town = nearestTown();
-            const std::string townName = town != nullptr ? town->name : "town";
+            // and carried to the nearest refuge rather than a real death.
+            const world::Location* refuge = nearestRefuge();
+            const std::string refugeName = refuge != nullptr ? refuge->name : "town";
             state_.character.currentHp = state_.character.maxHp;
-            log.push_back("You are struck down... and wake up back in " + townName + ", battered but alive.");
-            if (town != nullptr) {
-                state_.x = town->x;
-                state_.y = town->y;
+            log.push_back("You are struck down... and wake up back in " + refugeName + ", battered but alive.");
+            if (refuge != nullptr) {
+                state_.x = refuge->x;
+                state_.y = refuge->y;
             }
             log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
             render::Console::readKey();
-            pushLog("You were knocked out by the " + monster.name + " and woke up back in " + townName + ".");
+            pushLog("You were knocked out by the " + monster.name + " and woke up back in " + refugeName + ".");
             return;
         }
     }

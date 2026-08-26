@@ -117,6 +117,7 @@ NAME Ice Wall Castle
 REGION Icereach
 TERRAIN glacial-ruin
 GLYPH I
+SEA_LOCKED
 POS 150 305
 DESC A half-ruined keep on a frozen, wind-scoured coast far south of anywhere charted. No road reaches it -- only the sea does. Ice has crept into its broken halls faster than anyone left could clear it out.
 END

@@ -21,7 +21,13 @@ struct Location {
     int y = 0;
     std::string description;
     bool isTown = false;   // civilian settlement a knocked-out player can wake up in --
-                            // see game::GameLoop::nearestTown and docs/COMBAT_NOTES.md
+                            // see game::GameLoop::nearestRefuge and docs/COMBAT_NOTES.md
+    bool seaLocked = false; // reachable only by a one-time scripted BOAT voyage (see
+                            // world::BoatVoyage), so it's also a valid knockout wake-up
+                            // point even though it isn't a TOWN -- otherwise a knockout
+                            // near a sea-locked location strands the player somewhere
+                            // they have no way back from (see game::GameLoop::
+                            // nearestRefuge and docs/COMBAT_NOTES.md)
 };
 
 } // namespace world

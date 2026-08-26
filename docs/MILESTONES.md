@@ -2427,6 +2427,49 @@ section).
     `docs/ARCHITECTURE.md`'s "Save/load" and `docs/GOTCHAS.md`'s "Save/load"
     section for the updated mechanics.
 
+90. Fixed a real softlock at Ice Wall Castle -- reported directly by the
+    user: getting knocked out while fighting the Thanoi the
+    `frostreaver_salvage` quest requires (hard-locked to glacier terrain
+    around Ice Wall since Milestone 83) sent the player to `nearestTown()`'s
+    pick, Tarsis, ~56 tiles away by straight-line distance -- but the only
+    way back is Tarsis's Knight's Runner `BOAT` voyage, which Milestone 88
+    deliberately made fire only the first time that POI is ever talked to
+    (replacing a permanent `hasBoat` flag specifically because it let the
+    player "just sail around" the continent). So once knocked back to
+    Tarsis, Ice Wall Castle became permanently unreachable.
+
+    Confirmed with the user that the one-time `BOAT` restriction itself
+    should stay untouched -- the fix instead targets `nearestTown()`'s
+    blind spot: it only ever considered `world::Location::isTown` entries,
+    with no notion that a non-town location might still be the only safe
+    place to wake up. Added a new `SEA_LOCKED` keyword to
+    `data/locations.txt` (mirroring `TOWN`'s own loader shape exactly --
+    `world::Location::seaLocked`, set by `WorldLoader` on an optional,
+    argument-less line), tagged `ice_wall` with it, and widened the
+    function's filter to `isTown || seaLocked`. Renamed it
+    `nearestRefuge()` to match its broadened meaning (the separate,
+    unrelated nearest-town loop in the encounter-spawn code, used only for
+    keeping dangerous monsters away from civilian towns, was already its
+    own inline computation and stays untouched). Since Ice Wall Castle is
+    always the closest landmark to any tile a Thanoi fight can happen on, a
+    knockout there now wakes the player back up at Ice Wall Castle itself
+    instead of marooning them in Tarsis.
+
+    Verified via a throwaway self-test (`SeaLockedSelfTest.cpp`, a minimal
+    `World`/`WorldLoader`-only CMake target: confirmed the real
+    `data/locations.txt` parses `ice_wall.seaLocked` as `true` and that it's
+    the only location with the flag set; passed, then the file and its
+    temporary target were deleted), a clean `/W4` rebuild (zero new
+    warnings), and the piped smoke test against an isolated scratch copy
+    (the real `build\Debug\save1.txt`/`save2.txt` -- which carry the user's
+    actual live character, currently at Ice Wall Castle -- were never
+    touched: the smoke test ran against an isolated scratch copy of the
+    exe + `data/` only, and the real files' timestamps were confirmed
+    unchanged before/after). See
+    `docs/MAP_NOTES.md`'s `data/locations.txt` grammar section and
+    `docs/COMBAT_NOTES.md`'s "Death: knocked out, not killed" for the
+    updated mechanics.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

@@ -28,8 +28,16 @@ TERRAIN <tag>            free-form descriptive tag, informational only (the actu
 GLYPH <char>              single character drawn on the overworld viewport
 TOWN                       (optional, no argument) marks a civilian settlement --
                           a knocked-out player respawns at the nearest TOWN
-                          location, full-healed, instead of always Solace; see
-                          docs/COMBAT_NOTES.md's "Death: knocked out, not killed"
+                          (or SEA_LOCKED) location, full-healed, instead of
+                          always Solace; see docs/COMBAT_NOTES.md's "Death:
+                          knocked out, not killed"
+SEA_LOCKED                 (optional, no argument) marks a location reachable
+                          only by a one-time scripted BOAT voyage -- also a
+                          valid knockout wake-up point even though it isn't a
+                          TOWN, so a knocked-out player is never stranded
+                          somewhere with no way back; see
+                          docs/COMBAT_NOTES.md's "Death: knocked out, not
+                          killed"
 POS <x> <y>                two non-negative integers -- tile coordinates in the
                           SAME space as overworld.grid (see below for how chosen)
 DESC <text>              one-line description, rest of line
@@ -41,6 +49,14 @@ Tarsis, Palanthas -- the ones already carrying a civilian-settlement
 `TERRAIN` tag. Fortresses, ruins, the nomadic Plains of Dust village, and
 the (deliberately excluded, for lore reasons) elven homelands don't have
 it.
+
+`SEA_LOCKED` is set on exactly 1 location -- Ice Wall Castle, the only
+place reachable solely by a one-time `BOAT` voyage (see
+`docs/ARCHITECTURE.md`'s "Sea travel"). Added at Milestone 90 to close a
+softlock: without it, a player knocked out on the glacier next to Ice Wall
+(fighting the Thanoi the `frostreaver_salvage` quest requires) woke up in
+Tarsis, and the Knight's Runner's `BOAT` trip is deliberately one-time
+(Milestone 88), so there was no way back.
 
 Every field is single-line; `WorldLoader` throws a `file:line: message`
 error for anything malformed. There is no `CONNECT`/road field anymore —
