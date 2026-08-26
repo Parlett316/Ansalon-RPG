@@ -13,8 +13,10 @@
 #                          full-healed, instead of always Solace -- see docs/COMBAT_NOTES.md
 #   POS <x> <y>            tile coordinates on the SAME grid as data/overworld.grid
 #                          (480 wide x 320 tall -- see docs/MAP_NOTES.md for how
-#                          these were placed: approximate, from relative geography,
-#                          not pixel-measured off the reference image's tiny labels)
+#                          these were placed: most are pixel-measured off a legible
+#                          label/icon on the reference image, per Milestone 85;
+#                          Darken Wood and Ice Wall Castle have no direct label on
+#                          that image either and stay placed by relative geography)
 #   DESC <text>            one-line description shown by 'look'
 #   END                    closes the block
 #
@@ -32,7 +34,7 @@ REGION Abanasinia
 TERRAIN forest-town
 GLYPH S
 TOWN
-POS 185 230
+POS 191 200
 DESC A town built high in the branches of ancient vallenwood trees, linked by swaying bridges and stairways. The Inn of the Last Home sits atop the tallest trunk, its chimney never quite cold.
 END
 
@@ -41,7 +43,7 @@ NAME Darken Wood
 REGION Abanasinia
 TERRAIN dark-forest
 GLYPH W
-POS 192 248
+POS 189 208
 DESC A dense, shadowed forest south of Solace. Sunlight rarely reaches the forest floor here, and travelers say the wood remembers footsteps long after they've passed.
 END
 
@@ -51,7 +53,7 @@ REGION Abanasinia
 TERRAIN plains-town
 GLYPH H
 TOWN
-POS 205 250
+POS 189 213
 DESC A modest farming town on the edge of the Abanasinia plains, its market square usually busy with wagons and rumor alike.
 END
 
@@ -60,7 +62,7 @@ NAME Xak Tsaroth
 REGION Abanasinia
 TERRAIN swamp-ruins
 GLYPH X
-POS 215 265
+POS 202 203
 DESC The flooded ruins of a once-great dwarven city, sunk into the swamp centuries ago. Broken towers rise from the mire, and the air smells of standing water and old stone.
 END
 
@@ -69,7 +71,7 @@ NAME Qualinesti
 REGION Qualinesti
 TERRAIN elven-forest
 GLYPH Q
-POS 150 245
+POS 184 217
 DESC The elven forest kingdom, its trees grown and shaped over centuries into living halls. Elves eye outsiders here with quiet, practiced wariness.
 END
 
@@ -78,7 +80,7 @@ NAME Pax Tharkas
 REGION Kharolis
 TERRAIN mountain-fortress
 GLYPH P
-POS 160 270
+POS 192 221
 DESC A vast fortress carved into a mountain pass, its twin towers guarding the only easy road south. The stonework here predates the kingdoms that now claim it.
 END
 
@@ -87,7 +89,7 @@ NAME Plains of Dust
 REGION Plains of Dust
 TERRAIN plains-village
 GLYPH U
-POS 205 285
+POS 254 258
 DESC A wide, dry grassland dotted with the felt tents of the Plainsfolk. Dust rises in slow columns wherever a horse or wagon passes.
 END
 
@@ -97,7 +99,7 @@ REGION Kharolis
 TERRAIN dry-plains-city
 GLYPH T
 TOWN
-POS 170 300
+POS 197 274
 DESC A city stranded far from any sea, though its docks and rusting ship-hulks remain, half-buried in the dust. Old sailors still argue about which direction the water went.
 END
 
@@ -106,7 +108,7 @@ NAME High Clerist's Tower
 REGION Solamnia
 TERRAIN mountain-fortress
 GLYPH C
-POS 173 100
+POS 194 95
 DESC A fortress built into the only pass through the Vingaard Mountains, guarding the road to Palanthas beyond. No one but a High Clerist may enter the Tower proper -- and there has been no High Clerist since the Cataclysm -- so the garrison holds only the walls around it.
 END
 
@@ -115,7 +117,7 @@ NAME Ice Wall Castle
 REGION Icereach
 TERRAIN glacial-ruin
 GLYPH I
-POS 110 307
+POS 150 305
 DESC A half-ruined keep on a frozen, wind-scoured coast far south of anywhere charted. No road reaches it -- only the sea does. Ice has crept into its broken halls faster than anyone left could clear it out.
 END
 
@@ -124,7 +126,7 @@ NAME Silvanesti
 REGION Silvanesti
 TERRAIN elven-forest
 GLYPH V
-POS 312 231
+POS 341 236
 DESC The ancient elven homeland, far east across the continent, sealed off from the outside world since before the Kinslayer Wars. No human is known to have set foot here in living memory -- not because none have tried, but because none have been let in.
 END
 
@@ -134,7 +136,7 @@ REGION Estwilde
 TERRAIN coastal-town
 GLYPH K
 TOWN
-POS 262 73
+POS 267 69
 DESC A walled harbor city on Kalaman Bay, its open-air bazaar and fish market spilling into streets built for a bigger, safer age. White-winged ships ride at anchor in its harbor -- the last real port left to whoever still controls it.
 END
 
@@ -144,7 +146,7 @@ REGION Solamnia
 TERRAIN walled-port-city
 GLYPH L
 TOWN
-POS 167 85
+POS 190 79
 DESC A wheel-shaped city of white marble ringing the Bay of Branchala, its dwarven-cut avenues radiating out from a central hub to the sea gates and the Old City Wall. The only deep-water port to survive the Cataclysm intact -- and, somewhere past its rooftops, a single black tower the whole city has learned not to look at.
 END
 
@@ -153,7 +155,7 @@ NAME Godshome
 REGION Taman-Busuk
 TERRAIN sacred-mountain-hollow
 GLYPH G
-POS 267 139
+POS 294 134
 DESC A hidden, barren bowl deep in the Khalkist Mountains, reached only through a narrow cleft in the rock -- not the ruined city that shares its name on the merchants' maps, but an older, holier place, said to have been sacred before there was ever a city to abandon. At its center stands a perfect ring of ancient standing stones.
 END
 
@@ -162,6 +164,24 @@ NAME Neraka
 REGION Taman-Busuk
 TERRAIN temple-war-camp
 GLYPH N
-POS 273 140
+POS 301 137
 DESC A walled compound built around the black Temple of the Queen of Darkness, its spires lost in the shadow of flying citadels that never let the sun through. Camp-tents and gallows crowd every open space between the walls; the dragonarmies of half a continent are gathered here, and not one of them trusts the others.
+END
+
+LOCATION thorbardin
+NAME Thorbardin
+REGION Kharolis
+TERRAIN dwarven-kingdom
+GLYPH D
+POS 189 239
+DESC A dwarven kingdom carved whole from the Kharolis Mountains, its Southgate a forty-foot plug of stone that can seal the outside world away as if it never existed. Torchlit halls stretch back into the dark farther than any surface-dweller cares to walk alone.
+END
+
+LOCATION sancrist_isle
+NAME Sancrist Isle
+REGION Sancrist
+TERRAIN knights-castle
+GLYPH Y
+POS 55 154
+DESC An island stronghold of the Knights of Solamnia, its coast held by Castle Uth Wistan's grey stone walls. Banners from every Order still fly here, though the knights beneath them no longer entirely agree on what they're flying for.
 END

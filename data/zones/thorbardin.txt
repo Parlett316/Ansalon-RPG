@@ -1,0 +1,37 @@
+# data/zones/thorbardin.txt -- hand-authored walkable interior: the
+# dwarven mountain kingdom's Great Hall of Audience, Southgate, and the
+# Pax Tharkas refugees' quarter (Milestone 86 -- Dragons of Winter
+# Night's opening chapters). The filename stem ("thorbardin") is the
+# zone id and MUST match the LOCATION id in data/locations.txt for the
+# Enter key to find it. Grammar: docs/ZONE_NOTES.md
+NAME Thorbardin
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#......................................#
+#......................................#
+#...........H..........................#
+#......................................#
+#......................................#
+#......................................#
+#.....G................................#
+#......................................#
+#......................................#
+#...........................R..........#
+#......................................#
+#......................................#
+#......................................#
+##################...###################
+ENDGRID
+POI H "The Great Hall of Audience" A bowl-shaped chamber carved from living rock, torchlight lost somewhere in the vault of the ceiling overhead. Seven carved stone thrones ring a central dais -- six occupied in turn by the Thanes of the mountain dwarves, the seventh, most magnificent of all, standing empty for a King of Thorbardin no one now living has ever seen crowned.
+POI G "Southgate" A gate sixty feet wide and forty feet thick at its center, a single vast plug of stone that a hidden mechanism drives in and out of the mountainside. Sealed, its face is indistinguishable from the rest of the peak -- the dwarven masons who built it meant it to disappear, and three hundred years on, it still does.
+POI R "The Refugee Quarter" Torches burn in brackets along corridors never meant for this many people, chambers cut for storage now hung with borrowed cloth and crowded with bedrolls. Eight hundred farmers from Pax Tharkas live here now, grateful and restless in equal measure, waiting for a season they can plant something in again.
+TALK R An older woman looks up from mending a torn cloak, her hands not stopping their work. "Grateful, mind you. Say that first, always, before anyone thinks different." She glances at the stone overhead. "But we're not dwarves. Never will be. A farmer wants dirt he can put a plow to, not a ceiling he can put his hand flat against. Come spring we're meant to try the mountainside for crops. Rocky soil and short seasons. I don't know what we'll do the season after that."
+TALK_AGAIN R "Still here?" she says, not unkindly, needle still moving. "Word is a party's forming to go south, see what's left of Tarsis and its ships. I hope they find something. I'm getting tired of torchlight."
+TOPIC R "Living Under a Mountain" "It's not the dark I mind, not really -- you get used to that faster than you'd think. It's that nothing changes down here. No weather, no seasons, no sun coming up different colors. Just the dwarves' own clocks, ticking away somewhere I can't see them. A person starts to lose track of which day it is, and then which year." She shakes her head. "Elistan says it's temporary. I believe him. I'm just not sure the mountain does."
+SUBJECT R hammer,kharas Word is that's why the dwarves took us in at all -- some old promise about the Hammer of Kharas, lost and found again. I don't pretend to understand dwarven honor. I just know it bought eight hundred of us a roof, and I'm not too proud to be grateful for that.
+SUBJECT R southgate,gate That gate could seal shut the whole kingdom from anything short of an earthquake, they say. Some nights I lie awake thinking about that -- how it doesn't much matter whether what's sealed out is a dragonarmy or the sky itself. Either way, we're the ones on the inside.
+SUBJECT_UNKNOWN R "Can't help you there. Ask one of the dwarves -- or one of your own company, if you came in with that half-elf and his friends. They seem to know more of what's coming than the rest of us."
+TIMELINE_ANCHOR H
+END

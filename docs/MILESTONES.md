@@ -2237,6 +2237,86 @@ section).
     piped smoke test (real save moved aside, hash-confirmed identical
     afterward). See `docs/COMBAT_NOTES.md`'s "Encounters: a per-terrain
     chance while traveling".
+85. Higher-fidelity map re-derivation -- the user found a much
+    higher-resolution, legibly-labeled Ansalon map
+    (`References/dragonlancemap2.png`, replacing a 10125x6750 JPEG whose
+    labels were illegible at any practical resolution since Milestone 2)
+    and asked to redo the world map from it. `tools/generate_overworld.py`
+    was re-pointed at the new image, `NUM_COLORS` raised 16 -> 32 with
+    each bucket verified by index-mask inspection rather than judging RGB
+    triples by eye, and all 15 locations' `POS` re-derived -- 11 from a
+    directly-read label/icon (impossible on the old JPEG for most of
+    them), Plains of Dust from its region label, and Darken Wood/Ice Wall
+    Castle re-anchored by the same relative-geography method the
+    originals used (neither has a direct label on this map either).
+    Glacier is recoverable in the classification for the first time,
+    letting Milestone 36's 46-tile hand-painted glacier patch be retired
+    (Ice Wall Castle's new `POS` lands on real generated glacier); the old
+    JPEG's mountain-shadow-into-Blood-Sea misclassification (see the High
+    Clerist's Tower section of `docs/MAP_NOTES.md`) also doesn't recur on
+    the new map. All 14 `ROAD_PAIRS` re-verified end-to-end reachable via
+    a throwaway 4-directional BFS; verified via a clean `/W4` rebuild and
+    the piped smoke test (real save backed up, hash-confirmed identical
+    afterward). A second user-provided image, an ASCII-art conversion of
+    the same map, was investigated and found to be a cosmetic photo-filter
+    (character choice follows pixel luminance, not terrain semantics) --
+    not usable as data; noted as possible inspiration for a future
+    overworld-rendering style, not acted on this milestone. See
+    `docs/MAP_NOTES.md`'s "Higher-fidelity map re-derivation" for the full
+    writeup, including the before/after `POS` table for every location.
+86. Added Thorbardin and Sancrist Isle -- while re-reading labels for
+    Milestone 85, two real, book-significant places turned up that
+    weren't modeled yet; the user asked to add both. Thorbardin (dwarven
+    kingdom under the Kharolis mountains) had no prior decision against
+    it -- *Dragons of Winter Night* opens there, the Hammer of Kharas
+    ceremony in Thane Hornfel's Great Hall, with Tanis and Sturm on-page
+    and Raistlin conjuring an illusory dragonlance immediately after.
+    Sancrist Isle had an explicit "deliberately not modeled" call on file
+    from Milestone 36 (its trial content already folded into the High
+    Clerist's Tower as retrospective dialogue) -- the user was shown that
+    exact reasoning and chose to override it anyway. Both got real `POS`
+    placements off the new map, `data/zones/` interiors, and
+    `PRESENCE`/`SAY`/`TOPIC` content: Thorbardin for all 8 Heroes
+    (`13 19`, the gap between Pax Tharkas and Tarsis), Sancrist Isle for
+    Sturm/Flint/Tasslehoff/Laurana (`55 60`, between Ice Wall and the
+    Tower -- Laurana added beyond the original plan once research
+    confirmed she's the witness Sturm actually names, and that her
+    already-shipped Tower `TOPIC` was asserting a scene this milestone
+    could now actually show). `("pax_tharkas", "thorbardin")` added to
+    `ROAD_PAIRS`; Sancrist Isle stays boat-only like Ice Wall. All 16
+    roads and both new locations' tiles reverified with a throwaway BFS;
+    verified via a clean `/W4` rebuild and the piped smoke test (real
+    save backed up, hash-confirmed identical afterward). See
+    `docs/MAP_NOTES.md`'s "Thorbardin and Sancrist Isle" and
+    `docs/TIMELINE_NOTES.md`'s "Thorbardin"/"Sancrist Isle" sections for
+    full sourcing and citations.
+87. Fixed roads that crossed open water -- the user spotted, on a
+    rendered view of the map, that `ROAD_PAIRS`'s straight-line roads
+    don't account for terrain, and a few cut across real bodies of
+    water. A throwaway line-walker replayed every pair's path against
+    the classified grid, cross-checked against pixel-marked crops of the
+    reference map; two of the four flagged pairs turned out to be
+    bogus/redundant straight lines across real bays (New Bay, crossed by
+    `xak_tsaroth`-`plains_of_dust` for 27 tiles and by `solace`-
+    `silvanesti` for 25) and were removed from `ROAD_PAIRS` outright --
+    the former was already redundant via `pax_tharkas`, the latter
+    matches Silvanesti's own "sealed off" DESC and Ice Wall Castle's
+    existing "no road reaches it" precedent. The other two (a handful of
+    single-pixel classification-noise tiles on the `darken_wood`-
+    `qualinesti` and `solace`-`high_clerist_tower` roads) were patched
+    via a new `MANUAL_TERRAIN_OVERRIDES` dict in
+    `tools/generate_overworld.py`, since they sat inside terrain already
+    classified as fordable shallow water elsewhere. Reviewed
+    `References/portcities.txt` per the user's request; concluded no new
+    port-city location is needed for this fix specifically (see
+    `docs/MAP_NOTES.md`), folding the open "which of these deserve a
+    real modeled location" question into NEXT UP below. Re-verified with
+    the same line-walk check (0 water crossings left) and a throwaway
+    BFS (every location, including the boat-flavor ones, still
+    reachable); clean `/W4` rebuild and piped smoke test, real save
+    hash-confirmed identical afterward. See `docs/MAP_NOTES.md`'s
+    "Fixing roads that crossed open water" for the full pair-by-pair
+    writeup.
 
 ## NEXT UP
 
@@ -2275,3 +2355,16 @@ session's work.
    `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
    input-polling call sites would need to change for a real migration;
    every data loader and all game logic stays untouched either way).
+4. **More locations surfaced by the Milestone 85 map re-derivation** --
+   Thorbardin and Sancrist Isle, the two strongest candidates, shipped at
+   Milestone 86. Still open: Nordmaar, Schallsea, Northern/Southern
+   Ergoth -- named regions visible on the new map; whether any are
+   book-significant enough to warrant a location (vs. just flavor
+   geography) hasn't been checked against the novels/sourcebooks yet --
+   would need the same "research first" pass as any other content
+   addition before committing to specifics. Also folded in here as of
+   Milestone 87: whether any of `References/portcities.txt`'s other
+   named ports (New Ports, Caergoth, Flotsam, Sanction, ...) deserve a
+   real modeled location -- that file is a geography reference the user
+   compiled, not itself a verified canon source, so any candidate would
+   need the same novels/sourcebooks check before committing to specifics.

@@ -51,7 +51,8 @@ separate look. The whole continent is a
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
-Silvanesti, Kalaman, Palanthas, Godshome, Neraka, ...) sit on that grid, most connected by roads baked
+Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
+Isle, ...) sit on that grid, most connected by roads baked
 into the terrain — Ice Wall is the one exception, a sea-locked ruin
 reachable only by arranging passage and crossing open water (see below) —
 and every one of them now has a walkable interior (Enter to step in) —

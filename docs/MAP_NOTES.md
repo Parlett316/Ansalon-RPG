@@ -36,7 +36,7 @@ DESC <text>              one-line description, rest of line
 END                      closes the block
 ```
 
-`TOWN` is set on exactly 5 of the 13 locations -- Solace, Haven, Kalaman,
+`TOWN` is set on exactly 5 of the 15 locations -- Solace, Haven, Kalaman,
 Tarsis, Palanthas -- the ones already carrying a civilian-settlement
 `TERRAIN` tag. Fortresses, ruins, the nomadic Plains of Dust village, and
 the (deliberately excluded, for lore reasons) elven homelands don't have
@@ -399,6 +399,226 @@ specific reported `(174,106)` tile — was reverified end-to-end reachable
 using a 4-directional-only BFS against the same passability rule
 `world::terrainFor` uses at runtime (a throwaway verification script, run
 once and deleted, per this project's self-test-then-delete convention).
+
+## Higher-fidelity map re-derivation (Milestone 85)
+
+Every placement above was derived from
+`References/DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg`, a
+10125x6750 JPEG whose labels were illegible at any practical resolution
+for the original 8 locations, and fought JPEG compression noise plus a
+coarse 16-color classification for every placement since. The user found
+a much higher-fidelity map, `References/dragonlancemap2.png` (8192x5461,
+clean linework, legibly labeled down to small settlements), and this
+milestone re-pointed the whole pipeline at it and re-derived every
+location's `POS` from actually-read labels instead of relative-geography
+guesses.
+
+**A second image, `References/map-mt98e24b.png`, was investigated and
+ruled out as a data source.** It's an ASCII-art conversion of the same
+map the user also provided; zooming in shows character choice follows
+local luminance/density (a cosmetic photo-to-ASCII filter), not terrain
+semantics -- there's no reliable way to recover "this character means
+forest" from it. Per the user it's inspiration for a possible future
+overworld-rendering style, unrelated to this milestone's data work -- not
+acted on here.
+
+**Terrain classification improved substantially, not just location
+precision.** `NUM_COLORS` was bumped from 16 to 32 and, rather than
+judging raw RGB triples by eye as before, each candidate bucket was
+verified by an index mask (highlighting one discovered color at a time in
+red against the rest of the downsampled image) before assigning it a
+terrain key -- see the `INDEX_TO_TERRAIN` comment in
+`tools/generate_overworld.py` for the full per-index reasoning. Two
+concrete wins over the old classification:
+- **Glacier is recoverable this time** (`:`, previously undiscoverable at
+  any tried `NUM_COLORS`) -- one discovered color traces the Icewall
+  Glacier, a Sancrist/Ergoth-area highland, and a barren "Northern
+  Wastes" patch cleanly. Ice Wall Castle's new `POS` lands directly on
+  real generated glacier (confirmed by checking a wide neighborhood of
+  tiles around it, not just the single tile), so **Milestone 36's
+  46-tile hand-painted glacier patch was retired, not reapplied** -- it's
+  no longer needed and the standing "hand-edits don't survive a
+  regenerate" caveat no longer applies to Ice Wall's surroundings.
+- **The Blood Sea's color bucket traces only the Blood Sea itself** (plus
+  a couple of stray single-tile dots elsewhere, most likely small
+  red-inked region-boundary dashes on this map bleeding into the same
+  quantization bucket -- harmless, since nothing routes through them).
+  This map does **not** reproduce the old JPEG's mountain-shadow-into-
+  Blood-Sea misclassification documented above in the High Clerist's
+  Tower section -- that was specific to the old source image's
+  compression artifacts, not a limitation of the classification method
+  itself.
+
+Bog and salt_flat still did not emerge as distinct colors at
+`NUM_COLORS=32` -- same honest gap as before, not invented. Forest vs.
+plains vs. hills also still don't cleanly separate by flat color (mask
+inspection showed these buckets are mostly scattered shading/hatch-line
+noise from the map's painted texture, not one coherent region each) --
+approximated the same way the old classification was, by G-vs-R channel
+lean per bucket, disclosed as approximate rather than treated as precise.
+
+**11 of the 15 locations were placed from a directly legible label or
+icon this time** (Solace, Haven, Xak Tsaroth, Qualinesti -- city labeled
+"Qualinost" -- Pax Tharkas, Tarsis, High Clerist's Tower, Silvanesti --
+city "Silvanost" -- Kalaman, Palanthas, Godshome, Neraka), plus Plains of
+Dust (a region label, not a settlement icon -- placed centrally within
+the labeled region on savannah/hills terrain, same spirit as the
+original placement). Each was read via a full-resolution crop with a
+burned-in pixel-coordinate grid overlay (gridlines every 25-50px,
+labeled), converted to grid coordinates at this image's
+8192/480 = 5461/320 ~= 17.07 px/grid-unit scale, and cross-checked
+against at least one other already-converted point in the same region
+before trusting nearby readings -- the same discipline Milestone 44
+established after finding a silent pixel bias could otherwise propagate.
+No bias was found this time; e.g. High Clerist's Tower and Palanthas'
+relative offset came out consistent with the old map's own finding (the
+Tower sitting just southeast of Palanthas) even though every individual
+coordinate moved.
+
+**Darken Wood and Ice Wall Castle still have no direct label on this map
+either** (checked multiple crops around both) -- re-anchored using the
+same relative-geography method the originals used: Darken Wood
+positioned between the newly-placed Solace/Haven/Qualinesti cluster
+(which came out much tighter together on this map than the old one
+implied), Ice Wall Castle placed centrally within the newly-generated
+glacier landmass southwest of Tarsis, in the same relative direction the
+old placement used. Both remain disclosed as approximate, per this file's
+standing honesty rule.
+
+Every location's `POS` (`x y`, old -> new):
+
+| Location | Old | New | Basis |
+|---|---|---|---|
+| Solace | 185,230 | 191,200 | direct label |
+| Darken Wood | 192,248 | 189,208 | approximate (re-anchored) |
+| Haven | 205,250 | 189,213 | direct label |
+| Xak Tsaroth | 215,265 | 202,203 | direct label |
+| Qualinesti | 150,245 | 184,217 | direct label ("Qualinost") |
+| Pax Tharkas | 160,270 | 192,221 | direct label |
+| Plains of Dust | 205,285 | 254,258 | region label |
+| Tarsis | 170,300 | 197,274 | direct label |
+| High Clerist's Tower | 173,100 | 194,95 | direct label |
+| Ice Wall Castle | 110,307 | 150,305 | approximate (re-anchored) |
+| Silvanesti | 312,231 | 341,236 | direct label ("Silvanost") |
+| Kalaman | 262,73 | 267,69 | direct label |
+| Palanthas | 167,85 | 190,79 | direct label |
+| Godshome | 267,139 | 294,134 | direct label |
+| Neraka | 273,140 | 301,137 | direct label |
+
+`GRID_WIDTH=480` was left unchanged -- the new image's aspect ratio
+(8192/5461 ~= 1.4998) is close enough to the old one (10125/6750 = 1.5)
+that the generated grid is still 480x320, so no other code needed to
+change. `ROAD_PAIRS` itself is unchanged (same 14 connections); only the
+coordinates they resolve to moved. All 14 were re-verified end-to-end
+reachable with a throwaway 4-directional BFS against the real generated
+grid (same self-test-then-delete approach the "Road 4-connectivity fix"
+above used), and every location's `POS` was confirmed to land on
+passable terrain -- 14 of the 15 land on a drawn road tile automatically
+(a location connected by at least one `ROAD_PAIRS` entry always does, per
+`docs/GOTCHAS.md`); Ice Wall Castle, which by design has no
+`ROAD_PAIRS` entry, was checked directly and confirmed to sit solidly
+inside the glacier landmass, not an isolated tile.
+
+The old reference JPEG stays in `References/` -- this milestone's writeup
+and every earlier one in this file still cite it, and there's no reason
+to delete a still-referenced historical asset.
+
+## Thorbardin and Sancrist Isle (Milestone 86)
+
+Two new locations, placed with the same full-resolution-crop-plus-pixel-
+grid-overlay method Milestone 85 used throughout, added at the user's
+request after researching *Dragons of Winter Night* turned up strong,
+book-significant content for both (see `docs/TIMELINE_NOTES.md` for the
+full sourcing).
+
+**Thorbardin** reads directly off the reference map at pixel (3230,4080),
+converting to grid `POS 189 239` — close to the already-placed Pax
+Tharkas (`192 221`), matching the books' own "the only way through the
+Kharolis Mountains was through Thorbardin" geography. Lands on `^`
+(hills) in the generated grid; `("pax_tharkas", "thorbardin")` was added
+to `ROAD_PAIRS`, so the location's own tile becomes a `#` road tile
+regardless, per the standing "every road-connected location's `POS` ends
+up on a road tile" guarantee (`docs/GOTCHAS.md`).
+
+**Sancrist Isle** is anchored to Castle Uth Wistan specifically (the
+actual site of Sturm's Knights' Trial), not a generic point on the
+island — same "anchor to the specific named site" precedent Godshome and
+Neraka set for their own regions. Reads at pixel (945,2622), converting
+to grid `POS 55 154`. Lands on `%` (forest) in the generated grid, and —
+checked directly, not assumed — sits solidly inside a large, contiguous
+walkable landmass, not an isolated tile; no `ROAD_PAIRS` entry, same
+sea-locked, boat-only precedent Ice Wall Castle set at Milestone 36.
+
+Both locations' tiles and every `ROAD_PAIRS` connection (16 total after
+this milestone) were re-verified with the same throwaway 4-directional
+BFS approach every map change since the "Road 4-connectivity fix" has
+used.
+
+## Fixing roads that crossed open water (Milestone 87)
+
+Spotted by the user on a rendered view of the map: `ROAD_PAIRS` draws a
+`#` road as a straight Bresenham line between two locations' `POS`
+values, with no regard for what terrain lies between — and a few of
+those straight lines cut across real bodies of water, which Ansalon has
+no bridges over in canon.
+
+**Two different metrics matter here, not one.** `src/world/Terrain.cpp`'s
+own Milestone-84 comment already documents that the generated grid's `r`
+("shallow water") code is "essentially always coastal water... (real
+river fords never survived downsampling)" and was *deliberately* made
+passable with no boat required — an already-shipped design decision this
+milestone doesn't revisit. So the diagnostic that actually matters is:
+does a road's straight-line path cross true impassable `~`/`!` tiles (the
+ones `GameLoop::tryMoveOverworld` gates behind `GameState::hasBoat`), and
+separately, how long a contiguous run of `r` does it cross — a couple of
+tiles reads as an ordinary ford (a real road bridging a stream), a couple
+dozen reads as a paved highway across a named bay.
+
+A throwaway script replayed every `ROAD_PAIRS` pair's exact line against
+the classified (pre-road) grid, and each finding was cross-checked
+against cropped, pixel-marked renders of `References/dragonlancemap2.png`
+at the real position — not just the coded terrain char, since the same
+script's own comments already note this quantization produces "many
+near-identical [ocean] buckets from background noise." Of 15 pairs, 11
+were already clean (0 true-water tiles, longest `r` run 4 tiles — an
+ordinary ford). Four were not:
+
+| Pair | true `~`/`!` | longest `r` run | Resolution |
+|---|---|---|---|
+| `darken_wood`-`qualinesti` | 1 tile | 1 | Noise pixel at the White-face River's mouth, inside an already-`r` field. Patched. |
+| `xak_tsaroth`-`plains_of_dust` | 3 | **27** | Cuts across all of New Bay *and* unrelated land beyond it ("The New Coast," confirmed visually) — also redundant, `xak_tsaroth` already reaches `plains_of_dust` via `haven`→`darken_wood`→`qualinesti`→`pax_tharkas`. **Removed from `ROAD_PAIRS`.** |
+| `solace`-`high_clerist_tower` | 3 | 11 | The 109-tile path is genuinely overland the whole way (matches the source map's own drawn inland trail through Kayolin/Southlund) except an 11-tile clip through the Strait of Schallsea near Restglen — comparable in kind, not degree, to the 3 other already-shipped short `r` fords in this list. Also the *only* connection between the Abanasinia/Kharolis cluster and the Solamnia cluster. **Kept**; its 3 true-water tiles patched (2 are edge pixels of the same already-`r` strait field; the third is unrelated inland noise near the Tower itself, in the Vingaard Mountains with no water feature anywhere nearby). |
+| `solace`-`silvanesti` | 10 | **25** | Crosses Good Bay/New Bay for 25 contiguous tiles right after leaving Solace, near Xak Tsaroth/New Ports — same category of problem as the `xak_tsaroth` pair. Matches Silvanesti's own DESC ("sealed off... No human is known to have set foot here") and Ice Wall Castle's existing "No road reaches it — only the sea does" precedent. **Removed from `ROAD_PAIRS`**; Silvanesti keeps its `POS` (still walkable to cross-country, just undrawn — see the BFS note below). |
+
+`tools/generate_overworld.py` gained `MANUAL_TERRAIN_OVERRIDES`, a small
+`(x, y) -> terrain key` dict applied to the classified grid before
+`ROAD_PAIRS` are drawn, patching the four true-water noise tiles above
+(three to `river`, matching their already-`r`-coded neighbors; the
+Tower-area one to `forest`, matching the majority of its 8 neighbors).
+Each entry cites the real feature it corrects, same style as
+`INDEX_TO_TERRAIN`'s own comments.
+
+**Why no new port-city location** (the user asked to cross-reference
+`References/portcities.txt`): neither real fix above needed one — both
+resolve by deleting a bogus/redundant straight-line road, not by adding a
+sea lane. Existing modeled ports (Palanthas, Kalaman — both named in
+`portcities.txt` — plus Tarsis's `BOAT` grant and Sancrist Isle) remain
+the game's only port infrastructure. `portcities.txt` is a geography
+reference the user compiled, not itself a verified canon source, so
+adding any of its other entries (New Ports, Caergoth, Flotsam, Sanction,
+...) as a real location would need the same "check the actual novels/
+sourcebooks first" pass Thorbardin/Sancrist Isle got before Milestone 86
+— folded into `docs/MILESTONES.md`'s NEXT UP rather than decided here.
+
+**Verification**: re-ran the line-walk check against all 13 remaining
+`ROAD_PAIRS` — 0 tiles of `~`/`!` crossed anywhere. A throwaway BFS over
+the regenerated grid confirmed every location (including Silvanesti, Ice
+Wall Castle, and Sancrist Isle) stays reachable by foot with no boat —
+unsurprising and unchanged from before this milestone, since raw terrain
+walking (not roads) has always been what determines reachability; roads
+only affect travel time and appearance (`docs/ARCHITECTURE.md`). The
+"no road reaches it" locations were never a hard gate, just flavor for
+"nobody bothers going this way."
 
 ## Extending the map
 

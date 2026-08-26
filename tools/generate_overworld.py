@@ -38,13 +38,13 @@ from pathlib import Path
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE_IMAGE = REPO_ROOT / "References" / "DragonLance_-_Continent_of_Ansalon_-_Age_of_Despair.jpg"
+SOURCE_IMAGE = REPO_ROOT / "References" / "dragonlancemap2.png"
 OUTPUT_GRID = REPO_ROOT / "data" / "overworld.grid"
 PREVIEW_IMAGE = REPO_ROOT / "data" / "overworld_preview.png"  # inspection aid only, gitignored
 LOCATIONS_FILE = REPO_ROOT / "data" / "locations.txt"
 
 GRID_WIDTH = 480  # tiles across the continent's full bounding box; height follows the image's aspect ratio
-NUM_COLORS = 16   # dominant colors to reduce the map to during discovery
+NUM_COLORS = 32   # dominant colors to reduce the map to during discovery
 
 # Terrain keys -> the single ASCII character baked into data/overworld.grid.
 # This table is the shared vocabulary between this script and
@@ -67,36 +67,74 @@ TERRAIN_CHARS = {
 }
 
 # Filled in by hand after running Phase 1 and inspecting
-# data/overworld_preview.png against the reference map. Maps a discovered
-# palette index (printed by Phase 1) to a key from TERRAIN_CHARS above.
-# Assigned by inspecting data/overworld_preview.png against the reference
-# map (see docs/MAP_NOTES.md for the reasoning): 8-12/14/15 are all subtly
-# noisy shades of the same dark teal ocean background (JPEG compression
-# noise splits what should be one color across several quantization
-# buckets); 13 is the Blood Sea's solid maroon fill; 3/6 are two shades of
-# the forest fill; 7 is the lighter coastal-shallows blue (thin river lines
-# mostly don't survive this downsample resolution, so this is treated as
-# fordable shallow water, not literal rivers). Glacier/bog/salt_flat did not
-# emerge as distinct colors at NUM_COLORS=16 -- they simply won't appear in
-# this generated grid; a higher NUM_COLORS or hand-editing the output would
-# be needed to add them.
+# data/overworld_preview.png against the reference map (see docs/MAP_NOTES.md
+# for the full writeup of this pass, done against the higher-fidelity
+# References/dragonlancemap2.png at NUM_COLORS=32). Assigned by index-mask
+# inspection (highlighting one bucket at a time in red against the rest,
+# rather than judging raw RGB triples by eye):
+#   0 is a genuinely distinct warm off-white that traces the Icewall
+#     Glacier, a Sancrist/Ergoth-area highland, and the "Northern Wastes"
+#     barren patch near "City of Lost Names" -- glacier is recoverable this
+#     time (conflated with one barren-wasteland patch that has no game
+#     content near it, an accepted minor imprecision).
+#   16 is a solid, isolated maroon that traces exactly the Blood Sea's
+#     spiral outline and nothing else -- notably, this map does NOT
+#     reproduce the old JPEG's mountain-shadow-into-Blood-Sea
+#     misclassification documented in docs/MAP_NOTES.md's High Clerist's
+#     Tower section.
+#   17 is a solid dark brown that traces every major mountain range
+#     (Vingaard, Kharolis/Thorbardin, Khalkist/Taman Busuk, the western
+#     island chains) cleanly.
+#   12/13/14/15 are a lighter teal that traces coastal-shallows fringes
+#     plus real inland river-line squiggles -- same "fordable shallow
+#     water, not literal rivers" treatment the old map used for its
+#     equivalent color.
+#   1/2/5 are pale olive-tan -> grassland/savannah; 4/8/9 are darker
+#     brown-olive (G<=R) -> hills; 3/6/7/10/11 are green-leaning (G>R)
+#     -> forest. This is still an approximation, same as the old map's
+#     classification -- painted/textured map art doesn't cleanly separate
+#     "forest green" from "plains green" by flat color at any practical
+#     NUM_COLORS, index-mask inspection confirmed these buckets are mostly
+#     scattered shading/hatch-line noise rather than one coherent region
+#     each.
+#   18-31 are the remaining dark teal shades (ocean, confirmed by mask
+#     inspection to trace the coastline cleanly, including the old map's
+#     "many near-identical buckets from background noise" pattern).
+# Bog and salt_flat again did not emerge as distinct colors at
+# NUM_COLORS=32 -- see docs/MAP_NOTES.md.
 INDEX_TO_TERRAIN: dict[int, str] = {
-    0: "grassland",
+    0: "glacier",
     1: "savannah",
-    2: "grassland",
+    2: "savannah",
     3: "forest",
     4: "hills",
-    5: "mountain",
+    5: "savannah",
     6: "forest",
-    7: "river",
-    8: "ocean",
-    9: "ocean",
-    10: "ocean",
-    11: "ocean",
-    12: "ocean",
-    13: "blood_sea",
-    14: "ocean",
-    15: "ocean",
+    7: "forest",
+    8: "hills",
+    9: "hills",
+    10: "forest",
+    11: "forest",
+    12: "river",
+    13: "river",
+    14: "river",
+    15: "river",
+    16: "blood_sea",
+    17: "mountain",
+    18: "ocean",
+    19: "ocean",
+    20: "ocean",
+    21: "ocean",
+    22: "ocean",
+    23: "ocean",
+    24: "ocean",
+    25: "ocean",
+    26: "ocean",
+    27: "ocean",
+    28: "ocean",
+    29: "ocean",
+    30: "ocean",
+    31: "ocean",
 }
 
 # Location id pairs to connect with a drawn road ('#') in the generated
@@ -104,6 +142,19 @@ INDEX_TO_TERRAIN: dict[int, str] = {
 # (see docs/ARCHITECTURE.md) -- this list is the one place that road
 # connectivity still needs to be specified, since data/locations.txt no
 # longer carries CONNECT lines.
+#
+# Milestone 87 removed two entries that used to be here --
+# ("xak_tsaroth", "plains_of_dust") and ("solace", "silvanesti") -- because
+# their straight-line paths cut across real open bays (New Bay / Good Bay)
+# for 25-27 contiguous tiles, not a fordable pixel or two. The former was
+# also redundant (xak_tsaroth already reaches plains_of_dust via
+# haven -> darken_wood -> qualinesti -> pax_tharkas); the latter matches
+# Ice Wall Castle's existing "no road reaches it" precedent and Silvanesti's
+# own "sealed off" DESC. See docs/MAP_NOTES.md's "Fixing roads that crossed
+# open water" for the full diagnosis (including why the remaining roads'
+# short crossings of 'r' shallow water are fine, and MANUAL_TERRAIN_OVERRIDES
+# below for the handful of true-'~'-noise pixels patched so no kept road
+# touches truly impassable terrain).
 ROAD_PAIRS = [
     ("solace", "darken_wood"),
     ("darken_wood", "haven"),
@@ -111,15 +162,36 @@ ROAD_PAIRS = [
     ("haven", "xak_tsaroth"),
     ("qualinesti", "pax_tharkas"),
     ("pax_tharkas", "plains_of_dust"),
-    ("xak_tsaroth", "plains_of_dust"),
     ("plains_of_dust", "tarsis"),
     ("solace", "high_clerist_tower"),
-    ("solace", "silvanesti"),
     ("high_clerist_tower", "kalaman"),
     ("high_clerist_tower", "palanthas"),
     ("kalaman", "godshome"),
     ("godshome", "neraka"),
+    ("pax_tharkas", "thorbardin"),
 ]
+
+# Hand-corrected tiles (Milestone 87): pixels the NUM_COLORS=32 quantization
+# bucketed into "ocean" even though they aren't part of any real open-sea
+# polygon -- confirmed by cropping References/dragonlancemap2.png at each
+# point and checking immediate-neighbor terrain majority. Applied to the
+# classified grid before ROAD_PAIRS are drawn, so a road stamped over one of
+# these tiles never turns truly-impassable terrain into a fake, boat-free
+# bridge. See docs/MAP_NOTES.md for the full per-tile writeup.
+MANUAL_TERRAIN_OVERRIDES: dict[tuple[int, int], str] = {
+    # White-face River's mouth (on the darken_wood-qualinesti road):
+    # a 1-tile '~' pixel sitting inside an otherwise-solid 'r' (coastal
+    # shallow) field -- the same feature, misclassified by one pixel.
+    (187, 210): "river",
+    # Strait of Schallsea (on the solace-high_clerist_tower road): two
+    # edge pixels of the same already-'r'-coded strait field.
+    (191, 187): "river",
+    (192, 176): "river",
+    # Inland noise near High Clerist's Tower itself (Vingaard Mountains,
+    # no water feature anywhere nearby) -- majority of its 8 neighbors
+    # are forest, so that's what it's corrected to.
+    (194, 98): "forest",
+}
 
 
 def load_location_positions() -> dict[str, tuple[int, int]]:
@@ -221,6 +293,9 @@ def main() -> None:
     for y in range(grid_height):
         row = [TERRAIN_CHARS[INDEX_TO_TERRAIN.get(indices[y * GRID_WIDTH + x], "unknown")] for x in range(GRID_WIDTH)]
         grid.append(row)
+
+    for (ox, oy), terrain_key in MANUAL_TERRAIN_OVERRIDES.items():
+        grid[oy][ox] = TERRAIN_CHARS[terrain_key]
 
     positions = load_location_positions()
     road_char = TERRAIN_CHARS["road"]

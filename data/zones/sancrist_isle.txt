@@ -1,0 +1,31 @@
+# data/zones/sancrist_isle.txt -- hand-authored walkable interior: Castle
+# Uth Wistan on Sancrist Isle, seat of Lord Gunthar and the site of
+# Sturm's Knights' Trial (Milestone 86 -- Dragons of Winter Night, "The
+# Knights Trials"). The filename stem ("sancrist_isle") is the zone id
+# and MUST match the LOCATION id in data/locations.txt for the Enter key
+# to find it. Grammar: docs/ZONE_NOTES.md
+NAME Sancrist Isle
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#...................T..................#
+#......................................#
+#......................................#
+#......................................#
+#.........Q...................F........#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+##################...###################
+ENDGRID
+POI T "The Great Hall of Castle Uth Wistan" A massive black oak table dominates the hall, three seats behind it for the Grand Master, the High Clerists, and the High Justice -- two of those three offices empty since the Cataclysm, filled today by whoever the Order can still agree to trust. Stone benches ring the floor for the assembled witnesses. A fire cracks in the great hearth, throwing sparks toward a ceiling lost in shadow.
+POI Q "The Guest Quarters" A modest stone room set aside for visitors the castle doesn't quite know what to do with -- too honored to turn away, not quite knights themselves. A window looks out over the harbor and the grey winter sea beyond it.
+POI F "The Yule Fire Room" A small chamber decorated for the approaching Yule season -- red winter roses grown indoors against the cold, kingfisher feathers, tiny golden crowns strung along the mantel. A fire blazes here even when the rest of the castle runs cold, the one room in Castle Uth Wistan that seems to have decided the war can wait at the door.
+TIMELINE_ANCHOR T
+END

@@ -1093,6 +1093,57 @@ Kitiara, Ariakas, and Lord Soth remain off-stage. See
 own real reunion scene with Caramon here does **not** add a
 `PRESENCE neraka` entry to Raistlin's own `CHARACTER` block.
 
+## Thorbardin (Milestone 86)
+
+`data/zones/thorbardin.txt` — a 40×16 grid with a full `#` border
+(carved dwarven halls, not open sky — closer to Neraka's walled-compound
+precedent than Godshome's open bowl). Three POIs: the Great Hall of
+Audience (`H`, the `TIMELINE_ANCHOR` — the Hammer of Kharas ceremony's
+actual setting, the seven Thane-thrones folded into its own description
+rather than given a separate POI), Southgate (`G`, flavor-only, the
+sixty-foot gate mechanism), and the Refugee Quarter (`R`, the zone's one
+talkable NPC).
+
+**The Refugee Quarter's NPC is deliberately unnamed, not Hederick.**
+*Dragons of Winter Night*'s Council-of-Highseekers scene has Hederick
+himself voice the "we're grateful, but we're not dwarves" complaint this
+NPC's dialogue is grounded in — but Hederick is an established DAT-era
+character (Solace's corrupt Theocrat) this project hasn't sourced
+speaking at Thorbardin specifically, and giving him new dialogue here
+without a fresh, direct citation for it would be inventing rather than
+adapting. A generic refugee voices the same real sentiment instead, same
+"non-Hero-voiced window" precedent Neraka's Deserting Guard and Xak
+Tsaroth's Ruin-Scavenger already established.
+
+See `docs/TIMELINE_NOTES.md`'s "Thorbardin" section for the full
+sourcing and the `PRESENCE thorbardin 13 19` content shipped for all 8
+Heroes.
+
+## Sancrist Isle (Milestone 86)
+
+`data/zones/sancrist_isle.txt` — a 40×16 grid, full `#` border (a real
+castle, same fortress idiom as Pax Tharkas/Ice Wall/Neraka). Three POIs,
+all flavor-only: the Great Hall of Castle Uth Wistan (`T`, the
+`TIMELINE_ANCHOR` — the Knights' Trial's actual setting, the vacant
+Grand Master/High Clerist seats folded into its own description), the
+Guest Quarters (`Q`, where the text confirms Flint and Tasslehoff stayed
+during the trial), and the Yule Fire Room (`F`, the small room Gunthar
+takes Sturm to afterward for his private blessing — evergreen, true
+whether a player visits before, during, or after the tracked Heroes'
+window, same treatment every other zone's atmosphere-only POI gets).
+
+**No talkable NPC** — unlike every other fortress zone in this project
+(Pax Tharkas's Fortress Guard, Ice Wall's Young Knight, Neraka's
+Deserting Guard), Sancrist Isle's only sourced on-page dialogue belongs
+to Sturm, Flint, Tasslehoff, and Laurana themselves, all four already
+covered via `TIMELINE_ANCHOR T`. Inventing a fifth, generic castle
+guard just to have a zone-native NPC would be adding content the source
+doesn't call for, not filling a real gap.
+
+This reverses this project's own prior "deliberately not modeled" call
+for Sancrist Isle — see `docs/TIMELINE_NOTES.md`'s "Sancrist Isle"
+section for the full reasoning, the reversal, and complete sourcing.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

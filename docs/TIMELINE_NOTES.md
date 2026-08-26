@@ -781,6 +781,70 @@ an older section below still describes a since-named character as
 describes, not the current state — check the character's own `CHARACTER`
 block in `data/timeline.txt` for what's actually shipped.
 
+## Thorbardin (Milestone 86)
+
+Added well after the rest of this file's *Dragons of Winter Night*
+content, once Milestone 85's higher-fidelity map made it possible to
+place precisely — but chronologically, it's the book's actual opening,
+predating everything in "the party splits" below. **Correction to that
+section's own framing**: "*Dragons of Winter Night* opens with the whole
+party together in Tarsis" (next section) describes where the shared
+8-Hero schedule's `tarsis 20 22` window picks the story back up, not
+literally the book's first page — the book opens at Thorbardin instead,
+with the party already a month settled there since Pax Tharkas.
+
+**Sourcing.** `dwn.txt` (this milestone's own `pdftotext -layout`
+extraction of *Dragons of Winter Night*) lines 159-331: the Hammer of
+Kharas ceremony in the Great Hall of Audience, Thane Hornfel of the Hylar
+receiving the recovered Hammer from Elistan, with Tanis and Sturm both
+on-page and speaking, and Raistlin conjuring an illusory dragonlance for
+Sturm immediately after ("without benefit of the Hammer or the Silver
+Arm"). Lines 333-399 (Book I's opening): the Council of Highseekers,
+Raistlin's "missing constellations" warning (the Queen of Darkness and
+Paladine's own constellations gone dark from the sky, read as proof the
+gods are personally on Krynn), Tanis assumed into leading a delegation to
+Tarsis, and confirmation the refugees have been settled in Thorbardin's
+Southgate for "the month since... Derkin's Tomb" (i.e. since Pax
+Tharkas). Lines 399-648: Tanis, Sturm, Elistan, and Laurana at the
+Southgate gate itself (Caramon catching Raistlin mid-coughing-fit after
+the Council speech is in the same stretch), then the company's departure
+onto the snow-covered Plains of Dust, Riverwind visibly more at ease once
+back under open sky.
+
+**`PRESENCE thorbardin 13 19`, all 8 Heroes** — fits the existing gap
+between `pax_tharkas 10 12` and `tarsis 20 22` exactly, matching "the
+month since Derkin's Tomb" framing. Real, sourced `SAY`/`TOPIC`/`SAY_IF`
+content went to all 8: Tanis (the leadership burden, Raistlin's warning),
+Raistlin (the missing-constellations speech itself, plus a `SAY_IF mage`
+referencing the dragonlance illusion), Caramon (catching his brother,
+plus a `SAY_IF fighter` on Southgate's gate mechanism), Flint (a direct
+payoff of his pre-existing character-level `SUBJECT
+dwarf,hill,thorbardin,cataclysm` grudge — watching the Mountain Dwarves
+take in refugees who have even less claim on them than his own Hill
+Dwarf kin ever did), Sturm (the Hammer's "ransom, not a gift" bitterness,
+and the dragonlance illusion from the other side), Tasslehoff (night
+watch duty at Southgate, played for comedy same as everywhere else), and
+Goldmoon/Riverwind, who — same restraint this file applies everywhere
+(Riverwind at Haven, etc.) — got material only as specific as the source
+actually supports: Goldmoon moving among the Refugee Quarter (a healer's
+instinct, not a named scene), Riverwind's real "stared uneasily at the
+trail" discomfort under stone (`dwn.txt` line 673, technically just past
+Southgate's threshold on the way out, used here as the closing beat of
+this window rather than invented from nothing).
+
+The new zone, `data/zones/thorbardin.txt`, anchors on the Great Hall of
+Audience (`TIMELINE_ANCHOR H` — the actual ceremony's setting, the seven
+Thane-thrones folded into its own description) plus Southgate itself
+(flavor, the gate mechanism) and the Refugee Quarter (a talkable,
+unnamed refugee voicing the real "we're grateful, but we're not dwarves"
+sentiment from Hederick's Council complaint — deliberately not voiced by
+Hederick himself, since he's an established DAT-era character this
+project hasn't sourced speaking here). `("pax_tharkas", "thorbardin")`
+was added to `ROAD_PAIRS` — nearest already-modeled location, both
+geographically (the map's own Thorbardin sits just south of Pax Tharkas)
+and narratively (the books' own "the only way through the Kharolis
+Mountains was through Thorbardin").
+
 ## Dragons of Winter Night: the party splits (Milestone 35)
 
 The first timeline content sourced from a novel beyond *Dragons of Autumn
@@ -815,22 +879,28 @@ matches "Castle Uth Wistan," confirmed by name on the reference map, a
 nice unplanned cross-check) — and finally to the High Clerist's Tower for
 the siege, the Knighting, and Sturm's death (lines 13500-15000+).
 
-**Sancrist Isle is deliberately not modeled, even after Milestone 36 added
-sea travel.** It's a real, richly documented scene — Derek Crownguard's
-accusation, Gunthar's procedural rescue of Sturm via a gap in the Measure,
-the Order splitting into pro-Gunthar/pro-Derek factions on the spot — but
-adding a boat mechanic for Ice Wall doesn't retroactively make every other
-ocean-locked location worth building; Sancrist's trial content is already
-covered as folded-in retrospective `TOPIC` dialogue at the Tower (see
-Milestone 35 above) and duplicating it as an actual walkable stop would be
-scope creep, not a gap this project failed to notice. Its content stays
-folded into the Tower zone's Knight NPC as retrospective `TOPIC` dialogue
-— he can talk about a trial he witnessed, the same "describe, don't model"
-treatment the game already gives Sla-Mori or the Inn's upper floor.
+**Sancrist Isle was originally left unmodeled at this milestone, on the
+reasoning above — reversed at Milestone 86, at the user's explicit
+request, after being shown this exact paragraph.** The original call was
+sound as far as it went (adding a boat mechanic for Ice Wall doesn't by
+itself justify building every other ocean-locked location, and the trial
+content really was already covered as folded-in retrospective dialogue),
+but the user weighed that against wanting the scene modeled directly and
+chose to override it. See "Sancrist Isle (Milestone 86)" below for the
+real stop this became — same "policy reversed... at the user's explicit
+request" treatment `docs/TIMELINE_NOTES.md` already gives the named-vs.-
+off-stage-character policy (Milestones 48-49). The Tower's own folded-in
+retrospective dialogue (Laurana's "The Writ of Vindication" `TOPIC`,
+and the Knight NPC's `TOPIC "The Knights' Trial"` in
+`data/zones/high_clerist_tower.txt`) was deliberately left in place rather
+than deleted — a returning visitor's retrospective account of a trial
+they attended is still perfectly consistent once the trial itself is also
+a real, earlier stop, not a contradiction to clean up.
+
 Vingaard Keep, similarly, is only ever mentioned in the text (a cut-off
 supply source, Sturm's ancestral homeland) and never visited on-page —
 confirmed by checking every mention in the extracted text before writing
-anything, not assumed.
+anything, not assumed. No milestone has revisited that call.
 
 **Day-range placement.** The existing 8-Hero schedule ends at
 `pax_tharkas 10 12`. The new `tarsis 20 22` window (all 8) and
@@ -914,6 +984,88 @@ flavor). The Runner represents passage arranged by Derek Crownguard's
 knights, who the text confirms "joined them at Tarsis" (`dwn_full.txt`
 line 5720) after making camp outside the city during the dragon attack
 (lines 2424-2425).
+
+## Sancrist Isle (Milestone 86)
+
+Reverses the "deliberately not modeled" call this file made when Ice Wall
+shipped (see above) — at the user's explicit request, after being shown
+that exact paragraph. `data/zones/sancrist_isle.txt` and a new
+`PRESENCE sancrist_isle` window replace the "describe, don't model"
+treatment with a real stop.
+
+**Sourcing.** `dwn.txt` lines 10237-10786, the full Knights' Trial
+chapter: Derek Crownguard accuses Sturm of cowardice and disobeying
+orders (over refusing to order an attack on elves who were only trying
+to stop the dragon orb reaching Sancrist, not trying to kill anyone —
+Sturm's own defense: "all know the elves are expert marksmen. If they
+had wanted to kill us, they would not have been hitting trees"), in the
+Great Hall of Castle Uth Wistan before Lord Gunthar Uth Wistan, Lord
+Alfred MarKenin, and Lord Michael Jeoffrey, witnessed by twenty knights
+gathered from across Sancrist. Gunthar's verdict: knighted into the
+Order of the Crown on his own honor, made third-in-command of the army
+sailing for Palanthas — a provisional vindication, not a full one (he's
+still forbidden to wear his father's armor, carrying it instead, until
+further proof clears him). Afterward, alone with Sturm, Gunthar gives
+him a father's blessing in a small room decorated for the approaching
+Yule season (this milestone's `data/zones/sancrist_isle.txt` "Yule Fire
+Room" POI).
+
+**Flint and Tasslehoff are not on-page inside the trial hall itself** —
+the twenty witnesses are explicitly Knights of Solamnia, and neither a
+dwarf nor a kender would be one. They're confirmed on Sancrist all the
+same: lines 12526-12527, later in the book, place them (with Elistan)
+"staying as [Gunthar's] guests" at the castle. Rather than either
+inventing their presence in the hall or leaving them out of a stop the
+text confirms they were at, their `PRESENCE sancrist_isle` content is
+grounded in waiting at the castle during the trial, not witnessing it
+directly — the zone's "Guest Quarters" POI reflects this.
+
+**Laurana was added too, beyond this milestone's original 3-Hero plan
+(Sturm/Flint/Tasslehoff) — a correction made during research, not a
+late scope change.** She already carried both `ice_wall 38 42` and
+`high_clerist_tower 76 80` windows before this milestone touched
+anything, meaning the existing timeline already tracked her through this
+same leg of the journey. Fresh sourcing confirmed why: `dwn.txt` lines
+5900-6000 (aboard the ship south, elves/Southern Ergoth conversation)
+and, decisively, lines 10742-10761 — Gunthar asking Sturm, as the ships
+prepare to sail for Palanthas, whether any of his friends "would be
+coming to Sancrist" who could serve as witnesses, and Sturm naming
+Laurana specifically, "daughter of the Speaker of the Suns." Her own
+`PRESENCE sancrist_isle` content (Gunthar recruiting her plainly as a
+political counterweight to Derek, her testimony before the Council)
+directly sets up what was already shipped at her `high_clerist_tower
+76 80` window's `TOPIC "The Writ of Vindication"` — that content was
+written before this milestone existed and already had her say "I stood
+before the full Knights' Council and spoke for Sturm myself," which
+this milestone's new Sancrist window now actually shows happening,
+rather than leaving it as an assertion with no matching scene.
+
+**Day-range placement.** `sancrist_isle 55 60` sits between the shared
+trio's `ice_wall 38 42` and `high_clerist_tower 76 80` windows, same
+soft-placement treatment Milestone 36 used for Ice Wall's own range —
+"the beginning of the Yuletide season" (`dwn.txt` line 10258) is the
+only real seasonal cue in the text, read here as roughly the midpoint of
+the ~2-3 month Pax-Tharkas-to-Sturm's-death span this file's own Ice
+Wall section already established. One shared window for all four
+Heroes, even though Laurana's own arrival (tied to the later, larger
+gathering that also brought Flint and Tasslehoff) reads as chronologically
+a little after Sturm's own solitary trial — the same "whole company at
+one stop, not a literal single-path simulation" abstraction this file
+already leans on everywhere else (see "Dragons of Winter Night: the
+party splits" above).
+
+**No new travel mechanic needed.** Sancrist Isle has no `ROAD_PAIRS`
+entry, same precedent as Ice Wall — reached by the same
+`GameState::hasBoat` grant `data/zones/tarsis.txt`'s Knight's Runner
+already provides, since this is the same sea voyage continuing, not a
+new one.
+
+**The Tower's existing folded-in retrospective dialogue was kept, not
+deleted.** Laurana's own `TOPIC "The Writ of Vindication"` and
+`data/zones/high_clerist_tower.txt`'s Knight NPC (`TOPIC "The Knights'
+Trial"`) both still work exactly as written — a returning visitor's
+account of a trial they attended stays consistent whether or not the
+trial itself is also a stop the player can visit directly.
 
 ## Silvanesti (Milestone 37)
 
