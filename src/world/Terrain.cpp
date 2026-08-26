@@ -18,17 +18,16 @@ namespace {
 // sourced) risk -- roads safest, forest/mountains riskiest -- see
 // docs/COMBAT_NOTES.md's "Encounters" section.
 constexpr std::array<TerrainInfo, 12> kTable = {{
-    // Ocean's minutesToCross/encounterChancePercent were irrelevant while it
-    // was unconditionally impassable; now that GameState::hasBoat can cross
-    // it (Milestone 36), it gets real (still invented-for-pacing) values.
-    // encounterChancePercent stays 0 -- no sea monsters exist in the
-    // monster roster yet, so a random encounter here would draw a land
-    // creature into open water; revisit if sea monsters are ever added.
-    {'~', '~', "\x1b[34m", false, 30, "the ocean", 0, true},
-    // The Blood Sea stays impassable even with a boat -- not an oversight,
-    // a sourced restraint: the Blood Sea of Istar is supernaturally
-    // hazardous in canon, and no lore is invented here about ships
-    // crossing it. See docs/MAP_NOTES.md / docs/TIMELINE_NOTES.md.
+    // Ocean is unconditionally impassable -- no general open-water sailing
+    // is modeled (Milestone 36's hasBoat/crossableByBoat mechanic was
+    // retired in favor of scripted point-to-point voyages; see
+    // world::Zone::BoatVoyage / docs/ARCHITECTURE.md). Specific sea
+    // journeys (e.g. Tarsis to Ice Wall Castle) are handled entirely as a
+    // talk-triggered location jump, not by making ocean tiles walkable.
+    {'~', '~', "\x1b[34m", false, 0, "the ocean", 0},
+    // The Blood Sea of Istar is supernaturally hazardous in canon -- no
+    // lore is invented here about ships crossing it. See docs/MAP_NOTES.md /
+    // docs/TIMELINE_NOTES.md.
     {'!', '~', "\x1b[31m", false, 0, "the Blood Sea", 0},
     // Zeroed (Milestone 84) for the same reason ocean/Blood Sea are 0%: no
     // sea monsters exist in the roster, and per docs/MAP_NOTES.md this code

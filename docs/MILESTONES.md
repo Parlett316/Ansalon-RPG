@@ -2318,6 +2318,115 @@ section).
     "Fixing roads that crossed open water" for the full pair-by-pair
     writeup.
 
+88. Replaced the global sea-travel flag with a scripted one-time voyage --
+    the user, playing their live character (already at Ice Wall Castle,
+    `BOAT 1` in their save), noticed that once `GameState::hasBoat` is
+    granted it lets the PC cross *any* ocean tile anywhere on the
+    continent forever, from any coastline, regardless of where they stood
+    -- effectively free-roam sailing. Two problems: it's granted at
+    Tarsis, which this project's own data already establishes as
+    landlocked ("a city stranded far from any sea"), and the sourced
+    material (`dwn_full.txt` lines 5690-5734, 5920-5927) describes one
+    specific ship's route -- Tarsis to Ice Wall Castle, continuing past
+    Southern Ergoth toward Sancrist Isle -- never general open-world
+    sailing. A throwaway BFS against the live `data/overworld.grid`
+    (passable terrain only, no boat) confirmed removing `hasBoat` couldn't
+    strand the player: Ice Wall Castle and Sancrist Isle are already
+    reachable on foot via the coastal shallow-water (`r`) path, matching
+    Milestone 87's own finding.
+
+    Replaced `GameState::hasBoat`/`world::TerrainInfo::crossableByBoat`
+    with a scripted, talk-triggered location jump: `BOAT <char>` gained a
+    payload, `BOAT <char> <destination-location-id> <hours>`. Since this
+    carries an id needing cross-file validation, it follows the existing
+    `PORTAL`/`QUEST` precedent (a separate `Zone`-level map, a new
+    `world::BoatVoyage` struct, validated in `ZoneCatalog::loadForWorld`
+    once a `World` exists) rather than `SHOP`/`BED`'s plain-bool shape.
+    `TalkCandidate` gained `boatDestinationId`/`boatHours` in place of
+    `grantsBoat`; `talkTo`, the first time such a candidate is ever talked
+    to, moves the player straight to the destination's `POS`, pops back to
+    `Mode::Overworld`, advances `hoursElapsed`, logs one travel line, and
+    returns immediately (skipping that POI's topic menu -- the player has
+    left the scene). `data/zones/tarsis.txt`'s Knight's Runner now grants
+    `BOAT R ice_wall 48` (a ~2-day voyage, invented for pacing like every
+    `minutesToCross` value already is). `game::SaveGame` still recognizes
+    the old `BOAT <0/1>` line on load and discards it, so a save written
+    before this milestone -- including the user's own live character --
+    still loads cleanly.
+
+    Scoped to only the Tarsis -> Ice Wall Castle leg, at the user's
+    explicit choice: Sancrist Isle relied on the same global `hasBoat` and
+    has no scripted voyage of its own yet, so it becomes reachable only by
+    the long coastal foot-walk confirmed above -- a disclosed, deliberate
+    gap (see `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap"),
+    tracked as a NEXT UP follow-up rather than fixed here. Verified via a
+    throwaway self-test (`BoatVoyageSelfTest.cpp`, a minimal `World`/
+    `WorldLoader`/`Zone`/`ZoneLoader`/`ZoneCatalog`/`ZoneTile`-only CMake
+    target: confirmed the real `tarsis.txt` parses to `ice_wall`/48 hours,
+    every malformed `BOAT` variant fails fast with the right message, the
+    existing "must have a TALK line" rule still holds, and
+    `ZoneCatalog::loadForWorld` -- not `ZoneLoader` alone -- rejects a bad
+    destination id; all passing before the file and its temporary target
+    were deleted), a clean `/W4` rebuild (zero new warnings), and the
+    piped smoke test. The user's real save (moved aside and restored
+    per the established procedure) was confirmed to still load cleanly
+    with its old `BOAT 1` line, byte-identical before/after since no
+    keypress was ever processed. Interactive confirmation of the new
+    jump itself (talking to the Runner and landing at Ice Wall Castle)
+    still needs the user's own keyboard -- the character who'd trigger it
+    has already sailed that leg under the old mechanic, so a fresh
+    character is needed to exercise it live. See
+    `docs/ARCHITECTURE.md`'s "Sea travel", `docs/ZONE_NOTES.md`'s "Boats:
+    POIs that grant a scripted sea voyage", and `docs/MAP_NOTES.md`'s
+    "Sancrist Isle reachability gap" for the full writeup.
+
+89. Multi-slot save/load -- the user asked for a real save/load system with
+    at least 3 save files, replacing the single hardcoded `save.txt` that
+    had been in place since Milestone 1. `game::SaveGame`/`game::GameLoop`
+    needed zero changes -- both were already parameterized by an arbitrary
+    `path`, so the whole feature lives in `main.cpp` plus a `CMakeLists.txt`
+    define rename (`ANSALON_SAVE_FILE` -> `ANSALON_SAVE_FILE_BASE`, a path
+    with no number/extension so `<N>.txt` can be appended).
+
+    3 fixed slots (`save1.txt`/`save2.txt`/`save3.txt`), not a configurable
+    count -- "at least 3" was the ask, and a generic N-slot system wasn't
+    needed for it. A new `describeSlot` helper in `main.cpp` tries to load
+    and cross-validate each slot up front (the same "does the saved `ZONE`
+    still exist" check `main.cpp` already ran for the single save), and
+    -- unlike the old single-save behavior -- **a bad slot no longer aborts
+    the whole program**: it's just shown as "(unreadable save: ...)" in
+    that slot's menu row, with the other slots still fully usable. The
+    slot-picker menu itself reuses the same plain `std::cin`/`std::cout`
+    interaction mode `CharacterCreator`/the old y/n prompt already used,
+    with its own small local `promptLine`/`promptSlotChoice`/`promptYesNo`
+    (mirroring `CharacterCreator.cpp`'s file-local reprompt-on-garbage,
+    throw-on-EOF idiom, kept as its own copy per this project's "each file
+    owns its own tiny copy" precedent rather than shared across translation
+    units). Picking an occupied slot and declining to continue asks a
+    second, explicit confirmation before allowing a fresh character to
+    overwrite it.
+
+    The user's real, in-progress `save.txt` is migrated to Slot 1
+    automatically the first time this build runs and finds no `save1.txt`
+    yet (`std::filesystem::rename`, non-fatal on failure -- the old file is
+    just left in place and Slot 1 shows empty). This is what carries their
+    live Ice Wall Castle character forward with no manual step. Verified
+    via piped scripted input against an isolated scratch copy of the built
+    exe + `data/` (never the user's real `build\Debug\`, even though the
+    migration path is designed to be safe): confirmed the empty-slot menu
+    reaches `CharacterCreator`'s first prompt, a valid occupied slot's
+    summary renders and "decline continue" -> "decline overwrite" correctly
+    loops back to the menu instead of crashing, a deliberately corrupted
+    slot (`MODE BOGUS`) shows as unreadable without taking down the other
+    slots, and a dropped-in legacy `save.txt` gets migrated to `save1.txt`
+    with the notice printed and then loads/plays correctly end to end
+    (confirmed rendering the real overworld frame at the migrated
+    character's saved position). Also a clean `/W4` rebuild (zero new
+    warnings) and a direct diff confirming the user's actual
+    `build\Debug\save.txt` was never touched by any of the above. See
+    `docs/ARCHITECTURE.md`'s "Save/load" and `docs/GOTCHAS.md`'s "Save/load"
+    section for the updated mechanics.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2368,3 +2477,24 @@ session's work.
    real modeled location -- that file is a geography reference the user
    compiled, not itself a verified canon source, so any candidate would
    need the same novels/sourcebooks check before committing to specifics.
+5. **A scripted sea voyage from Ice Wall Castle to Sancrist Isle** --
+   Milestone 88 converted only the Tarsis -> Ice Wall Castle leg to the
+   new `BOAT <char> <destination-location-id> <hours>` mechanism,
+   deliberately scoping Sancrist Isle out at the user's request. The
+   sourced route continues past Southern Ergoth to Sancrist (already
+   cited in `docs/TIMELINE_NOTES.md`'s "Ice Wall" section), so the natural
+   shape is a second, dedicated one-line NPC at `data/zones/ice_wall.txt`
+   mirroring the Tarsis Runner -- not reusing the Young Knight, who's
+   already the zone's `frostreaver_salvage` quest-giver and shouldn't
+   whisk the player away on first talk. Until then, Sancrist Isle is
+   reachable only by the long coastal foot-walk (confirmed possible by a
+   throwaway BFS, see `docs/MAP_NOTES.md`'s "Sancrist Isle reachability
+   gap").
+6. **Interactive confirmation of Milestone 88's new sea-voyage jump** --
+   verified structurally (self-test, clean rebuild, piped smoke test,
+   real-save backward compatibility) but not yet exercised live, since the
+   only character to have talked to Tarsis's Runner already did so under
+   the old mechanic. Needs a fresh character walked to Tarsis to confirm
+   talking to the Knight's Runner actually lands the player at Ice Wall
+   Castle, logs the travel line, advances the clock, and that walking off
+   any coastline onto open ocean is now blocked outright.

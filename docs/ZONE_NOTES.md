@@ -121,13 +121,20 @@ SHOP <char>                             optional, marks a POI as
                                         below); must reference a char
                                         already declared via POI, same
                                         rule as TALK
-BOAT <char>                             optional, marks a POI as granting
-                                        GameState::hasBoat the first time
+BOAT <char> <destination-location-id>   optional, marks a POI as granting a
+  <hours>                                one-time scripted sea voyage to
+                                        <destination-location-id>, <hours>
+                                        in-game hours long, the first time
                                         it's talked to (see "Boats: POIs
                                         that grant sea travel" below);
                                         same "must already have a POI
                                         **and** a TALK line" rule as
-                                        SAY_IF/TOPIC
+                                        SAY_IF/TOPIC. The destination id
+                                        is validated against the loaded
+                                        World in ZoneCatalog::loadForWorld,
+                                        not here (ZoneLoader can't see
+                                        World) -- same deferred-validation
+                                        shape QUEST uses for QuestCatalog.
 GRANTS_ITEM <char> <item-id>            optional, marks a POI as granting
   <display-name...>                      a character::ItemKind::QuestItem
                                         the first time it's talked to (see
@@ -382,27 +389,44 @@ catalog -- see `docs/CHARACTER_NOTES.md`'s "Equipment" section for the
 full catalog, sourcing, and the sell-back mechanic added the same
 milestone.
 
-## Boats: POIs that grant sea travel (Milestone 36)
+## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88)
 
-`BOAT <char>` marks a POI whose `TALK` interaction, the first time it
-happens, sets `GameState::hasBoat` (see `docs/ARCHITECTURE.md`'s "Sea
-travel"). Same "layers an ability on top of an existing POI" pattern as
-`SHOP`/`TIMELINE_ANCHOR`, but tied to *talking* rather than a separate key
--- there's no dedicated "board the ship" key, reusing `t` and the existing
-dialogue/log-message flow keeps this minimal. Unlike `SHOP`, `BOAT`
-requires its POI to already have a `TALK` line (same rule `SAY_IF`/`TOPIC`
-follow): without one, the POI would never actually be a talk candidate,
-and the grant would be unreachable dead content.
+`BOAT <char> <destination-location-id> <hours>` marks a POI whose `TALK`
+interaction, the first time it happens, moves the player straight to
+`<destination-location-id>`'s overworld `POS`, exits back to the
+overworld, and advances `hoursElapsed` by `<hours>` (see
+`docs/ARCHITECTURE.md`'s "Sea travel"). Same "layers an ability on top of
+an existing POI" pattern as `SHOP`/`TIMELINE_ANCHOR`, but tied to
+*talking* rather than a separate key -- there's no dedicated "board the
+ship" key, reusing `t` and the existing dialogue/log-message flow keeps
+this minimal. Unlike `SHOP`, `BOAT` requires its POI to already have a
+`TALK` line (same rule `SAY_IF`/`TOPIC` follow): without one, the POI
+would never actually be a talk candidate, and the grant would be
+unreachable dead content. Unlike `SHOP`/`BED` (plain bools on
+`PointOfInterest`), the destination id is an id payload needing
+cross-file validation, so it's modelled like `PORTAL`/`QUEST` instead --
+stored in its own `Zone`-level map, validated once a `World` exists (see
+`ZoneCatalog::loadForWorld`), not by `ZoneLoader` alone.
 
-As of Milestone 36, exactly one POI carries `BOAT`: `data/zones/tarsis.txt`'s
-`R "A Knight's Runner"`. Deliberately not Tarsis's existing `S "An Old
-Sailor"` -- his established `TALK`/`TALK_AGAIN` lines say outright that
-the sea "isn't coming back," and Tarsis's harbor is canonically dead (see
-the zone's own section below); routing the boat grant through him would
-contradict flavor already written in Milestone 28. The Runner instead
-represents passage arranged by Derek Crownguard's knights (see
-`docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
-the Old Sailor's characterization untouched.
+As of Milestone 88, exactly one POI carries `BOAT`: `data/zones/tarsis.txt`'s
+`R "A Knight's Runner"`, granting `BOAT R ice_wall 48`. Deliberately not
+Tarsis's existing `S "An Old Sailor"` -- his established `TALK`/
+`TALK_AGAIN` lines say outright that the sea "isn't coming back," and
+Tarsis's harbor is canonically dead (see the zone's own section below);
+routing the boat grant through him would contradict flavor already
+written in Milestone 28. The Runner instead represents passage arranged by
+Derek Crownguard's knights (see `docs/TIMELINE_NOTES.md`'s "Ice Wall"
+section for the citation), keeping the Old Sailor's characterization
+untouched.
+
+**Milestone 36 originally modeled this as a permanent `GameState::hasBoat`
+flag** that let the player cross any ocean tile anywhere, forever, once
+granted -- Milestone 88 replaced it with the scripted jump described above
+after the user found it let the PC "just sail around" the whole continent
+regardless of where they stood, which the source material (one specific
+ship's route) never supported. Sancrist Isle relied on that same global
+flag and has no `BOAT` voyage of its own yet -- see `docs/MAP_NOTES.md`'s
+"Sancrist Isle reachability gap."
 
 ## Quest items: POIs that grant a DELIVER object (the DELIVER milestone)
 
@@ -890,9 +914,10 @@ quests".
 
 ## Ice Wall Castle (Milestone 36)
 
-`data/zones/ice_wall.txt` — the castle's ruined outer hall, reachable only
-by crossing open water with `GameState::hasBoat` (see
-`docs/ARCHITECTURE.md`). An original layout, grounded in the actual
+`data/zones/ice_wall.txt` — the castle's ruined outer hall, reached via
+the scripted sea voyage granted by Tarsis's Knight's Runner (see "Boats:
+POIs that grant a scripted sea voyage" above and `docs/ARCHITECTURE.md`).
+An original layout, grounded in the actual
 dragon-orb-quest chapters of *Dragons of Winter Night* (verified via
 `pdftotext -layout`, not written from memory): an ice-bound silver dragon
 with a mysterious rider (`D`, deliberate foreshadowing the novel itself

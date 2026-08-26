@@ -7,6 +7,20 @@
 
 namespace world {
 
+// A one-time scripted sea voyage granted by talking to a POI marked BOAT
+// (Milestone 36's sea-travel mechanic, reworked to a scripted trip rather
+// than a permanent flag -- see docs/ARCHITECTURE.md). Carries an id payload
+// that needs cross-file validation (the destination must be a real
+// world::Location), so -- like PORTAL's target zone id, or QUEST's quest id
+// -- it lives in its own Zone-level map, not on PointOfInterest, and is
+// validated where a loaded World exists: ZoneCatalog::loadForWorld.
+struct BoatVoyage {
+    std::string destinationLocationId;
+    int hours = 0; // in-game hours the voyage advances GameState::hoursElapsed
+                    // by -- invented for pacing, not sourced (see
+                    // docs/ARCHITECTURE.md).
+};
+
 // A single point of interest inside a zone -- a specific tile that shows a
 // description when the player stands on it, the overworld-Location
 // equivalent for interior scenes.
@@ -77,11 +91,6 @@ struct PointOfInterest {
     // line in the zone file, which must reference an already-declared POI
     // char (see docs/ZONE_NOTES.md).
     bool isShop = false;
-    // True if talking to this POI grants GameState::hasBoat (Milestone
-    // 36's sea-travel mechanic) the first time -- set via a BOAT line in
-    // the zone file, same "must reference an already-declared POI with a
-    // TALK line" validation as SHOP (see docs/ZONE_NOTES.md).
-    bool isBoat = false;
     // True if the player can press 'z' (bed rest) while standing on this
     // tile to fully heal and advance 8 hours -- set via a BED line in the
     // zone file, which must reference an already-declared POI char, same
@@ -111,11 +120,13 @@ public:
     // ('\0' for none) and `timelineLocationId` ("" to default to this
     // zone's own catalog id) are optional zone-interior-encounter fields --
     // see docs/TIMELINE_NOTES.md. `quests` maps a POI char to the id of a
-    // quest::Quest it offers -- see docs/QUEST_NOTES.md.
+    // quest::Quest it offers -- see docs/QUEST_NOTES.md. `boatVoyages` maps
+    // a POI char to the scripted sea voyage it grants -- see BoatVoyage above.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
          std::unordered_map<char, PointOfInterest> pois,
          std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
-         std::string timelineLocationId, std::unordered_map<char, std::string> quests);
+         std::string timelineLocationId, std::unordered_map<char, std::string> quests,
+         std::unordered_map<char, BoatVoyage> boatVoyages);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -150,6 +161,16 @@ public:
     // docs/QUEST_NOTES.md).
     const std::unordered_map<char, std::string>& quests() const { return quests_; }
 
+    // Returns the boat voyage granted at (x, y), or nullptr if the tile
+    // there doesn't grant one.
+    const BoatVoyage* boatAt(int x, int y) const;
+
+    // Every boat voyage declared in this zone, keyed by POI char -- for
+    // ZoneCatalog::loadForWorld to cross-validate each destination id
+    // against the loaded World at startup (ZoneLoader can't see World and
+    // shouldn't -- same reasoning as quests() above).
+    const std::unordered_map<char, BoatVoyage>& boatVoyages() const { return boatVoyages_; }
+
     // The POI char where canon-character presence is checked/talkable
     // inside this zone (see docs/TIMELINE_NOTES.md), or '\0' if this zone
     // has none authored.
@@ -171,6 +192,7 @@ private:
     char timelineAnchorPoi_ = '\0';
     std::string timelineLocationId_;
     std::unordered_map<char, std::string> quests_;
+    std::unordered_map<char, BoatVoyage> boatVoyages_;
 };
 
 } // namespace world

@@ -5,7 +5,8 @@ namespace world {
 Zone::Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
            std::unordered_map<char, PointOfInterest> pois,
            std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
-           std::string timelineLocationId, std::unordered_map<char, std::string> quests)
+           std::string timelineLocationId, std::unordered_map<char, std::string> quests,
+           std::unordered_map<char, BoatVoyage> boatVoyages)
     : name_(std::move(name)),
       width_(rows.empty() ? 0 : static_cast<int>(rows.front().size())),
       height_(static_cast<int>(rows.size())),
@@ -16,7 +17,8 @@ Zone::Zone(std::string name, std::vector<std::string> rows, int entryX, int entr
       portals_(std::move(portals)),
       timelineAnchorPoi_(timelineAnchorPoi),
       timelineLocationId_(std::move(timelineLocationId)),
-      quests_(std::move(quests)) {}
+      quests_(std::move(quests)),
+      boatVoyages_(std::move(boatVoyages)) {}
 
 char Zone::tileCodeAt(int x, int y) const {
     if (x < 0 || y < 0 || y >= height_ || x >= width_) return '#';
@@ -44,6 +46,14 @@ const std::string* Zone::questAt(int x, int y) const {
     char code = rows_[static_cast<size_t>(y)][static_cast<size_t>(x)];
     auto it = quests_.find(code);
     if (it == quests_.end()) return nullptr;
+    return &it->second;
+}
+
+const BoatVoyage* Zone::boatAt(int x, int y) const {
+    if (x < 0 || y < 0 || y >= height_ || x >= width_) return nullptr;
+    char code = rows_[static_cast<size_t>(y)][static_cast<size_t>(x)];
+    auto it = boatVoyages_.find(code);
+    if (it == boatVoyages_.end()) return nullptr;
     return &it->second;
 }
 

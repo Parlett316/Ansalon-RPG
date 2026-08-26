@@ -17,6 +17,19 @@ ZoneCatalog ZoneCatalog::loadForWorld(const World& world, const std::string& zon
         catalog.zones_.emplace(loc.id, ZoneLoader::loadFromFile(candidate.string()));
         toFollow.push_back(loc.id);
     }
+    // A BOAT voyage's destination id needs a real world::Location to jump
+    // to -- ZoneLoader can't validate this itself (it never sees World), so
+    // it's checked here, the first point both exist together, same as the
+    // PORTAL target check below.
+    for (const auto& [zoneId, zone] : catalog.zones_) {
+        for (const auto& [code, voyage] : zone.boatVoyages()) {
+            if (world.getLocation(voyage.destinationLocationId) == nullptr) {
+                throw std::runtime_error("zone '" + zoneId + "' has a BOAT '" + std::string(1, code) +
+                                          "' to '" + voyage.destinationLocationId +
+                                          "' but no such location exists");
+            }
+        }
+    }
     // A zone reached only via another zone's PORTAL (e.g. the Inn of the
     // Last Home, entered from inside Solace's town square) has no matching
     // overworld Location of its own, so the loop above wouldn't find it --

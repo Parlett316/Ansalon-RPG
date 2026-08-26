@@ -557,13 +557,8 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
     int nx = state_.x + dx;
     int ny = state_.y + dy;
     const world::TerrainInfo& terrain = world::terrainFor(grid_.terrainCodeAt(nx, ny));
-    bool canCross = terrain.passable || (terrain.crossableByBoat && state_.hasBoat);
-    if (!canCross) {
-        if (terrain.crossableByBoat) {
-            pushLog("You'd need a boat to cross " + std::string(terrain.name) + ".");
-        } else {
-            pushLog("You cannot cross " + std::string(terrain.name) + " on foot.");
-        }
+    if (!terrain.passable) {
+        pushLog("You cannot cross " + std::string(terrain.name) + " on foot.");
         return;
     }
     state_.x = nx;
@@ -730,8 +725,12 @@ void GameLoop::handleTalk() {
         int dayNow = static_cast<int>(state_.hoursElapsed / 24);
         if (poi != nullptr && !poi->dialogue.empty()) {
             const std::string* questId = zone->questAt(state_.zoneX, state_.zoneY);
+            const world::BoatVoyage* boat = zone->boatAt(state_.zoneX, state_.zoneY);
             TalkCandidate candidate{state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
-                                     speechFromPoi(*poi), poi->isBoat, questId != nullptr ? *questId : std::string(),
+                                     speechFromPoi(*poi),
+                                     boat != nullptr ? boat->destinationLocationId : std::string(),
+                                     boat != nullptr ? boat->hours : 0,
+                                     questId != nullptr ? *questId : std::string(),
                                      poi->grantsItemId, poi->grantsItemName};
             if (!poi->dialogueAfter.empty()) {
                 int latestDayEnd = timeline_.latestDayEnd(effectiveId);
@@ -879,10 +878,6 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     render::Console::readKey(); // block for one keypress to dismiss, any key
     state_.metCharacters.insert(id);
     checkQuestReadiness(); // a TALK objective may have just been satisfied
-    if (candidate.grantsBoat && !state_.hasBoat) {
-        state_.hasBoat = true;
-        pushLog("You've arranged passage south. You can now cross open water.");
-    }
     if (!candidate.grantsItemId.empty() &&
         character::findQuestItemIndex(state_.character, candidate.grantsItemId) < 0) {
         state_.character.inventory.push_back(character::InventoryItem{
@@ -892,6 +887,28 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     }
     if (!candidate.questId.empty()) {
         offerOrTurnInQuest(candidate.questId, name);
+    }
+    // A scripted one-time voyage (Milestone 36, reworked): fires once, the
+    // first time this POI is ever talked to (mirrors grantsItemId's own
+    // "first time only" gate above, but keyed off alreadyMet rather than an
+    // inventory check, since a voyage leaves nothing to check for). Ends the
+    // conversation immediately -- the player has left the scene, so this
+    // POI's topic/subject menu below no longer applies.
+    if (!candidate.boatDestinationId.empty() && !alreadyMet) {
+        const world::Location* destination = world_.getLocation(candidate.boatDestinationId);
+        if (destination == nullptr) return; // defensive -- ZoneCatalog::loadForWorld already validated this id
+        state_.mode = Mode::Overworld;
+        state_.currentZoneId.clear();
+        state_.zoneStack.clear();
+        state_.x = destination->x;
+        state_.y = destination->y;
+        state_.hoursElapsed += candidate.boatHours;
+        state_.visitedLocations.insert(destination->id);
+        pushLog("You board the ship, and it carries you south across open water. Days pass before " +
+                destination->name + " finally rises out of the fog.");
+        checkQuestReadiness(); // a VISIT objective may have just been satisfied
+        announceOverworldTile();
+        return;
     }
 
     bool canAskAnything = !speech.subjects.empty();

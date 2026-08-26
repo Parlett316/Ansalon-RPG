@@ -38,6 +38,6 @@ TALK_AGAIN R "The ship's still holding for you, if you've changed your mind. It 
 SUBJECT R derek,knights Sir Derek's compliments, like I said. His knights found passage south and he's vouching for whoever comes aboard with me. That's more than most strangers get out of him. Don't waste it asking me questions instead of answering.
 SUBJECT R dragons,ship Ship came in ahead of the dragons, and it'll leave the same way if we're lucky. I don't know where it's bound past "away from here." Didn't ask. Wasn't my place to.
 SUBJECT_UNKNOWN R He's already glancing back over his shoulder. "No time for that. Ship's waiting, and so am I."
-BOAT R
+BOAT R ice_wall 48
 TIMELINE_ANCHOR D
 END

@@ -248,13 +248,15 @@ transitively, `character::Character`). This was cheap to add precisely
 because `GameState` had already been kept flat and serializable from the
 start (see the old note in "Extension points," now shipped) — there was no
 restructuring needed, just a format and a place to call it from.
+`SaveGame::save`/`load` take an arbitrary `path`, which is what let
+Milestone 89's multi-slot system below be built with zero changes to this
+module.
 
-**Format**: a hand-rolled keyword-per-line text file (`save.txt`, resolved
-next to the running executable, same pattern as `data/` — see
-`docs/GOTCHAS.md`), following the same `trim`/`splitKeyword`/fail-fast
-idioms as `WorldLoader`/`ZoneLoader`. `character::RaceId`/`ClassId`/
-`Alignment` are stored as raw enum ints rather than names — see
-`docs/GOTCHAS.md` for the fragility that trades off against.
+**Format**: a hand-rolled keyword-per-line text file, following the same
+`trim`/`splitKeyword`/fail-fast idioms as `WorldLoader`/`ZoneLoader`.
+`character::RaceId`/`ClassId`/`Alignment` are stored as raw enum ints
+rather than names — see `docs/GOTCHAS.md` for the fragility that trades
+off against.
 
 **When it saves**: `GameLoop::run()` calls `SaveGame::save` once per loop
 iteration, unconditionally, right after the input switch (including on
@@ -262,17 +264,38 @@ iteration, unconditionally, right after the input switch (including on
 returning directly) — see the loop in `GameLoop.cpp`. Simpler than tracking
 "did this specific key mutate state," and cheap enough not to matter: a
 crash or an ungraceful close loses at most the single most recent keypress.
+`GameLoop` is handed whichever save-slot path was chosen at startup (below)
+and knows nothing about slots itself — it just autosaves to that one path.
 
-**When it loads**: `main.cpp`, before deciding whether to run
-`CharacterCreator::run()` at all. If `save.txt` exists, it's loaded and the
-player is asked (plain `std::cin`/`std::cout`, same interaction mode as
-`CharacterCreator` — see above) whether to continue that character; only a
-"no" (or no save existing) falls through to the ordinary `CharacterCreator`
-flow. One cross-check happens here, not inside `SaveGame::load` itself, for
-the same reason `main.cpp` (not `WorldLoader`) validates a location's `POS`
-against the grid: `SaveGame` doesn't know about `ZoneCatalog`, so `main.cpp`
-is where a save referencing a since-removed zone gets caught with a clear
-error instead of crashing later.
+**3 save slots, resolved and picked in `main.cpp` (Milestone 89)**:
+`save1.txt`/`save2.txt`/`save3.txt`, resolved next to the running
+executable, same pattern as `data/` — see `docs/GOTCHAS.md`. Fixed at 3,
+not configurable — the ask was "at least 3," and a generic N-slot system
+wasn't needed for it. Before the menu is built, a pre-Milestone-89 single
+`save.txt` is migrated to `save1.txt` if no `save1.txt` exists yet
+(`std::filesystem::rename`, non-fatal on failure), so an in-progress
+character from before this milestone is carried forward automatically.
+
+For each of the 3 slots, a local `describeSlot` helper (`main.cpp`) tries
+`SaveGame::load` plus the same "does the saved `ZONE` still exist"
+cross-check the single-save flow used to do inline — `SaveGame` doesn't
+know about `ZoneCatalog`, so `main.cpp` is where a save referencing a
+since-removed zone gets caught, same reasoning as `WorldLoader` not
+validating a location's `POS` against the grid. Unlike the pre-Milestone-89
+behavior, a slot that fails to load no longer aborts the whole program — it
+just shows as unreadable in the menu, isolated from the other two slots.
+
+The slot-picker menu itself is plain `std::cin`/`std::cout`, the same
+interaction mode `CharacterCreator` uses (see above), with its own small
+local `promptLine`/`promptSlotChoice`/`promptYesNo` (mirrors
+`CharacterCreator.cpp`'s file-local reprompt-on-garbage/throw-on-EOF
+idiom — kept as its own copy here rather than shared across translation
+units, same "each file owns its own tiny copy" precedent as
+`trim`/`splitKeyword` across the various `*Loader.cpp` files). Picking an
+empty slot goes straight to `CharacterCreator::run()`; picking an occupied
+slot offers "Continue this character?", and declining asks a second,
+explicit confirmation before a fresh character is allowed to overwrite it
+on the next autosave.
 
 ## Timeline / chance-encounter engine
 
@@ -807,53 +830,65 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
-## Sea travel: a small conditional-passability feature (Milestone 36)
+## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88)
 
-The first genuinely new overworld-movement rule since Milestone 2's
-terrain table shipped: some locations (Ice Wall Castle) are sea-locked —
-confirmed by direct inspection of the reference map, no land route exists
-— so reaching them needs the player to be able to cross ocean tiles,
-which `world::Terrain` has always marked hard-`passable = false`, same as
-the Blood Sea.
+Some locations (Ice Wall Castle) are sea-locked — confirmed by direct
+inspection of the reference map, no land route exists — so reaching them
+needs some way past ocean, which `world::Terrain` marks hard-`passable =
+false`, same as the Blood Sea.
 
-**Kept out of `world::Terrain` as a static fact, resolved in `GameLoop` as
-a player-state fact.** `TerrainInfo` gained one new field,
-`crossableByBoat` (true only for ocean; the Blood Sea stays `false`
-unconditionally — a sourced restraint, not an oversight, see
-`docs/MAP_NOTES.md`/`docs/TIMELINE_NOTES.md`), but `Terrain.h/.cpp` still
-has zero knowledge of `GameState` — the same "`world/` doesn't know about
-the player" separation this document establishes above. `game::GameState`
-gained `bool hasBoat`, and `GameLoop::tryMoveOverworld` is the one place
-that combines the two: `terrain.passable || (terrain.crossableByBoat &&
-state_.hasBoat)`. This mirrors exactly how `world::Timeline` stays
-state-agnostic while `GameLoop` combines it with `GameState.hoursElapsed`
-at query time (see "Timeline / chance-encounter engine" above) — a
-recurring shape in this codebase: static/data-driven rules in `world/`
-(or `timeline/`), combined with mutable player state only inside `game/`.
+**Milestone 36's original shape** (kept here for history, superseded
+below): ocean tiles gained a `crossableByBoat` terrain flag and
+`GameState` gained a permanent `bool hasBoat`, so `tryMoveOverworld` let
+the player cross *any* ocean tile anywhere on the continent forever, once
+granted. Milestone 88 found this didn't match the source material (the
+novels describe one specific ship's route, never general open-world
+sailing) and that it let the player treat the entire ocean as a shortcut
+regardless of where they stood — so it was replaced outright.
 
-**Granted through the existing `talkTo` path, not a new key or screen.**
-A zone `POI` can now carry `BOAT <char>` (`ZoneLoader`, same
-must-already-have-a-`TALK`-line validation as `SAY_IF`/`TOPIC` — see
-`docs/ZONE_NOTES.md`). `TalkCandidate` (`GameLoop.h`) gained a
-`grantsBoat` bool, set from `PointOfInterest::isBoat` when `handleTalk`
-builds a zone candidate; `talkTo` sets `state_.hasBoat = true` and pushes
-one log line the first time such a candidate is actually talked to. No
-new `render::Key`, no new screen, no confirmation prompt — reusing `t`
-(talk) and the existing scrolling log keeps this a small, contained
-addition rather than a general "vehicle system." `hasBoat` is a one-way
-flag (never revoked) and persists via a new `BOAT <0/1>` line in
-`game::SaveGame` — optional on load, so a save written before this
-milestone (no `BOAT` line at all) still loads cleanly with `hasBoat`
-defaulting `false`, same backward-compatibility shape `INVENTORY` already
-established as optional.
+**Current shape: a talk-triggered location jump, not a passability rule.**
+Ocean and the Blood Sea are simply impassable, exactly as they were before
+Milestone 36 — `world::TerrainInfo` carries no boat-related field at all
+now. A zone `POI` can instead carry `BOAT <char> <destination-location-id>
+<hours>` (`ZoneLoader`, same must-already-have-a-`TALK`-line validation as
+`SAY_IF`/`TOPIC` — see `docs/ZONE_NOTES.md`). This carries an id payload
+needing cross-file validation (the destination must be a real
+`world::Location`), so — like `PORTAL`'s target zone id or `QUEST`'s quest
+id — it lives in its own `Zone`-level map (`world::Zone::boatVoyages_`,
+exposed via `boatAt`/`boatVoyages()`), not on `PointOfInterest`, and is
+validated where a loaded `World` exists: `ZoneCatalog::loadForWorld`,
+which throws if the destination id doesn't resolve to a real location
+(same spot/style as its existing `PORTAL` target check).
 
-**Deliberately no HUD indicator and no new random-encounter risk.** Ocean
-got a real `minutesToCross` (30, as of Milestone 67's granularity change —
-2 hours at the time this was written) now that it's sometimes traversable, but
-`encounterChancePercent` stays 0 — no sea monsters exist in
-`data/monsters.txt` yet, and drawing a land creature into open water would
-read as a bug, not content. Revisit both if a future milestone adds sea
-monsters or wants the HUD to surface `hasBoat` directly.
+`TalkCandidate` (`GameLoop.h`) carries `boatDestinationId`/`boatHours`
+instead of a bool. The first time such a candidate is ever talked to
+(gated on `!alreadyMet`, the same "have I met them" check `talkTo` already
+computes), `talkTo` moves the player straight to the destination's `POS`,
+pops back to `Mode::Overworld` (clearing `currentZoneId`/`zoneStack`),
+advances `hoursElapsed` by the authored `hours`, logs one travel line, and
+returns immediately — skipping that POI's topic/subject menu, since the
+player has left the scene. No new `render::Key`, no new screen, no
+confirmation prompt — same "small, contained addition" restraint the
+original mechanism established. `data/zones/tarsis.txt`'s Knight's Runner
+grants `BOAT R ice_wall 48` (a ~2-day voyage, invented for pacing like
+every `minutesToCross` value already is, not a sourced figure).
+
+**Save compatibility.** `hasBoat`/the `BOAT <0/1>` save line are gone;
+`game::SaveGame` still recognizes the `BOAT` keyword on load and discards
+it, so a save written before Milestone 88 still loads cleanly instead of
+fail-fasting on an otherwise-valid file.
+
+**Scope note (Milestone 88):** only the Tarsis → Ice Wall Castle leg was
+converted. Sancrist Isle relied on the same global `hasBoat` to be
+reachable at all and has no scripted voyage of its own yet — see
+`docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" and
+`docs/MILESTONES.md`'s NEXT UP for the open follow-up. It remains
+reachable on foot via the coastal shallow-water (`r`) path (confirmed by
+a throwaway BFS against the real grid), just not by any scripted route.
+
+**No HUD indicator and no random-encounter risk from this at all now** —
+since ocean is plain impassable terrain again, its `minutesToCross`/
+`encounterChancePercent` are inert values, same as the Blood Sea's.
 
 ## Frameless overworld/zone layout + NPC "Look" (Milestone 43)
 

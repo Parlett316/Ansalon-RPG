@@ -18,8 +18,13 @@ References/
 data/overworld_preview.png
 
 # Player savegame -- personal session state, not project data. See
-# docs/ARCHITECTURE.md / game::SaveGame.
+# docs/ARCHITECTURE.md / game::SaveGame. save.txt (singular) is the old
+# pre-Milestone-89 single-save filename, kept ignored in case a stray one
+# lingers from before the save1/2/3.txt slot migration.
 save.txt
+save1.txt
+save2.txt
+save3.txt
 
 # Editor/IDE cruft
 .vs/

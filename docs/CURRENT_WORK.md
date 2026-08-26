@@ -2,51 +2,38 @@
 
 Nothing in flight.
 
-Milestones 85-87 (2026-08-25) all shipped from the same session. Milestone
-85 redid the world map from a much higher-fidelity reference image
-(`References/dragonlancemap2.png`), improving terrain classification and
-re-deriving every location's `POS`. Milestone 86, prompted by locations
-surfaced while re-reading labels for Milestone 85, added Thorbardin and
-Sancrist Isle as real, walkable locations with full `PRESENCE`/`SAY`/
-`TOPIC` content -- Thorbardin for all 8 Heroes (`13 19`, the *Dragons of
-Winter Night* opening at the Hammer of Kharas ceremony), Sancrist Isle for
-Sturm/Flint/Tasslehoff/Laurana (`55 60`, Sturm's Knights' Trial). Sancrist
-Isle reverses a prior "deliberately not modeled" decision, done at the
-user's explicit request after being shown the original reasoning.
-Milestone 87 fixed roads whose straight-line paths cut across real open
-water (the user spotted this on a rendered view of the map): two roads
-(`xak_tsaroth`-`plains_of_dust`, `solace`-`silvanesti`) were removed
-outright as bogus/redundant crossings of New Bay; a handful of single-
-pixel classification-noise tiles on the other two flagged roads were
-patched via a new `MANUAL_TERRAIN_OVERRIDES` dict in
-`tools/generate_overworld.py`. `References/portcities.txt` was reviewed
-per the user's request; no new port-city location was needed for this
-specific fix (see `docs/MAP_NOTES.md`'s reasoning), with the broader
-"which port cities deserve real content" question folded into
-`docs/MILESTONES.md`'s NEXT UP item 4. See `docs/MAP_NOTES.md` and
-`docs/TIMELINE_NOTES.md` for full sourcing and citations, and
-`docs/MILESTONES.md` entries 85-87 for the complete writeups.
+Milestone 89 (2026-08-25) replaced the single hardcoded `save.txt` with a
+3-slot save/load system (`save1.txt`/`save2.txt`/`save3.txt`), at the
+user's request. `game::SaveGame`/`game::GameLoop` needed zero changes
+(already parameterized by path); the whole feature lives in `main.cpp`
+plus a `CMakeLists.txt` define rename. See `docs/MILESTONES.md` entry 89
+for the full writeup and `docs/ARCHITECTURE.md`'s "Save/load" /
+`docs/GOTCHAS.md`'s "Save/load" section for how the new mechanism works.
 
-All three verified via clean `/W4` rebuilds, `--check-timeline` (no new
-keyword-collision warnings), and the piped smoke test -- the live save
-was found to have changed significantly partway through the 85/86 work
-(the user was evidently playing concurrently), so a fresh backup was
-taken before that verification pass rather than trusting the
-session-start snapshot; the save was confirmed byte-identical
-before/after every subsequent test, including Milestone 87's.
+Verified via piped scripted input against an isolated scratch copy of the
+built exe (never the user's real `build\Debug\`): empty-slot menu reaches
+character creation, decline-continue/decline-overwrite loops back to the
+menu correctly, a deliberately corrupted slot shows as unreadable without
+aborting the other slots, and a dropped-in legacy `save.txt` migrates to
+`save1.txt`, loads, and renders the real overworld frame correctly. Clean
+`/W4` rebuild, zero new warnings. The user's actual `build\Debug\save.txt`
+was backed up before any of this and confirmed byte-identical afterward
+(it was never touched — the scratch-copy approach kept the real directory
+out of the loop entirely).
 
-Next backlog candidates (not started, not committed) -- see
-`docs/MILESTONES.md`'s NEXT UP: an instant-defeat spell's interactive
-verification (item 1), real Draconian mechanics (item 2), an
-SFML-backed rendering revisit with real sprite art (item 3), or more
-locations from the Milestone 85 map re-read plus the Milestone 87
-portcities.txt review -- Nordmaar, Schallsea, Northern/Southern Ergoth,
-and any of `References/portcities.txt`'s other named ports are visible
-on the map/reference file but not yet checked against the novels/
-sourcebooks for book significance (item 4).
+The real migration was also exercised directly: the piped smoke test was
+run once against the actual `build\Debug\` (per `CLAUDE.md`'s "real
+playthrough check against the user's actual save" step, since this change
+touches the save format/flow for their in-progress character). It printed
+the migration notice and renamed `build\Debug\save.txt` to
+`build\Debug\save1.txt`; a diff confirmed the migrated file is
+byte-identical to the pre-migration backup
+(`build\Debug\save.txt.bak-milestone89`, kept as a safety net). **Not yet
+done**: the user hasn't yet played the new slot menu themselves with their
+own keyboard -- only the migration and the menu's non-interactive prefix
+have been confirmed; picking Slot 1 and actually continuing into the game
+world with real keypresses still needs their own hands-on check.
 
 Also worth knowing for a fresh session: `git status` shows Milestones
-85-87 (and their new files, `data/zones/thorbardin.txt` and
-`data/zones/sancrist_isle.txt`) as uncommitted working-tree changes --
-nothing has been committed to git yet, since no session this far has
-been asked to commit.
+85-89 as uncommitted working-tree changes -- nothing has been committed
+to git yet, since no session this far has been asked to commit.

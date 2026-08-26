@@ -60,7 +60,8 @@ endif()
 
 # The game loads data/locations.txt, data/overworld.grid, data/zones/*.txt,
 # data/timeline.txt, data/monsters.txt, and data/quests.txt at runtime, plus
-# save.txt.
+# up to 3 save-slot files (save1.txt/save2.txt/save3.txt -- see
+# docs/ARCHITECTURE.md's "Save/load").
 # main.cpp resolves both primarily via render::Console::executableDirectory()
 # (GetModuleFileName on Windows, the one platform-specific API this needs --
 # kept inside render/Console.cpp per CLAUDE.md) so a distributed build (see
@@ -70,7 +71,7 @@ endif()
 # configuration) -- see docs/GOTCHAS.md.
 target_compile_definitions(ansalon_rpg PRIVATE
     ANSALON_DATA_DIR="${CMAKE_SOURCE_DIR}/data"
-    ANSALON_SAVE_FILE="${CMAKE_SOURCE_DIR}/save.txt"
+    ANSALON_SAVE_FILE_BASE="${CMAKE_SOURCE_DIR}/save"
 )
 
 # Keeps the dev workflow (running straight from build\<Config>\) working:

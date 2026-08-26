@@ -94,8 +94,9 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // for a clear error if its POI never shows up.
     std::unordered_map<char, int> shopLines;
     // Same "applied after the whole file is parsed" treatment as shopLines
-    // above -- keyed by code, value is the line number BOAT appeared on.
-    std::unordered_map<char, int> boatLines;
+    // above -- keyed by code, value is {destination location id, voyage
+    // hours, the line number BOAT appeared on}.
+    std::unordered_map<char, std::tuple<std::string, int, int>> boatLines;
     // Same "applied after the whole file is parsed, must reference an
     // already-declared POI with a TALK line" treatment as boatLines above.
     // Value is {item-id, display-name, the line number GRANTS_ITEM appeared on}.
@@ -249,11 +250,14 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 shopLines[codeToken[0]] = lineNumber;
             } else if (keyword == "BOAT") {
                 std::istringstream iss(rest);
-                std::string codeToken;
-                if (!(iss >> codeToken) || codeToken.size() != 1) {
-                    fail(path, lineNumber, "malformed BOAT (expected: BOAT <char>)");
+                std::string codeToken, destinationId;
+                int hours = -1;
+                if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> destinationId) || !(iss >> hours) ||
+                    hours < 0) {
+                    fail(path, lineNumber,
+                         "malformed BOAT (expected: BOAT <char> <destination-location-id> <hours>)");
                 }
-                boatLines[codeToken[0]] = lineNumber;
+                boatLines[codeToken[0]] = {destinationId, hours, lineNumber};
             } else if (keyword == "GRANTS_ITEM") {
                 std::istringstream iss(rest);
                 std::string codeToken, itemId;
@@ -474,10 +478,16 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         it->second.isShop = true;
     }
     // Same rule for BOAT, but -- like SAY_IF/TOPIC -- it must also already
-    // have a TALK line: BOAT is granted as a side effect of talking to the
-    // POI (see GameLoop::talkTo), so a POI with no TALK line could never
+    // have a TALK line: the voyage triggers as a side effect of talking to
+    // the POI (see GameLoop::talkTo), so a POI with no TALK line could never
     // actually trigger it, and this would silently author dead content.
-    for (const auto& [code, lineNum] : boatLines) {
+    // Whether the destination id itself is real is validated later, in
+    // ZoneCatalog::loadForWorld, once a world::World exists (ZoneLoader
+    // can't see it) -- same deferred-validation shape QUEST uses for
+    // quest::QuestCatalog in main.cpp.
+    std::unordered_map<char, BoatVoyage> boatVoyages;
+    for (const auto& [code, destHoursLine] : boatLines) {
+        const auto& [destinationId, hours, lineNum] = destHoursLine;
         auto it = pois.find(code);
         if (it == pois.end()) {
             fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no matching POI declaration");
@@ -485,7 +495,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         if (it->second.dialogue.empty()) {
             fail(path, lineNum, "BOAT '" + std::string(1, code) + "' has no TALK line to grant it through");
         }
-        it->second.isBoat = true;
+        boatVoyages[code] = BoatVoyage{destinationId, hours};
     }
     // Same rule for GRANTS_ITEM as BOAT: granted as a side effect of
     // talking to the POI (see GameLoop::talkTo), so it needs the same
@@ -617,7 +627,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     }
 
     return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois), std::move(portals),
-                timelineAnchorCode, std::move(timelineLocationId), std::move(quests));
+                timelineAnchorCode, std::move(timelineLocationId), std::move(quests), std::move(boatVoyages));
 }
 
 } // namespace world

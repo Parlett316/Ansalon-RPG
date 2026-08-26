@@ -79,22 +79,24 @@ struct TalkCandidate {
     std::string id;
     std::string name;
     Speech speech;
-    // True for a zone POI marked BOAT (world::PointOfInterest::isBoat) --
-    // talkTo() grants GameState::hasBoat the first time such a candidate is
-    // actually talked to. Always false for timeline (canon-character)
-    // candidates. See Milestone 36 / docs/ZONE_NOTES.md.
-    bool grantsBoat = false;
+    // Non-empty for a zone POI marked BOAT (world::Zone::boatAt) -- talkTo()
+    // whisks the player straight to this world::Location id (a scripted
+    // one-time voyage, `boatHours` in-game hours long) the first time such a
+    // candidate is actually talked to. Always empty for timeline
+    // (canon-character) candidates. See Milestone 36 / docs/ZONE_NOTES.md.
+    std::string boatDestinationId;
+    int boatHours = 0;
     // Non-empty for a zone POI marked QUEST (world::Zone::questAt) -- the
     // quest::Quest id talkTo() offers/updates/turns in via
     // offerOrTurnInQuest. Always empty for timeline candidates, same
-    // restriction as grantsBoat (see docs/QUEST_NOTES.md: the canon Heroes
-    // are deliberately never quest givers). See Milestone 51.
+    // restriction as boatDestinationId (see docs/QUEST_NOTES.md: the canon
+    // Heroes are deliberately never quest givers). See Milestone 51.
     std::string questId;
     // Non-empty for a zone POI marked GRANTS_ITEM (world::PointOfInterest::
     // grantsItemId/grantsItemName) -- talkTo() adds a character::ItemKind::
     // QuestItem to inventory the first time such a candidate is talked to.
-    // Always empty for timeline candidates, same restriction as grantsBoat.
-    // See docs/QUEST_NOTES.md's "DELIVER".
+    // Always empty for timeline candidates, same restriction as
+    // boatDestinationId. See docs/QUEST_NOTES.md's "DELIVER".
     std::string grantsItemId;
     std::string grantsItemName;
     // Non-empty for a zone POI marked TALK_AFTER (world::PointOfInterest::
@@ -202,10 +204,12 @@ private:
     // GameState::metCharacters), then a topic-picker loop if `speech` has
     // any. Shared by every talk path (zone POI, single-character
     // overworld, post-picker overworld) so "have I met them"/reactive-
-    // dialogue/topic logic lives in exactly one place. `grantsBoat` (true
-    // only for a zone POI marked BOAT, see world::PointOfInterest::isBoat)
-    // sets GameState::hasBoat the first time such a candidate is talked to
-    // -- Milestone 36's sea-travel mechanic, see docs/ZONE_NOTES.md.
+    // dialogue/topic logic lives in exactly one place. `boatDestinationId`
+    // (non-empty only for a zone POI marked BOAT, see world::Zone::boatAt)
+    // moves the player straight to that world::Location the first time such
+    // a candidate is talked to, ending the conversation immediately --
+    // Milestone 36's sea-travel mechanic, reworked to a scripted one-time
+    // voyage rather than a standing ability, see docs/ZONE_NOTES.md.
     // `dialogueAfter`, when non-empty, is shown instead of the ordinary
     // greeting/again text exactly once (tracked via a separate "<id>:after"
     // metCharacters entry, checked before the ordinary alreadyMet branch so
@@ -215,8 +219,8 @@ private:
     // Offers, updates, or turns in `questId` as part of talking to
     // `speakerName` -- called from talkTo() when candidate.questId is
     // non-empty, after metCharacters.insert but before the topic-picker
-    // loop (the same "talking mutates state" slot the grantsBoat precedent
-    // established). See docs/QUEST_NOTES.md for the full not-started /
+    // loop (the same "talking mutates state" slot the boatDestinationId
+    // precedent established). See docs/QUEST_NOTES.md for the full not-started /
     // active-unmet / active-met / complete state table.
     void offerOrTurnInQuest(const std::string& questId, const std::string& speakerName);
     // Checked after every state change an objective can key off of --

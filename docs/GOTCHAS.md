@@ -264,13 +264,27 @@ you hit something surprising — that's the whole point of it existing.
 
 ## Save/load (`game::SaveGame`)
 
-- **`save.txt` is resolved next to the running executable**, same
+- **3 save-slot files (`save1.txt`/`save2.txt`/`save3.txt`), resolved next
+  to the running executable** (Milestone 89), same
   `executableDirectory()`-based resolution as `data/` above (falling back to
-  the compile-time `ANSALON_SAVE_FILE` in the same rare cases). This changed
-  from "always the repo root" — running `build\Debug\ansalon_rpg.exe` now
-  reads/writes `build\Debug\save.txt`, not `<repo root>\save.txt`, and a
-  packaged build (`tools/package_release.ps1`) gets its own independent save
-  next to wherever it's unzipped. It's gitignored — see `.gitignore`.
+  the compile-time `ANSALON_SAVE_FILE_BASE` in the same rare cases). This
+  changed from "always the repo root" — running `build\Debug\ansalon_rpg.exe`
+  now reads/writes `build\Debug\save<N>.txt`, not `<repo root>\save<N>.txt`,
+  and a packaged build (`tools/package_release.ps1`) gets its own
+  independent set of slots next to wherever it's unzipped. All 3 are
+  gitignored — see `.gitignore`. A pre-Milestone-89 single `save.txt` in
+  that same directory is auto-migrated to `save1.txt` the first time it's
+  found with no `save1.txt` already present (see `docs/ARCHITECTURE.md`);
+  `save.txt` itself stays gitignored too, in case a stray one lingers from
+  before the migration.
+- **A bad slot no longer aborts the whole program.** Before Milestone 89, a
+  single corrupt/stale `save.txt` (e.g. referencing a since-removed
+  `ZONE`) made the game unplayable until the file was deleted by hand.
+  Now each slot is loaded and cross-checked independently
+  (`main.cpp`'s local `describeSlot`); a slot that fails is shown as
+  "(unreadable save: ...)" in the menu, and the other two remain playable.
+  The `RACE`/`CLASS`/`ALIGNMENT` raw-enum-int fragility described below
+  still applies — just now per-slot instead of to one single file.
 - **`RACE`/`CLASS`/`ALIGNMENT` are stored as raw enum ints**, not names
   (`static_cast<int>(character::RaceId)` etc.). This is a deliberate
   simplicity trade-off (no name↔enum reverse lookup needed anywhere else in
@@ -290,9 +304,11 @@ you hit something surprising — that's the whole point of it existing.
 - **`SaveGame::load` does not validate cross-references** against `World` or
   `ZoneCatalog` (e.g. that a saved `ZONE <id>` still exists) — same
   separation as `WorldLoader` not knowing about `OverworldGrid`. That check
-  happens in `main.cpp`, the one place a loaded save and the freshly-loaded
-  `ZoneCatalog` are both available; a stale reference prints a clear error
-  and exits rather than crashing mid-game.
+  happens in `main.cpp`'s `describeSlot` helper, the one place a loaded save
+  and the freshly-loaded `ZoneCatalog` are both available; a stale
+  reference is caught there and, since Milestone 89, surfaces as that one
+  slot showing "unreadable" in the save-slot menu rather than aborting the
+  whole program.
 - **`load()` accepts both `STEEL` and legacy `GOLD` as the currency
   keyword** (Milestone 22's Gold -> Steel rename, see
   `docs/CHARACTER_NOTES.md`) — `save()` only ever writes `STEEL` now, but a

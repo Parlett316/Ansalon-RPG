@@ -163,7 +163,6 @@ void SaveGame::save(const GameState& state, const std::string& path) {
         file << " " << id;
     }
     file << "\n";
-    file << "BOAT " << (state.hasBoat ? 1 : 0) << "\n";
     // Quest progress and lifetime kill tallies -- one line per entry, no
     // count prefix (unlike VISITED/MET, these are id+int pairs, not bare
     // ids, so packing them onto one line would need its own delimiter).
@@ -458,11 +457,15 @@ GameState SaveGame::load(const std::string& path) {
                 state.metCharacters.insert(id);
             }
         } else if (keyword == "BOAT") {
+            // Recognized but discarded: a save written before sea travel
+            // became a scripted one-time voyage (GameState::hasBoat removed)
+            // may still carry this line -- read and ignore it so an old
+            // save still loads cleanly instead of fail-fasting on an
+            // otherwise-valid file. No GameState field to write it into.
             int value = -1;
             if (!(iss >> value) || (value != 0 && value != 1)) {
                 fail(path, lineNumber, "malformed BOAT (expected 0 or 1)");
             }
-            state.hasBoat = value == 1;
         } else if (keyword == "QUEST") {
             // Optional -- a save written before Milestone 51 simply has no
             // QUEST lines, and an empty state.quests (no quest started) is

@@ -17,7 +17,12 @@
 #include "world/WorldLoader.h"
 #include "world/ZoneCatalog.h"
 
+#include <array>
+#include <filesystem>
 #include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <system_error>
 
 #ifndef ANSALON_DATA_DIR
 // CMakeLists.txt always supplies this via target_compile_definitions. The
@@ -26,13 +31,100 @@
 #define ANSALON_DATA_DIR "data"
 #endif
 
-#ifndef ANSALON_SAVE_FILE
+#ifndef ANSALON_SAVE_FILE_BASE
 // Same reasoning/fallback as ANSALON_DATA_DIR above.
-#define ANSALON_SAVE_FILE "save.txt"
+#define ANSALON_SAVE_FILE_BASE "save"
 #endif
 
 namespace {
 constexpr const char* kStartingLocationId = "solace";
+
+// Milestone 89: 3 independent save slots (save1.txt/save2.txt/save3.txt)
+// replacing the old single save.txt -- see docs/ARCHITECTURE.md's
+// "Save/load". Fixed, not configurable: "at least 3" was the ask, and a
+// generic N-slot system isn't needed for it (CLAUDE.md's "no premature
+// abstraction").
+constexpr int kSaveSlotCount = 3;
+
+// Same reprompt-until-valid, throw-on-EOF idiom as
+// character::CharacterCreator.cpp's file-local promptLine/promptChoice --
+// this file uses the same plain std::cin/std::cout interaction mode,
+// before GameLoop's raw-keypress world starts (see docs/ARCHITECTURE.md).
+// Kept as its own small copy here rather than shared across translation
+// units, same "each loader/prompt owns its own tiny copy" precedent as
+// trim/splitKeyword in the various *Loader.cpp files.
+std::string promptLine(const std::string& prompt) {
+    std::cout << prompt;
+    std::string line;
+    if (!std::getline(std::cin, line)) {
+        throw std::runtime_error("input ended unexpectedly at the save-slot menu");
+    }
+    return line;
+}
+
+int promptSlotChoice() {
+    for (;;) {
+        std::istringstream iss(promptLine("Choose a slot (1-" + std::to_string(kSaveSlotCount) + "): "));
+        int value;
+        if (iss >> value && value >= 1 && value <= kSaveSlotCount) return value;
+        std::cout << "Please enter a number from 1 to " << kSaveSlotCount << ".\n";
+    }
+}
+
+bool promptYesNo(const std::string& prompt) {
+    for (;;) {
+        std::string line = promptLine(prompt);
+        if (!line.empty() && (line[0] == 'y' || line[0] == 'Y')) return true;
+        if (!line.empty() && (line[0] == 'n' || line[0] == 'N')) return false;
+        std::cout << "Please answer y or n.\n";
+    }
+}
+
+// One save slot's resolved state at startup: whether a file exists there,
+// and if so, whether it loaded cleanly (a display summary + the real
+// game::GameState, ready to hand to GameLoop) or not (the error that,
+// before Milestone 89, would have aborted the entire program -- now it
+// just marks this one slot unreadable and leaves the other two playable).
+struct SlotInfo {
+    std::string path;
+    bool exists = false;
+    bool valid = false;
+    game::GameState state;
+    std::string summary; // set when valid
+    std::string error;   // set when exists && !valid
+};
+
+// Mirrors the single-save cross-check main() used to do inline (a saved
+// ZONE that no longer exists in the current ZoneCatalog) -- SaveGame::load
+// itself can't do this check (it doesn't know about world::ZoneCatalog,
+// same one-way dependency direction as WorldLoader not knowing about
+// OverworldGrid). Any exception here (a malformed file, or the stale-zone
+// case thrown below) is caught and turned into SlotInfo::error rather than
+// propagating, so one bad slot can't take down the whole menu.
+SlotInfo describeSlot(std::string path, const world::ZoneCatalog& zones) {
+    SlotInfo info;
+    info.exists = game::SaveGame::exists(path);
+    info.path = std::move(path);
+    if (!info.exists) return info;
+    try {
+        game::GameState loaded = game::SaveGame::load(info.path);
+        if (loaded.mode == game::Mode::Zone && !zones.hasZone(loaded.currentZoneId)) {
+            throw std::runtime_error("references a zone ('" + loaded.currentZoneId +
+                                      "') that no longer exists");
+        }
+        const character::Character& c = loaded.character;
+        info.summary = c.name + ", level " + std::to_string(c.level) + " " +
+                       std::string(character::raceInfo(c.race).name) + " " +
+                       std::string(character::classInfo(c.charClass).name) + " (Day " +
+                       std::to_string(loaded.hoursElapsed / 24) + ")";
+        info.state = std::move(loaded);
+        info.valid = true;
+    } catch (const std::exception& ex) {
+        info.error = ex.what();
+    }
+    return info;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -68,15 +160,15 @@ int main(int argc, char** argv) {
     }
 
     // Resolved relative to the running executable so a distributed build
-    // (see tools/package_release.ps1) finds its own data/ and save.txt
+    // (see tools/package_release.ps1) finds its own data/ and save slots
     // wherever it's unzipped, instead of the compile-time source-tree path
     // baked in below. Falls back to the compile-time ANSALON_DATA_DIR /
-    // ANSALON_SAVE_FILE only if the executable's own path can't be
+    // ANSALON_SAVE_FILE_BASE only if the executable's own path can't be
     // determined (non-Windows, or editor tooling that skips CMake
     // configuration) -- see docs/GOTCHAS.md.
     const std::string exeDir = render::Console::executableDirectory();
     const std::string dataDir = exeDir.empty() ? ANSALON_DATA_DIR : exeDir + "/data";
-    const std::string savePath = exeDir.empty() ? ANSALON_SAVE_FILE : exeDir + "/save.txt";
+    const std::string saveBase = exeDir.empty() ? ANSALON_SAVE_FILE_BASE : exeDir + "/save";
 
     try {
         world::OverworldGrid grid =
@@ -139,33 +231,76 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        // If a save exists, offer to continue it -- plain std::cin/std::cout,
-        // same "before GameLoop's raw-keypress world starts" interaction mode
-        // as CharacterCreator (see docs/ARCHITECTURE.md). Declining, or no
-        // save existing, falls through to the ordinary CharacterCreator flow
-        // unchanged.
+        // A pre-Milestone-89 single save.txt is migrated into Slot 1 the
+        // first time it's found with no save1.txt already there -- this is
+        // what carries an in-progress character forward with no manual
+        // step. Non-fatal if the rename fails (e.g. permissions): the old
+        // file is simply left where it is and the slot menu below shows
+        // Slot 1 as empty.
+        const std::string legacySavePath = saveBase + ".txt";
+        const std::string slot1Path = saveBase + "1.txt";
+        if (!game::SaveGame::exists(slot1Path) && game::SaveGame::exists(legacySavePath)) {
+            std::error_code ec;
+            std::filesystem::rename(legacySavePath, slot1Path, ec);
+            if (!ec) {
+                std::cout << "Found an existing save.txt -- migrated it to Save Slot 1.\n";
+            } else {
+                std::cerr << "Warning: found an existing save.txt but could not migrate it to "
+                             "Slot 1 (" << ec.message() << "). Leaving it as-is.\n";
+            }
+        }
+
+        std::array<SlotInfo, kSaveSlotCount> slots;
+        for (int i = 0; i < kSaveSlotCount; ++i) {
+            slots[static_cast<size_t>(i)] =
+                describeSlot(saveBase + std::to_string(i + 1) + ".txt", zones);
+        }
+
+        // Slot picker -- plain std::cin/std::cout, same "before GameLoop's
+        // raw-keypress world starts" interaction mode as CharacterCreator
+        // (see docs/ARCHITECTURE.md). Picking an empty slot or confirming a
+        // fresh character in an occupied one falls through to the ordinary
+        // CharacterCreator flow below; picking "continue" loads that slot's
+        // GameState directly.
         game::GameState state;
         bool loadedSave = false;
-        if (game::SaveGame::exists(savePath)) {
-            game::GameState loaded = game::SaveGame::load(savePath);
-            if (loaded.mode == game::Mode::Zone && !zones.hasZone(loaded.currentZoneId)) {
-                std::cerr << "Save file references a zone ('" << loaded.currentZoneId
-                          << "') that no longer exists. Delete " << savePath
-                          << " to start fresh.\n";
-                return 1;
+        std::string savePath;
+        for (;;) {
+            std::cout << "\nSave slots:\n";
+            for (int i = 0; i < kSaveSlotCount; ++i) {
+                const SlotInfo& slot = slots[static_cast<size_t>(i)];
+                std::string label = !slot.exists ? "(empty)"
+                                     : slot.valid ? slot.summary
+                                                  : "(unreadable save: " + slot.error + ")";
+                std::cout << "  " << (i + 1) << ". " << label << "\n";
             }
-            const character::Character& c = loaded.character;
-            std::cout << "\nA saved character was found: " << c.name << ", level " << c.level
-                       << " " << character::raceInfo(c.race).name << " "
-                       << character::classInfo(c.charClass).name << " (Day "
-                       << (loaded.hoursElapsed / 24) << ").\n";
-            std::cout << "Continue this character? (y/n) ";
-            std::string answer;
-            std::getline(std::cin, answer);
-            if (!answer.empty() && (answer[0] == 'y' || answer[0] == 'Y')) {
-                state = std::move(loaded);
-                loadedSave = true;
+            int chosen = promptSlotChoice();
+            SlotInfo& slot = slots[static_cast<size_t>(chosen - 1)];
+            savePath = slot.path;
+
+            if (!slot.exists) break; // empty slot -- straight to character creation below
+
+            if (slot.valid) {
+                std::cout << "\n" << slot.summary << "\n";
+                if (promptYesNo("Continue this character? (y/n) ")) {
+                    state = std::move(slot.state);
+                    loadedSave = true;
+                    break;
+                }
+                if (promptYesNo("Start a new character in Slot " + std::to_string(chosen) +
+                                 "? This will overwrite " + slot.state.character.name +
+                                 " the next time you save. (y/n) ")) {
+                    break; // fresh character -- straight to character creation below
+                }
+                continue; // back to the slot menu
             }
+
+            std::cout << "\nSlot " << chosen << " could not be loaded: " << slot.error << "\n";
+            if (promptYesNo("Start a new character in Slot " + std::to_string(chosen) +
+                             " and overwrite it? (y/n) ")) {
+                break;
+            }
+            continue;
         }
 
         // Character creation runs here, before the world is ever rendered:
