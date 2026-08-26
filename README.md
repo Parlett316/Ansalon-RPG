@@ -53,10 +53,12 @@ generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
-Isle, ...) sit on that grid, most connected by roads baked
+Isle, Crossing, ...) sit on that grid, most connected by roads baked
 into the terrain — Ice Wall and Sancrist Isle are the exceptions, two
 sea-locked stops reachable only by arranging passage on a ship, first out
-of Tarsis, then onward from Ice Wall (see below) —
+of Tarsis, then onward from Ice Wall (see below); Crossing, a ferry
+waypoint on the strait north of Solace, has no road either but needs no
+ship, since the water there is shallow enough to simply walk —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
 elven capital, inside Qualinesti. Standing at a location can also reveal

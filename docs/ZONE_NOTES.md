@@ -1215,6 +1215,30 @@ This reverses this project's own prior "deliberately not modeled" call
 for Sancrist Isle — see `docs/TIMELINE_NOTES.md`'s "Sancrist Isle"
 section for the full reasoning, the reversal, and complete sourcing.
 
+## Crossing (Milestone 93)
+
+`data/zones/crossing.txt` — a 31×12 grid, well under the viewport floor,
+open ground with a full `#` border and a 3-tile gap in the south wall for
+`ENTRY`. Two POIs: the Quay (`Q`, flavor-only — the strait's ferry piers)
+and the Ferry Keeper (`K`, the zone's one talkable NPC), with two
+`TOPIC`s ("The Strait," "The War") and a `SUBJECT` on the neighboring,
+unmodeled coastal keeps (North Keep, Restglen) her dialogue name-drops.
+
+**No `TIMELINE_ANCHOR`, no `PRESENCE`, no canon-character content at
+all** — unlike every other zone this project has added, Crossing wasn't
+sourced from any of the three novels; it's sourced entirely from the
+reference map's own "Crossing" label (see `docs/MAP_NOTES.md`'s
+"Crossing" section) and `TSR 2143 Player's Guide`'s "Straits of
+Schallsea" geography. The Ferry Keeper is a fully generic local, same
+"non-Hero-voiced, invented-but-flagged flavor" treatment already given to
+Thorbardin's Refugee Quarter NPC, not a stand-in for anyone specific.
+
+Deliberately no `BOAT` grant either — resolved with the user before
+building: the strait's shallow water was already made foot-passable
+without a boat at Milestone 87, so Crossing doesn't need the sea-travel
+mechanism to do its job; it's a plain waypoint, reached and left on foot
+like every other location.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

@@ -186,3 +186,13 @@ GLYPH Y
 POS 55 154
 DESC An island stronghold of the Knights of Solamnia, its coast held by Castle Uth Wistan's grey stone walls. Banners from every Order still fly here, though the knights beneath them no longer entirely agree on what they're flying for.
 END
+
+LOCATION crossing
+NAME Crossing
+REGION Abanasinia
+TERRAIN strait-ferry-town
+GLYPH F
+TOWN
+POS 200 185
+DESC A huddle of stone piers and net-hung shacks on a spit of hill jutting into the Strait of Schallsea, the narrowest crossing between Abanasinia and the Solamnic shore beyond. Flat-bottomed ferries wait at anchor for a paying deck's worth of passengers, or for the fog to lift enough to risk the crossing blind.
+END

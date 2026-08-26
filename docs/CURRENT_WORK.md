@@ -2,34 +2,36 @@
 
 Nothing in flight.
 
-Milestone 92 (2026-08-26) fixed two gaps the Milestone 91 interactive
-playtest surfaced: talking to a `BOAT`-granting NPC executed the voyage
-unconditionally (no way to decline), and Sancrist Isle -- reachable since
-Milestone 91 -- had no talkable NPC and no route out, a genuine dead end.
-Added `GameState::voyagesTaken` (persisted as a new `VOYAGED` save line)
-so declining doesn't burn the offer, a Board/"Not yet" picker in
-`GameLoop::talkTo` mirroring the quest Accept/Decline picker, and fixed
-the travel log's hardcoded "carries you south" (wrong for two of the three
-legs) to use the existing `compassDirection` helper. Closed the Sancrist
-dead end with a third `BOAT` leg, `data/zones/sancrist_isle.txt`'s new
-`E "An Embarkation Officer"` granting `BOAT E palanthas 96`, sourced from
-*Dragons of Winter Night*'s account of Sturm's army sailing from Sancrist
-to Palanthas. See `docs/MILESTONES.md` entry 92 for the full writeup, and
-`docs/ARCHITECTURE.md`'s "Sea travel" / `docs/ZONE_NOTES.md`'s "Boats" and
-"Sancrist Isle" for the updated mechanics.
+Milestone 93 (2026-08-26) fixed a road the user spotted crossing open
+water north of Solace: `("solace", "high_clerist_tower")`, drawn at
+Milestone 35 before this project had a real map source, was never
+actually checked against one. Cropping and grid-overlaying
+`References/dragonlancemap2.png` around the Strait of Schallsea found no
+drawn road crosses it anywhere -- only coastal roads meeting a real,
+labeled ferry town in the middle of the strait, "Crossing." Removed the
+road from `ROAD_PAIRS` and regenerated `data/overworld.grid`; added
+`LOCATION crossing` (`POS 200 185`, sourced from the map's own label) and
+a small new zone (`data/zones/crossing.txt`, one generic Ferry Keeper
+NPC, no timeline content -- none of the three novels mention the place).
+Resolved with the user before building: Crossing stays a plain,
+road-free, foot-reachable waypoint, not a scripted `BOAT` ferry -- the
+strait's shallow water was already boat-free by design since Milestone
+87, so nothing needed the sea-travel mechanism. Pure data content, zero
+`.cpp`/`.h` changes. See `docs/MILESTONES.md` entry 93 for the full
+writeup, and `docs/MAP_NOTES.md`'s "Crossing" section / `docs/
+ZONE_NOTES.md`'s "Crossing" section for the sourcing and zone detail.
 
-Verified via a throwaway self-test (23 assertions -- the new POI's dialogue/
-`BOAT` lines, the existing Runner/Guide voyages untouched, a `VOYAGED`
-`SaveGame` round-trip, backward compatibility with a save that has no
-`VOYAGED` line, and a malformed-count fail-fast case), a clean `/W4`
-rebuild (zero new warnings), and the piped smoke test. Also directly
-confirmed the user's real `save1.txt`/`save2.txt` still load and describe
-themselves correctly in the save-slot menu under the new `VOYAGED`
-keyword -- timestamps unchanged throughout.
+Verified via a throwaway BFS script (all remaining `ROAD_PAIRS`
+connections intact end-to-end, every location including Crossing itself
+still foot-reachable from Solace, zero road tiles left crossing the
+strait -- script written, run, and deleted per the project's standing
+convention), a clean `/W4` rebuild (zero new warnings), and the piped
+smoke test. The user's real `save1.txt`/`save2.txt`/`save3.txt` were
+moved aside before the smoke test and restored after -- timestamps and
+content confirmed unchanged.
 
-**Not yet done**: no interactive replay of either change (talk to the
-Tarsis Runner or the new Sancrist Embarkation Officer, decline once and
-confirm the topics menu is still reachable, then accept and confirm the
-jump/direction word/clock advance) -- `_getch()` can't be piped, so this
-needs the user's own keyboard. See `docs/MILESTONES.md`'s NEXT UP #1 for
-the exact checklist.
+**Not yet done**: no interactive playtest of the new location (walking
+from Solace to Crossing, confirming the Ferry Keeper's dialogue/topics,
+confirming the Tower is still reachable beyond it) -- `_getch()` can't be
+piped, so this needs the user's own keyboard, same limitation every
+content milestone has flagged.

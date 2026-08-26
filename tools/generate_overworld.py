@@ -155,6 +155,14 @@ INDEX_TO_TERRAIN: dict[int, str] = {
 # short crossings of 'r' shallow water are fine, and MANUAL_TERRAIN_OVERRIDES
 # below for the handful of true-'~'-noise pixels patched so no kept road
 # touches truly impassable terrain).
+#
+# A later milestone removed a third entry, ("solace", "high_clerist_tower")
+# -- unlike the two above, its straight-line path was never checked against
+# the real reference map when it was added (Milestone 35, before this
+# project had dragonlancemap2.png as a source). The map draws no road
+# across the Strait of Schallsea at all -- only coastal roads meeting a real
+# ferry town, "Crossing", added as its own LOCATION instead. See
+# docs/MAP_NOTES.md's "Crossing" section.
 ROAD_PAIRS = [
     ("solace", "darken_wood"),
     ("darken_wood", "haven"),
@@ -163,7 +171,6 @@ ROAD_PAIRS = [
     ("qualinesti", "pax_tharkas"),
     ("pax_tharkas", "plains_of_dust"),
     ("plains_of_dust", "tarsis"),
-    ("solace", "high_clerist_tower"),
     ("high_clerist_tower", "kalaman"),
     ("high_clerist_tower", "palanthas"),
     ("kalaman", "godshome"),

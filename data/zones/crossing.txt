@@ -1,0 +1,32 @@
+# data/zones/crossing.txt -- hand-authored walkable interior: the ferry
+# waypoint on the Strait of Schallsea, sourced directly from the reference
+# map's own "Crossing" label rather than any of the three novels (none of
+# them mention this place -- see docs/MAP_NOTES.md's "Crossing" section).
+# The filename stem ("crossing") is the zone id and MUST match the
+# LOCATION id in data/locations.txt for the Enter key to find it.
+# Grammar: docs/ZONE_NOTES.md
+NAME Crossing
+ENTRY 14 11
+GRID
+###############################
+#.............................#
+#.............................#
+#.............................#
+#....K........................#
+#.............................#
+#.............................#
+#.............................#
+#...................Q.........#
+#.............................#
+#.............................#
+#############...###############
+ENDGRID
+POI K "The Ferry Keeper" A weathered woman in an oilskin coat, sitting on an upturned crate with a coil of wet rope across her knees, watching the strait the way other people watch weather.
+POI Q "The Quay" A row of stone piers, half of them sound and half of them not, with flat-bottomed ferries lashed at anchor. Rope ladders and cargo nets hang everywhere, and the whole place smells of tar and cold saltwater.
+TALK K "Crossing's a fishing village with delusions, most days -- but the strait doesn't ford anywhere else for forty miles, so every merchant, courier, and army north or south of here ends up on my deck sooner or later." She nods past you, toward the water. "The Tower road picks back up on the far shore, if that's where you're bound."
+TALK_AGAIN K "Fog's been bad this week," she says, not looking up from the rope. "Still crossing. Just slower."
+TOPIC K "The Strait" "Straits of Schallsea, if you want the proper name -- nobody local bothers. It's shallow enough to wade in places, if you've got the whole day to spare and don't mind losing your boots to the mud. Most people pay for the ferry instead."
+TOPIC K "The War" "We see it in the traffic more than anything. Used to be fishing boats and the odd trader. These days it's messengers who won't say who they ride for, and once a week or so, soldiers who don't ride anywhere at all -- just wait on the shore for a ship that isn't mine."
+SUBJECT K north keep,restglen The keeps up and down this coast keep their own roads -- Restglen west, North Keep and Staughton east. None of them run through here, and none of them run to each other without a long walk around the water. Crossing's the only place that doesn't make you choose a direction first.
+SUBJECT_UNKNOWN K "Can't help you there. I know boats and I know this stretch of coast -- past that, you'd want someone who travels more than I do."
+END

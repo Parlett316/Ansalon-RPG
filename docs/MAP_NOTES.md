@@ -674,6 +674,63 @@ only affect travel time and appearance (`docs/ARCHITECTURE.md`). The
 "no road reaches it" locations were never a hard gate, just flavor for
 "nobody bothers going this way."
 
+## Crossing (Milestone 93) and deleting the Solace-Tower road
+
+The user spotted `("solace", "high_clerist_tower")`'s road crossing open
+water north of Solace and asked for it to be deleted, plus a port city
+placed there if the sourcing supported it. That road was added at
+Milestone 35, before this project had `dragonlancemap2.png` as a source
+— its straight line was never actually checked against the real map, and
+Milestone 87's water-crossing audit (which caught two other bogus roads)
+kept this one on the theory that it was the only link between the
+Abanasinia/Kharolis cluster and the Solamnia cluster, patching its 3
+true-water noise pixels rather than questioning the road itself.
+
+**Checking the actual map settles it.** Cropping and grid-overlaying
+`References/dragonlancemap2.png` around the strait (same method as every
+placement since Milestone 85) shows **no drawn road crosses the Strait of
+Schallsea anywhere**. The map's own roads hug each shore — Restglen ->
+Harrying -> Edgerton on the west, Firstward -> Castle Di Estra -> Port
+O'Call on the east — and meet a real, clearly labeled ferry town sitting
+on a peninsula in the middle of the strait: **"Crossing,"** with "North
+Keep" immediately south of it. Solace's road to the Tower wasn't a rough
+approximation of something real; it was invented wholesale, and it
+happened to cut across exactly the water the source map goes out of its
+way to route around.
+
+This also answers the "port city" half of the ask directly — a real
+settlement already exists at the right spot, so nothing needed inventing.
+`("solace", "high_clerist_tower")` was removed from `ROAD_PAIRS`
+outright (not patched, unlike the Milestone 87 cases, since there's no
+short/fordable version of this crossing to keep — the map draws none).
+Removing it doesn't strand anything: `data/overworld.grid`'s shallow
+coastal water (`r`) around the strait was already deliberately made
+foot-passable without a boat (Milestone 87), and a throwaway BFS
+confirmed `high_clerist_tower` — and its whole downstream chain (Kalaman,
+Palanthas, Godshome, Neraka) — stays foot-reachable from Solace with the
+road gone, same as every other location. Regenerating needed no
+glacier-patch reapplication; that caveat was retired at Milestone 85.
+
+**"Crossing"'s icon reads at pixel-derived grid `(200, 185)`** — the same
+crop-and-grid-overlay method used throughout this file, cross-checked
+against the strait's other three legible labels (Castle Di Estra, Port
+O'Call, North Keep) in the same crop. `data/overworld.grid` at `(200,185)`
+is `^` (hills) — passable, no nudge needed, sitting on the small
+contiguous landmass the map itself draws there, confirmed by a direct BFS
+from Solace rather than assumed. `REGION Abanasinia` follows `TSR 2143
+Player's Guide to the Dragonlance Campaign`'s own framing of Abanasinia as
+the land "south of the Straits of Schallsea."
+
+**No `ROAD_PAIRS` entry.** The map's own coastal road through Crossing
+continues to North Keep and Staughton, neither of which is a modeled
+location in this project — there's nothing sourced to draw a road to
+without inventing more content, so Crossing stays a foot-reachable,
+road-free stop, same restraint as every other deliberate gap in this
+file. Its zone (`data/zones/crossing.txt`) carries no `PRESENCE`/
+`TIMELINE_ANCHOR` either — none of the three sourced novels ever mention
+this place, only the map does, same treatment Thorbardin's zone already
+got for its generic NPC.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

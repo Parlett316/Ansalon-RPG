@@ -2575,6 +2575,47 @@ section).
     `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" for the full
     writeup.
 
+93. Crossing -- the user spotted `("solace", "high_clerist_tower")`'s road
+    crossing open water north of Solace and asked for it to be deleted,
+    plus a port city placed there if the sourcing held up. That road
+    (Milestone 35) predated this project's `dragonlancemap2.png` source and
+    was never actually checked against it; Milestone 87's water-crossing
+    audit kept it anyway, on the theory it was the only overland link
+    between the Abanasinia/Kharolis cluster and the Solamnia cluster, and
+    patched its 3 true-water noise pixels rather than questioning the road
+    itself. Cropping and grid-overlaying the real map around the strait
+    (same method as every placement since Milestone 85) found no drawn
+    road crosses the Strait of Schallsea anywhere -- the map's own roads
+    hug each shore and meet a real, clearly labeled ferry town in the
+    middle of the strait, **"Crossing."** `("solace",
+    "high_clerist_tower")` was removed from `ROAD_PAIRS` outright (the
+    map draws no fordable version of it to keep, unlike Milestone 87's two
+    patched cases), and a throwaway BFS confirmed removing it strands
+    nothing -- the strait's shallow water was already deliberately
+    foot-passable without a boat (Milestone 87), so `high_clerist_tower`
+    and its whole downstream chain (Kalaman, Palanthas, Godshome, Neraka)
+    stay reachable exactly as before, just without a paved-road-over-open-
+    sea visual. New `LOCATION crossing` (`POS 200 185`, `REGION
+    Abanasinia`, sourced from the map's own label and `TSR 2143 Player's
+    Guide`'s framing of Abanasinia as the land south of the strait), a
+    small new zone (`data/zones/crossing.txt`, one generic Ferry Keeper
+    NPC, no `PRESENCE`/`TIMELINE_ANCHOR` since none of the three sourced
+    novels ever mention the place, only the map does) -- same restrained
+    "generic NPC, no canon-character content" treatment already given to
+    Thorbardin. Resolved with the user before building: Crossing stays a
+    plain, road-free, foot-reachable waypoint, not a scripted `BOAT` ferry
+    -- the strait doesn't need one for reachability, and adding one would
+    pull in return-leg/`voyagesTaken` machinery this crossing has no use
+    for. Pure data content -- zero `.cpp`/`.h` changes. Verified via a
+    throwaway BFS script (all remaining `ROAD_PAIRS` connections intact,
+    Crossing's own tile and every other location still foot-reachable from
+    Solace, zero road tiles left crossing the strait), a clean `/W4`
+    rebuild (zero new warnings), and the piped smoke test -- run with the
+    user's real `save1.txt`/`save2.txt`/`save3.txt` moved aside
+    beforehand and restored after, timestamps and content confirmed
+    unchanged. See `docs/MAP_NOTES.md`'s "Crossing" section and
+    `docs/ZONE_NOTES.md`.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2619,12 +2660,17 @@ session's work.
    every data loader and all game logic stays untouched either way).
 4. **More locations surfaced by the Milestone 85 map re-derivation** --
    Thorbardin and Sancrist Isle, the two strongest candidates, shipped at
-   Milestone 86. Still open: Nordmaar, Schallsea, Northern/Southern
-   Ergoth -- named regions visible on the new map; whether any are
-   book-significant enough to warrant a location (vs. just flavor
-   geography) hasn't been checked against the novels/sourcebooks yet --
-   would need the same "research first" pass as any other content
-   addition before committing to specifics. Also folded in here as of
+   Milestone 86; the Strait of Schallsea itself gained a real waypoint
+   (Crossing) at Milestone 93. Still open: Nordmaar, Northern/Southern
+   Ergoth, and the separate Schallsea Island named in
+   `References/portcities.txt` under the New Sea (a different body of
+   water from the Strait of Schallsea Milestone 93 modeled, per the map --
+   not yet checked against the novels/sourcebooks) -- named regions
+   visible on the new map; whether any are book-significant enough to
+   warrant a location (vs. just flavor geography) hasn't been checked
+   against the novels/sourcebooks yet -- would need the same "research
+   first" pass as any other content addition before committing to
+   specifics. Also folded in here as of
    Milestone 87: whether any of `References/portcities.txt`'s other
    named ports (New Ports, Caergoth, Flotsam, Sanction, ...) deserve a
    real modeled location -- that file is a geography reference the user
