@@ -2912,13 +2912,20 @@ section).
     `CASTS_MAGIC_MISSILE`/`BREATH_WEAPON` missing their percent argument,
     and the real `data/monsters.txt` still loading its full 17-monster
     roster), a clean `/W4` rebuild (zero new warnings), and the piped smoke
-    test. **Interactive verification still needs the user's own
-    keyboard** -- more than usual this time, since this milestone changes
-    live combat math (new monster damage sources, a save category that was
-    previously dormant, the burst-then-knockout edge case) rather than
-    just adding data; no live save exists in `build/Debug` to risk, so no
-    preservation step was needed this session. See `docs/COMBAT_NOTES.md`'s
-    "Draconian roster" and "Death: knocked out, not killed" sections.
+    test. **Interactive verification** was completed in a follow-up
+    session via an isolated throwaway copy of the exe and `data/`
+    (real save backed up defensively first, though never actually at
+    risk): `data/monsters.txt` was temporarily narrowed to one draconian
+    at a time (and, since Sivak didn't turn up by chance even with a
+    1-in-3 pool, `world::Terrain.cpp`'s per-terrain encounter percentages
+    were temporarily bumped to 100 for one more throwaway rebuild, then
+    reverted) to force each encounter quickly rather than waiting on the
+    real, rare random-encounter odds. All three fired correctly in a real
+    playthrough: Bozak's Magic Missile line, Aurak's breath weapon
+    save/no-save lines, and the Sivak burst-then-knockout edge case
+    (XP/steel still awarded even when the post-kill burst finishes the
+    player off). See `docs/COMBAT_NOTES.md`'s "Draconian roster" and
+    "Death: knocked out, not killed" sections.
 
 ## NEXT UP
 
