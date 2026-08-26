@@ -1286,6 +1286,52 @@ See `docs/MAP_NOTES.md`'s "Southern Ergoth" section for the placement and
 sourcing, including the correction to this project's own prior
 "deliberately not modeled" call.
 
+## Port Balifor and Flotsam (Milestone 96)
+
+`data/zones/port_balifor.txt` — a 40×16 walled town grid (Kalaman's
+border-plus-exit-gap idiom, since this is an ordinary inhabited town,
+not an open camp). Three POIs: the Pig & Whistle (`W`, William
+Sweetwater, the zone's one talkable NPC and the `TIMELINE_ANCHOR`), the
+Harbor (`H`, flavor-only — establishes why the Heroes can't simply buy
+passage here), and a Draconian Patrol (`R`, flavor-only, atmosphere for
+the occupation). William gets the standard `TALK`/`TALK_AGAIN`, two
+`TOPIC`s (Raistlin's illusion act; Goldmoon's quietly-spreading healing
+reputation), and three `SUBJECT` entries — deliberately no `SHOP`,
+`BED`, or `QUEST`, matching this project's "don't add grammar the
+source doesn't call for" rule (see Southern Ergoth's Sentry, above).
+
+`data/zones/flotsam.txt` — a 40×16 walled grid, same idiom. Four POIs:
+the Refugees' Inn (`I`, flavor-only, the `TIMELINE_ANCHOR` — where the
+four Heroes waiting on Tanis are actually found), the Saltbreeze Inn
+(`S`, flavor-only — deliberately *not* talkable; see below), a Back
+Alley (`A`, flavor-only, echoing the ambush scene without restaging it),
+and the Harbor (`H`, a generic dockhand, this zone's one talkable NPC —
+`TALK`/`TALK_AGAIN`, a `TOPIC` on the Perechon, three `SUBJECT`
+entries). The dockhand's dialogue names Maquesta Kar-thon and gestures at
+her "helmsman who can read the Blood Sea's moods... simple as a child"
+without naming Berem — the same kind of unstaged foreshadowing this
+project has used before naming a character outright (compare Fizban's
+unnamed appearances before Milestone 48).
+
+**The Saltbreeze Inn is deliberately flavor-only, no NPC standing in for
+Kitiara.** Milestone 50 already decided she stays off the talk/topic
+picker entirely, surfacing only as retrospective dialogue inside a
+tracked Hero's own `TOPIC` — giving the Saltbreeze an innkeeper NPC who
+could describe her directly would work around that precedent instead of
+respecting it. Tanis's own new `PRESENCE flotsam` dialogue (see
+`docs/TIMELINE_NOTES.md`) stays deliberately evasive about what actually
+happens there, for the same reason his existing `TOPIC "A Debt He Won't
+Name"` at Kalaman stays coy — this zone's content is the live version of
+that same restraint, not a contradiction of it.
+
+Both zones connect by road (`neraka`-`flotsam`-`port_balifor`, see
+`docs/MAP_NOTES.md`) rather than sitting `SEA_LOCKED` — unlike Ice
+Wall/Sancrist/Southern Ergoth, nothing about either place's own source
+material requires a boat to reach it from the rest of the continent.
+See `docs/MAP_NOTES.md`'s "Port Balifor and Flotsam" section for
+placement and `docs/TIMELINE_NOTES.md`'s own section for the full
+sourcing and day-range reasoning.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

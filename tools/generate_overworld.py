@@ -176,6 +176,8 @@ ROAD_PAIRS = [
     ("kalaman", "godshome"),
     ("godshome", "neraka"),
     ("pax_tharkas", "thorbardin"),
+    ("neraka", "flotsam"),
+    ("flotsam", "port_balifor"),
 ]
 
 # Hand-corrected tiles (Milestone 87): pixels the NUM_COLORS=32 quantization
@@ -198,6 +200,19 @@ MANUAL_TERRAIN_OVERRIDES: dict[tuple[int, int], str] = {
     # no water feature anywhere nearby) -- majority of its 8 neighbors
     # are forest, so that's what it's corrected to.
     (194, 98): "forest",
+    # Blood Bay's edge (on the neraka-flotsam and flotsam-port_balifor
+    # roads, Milestone 96): four tiles at the bay's inner fringe, majority
+    # '~'/'r' neighbors -- the same "short ford across real but minor
+    # water" treatment as the Strait of Schallsea crossing above, not a
+    # misclassification.
+    (363, 150): "river",
+    (364, 150): "river",
+    (364, 151): "river",
+    (370, 153): "river",
+    # Single-pixel noise in the coastal mountains south of Blood Bay --
+    # 6 of 8 neighbors are mountain, so that's what it's corrected to,
+    # same rule as the High Clerist's Tower tile above.
+    (368, 156): "mountain",
 }
 
 

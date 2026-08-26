@@ -1,0 +1,39 @@
+# data/zones/port_balifor.txt -- hand-authored walkable interior: the
+# occupied trade town of Port Balifor, where Tanis, Raistlin, Caramon,
+# Goldmoon, and Riverwind shelter for about a month funding their onward
+# passage (Milestone 96 -- Dragons of Winter Night, Book Three). The
+# filename stem ("port_balifor") is the zone id and MUST match the
+# LOCATION id in data/locations.txt for the Enter key to find it.
+# Grammar: docs/ZONE_NOTES.md
+NAME Port Balifor
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..W...............................H...#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#............................R.........#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI W "The Pig & Whistle" A sea breeze off the Bay of Balifor whistles through ill-fitting windows -- the last part of the tavern's name, same as the sign out front. Every table's mismatched, every chair worn smooth, and the bar itself smells more of good company than good ale, which suits the regulars fine.
+TALK W The innkeeper's whole face creases into a grin that's more good humor than symmetry -- town legend says a wandering pig marked him for it the day he was born, and he made his peace with the joke decades ago. "William Sweetwater, at your service. Roadweary and short on coin? You've found the right bar. Sailors and refugees drink free here, so long as you're not wearing a Highlord's colors." He nods toward a corner table where a red-robed figure is idly making a coin dance across his knuckles for a rapt audience. "And stay for the show, if you've never seen it. Best thing to happen to this bar in a year, and I don't say that lightly."
+TALK_AGAIN W William wipes down the bar without looking up. "Best seat in Port Balifor, if I do say so myself. We get dragonmen in some nights now, gods help us -- but they tip well and mostly mind their manners while the show's on."
+TOPIC W "The Red Wizard's Wonderful Illusions" William's grin widens. "Never seen anything like it. White-winged ships sailing up and down my own bar-top, birds out of soup tureens, dragons breathing fire through the windows without singeing a curtain. Man walked into flames whole and strolled back through my front door minutes later for a glass of wine, cool as you please." He shakes his head, delighted. "Word's spread clear to the Ruins and back. Best month of business I've had since before the Highlords ever sailed into this bay."
+TOPIC W "The Healer's Gift" William's voice softens. "The silver-haired lady with the staff -- word's already getting around about her, quiet-like. Old Maro's bad hip, gone. Cooper's girl's fever, broken in a night. She doesn't make a show of it the way the mage does his tricks, just does the work and moves on to the next one who needs it." He shakes his head, something like wonder in it. "Folk out here haven't had a real cleric in longer than I've been pouring ale. Whatever she's carrying in that staff of hers, I hope she never runs short of it."
+SUBJECT W raistlin,mage,wizard,show,illusions Best thing to happen to this bar in a year, and I don't say that lightly. Turns coins into flame and himself into ash and back again, calm as you like. Wish I knew half his secrets -- I'd never buy another round of ale again.
+SUBJECT W goldmoon,healer,healing,staff Word's getting around quiet-like about what that staff of hers can do. Haven't had a real cleric out this way in longer than I've kept this bar. Whatever she's carrying, this coast needed it badly.
+SUBJECT W flotsam,ship,passage,sail No one in Port Balifor will give a stranger passage these days -- half the shipowners are in the Highlords' pocket, and the rest have had their hulls confiscated outright. Flotsam's your best bet if you're looking for a captain who cares more about your coin than your papers. Wretched place, but it's still a port that hasn't forgotten how to mind its own business.
+SUBJECT_UNKNOWN W William shrugs, still grinning. "Couldn't tell you. Ask me about ale, illusions, or pig jokes, and now we're talking."
+POI H "The Harbor" A handful of fishing boats and one or two idle merchant hulls ride at anchor, watched over by draconian guards who seem more bored than vigilant. Nothing here looks fit, or willing, to carry a stranger anywhere the Highlords wouldn't approve of.
+POI R "A Draconian Patrol" Two dragonmen walk a slow, unhurried circuit of the waterfront, spears resting on their shoulders more like habit than readiness. They don't so much guard the town as remind it who's allowed to leave.
+TIMELINE_ANCHOR W
+END

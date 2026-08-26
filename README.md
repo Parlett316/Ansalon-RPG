@@ -53,7 +53,8 @@ generated from
 the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
-Isle, Crossing, Southern Ergoth, ...) sit on that grid, most connected by
+Isle, Crossing, Southern Ergoth, Port Balifor, Flotsam, ...) sit on that
+grid, most connected by
 roads baked into the terrain — Ice Wall, Sancrist Isle, and Southern
 Ergoth are the exceptions, three sea-locked stops reachable only by
 arranging passage on a ship, first out of Tarsis, then onward from Ice
@@ -75,7 +76,13 @@ fought, and finally sheltered by elves scattered there from three
 different homelands — before reaching Sancrist and then the siege
 of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
 Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
-Silvanesti instead, into a second dragon-orb crisis of their own — and
+Silvanesti instead, into a second dragon-orb crisis of their own — then
+shelter a month at Port Balifor, funding onward passage with Raistlin's
+traveling illusion act while Goldmoon's healing reputation quietly begins
+to spread, before reaching the wreck-built port of Flotsam, where Tanis is
+drawn into a dangerous entanglement with a Dragon Highlord while the
+others wait out his unexplained absences and a ship is chartered into the
+Blood Sea — and
 then, as *Dragons of Spring Dawning* opens, Flint and Tasslehoff travel on
 to Palanthas — witnessing, from the outside, the same night Raistlin's own
 dragon-orb escape from the Blood Sea maelstrom lands him half-dead on the

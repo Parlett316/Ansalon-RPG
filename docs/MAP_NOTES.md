@@ -768,6 +768,57 @@ attacks that same ship roughly 200 lines later and drives it onto
 Southern Ergoth's rocks for real. See `docs/TIMELINE_NOTES.md`'s new
 "Southern Ergoth" section for the full, corrected sourcing.
 
+## Port Balifor and Flotsam (Milestone 96)
+
+Placed the same crop-and-grid-overlay method as every placement since
+Milestone 85. Unlike most prior placements, both names are directly
+legible on `References/dragonlancemap2.png` — no relative-geography
+guesswork needed. A wide crop east of the already-placed Neraka
+(`POS 301 137`)/Godshome (`POS 294 134`) found the Blood Sea of Istar's
+full spiral outline (the same maroon fill the `blood_sea` color bucket
+traces cleanly, per Milestone 87's classifier notes), with "Flotsam"
+labeled directly on a named inlet ("Blood Bay") at its southwestern
+shore, and "Port Balifor" labeled further southwest still, on the
+Khurman Sea/Bay of Balifor — matching `References/portcities.txt`'s own
+separate entries for the two ("Flotsam... on the Blood Sea's north
+shore" vs. "Port Balifor... the usual jumping-off point for Goodlund")
+and the source novel's own "a city north of Port Balifor, located on the
+Blood Sea of Istar."
+
+**`POS 371 152`** (Flotsam) and **`POS 356 179`** (Port Balifor), both
+pixel-derived from the label positions then confirmed directly against
+the live `data/overworld.grid`: Flotsam's tile is `r` (coastal shallow,
+sitting in the wide river-mouth/bay fringe the map art draws at Blood
+Bay's edge), Port Balifor's is `"` (savannah, solid land immediately
+next to the Khurman Sea coastline) — both walkable, no nudge needed.
+
+**`("neraka", "flotsam")` and `("flotsam", "port_balifor")` added to
+`ROAD_PAIRS`** — nearest already-modeled locations (Neraka is ~72 grid
+units from Flotsam vs. ~133 for Kalaman, despite Kalaman being the
+location the source text itself names as Flotsam's nearest neighbor;
+roads in this project connect to whatever's nearest on the map, not
+whatever the book travels to next — see every prior placement's own
+"nearest already-modeled location" rule). A straight-line check against
+the classified grid (same method as Milestone 87's road-crossing audit)
+found 5 true `~` (ocean) tiles across the two new roads, all within
+Blood Bay's own shallow fringe or a single mountain-adjacent noise
+pixel — patched via `MANUAL_TERRAIN_OVERRIDES` (4 to `river`, matching
+majority-neighbor terrain; 1 to `mountain`, same rule), the same "short
+ford, not a real gap" treatment already applied to the Strait of
+Schallsea and White-face River crossings. Re-verified after
+regenerating: 0 true water tiles crossed on either new road.
+
+**No glacier-patch reapplication needed** — that whole caveat (every
+`ROAD_PAIRS` change since Milestone 37 required capturing and
+reapplying Ice Wall's 46-tile hand-painted patch) was retired at
+Milestone 85, when the newer classifier started producing real glacier
+naturally. Confirmed this is still true before regenerating (the "46
+tiles" recorded in `.research/glacier_patch_m44.txt` are long since
+naturally reclassified as ocean/other terrain, not glacier — a stale
+scratch file from before Milestone 85, not a sign anything is missing
+now) rather than assuming the old milestone-era instructions still
+applied.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

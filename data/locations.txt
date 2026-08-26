@@ -206,3 +206,23 @@ SEA_LOCKED
 POS 91 193
 DESC A wind-bent stretch of coastal wood on Southern Ergoth's western shore, the Elderwild at its back -- home now to three scattered peoples of elves who all fled here from somewhere else and never quite agreed on who's in charge. Ship's wreckage and old bonfire-scars mark where the sea last put someone ashore uninvited.
 END
+
+LOCATION port_balifor
+NAME Port Balifor
+REGION Balifor
+TERRAIN occupied-trade-port
+GLYPH B
+TOWN
+POS 356 179
+DESC A trade town on the Bay of Balifor, dragonarmy patrols in its streets but its fishing fleet and taverns mostly left alone -- the Highlords have never cared much what happens on this stretch of coast. The Pig & Whistle still pours a decent ale for anyone not wearing a Highlord's colors.
+END
+
+LOCATION flotsam
+NAME Flotsam
+REGION Blood Bay
+TERRAIN wreck-built-port
+GLYPH O
+TOWN
+POS 371 152
+DESC A wretched port on Blood Bay, thrown together from salvage and bad luck since the day the Cataclysm made this coastline what it is. Whoever holds the sharpest blade or the most steel runs things here today -- lately, that's the dragonarmies.
+END

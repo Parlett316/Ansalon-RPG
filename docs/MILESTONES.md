@@ -2710,6 +2710,58 @@ section).
     own prior claim), and `docs/ZONE_NOTES.md`'s "Southern Ergoth" and
     "Boats" sections.
 
+96. Port Balifor and Flotsam -- closes the second real gap the Milestone 95
+    research pass turned up, and a deliberate reversal of a "don't invent to
+    fill a gap" call this project made three separate times (Milestones 39,
+    49, 50): Tanis, Raistlin, Caramon, Goldmoon, and Riverwind's tracked
+    schedule used to jump straight from `silvanesti 25 30` to
+    `palanthas 83 83`/`kalaman 100 100`, skipping roughly 70 in-game days
+    that *Dragons of Winter Night*/*Dragons of Spring Dawning* spend on real,
+    sourced content: a month sheltering at Port Balifor (Raistlin's "Red
+    Wizard" illusion act funding passage, Goldmoon's healing reputation
+    quietly starting to spread), then Flotsam, where Tanis -- disguised in a
+    dragonarmy officer's uniform -- is recognized and taken captive by a
+    Dragon Highlord who turns out to be Kitiara, while the other four wait
+    out his unexplained absences before a storm-night escape opens *Dragons
+    of Spring Dawning*. Two new `LOCATION`s (`port_balifor POS 356 179`,
+    `flotsam POS 371 152`, both directly legible on the reference map for
+    the first time since Kalaman -- see `docs/MAP_NOTES.md`), two new zones
+    (a small, three-POI Port Balifor built around William Sweetwater's Pig &
+    Whistle; a four-POI Flotsam whose Saltbreeze Inn is deliberately
+    flavor-only, no NPC standing in for Kitiara -- her Milestone 50
+    off-picker precedent stands -- see `docs/ZONE_NOTES.md`), and matching
+    `PRESENCE port_balifor 35 64`/`flotsam 65 82` windows for all five
+    Heroes in `data/timeline.txt`, each with a real `SAY`/`SAY_AGAIN`/`TOPIC`
+    -- Tanis's own stays deliberately evasive about what's actually
+    happening to him, feeding into rather than rewriting his existing
+    `TOPIC "A Debt He Won't Name"` at Kalaman. `("neraka", "flotsam")` and
+    `("flotsam", "port_balifor")` were added to `ROAD_PAIRS` (Neraka is the
+    nearest already-modeled location, not Kalaman, despite Kalaman being
+    the location the source text itself names as Flotsam's neighbor -- see
+    `docs/MAP_NOTES.md`); regenerating found 5 true-water tiles across the
+    two new roads, all patched via `MANUAL_TERRAIN_OVERRIDES` as short fords
+    or single-pixel noise, re-verified at 0 after regenerating. Confirmed,
+    rather than assumed, that Ice Wall's old 46-tile hand-painted glacier
+    patch needs no reapplication here -- that caveat was already retired at
+    Milestone 85. What's explicitly left out: the Silvanesti-to-Port-Balifor
+    journey and the Blood Sea maelstrom/shipwreck itself (neither is shown
+    on-page), Kitiara as a talkable `CHARACTER` (Milestone 50's precedent),
+    and Laurana's own later Flotsam/Dargaard Keep captivity (a real,
+    still-open gap, not resolved by this milestone -- see
+    `docs/TIMELINE_NOTES.md`'s Laurana section). Verified via a throwaway
+    self-test (49 assertions: `LOCATION`/zone loading, both zones' POIs and
+    `TIMELINE_ANCHOR`s, `Timeline::presentAt` day-boundary correctness for
+    all five Heroes across both new windows, and confirming the existing
+    `silvanesti`/`kalaman`/`palanthas` windows are untouched), a clean `/W4`
+    rebuild (zero new warnings, no `.cpp`/`.h` changes -- pure data content),
+    and the piped smoke test with the user's real `save1.txt`/`save2.txt`/
+    `save3.txt` confirmed byte-identical afterward. Interactive verification
+    (walking the new roads, talking to William Sweetwater and the Flotsam
+    dockhand, confirming the new `PRESENCE` dialogue in sequence) still
+    needs the user's own keyboard. See `docs/MAP_NOTES.md`, `docs/
+    ZONE_NOTES.md`, and `docs/TIMELINE_NOTES.md`'s "Port Balifor and
+    Flotsam" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2767,23 +2819,12 @@ session's work.
    gap and shipped at Milestone 95, also correcting a standing error in
    this project's own `docs/TIMELINE_NOTES.md`. Nothing left open from
    this original item.
-5. **Flotsam (and Port Balifor)** -- a second real, previously-missed gap
-   found by the same research pass that turned up Southern Ergoth, sized
-   about the same (a genuine milestone, not a quick content pass). Tanis,
-   Raistlin, Caramon, Goldmoon, and Riverwind's tracked schedule currently
-   jumps straight from `silvanesti 25 30` to `palanthas 83 83`/
-   `kalaman 100 100` with nothing in between -- but `.research/
-   dwn_full.txt` (from roughly line 9950 through the end of the book) has
-   them spend a month at Port Balifor's Pig & Whistle inn (Raistlin runs a
-   traveling illusion show to fund passage; this is also where Goldmoon's
-   healing ministry visibly starts spreading), then travel on to Flotsam,
-   where *Dragons of Winter Night* ends with Kitiara arriving and
-   recognizing Tanis -- and `.research/dosd_full.txt` (*Dragons of Spring
-   Dawning*) opens directly in the same scene, staying in Flotsam for its
-   entire first act (Tanis's ~4-day captivity with Kitiara, the search for
-   Berem, the escape). Needs its own research-and-plan pass before
-   building, same as Southern Ergoth got -- day-range placement, whether
-   Port Balifor earns its own `LOCATION` or folds into Flotsam as
-   narrated/`TOPIC` content, and how much of the Kitiara captivity to
-   model directly versus leave retrospective (she's still flavor-only per
-   Milestone 50's precedent, not a tracked `CHARACTER`).
+5. ~~**Flotsam (and Port Balifor)**~~ -- shipped at Milestone 96. Both
+   gained their own `LOCATION` and zone; all five Heroes gained matching
+   `port_balifor 35 64`/`flotsam 65 82` windows. Kitiara stayed flavor-only,
+   per Milestone 50's precedent. See `docs/MILESTONES.md` entry 96 and
+   `docs/TIMELINE_NOTES.md`'s "Port Balifor and Flotsam" section. One
+   related thread stays open: Laurana's own later Flotsam/Dargaard Keep
+   captivity (between `kalaman 90 92` and `neraka 105 107`) still has no
+   `LOCATION`/`PRESENCE` window of its own -- a real, still-open gap, not
+   resolved by this milestone.

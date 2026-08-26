@@ -1,0 +1,39 @@
+# data/zones/flotsam.txt -- hand-authored walkable interior: the
+# wreck-built port of Flotsam, where Tanis is taken captive by a Dragon
+# Highlord who turns out to be Kitiara while the other four wait out
+# the delay (Milestone 96 -- Dragons of Winter Night into Dragons of
+# Spring Dawning's opening chapter). The filename stem ("flotsam") is
+# the zone id and MUST match the LOCATION id in data/locations.txt for
+# the Enter key to find it. Grammar: docs/ZONE_NOTES.md
+NAME Flotsam
+ENTRY 20 14
+GRID
+########################################
+#......................................#
+#..I.....................S.............#
+#......................................#
+#......................................#
+#...........A..........................#
+#......................................#
+#......................................#
+#......................................#
+#....................................H.#
+#......................................#
+#......................................#
+#......................................#
+#......................................#
+###################...##################
+ENDGRID
+POI I "The Refugees' Inn" A cramped, cheap common room the five of you have shared for weeks now -- cots instead of beds, a fire that never quite drives out the damp, and a growing pile of coins Raistlin's traveling road show earned back at Port Balifor, spent slower than anyone's nerves. It's the only address in Flotsam anyone still worries about anyone else coming back to.
+POI S "The Saltbreeze Inn" Built high on a cliff over the crash of Blood Bay, this is the best room in Flotsam by a wide margin -- which mostly means it's where the officer trade drinks, and where the ordinary rules of the town quietly stop applying. Something about the stairs up to its private rooms makes people in this town lower their voices without quite knowing why.
+POI A "A Back Alley" A narrow gap between two leaning buildings, cobblestones dark with old stains no one's bothered to explain. Word gets around a town this size fast -- something ugly happened here once, over a grudge against the dragonarmies, and something stranger happened right after it.
+POI H "The Harbor" Masts crowd the wharf three and four deep, more of them flying no flag at all than any Highlord's colors. Flotsam's reputation as a haven for smugglers and pirates isn't just talk -- half these captains would sail a hold full of steel to the bottom of the Blood Sea itself for the right price, and ask no questions on the way.
+TALK H A weathered dockhand barely looks up from coiling a line. "Looking for passage? Half these captains would take your coin and your throat both, given the chance. But if you've got enough steel and no better sense, ask around for the Perechon -- her captain's hauled worse cargo than frightened refugees through the Maelstrom's edge and lived to spend the fee."
+TALK_AGAIN H The dockhand nods toward the harbor mouth. "Storm's been building out past the point for two days now. First real gale of the season, they're saying. Bad time to be shopping for a ship, if you ask me -- which nobody has."
+TOPIC H "The Perechon" "Trim little ship, fast for her size. Captain Maquesta Kar-thon runs her, and she's better than her reputation, which is saying something in this town. Word is she's got a helmsman who can read the Blood Sea's moods better than any chart ever drawn -- simple as a child, they say, but the ship's never once come to grief under his hands."
+SUBJECT H perechon,ship,passage,captain,maquesta Best ship in this harbor for a hard crossing, if you can afford her and don't mind her captain's temper. Ask around the south pier -- someone there can point you to her berth.
+SUBJECT H storm,gale,weather Building out past the point for two days now. First real blow of the season. Bad time to be putting out to sea, though I doubt that'll stop whoever's desperate enough to try.
+SUBJECT H highlords,dragonarmies,occupation Highlords don't much bother with Flotsam so long as their coin keeps flowing and their officers get their fun. Rest of us just try to stay out of whatever business brought them here this week.
+SUBJECT_UNKNOWN H The dockhand shrugs, already looking back to his line. "Not my business, and I'd thank you kindly to keep it that way."
+TIMELINE_ANCHOR I
+END

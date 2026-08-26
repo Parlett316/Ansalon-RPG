@@ -1261,6 +1261,82 @@ holds generic, repeatable encounter types, not named story beats. This
 isn't a new restraint call, just a restatement of the same one Milestone
 36 already made for Feal-thas and the Thanoi.
 
+## Port Balifor and Flotsam (Milestone 96)
+
+Closes a gap this file itself flagged as deliberately unmodeled three
+separate times (the Kalaman, Laurana, and Kitiara sections below all say
+some version of "the Flotsam/Blood Sea/shipwreck chapters... stay
+unmodeled, don't invent to fill a gap"). That restraint call gets
+reversed here the same way Southern Ergoth's "the party never lands"
+claim got reversed at Milestone 95: the earlier calls were made from a
+summary-level read; a fresh line-by-line extraction of `.research/
+dwn_full.txt` (~9894-13520) and `.research/dosd_full.txt` (~150-260)
+shows real, vivid, multi-chapter on-page content sitting in the gap, not
+just background travel between novels.
+
+**Who's there, confirmed by direct text search, not inference.** Tanis,
+Raistlin, Caramon, Goldmoon, and Riverwind are all on-page together at
+both stops (plus Tika, already established as untracked — see Milestone
+47's Solace precedent).
+
+**Port Balifor** (`dwn_full.txt` ~9894-10200): an occupied but
+lightly-garrisoned trade town. The penniless companions shelter at the
+Pig & Whistle, run by a real named innkeeper, William Sweetwater.
+Raistlin starts "The Red Wizard and His Wonderful Illusions" — sleight
+of hand from his own boyhood, dressed up with real magic — to fund
+passage; this is also where Goldmoon's healing reputation first starts
+spreading. They stay about a month, since no ship in Port Balifor will
+carry them (local shipowners are all in the Highlords' pocket).
+
+**Flotsam** (`dwn_full.txt` ~12933-13520, `dosd_full.txt` ~150-260): "a
+small and wretched town... on the Blood Sea of Istar," tense and
+occupied. Tanis, disguised in a dragonarmy officer's uniform to move
+freely, is ambushed in an alley by a grief-maddened elf and saved by a
+Dragon Highlord who turns out to be Kitiara — she takes him to the
+Saltbreeze Inn (the best room in town, built on a cliff over Blood Bay),
+and presses him, between seduction, for the location of "the Green
+Gemstone Man" (Berem — already this project's own through-line via
+Godshome/Neraka). She leaves him at Flotsam "to look after matters"
+while she rides to the Tower siege — her own line at `dwn_full.txt:15399`
+("Just two days ago... I left him in Flotsam") is spoken the same day as
+Sturm's death, already fixed at `high_clerist_tower 81 81` below.
+`dosd_full.txt`'s own Chapter 1 (~210-260) picks up directly from this:
+Tanis sneaks out of the Saltbreeze at night during a record gale to
+rejoin the others and make for a chartered ship, the Perechon.
+
+**What's already covered, and stays untouched.** Boarding the Perechon,
+the Blood Sea maelstrom, the wreck, Raistlin's dragon-orb escape to
+Palanthas, and the survivors' sea-elf rescue near Kalaman are all
+already narrated via existing flavor text at `palanthas 83 83`
+(Milestone 44) and `kalaman 100 100` (Milestone 39, below) — this
+milestone adds the two new upstream stops only, and doesn't restage or
+rewrite either existing window.
+
+**Day ranges, soft and disclosed-as-invented like every other date in
+this file.** `port_balifor 35 64` — about five days of unmodeled travel
+after `silvanesti 25 30`, then the book's own "about a month."
+`flotsam 65 82` — arrival, chartering the Perechon, Tanis's captivity and
+escape, ending the day of the storm-night departure, one day before
+Raistlin's existing `palanthas 83 83`. Days 82-83 (the wreck itself) stay
+unmodeled, same restraint the sea-elf rescue already gets. Identical
+windows for all five Heroes, since the text confirms them together at
+both stops.
+
+**Kitiara stays exactly as flavor-only as Milestone 50 already
+decided** — no `CHARACTER` block, no NPC standing in for her at either
+zone (see `docs/ZONE_NOTES.md`'s "Port Balifor and Flotsam" section).
+Tanis's own new `flotsam` dialogue narrates his captivity obliquely
+(present-tense unease, guilt he won't specify), the live version of the
+same reticence his existing `TOPIC "A Debt He Won't Name"` at
+`kalaman 100 100` already shows — that TOPIC is not rewritten here,
+and this milestone's content is written to feed into it, not contradict
+it. The other four Heroes' own new dialogue reflects growing worry over
+Tanis's absences without naming what he's actually doing, matching how
+little the book itself lets them know at the time.
+
+See `docs/MAP_NOTES.md`'s "Port Balifor and Flotsam" section for
+placement and `docs/ZONE_NOTES.md`'s own section for the two new zones.
+
 ## Sturm's death (Milestone 38)
 
 The bridging event between *Dragons of Winter Night* (this project's
@@ -1345,9 +1421,11 @@ battle, neither modeled as their own zones this milestone). `kalaman 100
 100` covers the reunion and the Dragon Highlord's ultimatum (lines
 8060-8362, 8438-8446) — all six: Tanis, Caramon, Goldmoon, and Riverwind
 (shipwrecked, sea-elf-rescued, and washed ashore north of the city — their
-first appearance since `silvanesti 25 30`; the Flotsam/Blood Sea/shipwreck
-chapters between the two stay unmodeled, same "don't invent to fill a gap"
-restraint as every prior time-skip in this file) plus Flint and Tasslehoff,
+first appearance since `port_balifor`/`flotsam` (Milestone 96, below,
+retroactively closing what this section originally called an
+unmodeled gap); the Blood Sea maelstrom and shipwreck themselves stay
+unmodeled, same "don't invent to fill a gap" restraint as every prior
+time-skip in this file) plus Flint and Tasslehoff,
 now grieving both Sturm's death and the Golden General's capture at
 Dargaard Keep (referenced in dialogue only — the ambush itself isn't
 separately modeled, same restraint as Sancrist Isle/Southern Ergoth staying
@@ -1415,11 +1493,12 @@ directly from that same battlements/map-room chapter stretch.
 
 **No window for Caramon, Tanis, Goldmoon, or Riverwind.** Confirmed by
 direct text search (not inference) that none of them are ever physically in
-Palanthas in this book — they're on the separate Flotsam/Blood Sea/
-sea-elf-rescue track that lands at Kalaman on day 100, already modeled.
-Caramon's own gap between `silvanesti 25 30` and `kalaman 100 100` stays
-unmodeled, same "don't invent to fill a gap" restraint as every prior
-time-skip in this file.
+Palanthas in this book — they're on the separate Port Balifor/Flotsam/
+Blood Sea/sea-elf-rescue track that lands at Kalaman on day 100, already
+modeled. Their own `port_balifor`/`flotsam` windows (Milestone 96, above)
+close most of this gap; the Blood Sea maelstrom and shipwreck themselves
+still stay unmodeled, same "don't invent to fill a gap" restraint as every
+prior time-skip in this file.
 
 ## Godshome (Milestone 45)
 
@@ -1802,9 +1881,15 @@ functioned as an actual naming-avoidance device (a descriptive tag
 standing in for an introduction) needed the edit.
 
 **Deliberately left out.** Flotsam and Dargaard Keep, where she's lured
-and captured between `kalaman 90 92` and `neraka 105 107`, have no
-existing `LOCATION` — same "don't invent to fill a gap" restraint as
-Sancrist Isle, Southern Ergoth, and Fizban's own DWN/DOSD side arcs. Her
+and captured between `kalaman 90 92` and `neraka 105 107`, had no
+existing `LOCATION` at the time this milestone shipped — same "don't
+invent to fill a gap" restraint as Sancrist Isle, Southern Ergoth, and
+Fizban's own DWN/DOSD side arcs. Flotsam itself gained a real `LOCATION`
+at Milestone 96, for an earlier Tanis-group window (`flotsam 65 82`,
+well before her own later capture there) — that milestone didn't add a
+matching Laurana window for her own, later Flotsam scene, so this
+remains a real, still-open gap, not an oversight; Dargaard Keep has no
+`LOCATION` either way. Her
 absence from `kalaman 100 100` and `godshome 103 103` (both already
 built for the other Heroes) is for the same reason and isn't an
 oversight: Flint's and Tanis's own existing dialogue at those windows
@@ -1853,9 +1938,13 @@ never becomes directly talkable.
   Skie; she hesitates, then the storm separates them before anything
   resolves. No `LOCATION` models a sea voyage, so the scene itself
   can't be staged, but it's valid grounding for a Hero's own retrospective
-  `TOPIC` — the same technique already used for Tanis's unstaged Flotsam
-  material in `TOPIC "A Debt He Won't Name"` (see the Kalaman write-up
-  above). Sources Caramon's new `TOPIC "His Sister"`.
+  `TOPIC` — the same technique already used for Tanis's own Kalaman-era
+  `TOPIC "A Debt He Won't Name"`, retrospective about Flotsam back when
+  this milestone shipped and Flotsam itself had no `LOCATION` yet (see
+  the Kalaman write-up above; Flotsam gained a real `LOCATION` and its
+  own live-day dialogue at Milestone 96, but that TOPIC's own text was
+  deliberately left as-is, not rewritten). Sources Caramon's new
+  `TOPIC "His Sister"`.
 
 **Naming.** Kitiara is named in all of the above. The blanket "keep major
 recurring canon characters unnamed" precedent is already retired as of
