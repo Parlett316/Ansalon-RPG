@@ -180,7 +180,12 @@ skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real
 2e Monster Manual and, for the
 Krynn-specific draconians and Thanoi, Dragonlance Adventures (no orcs, since Krynn
-has none) — the chance of one varies by terrain, roads safest and forest/
+has none) — three of the draconians fight back with real, book-sourced
+abilities beyond a plain weapon swing: Bozaks sometimes cast Magic Missile
+instead of attacking, Auraks sometimes breathe a noxious cloud (save for
+half damage, or take full damage and fight on blinded), and Sivaks burst
+into flame with one last retaliatory hit as they fall — the chance of one
+varies by terrain, roads safest and forest/
 mountains riskiest, and which monster you draw leans toward that terrain too
 (Bugbears more common in hills and mountains, Gnolls never on salt flats,
 Thanoi more common on glacier, and so on) — resolved with real 2e attack/damage math, and the combat log shows that math for every

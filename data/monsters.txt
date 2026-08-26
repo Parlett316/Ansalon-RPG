@@ -253,11 +253,18 @@ STEEL 3 8 0
 XP 247
 # Bozaks are real spellcasters (cast as a 4th-level magic-user: burning
 # hands, enlarge, magic missile, shocking grasp, invisibility, levitate,
-# stinking cloud, web), save at +2, and have 20% magic resistance -- none
-# of that is modeled (no monster-spellcasting system exists for anyone
-# yet), same restraint as Baaz's unmodeled magic resistance. Its
-# bone-explosion death trait (1d6 dmg/10 ft) is also unmodeled, same
-# treatment as the Kapak's acid-pool-on-death.
+# stinking cloud, web) -- Milestone 99 models the signature one, Magic
+# Missile, as a real in-combat special attack (see CASTS_MAGIC_MISSILE
+# below and docs/COMBAT_NOTES.md); the other seven spells, +2 saves, and
+# 20% magic resistance stay unmodeled, same restraint as Baaz's unmodeled
+# magic resistance. Its bone-explosion death trait (1d6 dmg/10 ft) is also
+# unmodeled, same treatment as the Kapak's acid-pool-on-death.
+# 40% chance per round to cast Magic Missile (1d4+1 per missile, 2
+# missiles at "4th-level caster") instead of its weapon attack -- no
+# attack roll, no saving throw, same PHB math as the player's own
+# magic_missile spell. Invented pacing (the book gives no frequency for
+# monster spellcasting) -- see docs/COMBAT_NOTES.md.
+CASTS_MAGIC_MISSILE 40
 # An officer-tier draconian (real spellcasting, HD4) -- too dangerous for a
 # starting town's doorstep. Invented gameplay tuning, user-requested, not
 # sourced (Dragonlance Adventures gives draconians no Climate/Terrain field
@@ -284,11 +291,19 @@ STEEL 3 10 0
 # average roll (6d8 averages 27), same treatment as the Bozak's XP above.
 XP 512
 # Sivaks are real shapeshifters -- they can take the form of a humanoid
-# they kill, and burst into flame or assume their killer's form when
-# slain themselves -- plus +2 on saves and 20% magic resistance. None of
-# it is modeled (no shapeshifting or status-effect system exists for
-# anyone yet); left as flavor-only, same restraint as every other
-# draconian's unmodeled traits.
+# they kill, and assume their killer's form when slain themselves (unless
+# the killer is larger, in which case they burst into flame instead) --
+# plus +2 on saves and 20% magic resistance. The shapeshifting itself stays
+# unmodeled (no persistent per-monster identity or NPC-disguise gameplay
+# exists to hang it on, and no status-effect system exists for anyone
+# yet); so do +2 saves/20% magic resistance. Milestone 99 models the
+# death-burst as a real retaliatory hit (see BURSTS_INTO_FLAME below) --
+# the book's "killed by something larger" condition is dropped since this
+# project has no SIZE stat to check against, so it always fires.
+# Real 2d4 damage, no saving throw (Dragonlance Adventures p.75) -- unlike
+# Baaz's stone/Kapak's acid/Bozak's bone-explosion, which stay flavor-only
+# victory messages, this is a genuine retaliatory hit against the player.
+BURSTS_INTO_FLAME
 # HD6, deeper into elite-tier than the Bozak above -- kept farther from
 # towns accordingly. Invented gameplay tuning, user-requested, not sourced.
 MIN_TOWN_DISTANCE 35
@@ -317,12 +332,23 @@ XP 2160
 # dimension door, suggestion/mind control, change self, polymorph self,
 # at-will invisibility, a noxious-cloud breath weapon, and real 1st- to
 # 4th-level magic-user spellcasting, plus 30% magic resistance and saves
-# at +4. None of it is modeled -- would need several subsystems this
-# project doesn't have (mind control, shapeshifting, monster spellcasting,
-# a breath-weapon area effect); left entirely as flavor text, same
-# restraint as its lesser cousins above. Its real three-stage death
+# at +4. Milestone 99 models the breath weapon as a real special attack
+# (see BREATH_WEAPON below); dimension door, mind control, change
+# self/polymorph self, invisibility, and the full spell list stay
+# unmodeled -- none of them translate cleanly into this project's
+# positionless, no-disguise-gameplay 1v1 combat loop, same restraint as
+# every other draconian's unmodeled traits. Its real three-stage death
 # (immolation, then a lightning-ball transformation, then an explosion)
-# is likewise unmodeled.
+# is likewise unmodeled, as are its 30% magic resistance and +4 saves.
+# 30% chance per round to breathe a noxious cloud instead of its weapon
+# attack: save vs. breath weapon for half of 20 damage, or full damage
+# and blinded (a -4 this-fight to-hit penalty -- the book names the
+# condition but not a number, so this is invented). The book's real
+# "three times per day" has no way to track across stateless encounters
+# with no monster-instance persistence, so it's compressed to "available
+# this whole fight," gated only by this per-round roll -- see
+# docs/COMBAT_NOTES.md.
+BREATH_WEAPON 30
 # HD8, the most powerful thing in the roster -- kept the farthest from
 # towns of any monster. Invented gameplay tuning, user-requested, not
 # sourced.

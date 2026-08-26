@@ -1406,6 +1406,39 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("The " + monster.name + " can't bring itself to attack!");
             return;
         }
+        // Bozak Draconian: casts Magic Missile (Dragonlance Adventures
+        // p.74, "as a 4th-level magic-user") instead of its weapon attack
+        // some rounds -- same PHB p.176 math as the player's own
+        // magic_missile spell (character::castSpell), fixed at "4th-level
+        // caster" per the book's own framing. No attack roll, no saving
+        // throw. See docs/COMBAT_NOTES.md for the invented per-round
+        // chance (the book gives no real frequency).
+        if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
+            int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
+            state_.character.currentHp -= missileDamage;
+            log.push_back("The " + monster.name + " casts Magic Missile! It strikes you for " +
+                           std::to_string(missileDamage) + " -- no saving throw.");
+            return;
+        }
+        // Aurak Draconian: noxious-cloud breath weapon (Dragonlance
+        // Adventures p.73) instead of its weapon attack some rounds --
+        // save vs. breath weapon for half of 20 damage, or full damage and
+        // blinded (a -4 this-fight to-hit penalty; the book names the
+        // condition but not a number, so this value is invented). The
+        // book's real "three times per day" is compressed to "available
+        // this whole fight" -- see docs/COMBAT_NOTES.md.
+        if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
+            if (combat::rollSavingThrow(state_.character, character::SaveCategory::BreathWeapon)) {
+                state_.character.currentHp -= 10;
+                log.push_back("The " + monster.name + " breathes a noxious cloud! You resist -- 10 damage.");
+            } else {
+                state_.character.currentHp -= 20;
+                playerThac0Bonus -= 4;
+                log.push_back("The " + monster.name +
+                               " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
+            }
+            return;
+        }
         combat::AttackOutcome outcome = combat::resolveMonsterAttack(
             monster, state_.character, playerAcBonus, monsterThac0Penalty, monsterDamagePenalty);
         if (outcome.hit) {
@@ -1520,6 +1553,25 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     auto playerUsesStaffCure = [&]() {
         character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
         log.push_back(result.message);
+    };
+    // Knockout ending -- shared by the ordinary "an attack drops you to 0"
+    // check at the bottom of the round loop and the Sivak death-burst
+    // below, which can finish the player off even after they already
+    // landed the killing blow. See docs/COMBAT_NOTES.md.
+    auto knockedOutBy = [&](const std::string& cause) {
+        const world::Location* refuge = nearestRefuge();
+        const std::string refugeName = refuge != nullptr ? refuge->name : "town";
+        state_.character.currentHp = state_.character.maxHp;
+        log.push_back("You are struck down... and wake up back in " + refugeName + ", battered but alive.");
+        if (refuge != nullptr) {
+            state_.x = refuge->x;
+            state_.y = refuge->y;
+        }
+        log.push_back("Press any key to continue.");
+        render::MapRenderer::drawCombatFrame(state_.character, monster, std::max(0, monsterHp), monsterMaxHp, log,
+                                              state_.hoursElapsed / 24);
+        render::Console::readKey();
+        pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
     };
 
     for (;;) {
@@ -1657,6 +1709,23 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You gain " + std::to_string(monster.xpValue) + " experience.");
                 character::applyPendingLevelUps(state_.character, log);
             }
+            // Sivak Draconian: real death-burst (Dragonlance Adventures
+            // p.75) -- the book's "killed by something larger than itself"
+            // condition has no SIZE stat to check in this project, so it
+            // always fires, dealing real retaliatory damage rather than a
+            // flavor-only victory message like the other draconians' death
+            // traits. The kill still counts (XP/steel/tally already
+            // applied above) even if the burst then knocks you out.
+            if (monster.burstsIntoFlameOnDeath) {
+                int burstDamage = character::roll(2, 4);
+                state_.character.currentHp -= burstDamage;
+                log.push_back("As it falls, the Sivak Draconian bursts into flame! You take " +
+                               std::to_string(burstDamage) + " damage.");
+                if (state_.character.currentHp <= 0) {
+                    knockedOutBy(monster.name);
+                    return;
+                }
+            }
             log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log, state_.hoursElapsed / 24);
             render::Console::readKey();
@@ -1666,18 +1735,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         if (state_.character.currentHp <= 0) {
             // Knocked out, not killed -- see docs/COMBAT_NOTES.md. Full-healed
             // and carried to the nearest refuge rather than a real death.
-            const world::Location* refuge = nearestRefuge();
-            const std::string refugeName = refuge != nullptr ? refuge->name : "town";
-            state_.character.currentHp = state_.character.maxHp;
-            log.push_back("You are struck down... and wake up back in " + refugeName + ", battered but alive.");
-            if (refuge != nullptr) {
-                state_.x = refuge->x;
-                state_.y = refuge->y;
-            }
-            log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
-            render::Console::readKey();
-            pushLog("You were knocked out by the " + monster.name + " and woke up back in " + refugeName + ".");
+            knockedOutBy(monster.name);
             return;
         }
     }

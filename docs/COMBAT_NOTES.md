@@ -116,31 +116,65 @@ was chosen and checked with that constraint in mind.
   this project's established HD-to-THAC0 pattern, the same bracket as
   Ogre's real printed HD 4+1 → THAC0 17. Real spellcasting (as a
   4th-level magic-user: burning hands, enlarge, magic missile, shocking
-  grasp, invisibility, levitate, stinking cloud, web), +2 saves, and 20%
-  magic resistance are all unmodeled (no monster-spellcasting system
-  exists for anyone yet), same restraint as Baaz's own unmodeled magic
-  resistance. Its bone-explosion death trait is likewise unmodeled, same
-  treatment as Kapak's acid pool.
+  grasp, invisibility, levitate, stinking cloud, web) — Milestone 99 models
+  the signature spell, Magic Missile, as a real special attack: 40% chance
+  per round (invented pacing, the book gives no frequency) to cast it
+  instead of its weapon attack, dealing the same PHB p.176 math as the
+  player's own `magic_missile` spell (`character::castSpell`) fixed at
+  "4th-level caster" — 1d4+1 per missile, 2 missiles, no attack roll, no
+  saving throw (`combat::Monster::castsMagicMissile`/
+  `magicMissileChancePercent`, applied in `game::GameLoop::runCombat`'s
+  `monsterAttacks` lambda before the normal `resolveMonsterAttack` call).
+  The other seven favored spells, +2 saves, and 20% magic resistance stay
+  unmodeled, same restraint as Baaz's own unmodeled magic resistance. Its
+  bone-explosion death trait is likewise unmodeled, same treatment as
+  Kapak's acid pool.
 - **Sivak Draconian** (*Dragonlance Adventures*, TSR 2021, p.75): HD 6,
   AC 1, two swords (1d6/1d6) plus an armored tail (2d6) — simplified to a
   single 2d6 hit (its highest, most distinctive die), same "one
   representative die" treatment as the Ghoul's claw/claw/bite. **THAC0
   isn't printed** — derived as 15, one HD-to-THAC0 bracket further down
-  from the Bozak above. Real shapeshifting (takes the form of a humanoid
-  it kills, or its own killer's form on death), +2 saves, and 20% magic
-  resistance are all unmodeled — no shapeshifting or status-effect system
-  exists for anyone yet.
+  from the Bozak above. Real shapeshifting (takes the form of a humanoid it
+  kills, or its own killer's form on death) stays unmodeled — no persistent
+  per-monster identity or NPC-disguise gameplay exists to hang it on (this
+  project's `combat::Monster` is static content shared by every encounter
+  with that species, not a per-instance actor), same restraint as ever.
+  +2 saves and 20% magic resistance are unmodeled too. Its death-burst
+  ("killed by something larger than itself... burst into flames... 2d4
+  points of damage... no saving throw") is real as of Milestone 99, though
+  simplified: this project has no SIZE stat to check the book's "larger
+  than itself" condition against, so it always fires
+  (`combat::Monster::burstsIntoFlameOnDeath`, applied in
+  `game::GameLoop::runCombat`'s post-victory block right after XP/steel are
+  awarded) — a genuine retaliatory hit, unlike Baaz's stone/Kapak's
+  acid/Bozak's bone-explosion, which all stay flavor-only victory
+  messages. Can knock the player out even after they already landed the
+  killing blow — see "Death: knocked out, not killed" below for how
+  that's handled.
 - **Aurak Draconian** (*Dragonlance Adventures*, TSR 2021, p.73): HD 8,
   AC 0, twin energy blasts (1d8+2 each) or a spell — simplified to a
   single 1d8+2 hit. **THAC0 isn't printed** — derived as 13, the same
   pattern extended to the highest HD this project has extrapolated it to
   (see the caveat below). The most mechanically loaded monster in the
   roster: limited dimension door, suggestion/mind control, change self,
-  polymorph self, at-will invisibility, a noxious-cloud breath weapon,
-  real 1st- to 4th-level magic-user spellcasting, 30% magic resistance,
-  and saves at +4 are all unmodeled — would need several subsystems this
-  project doesn't have. Its real three-stage death (immolation → lightning
-  ball → explosion) is likewise unmodeled.
+  polymorph self, at-will invisibility, and real 1st- to 4th-level
+  magic-user spellcasting all stay unmodeled — none of them translate
+  cleanly into this project's positionless, no-disguise-gameplay 1-vs-1
+  combat loop, same restraint applied to Sivak's shapeshifting above. Its
+  real three-stage death (immolation → lightning ball → explosion), 30%
+  magic resistance, and +4 saves are likewise unmodeled. Its noxious-cloud
+  breath weapon is real as of Milestone 99: 30% chance per round (invented
+  pacing — the book's real "three times per day" has no way to track
+  across stateless encounters with no monster-instance persistence, so
+  it's compressed to "available this whole fight," gated only by the
+  per-round roll) to breathe instead of its weapon attack, rolling
+  `combat::rollSavingThrow` against the (previously dormant in live combat)
+  `character::SaveCategory::BreathWeapon` — save for half of the book's 20
+  damage, or full damage plus blinded (a -4 this-fight to-hit penalty,
+  applied the same way as Frostreaver's/spell buffs' this-fight-only
+  bonuses; the book names the condition but not a number, so this value is
+  invented) (`combat::Monster::hasBreathWeapon`/
+  `breathWeaponChancePercent`, same lambda as Bozak's Magic Missile above).
 - **Thanoi** (*Dragonlance Adventures*, TSR 2021, p.78, "Thanoi (Walrus
   Men)"): HD 4, AC 4, damage by weapon or tusk (1d8), plus a separately
   printed "any weapon used by a thanoi does 2 more points of damage than
@@ -313,6 +347,15 @@ straight-line tile distance to where the player fell -- no pathfinding
 system exists in this project, same restraint already applied to
 `minutesToCross` being flat-per-tile -- falling back to Solace only if
 nothing is found at all (defensive; can't happen with the current data).
+
+**Two call sites (Milestone 99)**: the Sivak Draconian's real death-burst
+(see the Draconian roster above) can finish the player off *after* they
+already landed the killing blow -- an ordinary monster attack dropping the
+player to 0 is no longer the only way into this ending. `GameLoop::
+runCombat` factors the ending itself into a local `knockedOutBy(cause)`
+lambda, called both from the original mid-fight check and from the new
+post-victory burst check; the player still keeps the kill's XP/steel/tally
+either way, since those are applied before the burst roll.
 
 ## Encounters: a per-terrain chance while traveling
 
@@ -622,12 +665,16 @@ either.
   round loop resolves exactly one attack per side; a second attacker
   needs the loop restructured. THAC0 diverging by level is already done
   (`docs/CHARACTER_NOTES.md`).
-- **Saving throws for effects other than poison**: `rollSavingThrow` is
-  general-purpose, but the Giant Spider's poison bite is still the only
-  thing that calls it (see "Saving throws in combat" above). The Baaz
-  Draconian's 20% magic resistance is a related but different mechanic
-  (resistance to being targeted at all, not a saving throw) and still
-  isn't modeled.
+- **Saving throws for effects other than poison/breath weapon**:
+  `rollSavingThrow` is general-purpose, but the Giant Spider's poison bite
+  and (as of Milestone 99) the Aurak's breath weapon are still the only
+  things that call it (see "Saving throws in combat" above) --
+  `character::SaveCategory::PetrificationPolymorph`/`RodStaffWand`/`Spell`
+  all exist on the character sheet but nothing in live combat rolls
+  against them yet. The Baaz/Bozak/Sivak/Aurak Draconians' magic
+  resistance (a related but different mechanic -- resistance to being
+  targeted at all, not a saving throw) still isn't modeled for any of
+  them.
 - **More monsters**: seventeen creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
   Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi);
@@ -636,11 +683,19 @@ either.
   one more sourced `MONSTER` block at a time. A new monster with real
   terrain flavor can also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines —
   see "Terrain-specific monster pools" above.
-- **Real mechanics for Bozak/Sivak/Aurak** (Milestone 64 added all three
-  as roster entries, but every ability that made them interesting stayed
-  flavor-only): Bozak's and Aurak's spellcasting would need a
-  monster-spellcasting system (nothing currently lets a monster act
-  outside the fixed "one weapon/poison hit" `runCombat` loop); Sivak's
-  shapeshifting and Aurak's mind control/dimension door/breath weapon
-  would each need their own new mechanic. None of these are small — this
-  is real future-engine-milestone territory, not a quick follow-up.
+- **The rest of Bozak/Sivak/Aurak's abilities** (Milestone 99 shipped the
+  parts that ground out in this engine's real combat math -- Bozak's
+  signature Magic Missile, Aurak's breath weapon, Sivak's death-burst; see
+  the Draconian roster above): what's left is either a flat stat
+  (magic resistance, save bonuses for all three -- would need a
+  monster-side resistance-roll/save-bonus mechanic, related to but
+  distinct from `rollSavingThrow`) or genuinely doesn't fit this project's
+  positionless, no-monster-persistence, single-player-vs-single-monster
+  combat loop: Sivak's shapeshifting (no per-instance monster identity or
+  NPC-disguise gameplay to hang it on), and Aurak's dimension door,
+  suggestion/mind control, change self/polymorph self, at-will
+  invisibility, full 1st-4th level spell list, and three-stage death
+  sequence (immolation → lightning ball → explosion). Not being pursued
+  further absent a concrete reason one of these would newly fit (e.g. a
+  future NPC-disguise or monster-status-effect system built for an
+  unrelated reason that this could then hang off of).

@@ -2861,6 +2861,64 @@ section).
     ZONE_NOTES.md`, and `docs/TIMELINE_NOTES.md`'s "Dargaard Keep"
     sections, plus the correction folded into `docs/TIMELINE_NOTES.md`'s
     existing Laurana section.
+99. Real mechanics for Bozak/Sivak/Aurak Draconians -- NEXT UP item 2, open
+    since Milestone 64 first added the three as flavor-only roster entries.
+    The full book ability set spans six distinct subsystems (spellcasting,
+    shapeshifting, mind control, dimension door, a breath weapon, plus each
+    creature's own magic resistance/save bonuses); several of those have no
+    clean translation into this project's positionless, single-player-vs-
+    single-monster combat loop (no monster-instance persistence to hang
+    disguise-based shapeshifting on, no targeting/positioning for mind
+    control or dimension door), so the user scoped this to the parts that
+    ground out in real, sourced numbers, via `AskUserQuestion`. Sourcing was
+    re-verified directly against rendered page images of *Dragonlance
+    Adventures* pp.73-75 (not reused from the existing doc summary) -- no
+    errata found this time, everything already documented held up. Three
+    new `combat::Monster` fields and matching `MonsterLoader` keywords,
+    each a dedicated flag/percent pair following the existing `poisonOnHit`
+    precedent rather than a general monster-ability subsystem (there is
+    exactly one monster of each kind): **Bozak** (`CASTS_MAGIC_MISSILE 40`)
+    casts Magic Missile 40% of rounds instead of its weapon attack, reusing
+    the player's own real PHB p.176 math (`character::castSpell`'s
+    `magic_missile` case) fixed at "4th-level caster" -- no attack roll, no
+    save; **Aurak** (`BREATH_WEAPON 30`) breathes its noxious cloud 30% of
+    rounds instead, rolling the previously-dormant-in-combat
+    `character::SaveCategory::BreathWeapon` for half of the book's 20
+    damage, or full damage plus a blinded -4 this-fight to-hit penalty (the
+    book names blinded but gives no number, so that value is invented,
+    flagged as such); **Sivak** (`BURSTS_INTO_FLAME`) now deals a real 2d4
+    retaliatory hit on death instead of a flavor-only victory message like
+    Baaz's stone/Kapak's acid/Bozak's own bone-explosion -- the book's
+    "killed by something larger than itself" trigger condition is dropped
+    (no SIZE stat exists to check it against), so it always fires. Both
+    monster-side percent chances are invented pacing, called out as such --
+    the book gives no real-time frequency for any of this, and Aurak's
+    actual "three times per day" has no way to track across stateless
+    encounters with no monster-instance persistence, so it's compressed to
+    "available this whole fight." The Sivak burst can knock the player out
+    *after* they already landed the killing blow (they still keep the
+    XP/steel), a new edge case handled by factoring `GameLoop::runCombat`'s
+    existing knockout ending into a shared `knockedOutBy(cause)` lambda
+    called from both its original site and the new post-victory check --
+    the only structural change in this milestone, and a real second call
+    site rather than speculative abstraction. Left deliberately unmodeled,
+    same restraint as ever: all three creatures' magic resistance and save
+    bonuses; Sivak's shapeshifting itself (no per-instance monster identity
+    or NPC-disguise gameplay to hang it on); Aurak's dimension door, mind
+    control, change self/polymorph self, at-will invisibility, full spell
+    list, and three-stage death sequence. Verified via a throwaway
+    self-test (synthetic single-monster data files confirming each new
+    keyword parses onto the right field, fail-fast cases for
+    `CASTS_MAGIC_MISSILE`/`BREATH_WEAPON` missing their percent argument,
+    and the real `data/monsters.txt` still loading its full 17-monster
+    roster), a clean `/W4` rebuild (zero new warnings), and the piped smoke
+    test. **Interactive verification still needs the user's own
+    keyboard** -- more than usual this time, since this milestone changes
+    live combat math (new monster damage sources, a save category that was
+    previously dormant, the burst-then-knockout edge case) rather than
+    just adding data; no live save exists in `build/Debug` to risk, so no
+    preservation step was needed this session. See `docs/COMBAT_NOTES.md`'s
+    "Draconian roster" and "Death: knocked out, not killed" sections.
 
 ## NEXT UP
 
@@ -2875,13 +2933,16 @@ session's work.
    clock advance are both correct. Also surfaced and fixed the Embarkation
    Officer's thin topic coverage in the same session. See
    `docs/MILESTONES.md` entry 97.
-2. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
-   added all three to the roster, but their spellcasting, shapeshifting,
-   and mind control/dimension door/breath weapon all stayed flavor-only.
-   Each would need its own new subsystem (monster spellcasting,
-   shapeshifting, a mind-affecting-status mechanic) -- real engine work,
-   not a quick content pass. See `docs/COMBAT_NOTES.md`'s "Extending this
-   later."
+2. ~~**Real mechanics for Bozak/Sivak/Aurak Draconians**~~ -- the parts
+   that ground out in this engine's real combat math shipped at Milestone
+   99 (Bozak's Magic Missile, Aurak's breath weapon, Sivak's death-burst).
+   What's left (magic resistance/saves for all three; Sivak's
+   shapeshifting; Aurak's dimension door, mind control, change
+   self/polymorph self, invisibility, full spell list, and three-stage
+   death) is either a flat stat or genuinely doesn't fit this project's
+   positionless, no-monster-persistence combat loop -- not being pursued
+   further absent a concrete reason to revisit. See `docs/COMBAT_NOTES.md`'s
+   "Extending this later" and `docs/MILESTONES.md` entry 99.
 3. **SFML-backed rendering, in place of the raw Windows console** — tried
    as an isolated stage-1 trial (2026-08-24, its own branch, never merged,
    fully reverted): a second `ansalon_sfml_trial` CMake target (SFML 3.0.0

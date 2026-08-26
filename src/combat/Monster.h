@@ -32,6 +32,23 @@ struct Monster {
     // save is handled (knocked out, not the book's literal "die").
     bool poisonOnHit = false;
 
+    // True only for the Bozak Draconian -- casts Magic Missile (Dragonlance
+    // Adventures p.74, "as a 4th-level magic-user") instead of its normal
+    // weapon attack some rounds. See docs/COMBAT_NOTES.md.
+    bool castsMagicMissile = false;
+    int magicMissileChancePercent = 0; // invented pacing, book gives no frequency
+
+    // True only for the Aurak Draconian -- a noxious-cloud breath weapon
+    // (Dragonlance Adventures p.73) instead of its normal weapon attack some
+    // rounds. See docs/COMBAT_NOTES.md.
+    bool hasBreathWeapon = false;
+    int breathWeaponChancePercent = 0; // invented pacing -- see docs/COMBAT_NOTES.md
+
+    // True only for the Sivak Draconian -- bursts into flame on death,
+    // dealing real damage (Dragonlance Adventures p.75) instead of a
+    // flavor-only victory message. See docs/COMBAT_NOTES.md.
+    bool burstsIntoFlameOnDeath = false;
+
     // Terrain-specific encounter pools (see docs/COMBAT_NOTES.md). Both are
     // world::TerrainInfo::code characters. excludedTerrain is a real, sourced
     // Climate/Terrain hard restriction (only Gnoll has one); terrainBias is

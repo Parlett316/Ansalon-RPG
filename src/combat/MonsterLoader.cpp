@@ -105,6 +105,16 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
             if (!(iss >> current.xpValue)) fail(path, lineNumber, "malformed XP");
         } else if (keyword == "POISON") {
             current.poisonOnHit = true;
+        } else if (keyword == "CASTS_MAGIC_MISSILE") {
+            current.castsMagicMissile = true;
+            std::istringstream iss(rest);
+            if (!(iss >> current.magicMissileChancePercent)) fail(path, lineNumber, "malformed CASTS_MAGIC_MISSILE");
+        } else if (keyword == "BREATH_WEAPON") {
+            current.hasBreathWeapon = true;
+            std::istringstream iss(rest);
+            if (!(iss >> current.breathWeaponChancePercent)) fail(path, lineNumber, "malformed BREATH_WEAPON");
+        } else if (keyword == "BURSTS_INTO_FLAME") {
+            current.burstsIntoFlameOnDeath = true;
         } else if (keyword == "EXCLUDE_TERRAIN") {
             parseTerrainCodes(path, lineNumber, rest, "EXCLUDE_TERRAIN", current.excludedTerrain);
         } else if (keyword == "TERRAIN_BIAS") {
