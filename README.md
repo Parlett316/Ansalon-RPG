@@ -141,10 +141,12 @@ Sailor, and Neraka's Deserting Guard each have their own thing to say the
 first time you talk to them once the Heroes' stay there has passed, even
 if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle and
 Sancrist Isle, sit on their own sea-locked landmasses with no road to them
-at all — talk to the Knight's Runner in Tarsis and he'll carry you to Ice
-Wall directly, then an Ice Barbarian Guide there carries you onward to
-Sancrist, each leg a ship's voyage of a couple of days, rather than a
-tile-by-tile walk across open water. Traveling the wilds now risks a random encounter — goblins, kobolds,
+at all — talk to the Knight's Runner in Tarsis and he'll offer you passage
+to Ice Wall directly, an Ice Barbarian Guide there offers passage onward to
+Sancrist, and an Embarkation Officer at Sancrist offers passage on to
+Palanthas, each leg a ship's voyage of a few days rather than a
+tile-by-tile walk across open water — you can say no and ask them about it
+first, and the offer stands until you board. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
 skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real

@@ -2509,18 +2509,89 @@ section).
     `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" for the full
     writeup.
 
+92. Boat voyage decline option + Sancrist Isle -> Palanthas leg -- the
+    interactive playtest that closed Milestone 91's two open verification
+    items (the Milestone 88 Tarsis -> Ice Wall jump and the Milestone 91
+    Ice Wall -> Sancrist jump both confirmed working, along with NEXT UP's
+    long-open instant-defeat-spell item) also surfaced two real gaps:
+    talking to a `BOAT`-granting NPC executed the voyage unconditionally,
+    with no way to decline, and Sancrist Isle -- reachable since Milestone
+    91 -- had no talkable NPC and no route out at all, a genuine dead end.
+    The decline gap turned out to be a pre-existing bug, not just a missing
+    nicety: `data/zones/tarsis.txt`'s Knight's Runner was already written
+    expecting a choice ("waiting on your answer," a `TALK_AGAIN` line
+    about "if you've changed your mind"), and its `SUBJECT` content
+    (`derek,knights` / `dragons,ship`) was unreachable dead content because
+    the unconditional jump never let execution reach it. Fixed with a new
+    `GameState::voyagesTaken` set (persisted as a new `VOYAGED` save line,
+    same shape/position as `VISITED`/`MET`), separate from `metCharacters`
+    because that set is inserted into on every talk regardless of outcome
+    and so can't also gate "have I taken this voyage" without a decline
+    permanently forfeiting it. `GameLoop::talkTo` now shows a Board/"Not
+    yet" `drawPickerFrame` picker (mirroring `offerOrTurnInQuest`'s
+    Accept/Decline picker) gated on `voyagesTaken`; declining falls through
+    to the ordinary topics/`SUBJECT` picker instead of ending the
+    conversation. Also fixed in the same code block: the travel log line
+    hardcoded "carries you **south**," which was already wrong for both
+    shipped legs (Tarsis -> Ice Wall is actually southwest, Ice Wall ->
+    Sancrist is actually northwest) and would have been wrong again for
+    the new leg -- now computed via the existing `compassDirection` helper
+    already used by Look. The Sancrist Isle gap closes with a third `BOAT`
+    grant, `data/zones/sancrist_isle.txt`'s new `E "An Embarkation
+    Officer"`, sourced from *Dragons of Winter Night*'s account of Sturm's
+    army mustering at Sancrist to sail for Palanthas
+    (`.research/dwn_full.txt` lines 10631-10731 -- the same "made
+    third-in-command of the army sailing for Palanthas" scene
+    `docs/TIMELINE_NOTES.md`'s own Sancrist Isle section already cited),
+    tied to that specific detail rather than an invented generic guard,
+    keeping Milestone 86's original "no talkable NPC" restraint intact in
+    spirit. No sourced day-count exists for the crossing itself (unlike
+    Milestone 91's sourced "two days"), so its `BOAT E palanthas 96` is
+    invented-for-pacing, longer than the two 48-hour legs since it's a
+    materially longer crossing -- and lands somewhere already useful:
+    Palanthas already has a walkable road to `high_clerist_tower`
+    (Milestone 44), where the same four Heroes' next `PRESENCE` window
+    already sits. Placed one tile east of `ENTRY` (21,14), matching
+    Milestone 91's "not on the entry tile itself" rule. Verified via a
+    throwaway self-test (23 assertions: the new POI's `TALK`/`TALK_AGAIN`/
+    `SUBJECT`/`SUBJECT_UNKNOWN`/`BOAT` lines all present and correct, the
+    existing Runner/Guide voyages untouched, a `VOYAGED` `SaveGame`
+    round-trip, backward compatibility with a save that has no `VOYAGED`
+    line at all, and a malformed-count fail-fast case), a clean `/W4`
+    rebuild (zero new warnings), the piped smoke test, and a direct check
+    that the user's real `save1.txt`/`save2.txt` (both backed up before
+    this session's playtest) still load correctly and describe themselves
+    right in the save-slot menu under the new `VOYAGED` keyword --
+    timestamps confirmed unchanged throughout. **Known accepted edge
+    case**, documented rather than solved: a character who already boarded
+    a voyage under the pre-Milestone-92 code has an empty `voyagesTaken`
+    for it, so deliberately walking back to that POI would re-offer it;
+    harmless (no corruption, just a re-run of an already-real jump) and
+    requires walking back across the whole map to trigger. Interactive
+    confirmation of the decline flow and the new leg itself still needs
+    the user's own keyboard. See `docs/ARCHITECTURE.md`'s "Sea travel",
+    `docs/ZONE_NOTES.md`'s "Boats" and "Sancrist Isle" sections,
+    `docs/TIMELINE_NOTES.md`'s "Sancrist Isle" section, and
+    `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" for the full
+    writeup.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
 a commitment. Pick one (or something else) before starting the next
 session's work.
 
-1. **Interactive verification of an instant-defeat spell** -- Milestone
-   62's Rest re-memorize prompt, multi-level spell-loadout picker, and
-   in-combat cast picker (including a this-fight buff/debuff, Bless) were
-   all confirmed working 2026-08-25 via a throwaway Cleric playtest. The
-   one spell category still unverified is an instant-defeat spell (e.g. a
-   Mage's Sleep) -- would need a throwaway Mage run instead.
+1. **Interactive confirmation of Milestone 92's boat decline option and new
+   Sancrist Isle -> Palanthas leg** -- verified structurally only (self-test,
+   clean rebuild, piped smoke test, real-save backward compatibility), same
+   limitation every prior `BOAT` milestone has flagged. Needs a character
+   walked to Tarsis to confirm: declining the Knight's Runner's offer falls
+   through to its `derek,knights`/`dragons,ship` topics instead of sailing,
+   then accepting still works as before; at Sancrist Isle, the new
+   Embarkation Officer offers the same decline/topics flow, then accepting
+   lands the player at Palanthas, logs the corrected direction word
+   (northeast, not the old hardcoded "south"), and advances the clock by 96
+   hours.
 2. **Real mechanics for Bozak/Sivak/Aurak Draconians** — Milestone 64
    added all three to the roster, but their spellcasting, shapeshifting,
    and mind control/dimension door/breath weapon all stayed flavor-only.
@@ -2559,17 +2630,3 @@ session's work.
    real modeled location -- that file is a geography reference the user
    compiled, not itself a verified canon source, so any candidate would
    need the same novels/sourcebooks check before committing to specifics.
-5. **Interactive confirmation of Milestone 88's new sea-voyage jump** --
-   verified structurally (self-test, clean rebuild, piped smoke test,
-   real-save backward compatibility) but not yet exercised live, since the
-   only character to have talked to Tarsis's Runner already did so under
-   the old mechanic. Needs a fresh character walked to Tarsis to confirm
-   talking to the Knight's Runner actually lands the player at Ice Wall
-   Castle, logs the travel line, advances the clock, and that walking off
-   any coastline onto open ocean is now blocked outright.
-6. **Interactive confirmation of Milestone 91's new sea-voyage jump** --
-   same limitation as #5 above, one leg further south: verified
-   structurally only. Needs a character walked to Ice Wall Castle (via the
-   Tarsis Runner) to confirm talking to the new Ice Barbarian Guide lands
-   the player at Sancrist Isle, logs the travel line, and advances the
-   clock by 48 hours.

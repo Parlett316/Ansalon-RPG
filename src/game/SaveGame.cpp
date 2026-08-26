@@ -163,6 +163,11 @@ void SaveGame::save(const GameState& state, const std::string& path) {
         file << " " << id;
     }
     file << "\n";
+    file << "VOYAGED " << state.voyagesTaken.size();
+    for (const auto& id : state.voyagesTaken) {
+        file << " " << id;
+    }
+    file << "\n";
     // Quest progress and lifetime kill tallies -- one line per entry, no
     // count prefix (unlike VISITED/MET, these are id+int pairs, not bare
     // ids, so packing them onto one line would need its own delimiter).
@@ -455,6 +460,18 @@ GameState SaveGame::load(const std::string& path) {
                 std::string id;
                 if (!(iss >> id)) fail(path, lineNumber, "MET has fewer ids than its count");
                 state.metCharacters.insert(id);
+            }
+        } else if (keyword == "VOYAGED") {
+            // Optional -- a save written before the boat-decline milestone
+            // simply has no VOYAGED line, and an empty state.voyagesTaken
+            // (no voyage taken yet) is the correct default -- see the
+            // known-edge-case note on GameState::voyagesTaken.
+            int count;
+            if (!(iss >> count) || count < 0) fail(path, lineNumber, "malformed VOYAGED (expected a count)");
+            for (int i = 0; i < count; ++i) {
+                std::string id;
+                if (!(iss >> id)) fail(path, lineNumber, "VOYAGED has fewer ids than its count");
+                state.voyagesTaken.insert(id);
             }
         } else if (keyword == "BOAT") {
             // Recognized but discarded: a save written before sea travel

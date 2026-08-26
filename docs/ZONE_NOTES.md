@@ -389,10 +389,12 @@ catalog -- see `docs/CHARACTER_NOTES.md`'s "Equipment" section for the
 full catalog, sourcing, and the sell-back mechanic added the same
 milestone.
 
-## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88, extended Milestone 91)
+## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92)
 
 `BOAT <char> <destination-location-id> <hours>` marks a POI whose `TALK`
-interaction, the first time it happens, moves the player straight to
+interaction offers the player a Board/"Not yet" choice (a `drawPickerFrame`
+picker, added Milestone 92 -- mirrors `offerOrTurnInQuest`'s Accept/Decline
+picker) the first time it's ever accepted moving the player straight to
 `<destination-location-id>`'s overworld `POS`, exits back to the
 overworld, and advances `hoursElapsed` by `<hours>` (see
 `docs/ARCHITECTURE.md`'s "Sea travel"). Same "layers an ability on top of
@@ -408,7 +410,14 @@ cross-file validation, so it's modelled like `PORTAL`/`QUEST` instead --
 stored in its own `Zone`-level map, validated once a `World` exists (see
 `ZoneCatalog::loadForWorld`), not by `ZoneLoader` alone.
 
-Two POIs carry `BOAT`, one leg each of the same southbound route:
+**Declining** (Milestone 92) leaves the greeting's ordinary topics/
+`SUBJECT` picker still reachable instead of ending the conversation --
+tracked via `GameState::voyagesTaken`, not `metCharacters` (see
+`docs/ARCHITECTURE.md`'s "Sea travel" for why those can't share one flag).
+The offer comes back on every later visit until actually boarded.
+
+Three POIs carry `BOAT`, three legs of the same route (Tarsis -> Ice Wall
+-> Sancrist -> Palanthas):
 
 - `data/zones/tarsis.txt`'s `R "A Knight's Runner"`, granting
   `BOAT R ice_wall 48`. Deliberately not Tarsis's existing `S "An Old
@@ -429,6 +438,11 @@ Two POIs carry `BOAT`, one leg each of the same southbound route:
   section for the citation) -- a different, locally-grounded hook from the
   Runner's Solamnic-knights framing, appropriate since this is a different
   coast and a different culture.
+- `data/zones/sancrist_isle.txt`'s `E "An Embarkation Officer"` (Milestone
+  92), granting `BOAT E palanthas 96`. Closes the reachability gap
+  Milestone 91 left open -- see "Sancrist Isle" below. Represents the
+  Knights' own army muster for the Palanthas crossing (source-grounded, see
+  `docs/TIMELINE_NOTES.md`'s "Sancrist Isle" section), not a generic guard.
 
 **Milestone 36 originally modeled this as a permanent `GameState::hasBoat`
 flag** that let the player cross any ocean tile anywhere, forever, once
@@ -1162,11 +1176,11 @@ See `docs/TIMELINE_NOTES.md`'s "Thorbardin" section for the full
 sourcing and the `PRESENCE thorbardin 13 19` content shipped for all 8
 Heroes.
 
-## Sancrist Isle (Milestone 86)
+## Sancrist Isle (Milestone 86, gained a talkable NPC + departure Milestone 92)
 
 `data/zones/sancrist_isle.txt` — a 40×16 grid, full `#` border (a real
-castle, same fortress idiom as Pax Tharkas/Ice Wall/Neraka). Three POIs,
-all flavor-only: the Great Hall of Castle Uth Wistan (`T`, the
+castle, same fortress idiom as Pax Tharkas/Ice Wall/Neraka). Three
+flavor-only POIs: the Great Hall of Castle Uth Wistan (`T`, the
 `TIMELINE_ANCHOR` — the Knights' Trial's actual setting, the vacant
 Grand Master/High Clerist seats folded into its own description), the
 Guest Quarters (`Q`, where the text confirms Flint and Tasslehoff stayed
@@ -1175,13 +1189,27 @@ takes Sturm to afterward for his private blessing — evergreen, true
 whether a player visits before, during, or after the tracked Heroes'
 window, same treatment every other zone's atmosphere-only POI gets).
 
-**No talkable NPC** — unlike every other fortress zone in this project
-(Pax Tharkas's Fortress Guard, Ice Wall's Young Knight, Neraka's
-Deserting Guard), Sancrist Isle's only sourced on-page dialogue belongs
-to Sturm, Flint, Tasslehoff, and Laurana themselves, all four already
-covered via `TIMELINE_ANCHOR T`. Inventing a fifth, generic castle
-guard just to have a zone-native NPC would be adding content the source
-doesn't call for, not filling a real gap.
+**Milestone 86 originally shipped with no talkable NPC** — unlike every
+other fortress zone in this project (Pax Tharkas's Fortress Guard, Ice
+Wall's Young Knight, Neraka's Deserting Guard), Sancrist Isle's only
+sourced on-page dialogue belonged to Sturm, Flint, Tasslehoff, and
+Laurana themselves, all four already covered via `TIMELINE_ANCHOR T`.
+Inventing a fifth, generic castle guard just to have a zone-native NPC
+would have been adding content the source doesn't call for, not filling a
+real gap. That call held until Milestone 91 made Sancrist Isle a real sea
+voyage *destination* — at which point "no talkable NPC" also meant "no
+way to ever leave," a genuine reachability gap this project's own
+restraint principle doesn't ask for. **Milestone 92 added one talkable
+POI**, `E "An Embarkation Officer"` (one tile east of `ENTRY`, matching
+Milestone 91's "not on the entry tile itself" placement rule), granting
+`BOAT E palanthas 96` — tied to the *specific* sourced detail that Sturm's
+army mustered at Sancrist to sail for Palanthas
+(`.research/dwn_full.txt` lines ~10628-10731), the same "grounded in one
+concrete textual detail, not a generic guard" precedent the Runner and Ice
+Barbarian Guide already established, not a reversal of Milestone 86's
+restraint so much as an application of it to a fact that only became
+relevant once Sancrist was reachable at all. See `docs/ARCHITECTURE.md`'s
+"Sea travel" and "Boats" above for the mechanism.
 
 This reverses this project's own prior "deliberately not modeled" call
 for Sancrist Isle — see `docs/TIMELINE_NOTES.md`'s "Sancrist Isle"

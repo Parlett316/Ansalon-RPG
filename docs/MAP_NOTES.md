@@ -570,7 +570,7 @@ this milestone) were re-verified with the same throwaway 4-directional
 BFS approach every map change since the "Road 4-connectivity fix" has
 used.
 
-## Sancrist Isle reachability gap (Milestone 88, closed by Milestone 91)
+## Sancrist Isle reachability gap (Milestone 88, arrival closed by Milestone 91, departure closed by Milestone 92)
 
 Milestone 88 replaced `GameState::hasBoat` (a permanent, global "cross any
 ocean tile" flag) with a scripted, point-to-point sea voyage granted by
@@ -595,6 +595,18 @@ player from Ice Wall Castle onward to Sancrist Isle — see
 `docs/ZONE_NOTES.md`'s "Boats" and "Ice Wall Castle" sections. The foot
 route above still exists as an alternative; the scripted voyage is a
 shortcut, not a passability change.
+
+**But arrival wasn't the whole gap.** Sancrist Isle shipped at Milestone 86
+with no talkable NPC at all (a deliberate call at the time — see
+`docs/ZONE_NOTES.md`'s "Sancrist Isle" section), which only became a real
+problem once Milestone 91 made it a real destination: nothing in the zone
+could grant a `BOAT` back out, so a player who sailed in was stuck (the
+same foot route out still existed, but with no in-zone signal it did).
+**Milestone 92** closed this half with a third `BOAT` grant, `data/zones/
+sancrist_isle.txt`'s new "An Embarkation Officer" carrying the player on
+to Palanthas — see `docs/ZONE_NOTES.md`'s "Boats" and "Sancrist Isle"
+sections, `docs/TIMELINE_NOTES.md`'s "Sancrist Isle" section for the
+sourcing.
 
 ## Fixing roads that crossed open water (Milestone 87)
 

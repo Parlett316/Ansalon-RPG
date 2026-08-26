@@ -21,11 +21,18 @@ GRID
 #......................................#
 #......................................#
 #......................................#
-#......................................#
+#....................E.................#
 ##################...###################
 ENDGRID
 POI T "The Great Hall of Castle Uth Wistan" A massive black oak table dominates the hall, three seats behind it for the Grand Master, the High Clerists, and the High Justice -- two of those three offices empty since the Cataclysm, filled today by whoever the Order can still agree to trust. Stone benches ring the floor for the assembled witnesses. A fire cracks in the great hearth, throwing sparks toward a ceiling lost in shadow.
 POI Q "The Guest Quarters" A modest stone room set aside for visitors the castle doesn't quite know what to do with -- too honored to turn away, not quite knights themselves. A window looks out over the harbor and the grey winter sea beyond it.
 POI F "The Yule Fire Room" A small chamber decorated for the approaching Yule season -- red winter roses grown indoors against the cold, kingfisher feathers, tiny golden crowns strung along the mantel. A fire blazes here even when the rest of the castle runs cold, the one room in Castle Uth Wistan that seems to have decided the war can wait at the door.
+POI E "An Embarkation Officer" A Knight in travel-worn plate works down a manifest by lantern-light near the stair to the harbor, checking names and cargo against a list that keeps growing as more of the garrison files aboard.
+TALK E "One more for the muster? Lord Gunthar's sending the strength of Sancrist to Palanthas -- Derek Crownguard has the command of it, Alfred MarKenin at his right hand, and young Brightblade besides, for whatever that's worth to the Council these days. There's still a berth open, if you mean to sail with them."
+TALK_AGAIN E "Berth's still open, if you've thought better of staying behind. The ships won't hold the tide forever."
+SUBJECT E derek,alfred,brightblade,sturm "Crownguard commands, MarKenin stands beside him, and Brightblade -- there's a story in that name, but it's not mine to tell a stranger on the dock. Ask him yourself, if you catch the same ship."
+SUBJECT E palanthas,tower,army "Palanthas first, then the High Clerist's Tower -- it sits astride the only pass through the Vingaard Mountains, and Gunthar means to hold it before the dragonarmies think to take it. That's the whole of the strength Sancrist has left to give."
+SUBJECT_UNKNOWN E "Take it up with someone who isn't holding a manifest," he says. "I've got a ship to load."
+BOAT E palanthas 96
 TIMELINE_ANCHOR T
 END

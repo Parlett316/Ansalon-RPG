@@ -390,10 +390,11 @@ serialized int (each kind gets its own keyword, not a shared `ITEMKIND
 <n>` line), so no bound-widening or backward-compatibility shim was
 needed the way `ARMOR`/`KNIGHTORDER`'s bound-widening has needed before.
 
-Written immediately after `BOAT`, before `ZONE`/`ZONESTACK` —
-`SaveGame.cpp` documents that `load()`'s `ZONESTACK` consumption relies on
-`save()` always writing `ZONESTACK` last with nothing after it,  so
-anything new has to land earlier than that, not appended at the end.
+Written immediately after `MET` (Milestone 92's `VOYAGED` line now sits
+between them), before `ZONE`/`ZONESTACK` — `SaveGame.cpp` documents that
+`load()`'s `ZONESTACK` consumption relies on `save()` always writing
+`ZONESTACK` last with nothing after it, so anything new has to land
+earlier than that, not appended at the end.
 
 Both lines are optional on load, defaulting to empty maps — exactly "no
 quest started, nothing killed yet," which is the correct read for every

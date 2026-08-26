@@ -830,7 +830,7 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
-## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91)
+## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92)
 
 Some locations (Ice Wall Castle, Sancrist Isle) are sea-locked — confirmed
 by direct inspection of the reference map, no land route exists — so
@@ -861,36 +861,80 @@ which throws if the destination id doesn't resolve to a real location
 (same spot/style as its existing `PORTAL` target check).
 
 `TalkCandidate` (`GameLoop.h`) carries `boatDestinationId`/`boatHours`
-instead of a bool. The first time such a candidate is ever talked to
-(gated on `!alreadyMet`, the same "have I met them" check `talkTo` already
-computes), `talkTo` moves the player straight to the destination's `POS`,
-pops back to `Mode::Overworld` (clearing `currentZoneId`/`zoneStack`),
-advances `hoursElapsed` by the authored `hours`, logs one travel line, and
-returns immediately — skipping that POI's topic/subject menu, since the
-player has left the scene. No new `render::Key`, no new screen, no
-confirmation prompt — same "small, contained addition" restraint the
-original mechanism established. `data/zones/tarsis.txt`'s Knight's Runner
-grants `BOAT R ice_wall 48` (a ~2-day voyage, invented for pacing like
-every `minutesToCross` value already is, not a sourced figure). Milestone
-91 added a second leg on the same mechanism: `data/zones/ice_wall.txt`'s
-new "An Ice Barbarian Guide" (`B`) grants `BOAT B sancrist_isle 48` — this
-one *is* a sourced figure (`.research/dwn_full.txt` lines 5919-5920: "if
-the winds held, they might make Sancrist in two days"), a coincidence with
-the first leg's invented number, not a copy of it.
+instead of a bool. `data/zones/tarsis.txt`'s Knight's Runner grants
+`BOAT R ice_wall 48` (a ~2-day voyage, invented for pacing like every
+`minutesToCross` value already is, not a sourced figure). Milestone 91
+added a second leg on the same mechanism: `data/zones/ice_wall.txt`'s
+"An Ice Barbarian Guide" (`B`) grants `BOAT B sancrist_isle 48` — this one
+*is* a sourced figure (`.research/dwn_full.txt` lines 5919-5920: "if the
+winds held, they might make Sancrist in two days"), a coincidence with the
+first leg's invented number, not a copy of it. Milestone 92 added a third:
+`data/zones/sancrist_isle.txt`'s "An Embarkation Officer" (`E`) grants
+`BOAT E palanthas 96`, sourced from the same novel's account of Sturm's
+army sailing from Sancrist to defend Palanthas and the High Clerist's
+Tower (`.research/dwn_full.txt` lines ~10628-10731) — no explicit
+day-count exists for this leg, so 96 hours is invented-for-pacing, chosen
+longer than the two 48-hour legs since it's a materially longer crossing.
+
+**Decline option (Milestone 92).** The original shape above executed the
+voyage unconditionally on first talk — no way to say no, despite the
+Runner's own `TALK`/`TALK_AGAIN` lines in `data/zones/tarsis.txt` clearly
+being written to expect a choice ("waiting on your answer" / "if you've
+changed your mind"). Gating this on `GameState::alreadyMet` couldn't
+support a real decline: that set is inserted into on *every* talk
+(accepted or not), so a declined offer would immediately read as
+`alreadyMet` on the next visit and could never be re-offered. Fixed with
+its own state, `GameState::voyagesTaken` (same `"<zoneId>:<POI char>"` id
+shape as `metCharacters`, persisted as a new `VOYAGED <count> <id>...`
+save line, same shape/position as `VISITED`/`MET`) — a POI is offered
+until its id is actually in `voyagesTaken`, not until it's merely been
+talked to. `talkTo` now shows a `drawPickerFrame` Board/"Not yet" choice
+(mirroring `offerOrTurnInQuest`'s Accept/Decline picker), gated on
+`voyagesTaken` instead of `alreadyMet`. Boarding inserts into
+`voyagesTaken` and runs the jump exactly as before; declining does nothing
+and falls through to the ordinary topics/`SUBJECT` picker below instead of
+returning — this is what finally makes the Runner's already-written
+`derek,knights`/`dragons,ship` `SUBJECT` lines reachable (they were dead
+content before, since the unconditional jump never let execution reach
+that code).
+
+**Direction fix (Milestone 92).** The travel log line hardcoded "you board
+the ship, and it carries you **south** across open water" for every
+voyage — actually wrong even for the two legs that shipped before this
+milestone (Tarsis → Ice Wall is southwest; Ice Wall → Sancrist is
+northwest, since Sancrist sits much further north on the grid) and would
+have been wrong again for the new northeast-bound Sancrist → Palanthas
+leg. Now computed via the existing `compassDirection(dx, dy)` helper
+(`GameLoop.cpp`, already used by `lookOverworld`), from the zone's
+overworld position to the destination's, before `state_.x/y` are
+overwritten by the jump.
 
 **Save compatibility.** `hasBoat`/the `BOAT <0/1>` save line are gone;
 `game::SaveGame` still recognizes the `BOAT` keyword on load and discards
 it, so a save written before Milestone 88 still loads cleanly instead of
-fail-fasting on an otherwise-valid file.
+fail-fasting on an otherwise-valid file. `VOYAGED` (Milestone 92) is
+optional the same way `MET`/`QUEST`/`KILL` are — a save written before
+this milestone simply has no line, and an empty `voyagesTaken` is the
+correct default. **Known accepted edge case**: a character who already
+boarded a given voyage under the pre-Milestone-92 code has an empty
+`voyagesTaken` for it (the id was never recorded that way), so if they
+deliberately walk back to that same POI, they'd be re-offered the voyage
+instead of it reading as permanently spent. Not solved with migration
+logic — reaching a past-departure POI again requires walking back across
+the whole map, and re-accepting just re-runs an already-real jump, no
+corruption.
 
-**Scope note (Milestone 88, closed by Milestone 91):** Milestone 88
-converted only the Tarsis → Ice Wall Castle leg, since Sancrist Isle relied
-on the same global `hasBoat` and had no scripted voyage of its own once
-that flag was removed — see `docs/MAP_NOTES.md`'s "Sancrist Isle
-reachability gap." Milestone 91 closed that gap with the second `BOAT`
-grant above. Sancrist Isle also remains reachable on foot via the coastal
-shallow-water (`r`) path (confirmed by a throwaway BFS against the real
-grid) — the scripted voyage is a shortcut, not the only route.
+**Scope note (Milestone 88, closed by Milestone 91, extended by
+Milestone 92):** Milestone 88 converted only the Tarsis → Ice Wall Castle
+leg, since Sancrist Isle relied on the same global `hasBoat` and had no
+scripted voyage of its own once that flag was removed — see
+`docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap." Milestone 91
+closed the *arrival* half of that gap with the second `BOAT` grant above,
+but left Sancrist Isle with no talkable NPC and no way out — Milestone 92
+closed the *departure* half with the third leg. Sancrist Isle also remains
+reachable on foot via the coastal shallow-water (`r`) path (confirmed by a
+throwaway BFS against the real grid) — the scripted voyage is a shortcut,
+not the only route.
 
 **No HUD indicator and no random-encounter risk from this at all now** —
 since ocean is plain impassable terrain again, its `minutesToCross`/

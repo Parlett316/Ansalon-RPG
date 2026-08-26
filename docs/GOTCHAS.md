@@ -323,10 +323,11 @@ you hit something surprising — that's the whole point of it existing.
   it's seen the `ZONESTACK <n>` line, the next `n` lines are read as raw
   `<zoneId> <x> <y>` rows regardless of what they'd otherwise parse as.
   Milestone 51's `QUEST`/`KILL` lines had to be inserted *before*
-  `ZONESTACK` (right after `BOAT`) for exactly this reason — putting them
-  after would have them silently swallowed as phantom zone-stack entries
-  (or worse, corrupt real ones) the moment the stack is non-empty. Any
-  future new save keyword needs the same check: does it land before
+  `ZONESTACK` (right after `MET`, Milestone 92's `VOYAGED` now between
+  them) for exactly this reason — putting them after would have them
+  silently swallowed as phantom zone-stack entries (or worse, corrupt real
+  ones) the moment the stack is non-empty. Any future new save keyword
+  needs the same check: does it land before
   `ZONESTACK`, or does it break the count?
 - **A quest's `TALK <met-id>` objective isn't validated against real
   character/NPC ids at load time.** `quest::QuestLoader` can't see

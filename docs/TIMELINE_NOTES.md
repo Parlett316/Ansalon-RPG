@@ -1078,6 +1078,23 @@ Wall leg, leaving Sancrist Isle unreachable by any scripted route until
 Milestone 91 gave it its own `BOAT` grant — see "Ice Wall" above and
 `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap."
 
+**Milestone 92: a way out.** Milestone 91 solved arrival but left Sancrist
+Isle with no talkable NPC and no departure — this file's own "made
+third-in-command of the army sailing for Palanthas" line above (`dwn.txt`
+line 10631) was already the sourcing for where the Heroes go next; the
+same chapter's "the day came for the ships to sail... [the fleet] sailed
+to Palanthas" (`dwn_full.txt` lines 10718-10731) confirms they leave
+Sancrist by sea, direct to Palanthas, not overland. No explicit
+day-count is given for the crossing itself (unlike Milestone 91's sourced
+"two days" for Ice Wall → Sancrist), so `data/zones/sancrist_isle.txt`'s
+new `E "An Embarkation Officer"` grants `BOAT E palanthas 96`, an
+invented-for-pacing figure, longer than the two 48-hour legs since this is
+a materially longer crossing. Palanthas already has a walkable road to
+`high_clerist_tower` (Milestone 44), where Sturm/Flint/Tasslehoff/
+Laurana's next `PRESENCE` window (`76 80`) already sits — so this leg
+closes the loop between two already-shipped stops rather than opening a
+new one. See `docs/ZONE_NOTES.md`'s "Sancrist Isle" and "Boats" sections.
+
 **The Tower's existing folded-in retrospective dialogue was kept, not
 deleted.** Laurana's own `TOPIC "The Writ of Vindication"` and
 `data/zones/high_clerist_tower.txt`'s Knight NPC (`TOPIC "The Knights'

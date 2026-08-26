@@ -74,6 +74,12 @@ struct GameState {
     // id, zone NPCs use "<zoneId>:<POI char>" (they have no id of their
     // own). See game::GameLoop::talkTo.
     std::unordered_set<std::string> metCharacters;
+    // Ids (same "<zoneId>:<POI char>" shape as metCharacters above) of
+    // every world::BoatVoyage a player has actually boarded -- separate
+    // from metCharacters because that set is inserted into on every talk,
+    // accepted or not, so it can't also gate "have I taken this voyage" or
+    // declining would permanently forfeit it. See game::GameLoop::talkTo.
+    std::unordered_set<std::string> voyagesTaken;
     // Quest id -> current status. See quest::Quest/quest::QuestCatalog for
     // the static quest definitions this indexes into, and
     // game::GameLoop::offerOrTurnInQuest for how it's mutated.

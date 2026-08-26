@@ -889,27 +889,52 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     if (!candidate.questId.empty()) {
         offerOrTurnInQuest(candidate.questId, name);
     }
-    // A scripted one-time voyage (Milestone 36, reworked): fires once, the
-    // first time this POI is ever talked to (mirrors grantsItemId's own
-    // "first time only" gate above, but keyed off alreadyMet rather than an
-    // inventory check, since a voyage leaves nothing to check for). Ends the
-    // conversation immediately -- the player has left the scene, so this
-    // POI's topic/subject menu below no longer applies.
-    if (!candidate.boatDestinationId.empty() && !alreadyMet) {
+    // A scripted one-time voyage (Milestone 36, reworked; Milestone 92 added
+    // a real decline option). Offered on every talk until actually boarded
+    // -- gated on voyagesTaken rather than alreadyMet, since alreadyMet is
+    // set unconditionally above and declining must not burn the offer.
+    // Mirrors offerOrTurnInQuest's Accept/Decline picker below.
+    if (!candidate.boatDestinationId.empty() && state_.voyagesTaken.count(id) == 0) {
         const world::Location* destination = world_.getLocation(candidate.boatDestinationId);
         if (destination == nullptr) return; // defensive -- ZoneCatalog::loadForWorld already validated this id
-        state_.mode = Mode::Overworld;
-        state_.currentZoneId.clear();
-        state_.zoneStack.clear();
-        state_.x = destination->x;
-        state_.y = destination->y;
-        state_.hoursElapsed += candidate.boatHours;
-        state_.visitedLocations.insert(destination->id);
-        pushLog("You board the ship, and it carries you south across open water. Days pass before " +
-                destination->name + " finally rises out of the fog.");
-        checkQuestReadiness(); // a VISIT objective may have just been satisfied
-        announceOverworldTile();
-        return;
+        std::vector<std::string> labels = {"Board", "Not yet"};
+        int selected = 0;
+        bool board = false;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame("Depart for " + destination->name + "?", labels, selected,
+                                                  "up/down=select   Enter=choose   q=cancel");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North || key == render::Key::South) {
+                selected = selected == 0 ? 1 : 0;
+            } else if (key == render::Key::Enter) {
+                board = (selected == 0);
+                break;
+            } else if (key == render::Key::Quit) {
+                break;
+            }
+        }
+        if (board) {
+            state_.voyagesTaken.insert(id);
+            // Computed before x/y are overwritten below -- see
+            // compassDirection's own note on dy sign.
+            const char* dir = compassDirection(destination->x - state_.x, destination->y - state_.y);
+            state_.mode = Mode::Overworld;
+            state_.currentZoneId.clear();
+            state_.zoneStack.clear();
+            state_.x = destination->x;
+            state_.y = destination->y;
+            state_.hoursElapsed += candidate.boatHours;
+            state_.visitedLocations.insert(destination->id);
+            pushLog("You board the ship, and it carries you " + std::string(dir) +
+                    " across open water. Days pass before " + destination->name +
+                    " finally rises out of the fog.");
+            checkQuestReadiness(); // a VISIT objective may have just been satisfied
+            announceOverworldTile();
+            return;
+        }
+        // "Not yet"/q -- ends up here, falling through to the ordinary
+        // topics/SUBJECT picker below, same as any other POI's declined
+        // offer (see offerOrTurnInQuest).
     }
 
     bool canAskAnything = !speech.subjects.empty();
