@@ -830,12 +830,12 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
-## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88)
+## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91)
 
-Some locations (Ice Wall Castle) are sea-locked — confirmed by direct
-inspection of the reference map, no land route exists — so reaching them
-needs some way past ocean, which `world::Terrain` marks hard-`passable =
-false`, same as the Blood Sea.
+Some locations (Ice Wall Castle, Sancrist Isle) are sea-locked — confirmed
+by direct inspection of the reference map, no land route exists — so
+reaching them needs some way past ocean, which `world::Terrain` marks
+hard-`passable = false`, same as the Blood Sea.
 
 **Milestone 36's original shape** (kept here for history, superseded
 below): ocean tiles gained a `crossableByBoat` terrain flag and
@@ -871,20 +871,26 @@ player has left the scene. No new `render::Key`, no new screen, no
 confirmation prompt — same "small, contained addition" restraint the
 original mechanism established. `data/zones/tarsis.txt`'s Knight's Runner
 grants `BOAT R ice_wall 48` (a ~2-day voyage, invented for pacing like
-every `minutesToCross` value already is, not a sourced figure).
+every `minutesToCross` value already is, not a sourced figure). Milestone
+91 added a second leg on the same mechanism: `data/zones/ice_wall.txt`'s
+new "An Ice Barbarian Guide" (`B`) grants `BOAT B sancrist_isle 48` — this
+one *is* a sourced figure (`.research/dwn_full.txt` lines 5919-5920: "if
+the winds held, they might make Sancrist in two days"), a coincidence with
+the first leg's invented number, not a copy of it.
 
 **Save compatibility.** `hasBoat`/the `BOAT <0/1>` save line are gone;
 `game::SaveGame` still recognizes the `BOAT` keyword on load and discards
 it, so a save written before Milestone 88 still loads cleanly instead of
 fail-fasting on an otherwise-valid file.
 
-**Scope note (Milestone 88):** only the Tarsis → Ice Wall Castle leg was
-converted. Sancrist Isle relied on the same global `hasBoat` to be
-reachable at all and has no scripted voyage of its own yet — see
-`docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" and
-`docs/MILESTONES.md`'s NEXT UP for the open follow-up. It remains
-reachable on foot via the coastal shallow-water (`r`) path (confirmed by
-a throwaway BFS against the real grid), just not by any scripted route.
+**Scope note (Milestone 88, closed by Milestone 91):** Milestone 88
+converted only the Tarsis → Ice Wall Castle leg, since Sancrist Isle relied
+on the same global `hasBoat` and had no scripted voyage of its own once
+that flag was removed — see `docs/MAP_NOTES.md`'s "Sancrist Isle
+reachability gap." Milestone 91 closed that gap with the second `BOAT`
+grant above. Sancrist Isle also remains reachable on foot via the coastal
+shallow-water (`r`) path (confirmed by a throwaway BFS against the real
+grid) — the scripted voyage is a shortcut, not the only route.
 
 **No HUD indicator and no random-encounter risk from this at all now** —
 since ocean is plain impassable terrain again, its `minutesToCross`/

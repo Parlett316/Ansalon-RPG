@@ -2470,6 +2470,45 @@ section).
     `docs/COMBAT_NOTES.md`'s "Death: knocked out, not killed" for the
     updated mechanics.
 
+91. Sancrist Isle sea voyage -- the NEXT UP item the user picked to close a
+    gap Milestone 88 deliberately left open: converting `GameState::hasBoat`
+    into a scripted, point-to-point voyage moved only the Tarsis -> Ice Wall
+    Castle leg, leaving Sancrist Isle (which relied on that same removed
+    global flag) reachable only by a long coastal foot-walk. A fresh read of
+    `.research/dwn_full.txt` (not the existing docs summary alone) found two
+    concrete details for the second leg: line 5704, the historical party
+    escaped Ice Wall Castle's collapse "with the help of the Ice
+    Barbarians" -- the real hook for the new NPC's identity; and lines
+    5919-5920, the captain's own line that they'd "make Sancrist in two
+    days" if the wind held, an actual sourced duration this time, unlike the
+    first leg's invented-for-pacing 48 hours (two days converts to the same
+    48-hour figure by coincidence, not by copying it). New POI
+    `B "An Ice Barbarian Guide"` in `data/zones/ice_wall.txt`, granting
+    `BOAT B sancrist_isle 48` -- deliberately not the zone's existing Young
+    Knight (`K`), who's already that zone's `frostreaver_salvage`
+    quest-giver and shouldn't also whisk the player away on first talk.
+    Placed one tile past the zone's `ENTRY` doorway rather than on it, so
+    the existing "You stand at the way back out" arrival message (shown
+    only when no POI occupies that tile) stays intact. Pure data content --
+    no `.cpp`/`.h` changes, since `BOAT`'s destination-id validation
+    (`ZoneCatalog::loadForWorld`) is already fully generic and
+    `sancrist_isle` was already a real `LOCATION` (Milestone 86). Verified
+    via a throwaway self-test (14 assertions: the new POI parses at its
+    intended tile, its `TALK`/`TALK_AGAIN`/`SUBJECT`/`SUBJECT_UNKNOWN`
+    lines are all present, its `BoatVoyage` resolves to `sancrist_isle` at
+    48 hours, the zone's `ENTRY` tile itself carries no POI, and the
+    existing Young Knight is untouched), a clean `/W4` rebuild (zero new
+    warnings), and the piped smoke test against an isolated scratch copy
+    (the real `build/Debug/save1.txt`/`save2.txt` were never touched).
+    Interactive confirmation of the actual jump (talking to the Guide,
+    landing at Sancrist Isle, the log line, the clock advance) still needs
+    the user's own keyboard -- same limitation every prior `BOAT` milestone
+    has flagged. See `docs/ARCHITECTURE.md`'s "Sea travel",
+    `docs/ZONE_NOTES.md`'s "Boats" and "Ice Wall Castle" sections,
+    `docs/TIMELINE_NOTES.md`'s "Ice Wall"/"Sancrist Isle" sections, and
+    `docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap" for the full
+    writeup.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -2520,20 +2559,7 @@ session's work.
    real modeled location -- that file is a geography reference the user
    compiled, not itself a verified canon source, so any candidate would
    need the same novels/sourcebooks check before committing to specifics.
-5. **A scripted sea voyage from Ice Wall Castle to Sancrist Isle** --
-   Milestone 88 converted only the Tarsis -> Ice Wall Castle leg to the
-   new `BOAT <char> <destination-location-id> <hours>` mechanism,
-   deliberately scoping Sancrist Isle out at the user's request. The
-   sourced route continues past Southern Ergoth to Sancrist (already
-   cited in `docs/TIMELINE_NOTES.md`'s "Ice Wall" section), so the natural
-   shape is a second, dedicated one-line NPC at `data/zones/ice_wall.txt`
-   mirroring the Tarsis Runner -- not reusing the Young Knight, who's
-   already the zone's `frostreaver_salvage` quest-giver and shouldn't
-   whisk the player away on first talk. Until then, Sancrist Isle is
-   reachable only by the long coastal foot-walk (confirmed possible by a
-   throwaway BFS, see `docs/MAP_NOTES.md`'s "Sancrist Isle reachability
-   gap").
-6. **Interactive confirmation of Milestone 88's new sea-voyage jump** --
+5. **Interactive confirmation of Milestone 88's new sea-voyage jump** --
    verified structurally (self-test, clean rebuild, piped smoke test,
    real-save backward compatibility) but not yet exercised live, since the
    only character to have talked to Tarsis's Runner already did so under
@@ -2541,3 +2567,9 @@ session's work.
    talking to the Knight's Runner actually lands the player at Ice Wall
    Castle, logs the travel line, advances the clock, and that walking off
    any coastline onto open ocean is now blocked outright.
+6. **Interactive confirmation of Milestone 91's new sea-voyage jump** --
+   same limitation as #5 above, one leg further south: verified
+   structurally only. Needs a character walked to Ice Wall Castle (via the
+   Tarsis Runner) to confirm talking to the new Ice Barbarian Guide lands
+   the player at Sancrist Isle, logs the travel line, and advances the
+   clock by 48 hours.

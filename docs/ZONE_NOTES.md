@@ -389,7 +389,7 @@ catalog -- see `docs/CHARACTER_NOTES.md`'s "Equipment" section for the
 full catalog, sourcing, and the sell-back mechanic added the same
 milestone.
 
-## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88)
+## Boats: POIs that grant a scripted sea voyage (Milestone 36, reworked Milestone 88, extended Milestone 91)
 
 `BOAT <char> <destination-location-id> <hours>` marks a POI whose `TALK`
 interaction, the first time it happens, moves the player straight to
@@ -408,16 +408,27 @@ cross-file validation, so it's modelled like `PORTAL`/`QUEST` instead --
 stored in its own `Zone`-level map, validated once a `World` exists (see
 `ZoneCatalog::loadForWorld`), not by `ZoneLoader` alone.
 
-As of Milestone 88, exactly one POI carries `BOAT`: `data/zones/tarsis.txt`'s
-`R "A Knight's Runner"`, granting `BOAT R ice_wall 48`. Deliberately not
-Tarsis's existing `S "An Old Sailor"` -- his established `TALK`/
-`TALK_AGAIN` lines say outright that the sea "isn't coming back," and
-Tarsis's harbor is canonically dead (see the zone's own section below);
-routing the boat grant through him would contradict flavor already
-written in Milestone 28. The Runner instead represents passage arranged by
-Derek Crownguard's knights (see `docs/TIMELINE_NOTES.md`'s "Ice Wall"
-section for the citation), keeping the Old Sailor's characterization
-untouched.
+Two POIs carry `BOAT`, one leg each of the same southbound route:
+
+- `data/zones/tarsis.txt`'s `R "A Knight's Runner"`, granting
+  `BOAT R ice_wall 48`. Deliberately not Tarsis's existing `S "An Old
+  Sailor"` -- his established `TALK`/`TALK_AGAIN` lines say outright that
+  the sea "isn't coming back," and Tarsis's harbor is canonically dead (see
+  the zone's own section below); routing the boat grant through him would
+  contradict flavor already written in Milestone 28. The Runner instead
+  represents passage arranged by Derek Crownguard's knights (see
+  `docs/TIMELINE_NOTES.md`'s "Ice Wall" section for the citation), keeping
+  the Old Sailor's characterization untouched.
+- `data/zones/ice_wall.txt`'s `B "An Ice Barbarian Guide"` (Milestone 91),
+  granting `BOAT B sancrist_isle 48`. Deliberately not the zone's existing
+  `K "A Young Knight"` -- he's already that zone's `frostreaver_salvage`
+  quest-giver and shouldn't also whisk the player away on first talk (see
+  "Quests: POIs that offer them" below). The Guide represents the Ice
+  Barbarians who the source text credits with helping the historical party
+  escape the castle's collapse (see `docs/TIMELINE_NOTES.md`'s "Ice Wall"
+  section for the citation) -- a different, locally-grounded hook from the
+  Runner's Solamnic-knights framing, appropriate since this is a different
+  coast and a different culture.
 
 **Milestone 36 originally modeled this as a permanent `GameState::hasBoat`
 flag** that let the player cross any ocean tile anywhere, forever, once
@@ -425,8 +436,8 @@ granted -- Milestone 88 replaced it with the scripted jump described above
 after the user found it let the PC "just sail around" the whole continent
 regardless of where they stood, which the source material (one specific
 ship's route) never supported. Sancrist Isle relied on that same global
-flag and has no `BOAT` voyage of its own yet -- see `docs/MAP_NOTES.md`'s
-"Sancrist Isle reachability gap."
+flag and had no `BOAT` voyage of its own until Milestone 91 -- see
+`docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap."
 
 ## Quest items: POIs that grant a DELIVER object (the DELIVER milestone)
 
@@ -933,6 +944,13 @@ naming him directly). The Knight's `TOPIC`s fold in the Thanoi
 retrospective dialogue rather than inventing new locations/monsters for
 either — see `docs/TIMELINE_NOTES.md` for why both stay unmodeled this
 milestone. Thanoi are flavor-only text, not added to `data/monsters.txt`.
+
+**Milestone 91** added a second talkable POI, `B "An Ice Barbarian Guide"`,
+placed one tile past the doorway `ENTRY` (not on it -- see "Boats" above
+for why the Young Knight `K` couldn't double as this zone's travel-granter,
+now that he's also the `frostreaver_salvage` quest-giver). Grants
+`BOAT B sancrist_isle 48`, the second leg of the Tarsis → Ice Wall →
+Sancrist voyage.
 
 ## Silvanost, Silvanesti's capital (Milestone 37)
 

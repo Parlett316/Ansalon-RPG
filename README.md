@@ -54,8 +54,9 @@ the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
 Isle, ...) sit on that grid, most connected by roads baked
-into the terrain — Ice Wall is the one exception, a sea-locked ruin
-reachable only by arranging passage on a ship out of Tarsis (see below) —
+into the terrain — Ice Wall and Sancrist Isle are the exceptions, two
+sea-locked stops reachable only by arranging passage on a ship, first out
+of Tarsis, then onward from Ice Wall (see below) —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
 elven capital, inside Qualinesti. Standing at a location can also reveal
@@ -138,11 +139,12 @@ Ice Wall's Young Knight, the Silvanesti Warder, Palanthas's Knight of the
 Watch, Kalaman's City Watchman, Pax Tharkas's Fortress Guard, Tarsis's Old
 Sailor, and Neraka's Deserting Guard each have their own thing to say the
 first time you talk to them once the Heroes' stay there has passed, even
-if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle, sit on
-their own sea-locked landmass with no road to them at all — talk to the
-Knight's Runner in Tarsis and he'll carry you there directly, a ship's
-voyage of a couple of days, rather than a tile-by-tile walk across open
-water. Traveling the wilds now risks a random encounter — goblins, kobolds,
+if you'd already met them before the Heroes ever arrived. Some places, like Ice Wall Castle and
+Sancrist Isle, sit on their own sea-locked landmasses with no road to them
+at all — talk to the Knight's Runner in Tarsis and he'll carry you to Ice
+Wall directly, then an Ice Barbarian Guide there carries you onward to
+Sancrist, each leg a ship's voyage of a couple of days, rather than a
+tile-by-tile walk across open water. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
 skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real

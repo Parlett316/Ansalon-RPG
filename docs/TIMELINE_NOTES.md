@@ -985,6 +985,20 @@ knights, who the text confirms "joined them at Tarsis" (`dwn_full.txt`
 line 5720) after making camp outside the city during the dragon attack
 (lines 2424-2425).
 
+**The second leg, Ice Wall to Sancrist (Milestone 91).** A fresh read of
+`dwn_full.txt` (not the existing docs summary alone) turned up two
+concrete details for the follow-up voyage `docs/MILESTONES.md`'s NEXT UP
+had flagged: line 5704, "Escaping the destruction of the castle **with
+the help of the Ice Barbarians**, they were now on a ship bound for
+Sancrist" — the real, sourced hook for the new `data/zones/ice_wall.txt`
+POI `B "An Ice Barbarian Guide"` and her identity/role, distinct from the
+Runner's Solamnic-knights framing; and lines 5919-5920, "The captain said
+that, if the winds held, they might make Sancrist **in two days**" — an
+actual sourced duration (`BOAT B sancrist_isle 48`), unlike the first
+leg's invented-for-pacing 48 hours. No on-page boarding scene exists for
+this leg either, so the Guide's dialogue is freshly written, same
+discipline as the Runner's.
+
 ## Sancrist Isle (Milestone 86)
 
 Reverses the "deliberately not modeled" call this file made when Ice Wall
@@ -1054,11 +1068,15 @@ one stop, not a literal single-path simulation" abstraction this file
 already leans on everywhere else (see "Dragons of Winter Night: the
 party splits" above).
 
-**No new travel mechanic needed.** Sancrist Isle has no `ROAD_PAIRS`
-entry, same precedent as Ice Wall — reached by the same
-`GameState::hasBoat` grant `data/zones/tarsis.txt`'s Knight's Runner
-already provides, since this is the same sea voyage continuing, not a
-new one.
+**No new travel mechanic needed at this milestone.** Sancrist Isle has no
+`ROAD_PAIRS` entry, same precedent as Ice Wall — at the time this milestone
+shipped, it was reached by the same permanent `GameState::hasBoat` grant
+`data/zones/tarsis.txt`'s Knight's Runner provided, the same sea voyage
+continuing rather than a new one. Milestone 88 later replaced `hasBoat`
+with a scripted, point-to-point voyage and converted only the Tarsis → Ice
+Wall leg, leaving Sancrist Isle unreachable by any scripted route until
+Milestone 91 gave it its own `BOAT` grant — see "Ice Wall" above and
+`docs/MAP_NOTES.md`'s "Sancrist Isle reachability gap."
 
 **The Tower's existing folded-in retrospective dialogue was kept, not
 deleted.** Laurana's own `TOPIC "The Writ of Vindication"` and

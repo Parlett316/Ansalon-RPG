@@ -570,7 +570,7 @@ this milestone) were re-verified with the same throwaway 4-directional
 BFS approach every map change since the "Road 4-connectivity fix" has
 used.
 
-## Sancrist Isle reachability gap (Milestone 88)
+## Sancrist Isle reachability gap (Milestone 88, closed by Milestone 91)
 
 Milestone 88 replaced `GameState::hasBoat` (a permanent, global "cross any
 ocean tile" flag) with a scripted, point-to-point sea voyage granted by
@@ -579,17 +579,22 @@ talking to a specific NPC — see `docs/ARCHITECTURE.md`'s "Sea travel" and
 leg was converted (the user asked to scope Sancrist Isle's own voyage as a
 separate follow-up). Since Sancrist Isle's reachability above was written
 against the old `hasBoat` mechanic (any ocean tile, from anywhere, once
-granted), it's now unreachable by any scripted route — the boat granted at
-Tarsis only carries the player to Ice Wall Castle.
+granted), it became unreachable by any scripted route — the boat granted at
+Tarsis only carried the player to Ice Wall Castle.
 
-It remains reachable on foot, unaffected by this change: a throwaway BFS
+It remained reachable on foot the whole time: a throwaway BFS
 against the live `data/overworld.grid`, walking only genuinely-passable
 terrain (never true `~`/`!` water), confirmed the entire continent's
 land-plus-coastal-shallow-water (`r`) network is one connected component —
 Solace, Tarsis, Ice Wall Castle, and Sancrist Isle are all mutually
 reachable by foot alone, matching Milestone 87's own BFS finding above.
-It's simply a long walk, with no scripted shortcut, until a future
-milestone adds one (see `docs/MILESTONES.md`'s NEXT UP).
+
+**Milestone 91** closed the scripted-route gap with a second `BOAT` grant,
+`data/zones/ice_wall.txt`'s new "An Ice Barbarian Guide" carrying the
+player from Ice Wall Castle onward to Sancrist Isle — see
+`docs/ZONE_NOTES.md`'s "Boats" and "Ice Wall Castle" sections. The foot
+route above still exists as an alternative; the scripted voyage is a
+shortcut, not a passability change.
 
 ## Fixing roads that crossed open water (Milestone 87)
 
