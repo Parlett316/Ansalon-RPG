@@ -297,6 +297,16 @@ slot offers "Continue this character?", and declining asks a second,
 explicit confirmation before a fresh character is allowed to overwrite it
 on the next autosave.
 
+**Explicit delete (Milestone 94)**: the menu also accepts `d1`/`d2`/`d3`
+(`main.cpp`'s `SlotChoice`, an extension of `promptSlotChoice`) to delete
+a slot's save file immediately, after its own `y/n` confirmation --
+distinct from the overwrite-on-next-autosave flow above, which only
+replaces the file once the player actually plays and an autosave fires.
+Deletion itself is `game::SaveGame::remove` (a thin, non-throwing
+`std::filesystem::remove` wrapper next to `exists()`); the affected
+`SlotInfo` is then refreshed via the same `describeSlot` helper so it
+comes back showing `(empty)` without any special-case reset logic.
+
 ## Timeline / chance-encounter engine
 
 The core original pitch for this whole project (see `README.md`), and the

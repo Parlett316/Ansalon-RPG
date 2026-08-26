@@ -5,6 +5,7 @@
 #include "character/Race.h"
 #include "character/WizardOrder.h"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -55,6 +56,12 @@ EnumT parseEnumInt(const std::string& path, int lineNumber, const std::string& t
 bool SaveGame::exists(const std::string& path) {
     std::ifstream file(path);
     return file.good();
+}
+
+bool SaveGame::remove(const std::string& path) {
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+    return !ec && !std::filesystem::exists(path, ec);
 }
 
 void SaveGame::save(const GameState& state, const std::string& path) {

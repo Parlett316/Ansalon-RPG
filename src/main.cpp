@@ -62,12 +62,30 @@ std::string promptLine(const std::string& prompt) {
     return line;
 }
 
-int promptSlotChoice() {
+// A menu pick, plus whether it was prefixed 'd'/'D' (e.g. "d1") requesting
+// immediate deletion of that slot rather than selecting it.
+struct SlotChoice {
+    int slot;
+    bool deleteRequested;
+};
+
+SlotChoice promptSlotChoice() {
     for (;;) {
-        std::istringstream iss(promptLine("Choose a slot (1-" + std::to_string(kSaveSlotCount) + "): "));
-        int value;
-        if (iss >> value && value >= 1 && value <= kSaveSlotCount) return value;
-        std::cout << "Please enter a number from 1 to " << kSaveSlotCount << ".\n";
+        std::string line = promptLine("Choose a slot (1-" + std::to_string(kSaveSlotCount) +
+                                       "), or 'd' plus a slot number (e.g. 'd1') to delete a save: ");
+        size_t begin = line.find_first_not_of(" \t\r\n");
+        if (begin != std::string::npos) {
+            size_t end = line.find_last_not_of(" \t\r\n");
+            std::string trimmed = line.substr(begin, end - begin + 1);
+            bool deleteRequested = trimmed[0] == 'd' || trimmed[0] == 'D';
+            std::istringstream iss(deleteRequested ? trimmed.substr(1) : trimmed);
+            int value;
+            if (iss >> value && value >= 1 && value <= kSaveSlotCount && iss.eof()) {
+                return {value, deleteRequested};
+            }
+        }
+        std::cout << "Please enter a number from 1 to " << kSaveSlotCount
+                   << ", or 'd' plus a slot number.\n";
     }
 }
 
@@ -123,6 +141,14 @@ SlotInfo describeSlot(std::string path, const world::ZoneCatalog& zones) {
         info.error = ex.what();
     }
     return info;
+}
+
+// Shared by the menu printout and the delete-confirmation prompt below, so
+// both describe an occupied/unreadable/empty slot identically.
+std::string slotLabel(const SlotInfo& slot) {
+    if (!slot.exists) return "(empty)";
+    if (slot.valid) return slot.summary;
+    return "(unreadable save: " + slot.error + ")";
 }
 
 } // namespace
@@ -268,14 +294,33 @@ int main(int argc, char** argv) {
         for (;;) {
             std::cout << "\nSave slots:\n";
             for (int i = 0; i < kSaveSlotCount; ++i) {
-                const SlotInfo& slot = slots[static_cast<size_t>(i)];
-                std::string label = !slot.exists ? "(empty)"
-                                     : slot.valid ? slot.summary
-                                                  : "(unreadable save: " + slot.error + ")";
-                std::cout << "  " << (i + 1) << ". " << label << "\n";
+                std::cout << "  " << (i + 1) << ". " << slotLabel(slots[static_cast<size_t>(i)]) << "\n";
             }
-            int chosen = promptSlotChoice();
+            SlotChoice choice = promptSlotChoice();
+            int chosen = choice.slot;
             SlotInfo& slot = slots[static_cast<size_t>(chosen - 1)];
+
+            // Immediate, explicit delete -- distinct from the "start a new
+            // character, overwrite on next autosave" flow below. Always
+            // loops back to a freshly redrawn menu rather than falling
+            // through to character creation.
+            if (choice.deleteRequested) {
+                if (!slot.exists) {
+                    std::cout << "\nSlot " << chosen << " is already empty.\n";
+                    continue;
+                }
+                if (promptYesNo("\nDelete Slot " + std::to_string(chosen) + " -- " + slotLabel(slot) +
+                                 "? This cannot be undone. (y/n) ")) {
+                    if (game::SaveGame::remove(slot.path)) {
+                        slot = describeSlot(slot.path, zones);
+                        std::cout << "Slot " << chosen << " deleted.\n";
+                    } else {
+                        std::cout << "Could not delete Slot " << chosen << "'s save file.\n";
+                    }
+                }
+                continue;
+            }
+
             savePath = slot.path;
 
             if (!slot.exists) break; // empty slot -- straight to character creation below

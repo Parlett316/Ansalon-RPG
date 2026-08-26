@@ -15,6 +15,12 @@ class SaveGame {
 public:
     static bool exists(const std::string& path);
 
+    // Deletes the save file at path, if any. Non-throwing (unlike load()) --
+    // returns whether the file is now gone with no error, so a caller can
+    // report failure to the player instead of crashing over e.g. a locked
+    // file. See main.cpp's save-slot menu, the only caller.
+    static bool remove(const std::string& path);
+
     static void save(const GameState& state, const std::string& path);
 
     // Throws a runtime_error (with a clear message) on a missing, malformed,

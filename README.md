@@ -323,7 +323,9 @@ Run the built `ansalon_rpg.exe`. It shows a menu of 3 save slots (each
 autosaved continuously during play — see `docs/ARCHITECTURE.md`), any
 occupied ones summarized by name/level/race/class/day; pick one to
 continue that character (with a confirmation before a fresh character is
-allowed to overwrite it), or an empty slot to open character creation
+allowed to overwrite it), type `d1`/`d2`/`d3` to delete a slot's save
+immediately (with its own confirmation), or pick an empty slot to open
+character creation
 (plain typed prompts — enter a name, keep or reroll your ability scores,
 pick a race/class/alignment number, confirm). Once that's done, movement is immediate — no Enter key
 needed:

@@ -2616,6 +2616,34 @@ section).
     unchanged. See `docs/MAP_NOTES.md`'s "Crossing" section and
     `docs/ZONE_NOTES.md`.
 
+94. Explicit save-slot deletion -- the user found the launch menu had no
+    way to delete a save to make room for a new character. Investigation
+    found this was half-true: declining "Continue this character?" on an
+    occupied slot already offered "Start a new character... overwrite,"
+    but that only *implicitly* overwrites the file on the next autosave,
+    not an immediate delete (a deliberate Milestone 89 choice, per
+    `docs/ARCHITECTURE.md`). Confirmed with the user (`AskUserQuestion`)
+    that they wanted a real, explicit, immediate delete, separate from
+    character creation. New `game::SaveGame::remove` (a thin, non-throwing
+    `std::filesystem::remove` wrapper mirroring the existing `exists()`
+    static) plus a `main.cpp`-only change: the save-slot menu now accepts
+    `d1`/`d2`/`d3` (`SlotChoice`, extending `promptSlotChoice`) to delete a
+    slot immediately after a `y/n` confirmation, reusing `describeSlot` to
+    refresh that slot's menu entry afterward. The existing decline/
+    overwrite-on-next-save flow is untouched and still the right path for
+    "don't care about the old save, just let me play." Verified via a
+    clean `/W4` rebuild (zero new warnings) and a piped interactive test
+    against an isolated `build/Debug` copy (exe + `data/` + a throwaway
+    copy of a real save) -- since the whole save-slot menu, not just
+    `CharacterCreator`, runs on plain `std::cin`/`std::cout` and is
+    pipeable: confirmed deleting an occupied slot removes the file and
+    redraws it as `(empty)`, deleting an already-empty slot shows a
+    message with no confirmation prompt, and declining a delete leaves the
+    slot untouched -- plus the standard piped smoke test, with the user's
+    real `save1.txt`/`save2.txt`/`save3.txt` moved aside first and
+    restored after (timestamps confirmed unchanged). See
+    `docs/ARCHITECTURE.md`'s "Save/load" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
