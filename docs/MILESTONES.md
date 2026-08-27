@@ -3174,6 +3174,47 @@ section).
     prior quest milestone. See `docs/QUEST_NOTES.md`'s "Shipped quests" and
     `docs/ZONE_NOTES.md`'s "Southern Ergoth" section.
 
+106. `reason_worth_giving` -- a new quest at the Plains of Dust, found by
+    digging past the Milestone 105 sweep's own blind spot at the user's
+    request. That sweep's checked-and-rejected list never actually named
+    Qualinesti's Elven Sentinel, Neraka's Deserting Guard, or Plains of
+    Dust's Rider; re-checked directly this session, the first two genuinely
+    don't hold up (pure gatekeeping, pure desertion -- neither shaped like
+    an errand) but the Rider does. Her own already-shipped `TALK`/
+    `TALK_AGAIN` lines (`data/zones/plains_of_dust.txt`) carry an explicit,
+    unresolved "prove yourself, and you'll be welcome" arc this quest
+    finally pays off. Plains of Dust is this project's one deliberately
+    *invented* zone (an original Plainsfolk tribe stands in for the real
+    Que-Shu, which DL3 confirms is already destroyed), so unlike every
+    other zone's quest content, this needed no novel citation -- the whole
+    zone already runs on invented-but-flagged tone. The shape: the tribe's
+    burial mounds have been disturbed, and putting the dead back to rest is
+    the "reason" her dialogue already gestures at, using Ghoul
+    (`data/monsters.txt`) -- the one Monster-Manual-sourced monster no
+    quest had used yet, whose own `DESC` ("rises from a shallow grave") is
+    a direct fit for disturbed-mound flavor -- rather than a fourth Wolf/
+    Goblin/Hobgoblin reskin. `QUEST R reason_worth_giving` binds to the
+    Rider's existing `TALK` line (no new `TALK` needed); a new flavor-only
+    POI, `M "The Old Mounds"`, gives the quest a physical anchor, the same
+    role Darken Wood's pre-existing Old Ruins played for
+    `what_the_stones_remember`; a new `SUBJECT R mounds,graves,dead,barrows`
+    entry ties the Rider's "ask about anything" pool to the new thread. No
+    `REQUIRE`, `SLAY ghoul 2`, 40 steel / 90 XP. Pure data content -- no
+    `.cpp`/`.h` changes, no new reward flag, no save-format changes.
+    Verified via a throwaway self-test (`QuestLoader` against the real,
+    now-16-quest `data/quests.txt` confirming the new quest's shape;
+    `ZoneLoader` parsing the edited `plains_of_dust.txt`, confirming the new
+    POI, the new `QUEST R` binding, and the new `SUBJECT` all parse
+    cleanly), a clean `/W4` rebuild (zero new warnings -- no source files
+    changed), and the piped smoke test (confirms `main.cpp`'s
+    cross-validation accepts the new zone binding; no real save existed at
+    `build\Debug\` to protect this session). **Interactive verification
+    still needed** -- accepting the quest, killing 2 Ghouls, turning in, and
+    confirming the new `SUBJECT`/POI read well in a real conversation --
+    same `_getch()` limitation as every prior quest milestone. See
+    `docs/QUEST_NOTES.md`'s "Shipped quests" and `docs/ZONE_NOTES.md`'s
+    Plains of Dust section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

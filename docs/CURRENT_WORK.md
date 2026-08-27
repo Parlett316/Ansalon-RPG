@@ -2,6 +2,33 @@
 
 Nothing in flight.
 
+Milestone 106 (2026-08-27) shipped one new quest, `reason_worth_giving`, at
+the Plains of Dust -- the user asked for a new content milestone; DELIVER/
+item rewards turned out already shipped (Milestones 51-102), and the
+Milestone 105 "unforced hook" sweep looked exhausted until a closer check
+found it had never actually looked at Qualinesti's Elven Sentinel, Neraka's
+Deserting Guard, or Plains of Dust's Rider. The first two don't hold up, but
+the Rider does: her own already-shipped "you still haven't given me a good
+reason" line gets paid off with a disturbed-burial-mounds `SLAY ghoul 2`
+errand (Ghoul being the one Monster-Manual-sourced monster no quest had used
+yet). New flavor-only POI `M "The Old Mounds"` and a new `SUBJECT R
+mounds,graves,dead,barrows` entry accompany the `QUEST R
+reason_worth_giving` binding. Plains of Dust is this project's one
+deliberately invented zone, so this needed no novel citation the way every
+other zone's content does. Pure data content -- no `.cpp`/`.h` changes, no
+save-format changes. Verified via a throwaway self-test, a clean `/W4`
+rebuild, and the piped smoke test (no real save existed at `build\Debug\` to
+protect this session). **Interactive verification still needed** --
+accepting the quest, killing 2 Ghouls, turning in, and confirming the new
+`SUBJECT`/POI read well in a real conversation. See `docs/MILESTONES.md`
+entry 106 and `docs/QUEST_NOTES.md`'s "Shipped quests" section.
+
+`docs/QUEST_NOTES.md`'s "Extending this later" section is now updated to
+reflect that all three previously-unchecked NPCs (Qualinesti, Neraka, Plains
+of Dust) have had a real look -- the quest-hook well really is dry now,
+don't re-run this sweep expecting more without a new zone/NPC or a concrete
+user ask.
+
 Milestone 105 (2026-08-27) shipped three new quests, at the user's request
 for "more quests and things to do for the PC": `what_the_stones_remember`
 (Darken Wood's Unicorn, `SLAY owlbear 1`), `word_to_the_wilder_kin`
@@ -17,11 +44,6 @@ completing all three quests, and confirming Southern Ergoth's Sentry
 reads naturally now that she offers both a quest and (already) a boat
 voyage in the same conversation. See `docs/MILESTONES.md` entry 105 and
 `docs/QUEST_NOTES.md`'s "Shipped quests" section.
-
-`docs/QUEST_NOTES.md`'s "Extending this later" section now flags that a
-full sweep of every zone found only these three unforced hooks left --
-don't re-run that sweep expecting more without a new zone/NPC or a
-concrete user ask.
 
 Milestone 104 (2026-08-27) made the "ask about anything" screen show its
 available keywords ("You could ask about: Caramon, Goldmoon, ...") instead

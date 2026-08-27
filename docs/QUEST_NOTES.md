@@ -430,6 +430,61 @@ needs one.
 
 ## Shipped quests
 
+### `reason_worth_giving`, at the Plains of Dust
+
+The Milestone 105 sweep's "the well is nearly dry" finding turned out to
+have a gap in it: that sweep only lists Crossing, Palanthas, Sancrist,
+Flotsam, Port Balifor, Tarsis, and Pax Tharkas as checked-and-rejected --
+it never actually looked at Qualinesti's Elven Sentinel, Neraka's Deserting
+Guard, or Plains of Dust's Rider. Re-checked directly this milestone: the
+Sentinel's wariness is pure gatekeeping with no errand thread, and the
+Deserting Guard's whole characterization is "wants nothing to do with
+anyone, mid-desertion" -- neither holds up. The Rider does. Her own
+already-shipped `TALK`/`TALK_AGAIN` lines (`data/zones/plains_of_dust.txt`)
+carry an explicit, unresolved "prove yourself, and you'll be welcome" arc
+("You've got neither [escort nor reason]..." / "You still haven't given me
+a good reason, but you also haven't caused trouble, so I suppose that's
+reason enough to let you sit a while") that this quest finally pays off.
+
+Plains of Dust is this project's one deliberately *invented* zone (see
+`docs/ZONE_NOTES.md` -- an original, unnamed Plainsfolk tribe stands in for
+the real Que-Shu, which DL3 confirms is already destroyed by this story's
+time), so unlike every other zone's quest content, this needed no novel
+citation -- the whole zone already runs on invented-but-flagged tone, not a
+transcribed scene, same footing Crossing's Ferry Keeper already has.
+
+The shape: the tribe's burial mounds have been disturbed, and putting the
+dead back to rest is the "reason" her dialogue already gestures at. Uses
+**Ghoul** (`data/monsters.txt`), the one Monster-Manual-sourced monster no
+quest had used yet -- its own `DESC` ("rises from a shallow grave") is a
+direct, literal fit for disturbed-mound flavor, and steppe-nomad ancestral
+burial-ground reverence is a real, non-infringing cultural texture rather
+than invented Dragonlance lore. Also deliberately not a fourth Wolf/Goblin/
+Hobgoblin reskin, same repetition the Milestone 105 pass avoided by picking
+Gnoll. No `REQUIRE` -- broadly offered, same as `road_wolves`/
+`what_the_stones_remember`.
+
+Two content additions beyond the `QUEST R reason_worth_giving` binding
+itself (added under the Rider's existing `TALK`/`SUBJECT` block, no new
+`TALK` needed): a new flavor-only POI, `M "The Old Mounds"`, giving the
+quest a physical anchor the same way Darken Wood's pre-existing Old Ruins
+grounded `what_the_stones_remember`; and a new `SUBJECT R
+mounds,graves,dead,barrows` entry tying the Rider's "ask about anything"
+pool to the new thread. `SLAY ghoul 2`, 40 steel / 90 XP -- mid-tier,
+between `bazaar_road_raiders` (2 tougher Hobgoblins) and `new_faces_on_the_
+road` (3 weaker Gnolls), matching a Ghoul's own higher per-kill XP (175
+each) against a 2-kill count. Verified via a throwaway self-test
+(`QuestLoader` against the real, now-16-quest `data/quests.txt` confirming
+`reason_worth_giving`'s shape; `ZoneLoader` parsing the edited `plains_of_
+dust.txt`, confirming the new `M` POI, the `QUEST R reason_worth_giving`
+binding, and the new `SUBJECT` all parse cleanly), a clean `/W4` rebuild (no
+new warnings -- pure data, no `.cpp`/`.h` changes), and the piped smoke test
+(confirms `main.cpp`'s cross-validation accepts the new zone binding).
+Interactive verification -- accepting the quest, killing 2 Ghouls, turning
+in, and confirming the new `SUBJECT`/POI read well in a real conversation --
+still needs the user's own keyboard, the same `_getch()` limitation flagged
+for every quest milestone so far.
+
 ### A three-quest content pass: `what_the_stones_remember`, `word_to_the_wilder_kin`, `new_faces_on_the_road`
 
 A user-requested "more quests" pass, picked with the same "unforced hook"
@@ -917,11 +972,15 @@ design is now shipped; what's still open:
   NPC to find another one rather than reusing an existing hook.
 - **The `what_the_stones_remember`/`word_to_the_wilder_kin`/
   `new_faces_on_the_road` pass (see "Shipped quests" above) confirms the
-  well is nearly dry.** A full sweep of every `TALK`-having POI across
-  all 23 zone files turned up only three strong, unforced hooks; the rest
+  well is nearly dry, and `reason_worth_giving` (also above) closes the one
+  real gap that sweep left.** That sweep's own checked-and-rejected list
   (Crossing, Palanthas's Knight/Astinus, Sancrist's Embarkation Officer,
   Flotsam, Port Balifor, Tarsis's Sailor/Runner, Pax Tharkas's Fortress
-  Guard) would need real invention, not reframing, to force into a
-  quest. Absent a new zone/NPC or a concrete user ask, don't re-run this
-  sweep expecting to find more — same caution as the DLA magic-items
-  chapter above.
+  Guard) never actually named Qualinesti's Elven Sentinel, Neraka's
+  Deserting Guard, or Plains of Dust's Rider — re-checked directly for
+  `reason_worth_giving`: the Sentinel and the Deserting Guard genuinely
+  don't hold up (pure gatekeeping and pure desertion, neither shaped like an
+  errand), but the Rider did. With all three now checked, every `TALK`-
+  having POI across all 23 zone files has had a real look. Absent a new
+  zone/NPC or a concrete user ask, don't re-run this sweep expecting to find
+  more — same caution as the DLA magic-items chapter above.

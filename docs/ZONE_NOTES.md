@@ -929,7 +929,14 @@ same freshly-written-not-transcribed treatment as everywhere else:
 - `data/zones/plains_of_dust.txt` — a Plainsfolk camp. Deliberately an
   unnamed tribe's camp, not Que-Shu specifically, since DL3 establishes
   Que-Shu as destroyed by the time of that module's story — using an
-  original tribe sidesteps that conflict entirely.
+  original tribe sidesteps that conflict entirely. Since this is already
+  this project's one deliberately *invented* zone, Milestone 106 added a
+  new POI here without needing a novel citation: `M "The Old Mounds"`
+  (flavor-only, no `TALK`), grounding a new quest, `QUEST R
+  reason_worth_giving`, on the existing Rider POI (`R`) — pays off her own
+  already-shipped "you still haven't given me a good reason" line with a
+  disturbed-burial-mounds errand. See `docs/QUEST_NOTES.md`'s "Shipped
+  quests".
 - `data/zones/tarsis.txt` — the old harbor district, stranded since the
   Cataclysm. Not directly covered in DL1-3 (the adventure ends before
   reaching it), so this one leans on general established Dragonlance

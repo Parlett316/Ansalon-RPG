@@ -45,6 +45,14 @@
 # Sentry to the previously-scenery-only Wilder Elves' Camp, and a SLAY quest
 # at Haven's Seeker Guard paying off his own "new faces aren't pilgrims"
 # line. None carries a REQUIRE; none needed an engine change.
+# reason_worth_giving (below) pays off the Plains of Dust Rider's own
+# "you still haven't given me a good reason" line -- Plains of Dust is this
+# project's one deliberately invented zone (DL3 confirms the real Que-Shu is
+# destroyed by this story's time, so an original tribe stands in for it), so
+# this needed no novel citation the way every other zone's quest content
+# does. Uses Ghoul, the one MM-sourced monster no quest had used yet, whose
+# own DESC ("rises from a shallow grave") fits disturbed-burial-mound flavor
+# directly. No REQUIRE; no engine change.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -237,4 +245,16 @@ GIVER the Seeker Guard in Haven
 SLAY gnoll 3 Clear the gnoll pack off the trade road east of Haven
 REWARD_STEEL 35
 REWARD_XP 80
+END
+
+QUEST reason_worth_giving
+NAME A Reason Worth Giving
+OFFER "You want a reason I'd call good?" She nods past the tents, toward the rise where the old burial mounds break the flat ground. "Something's been at the mounds the last few nights -- dead that shouldn't be standing, walking loose where our own are meant to rest undisturbed. Put them back down, and you'll have given me more of a reason than most outsiders ever bother to."
+ACCEPT You understand well enough what she isn't quite saying outright: this isn't just a task to finish, it's the reason she's been waiting on since the day you rode in.
+PROGRESS The Rider's eyes drift toward the rise more than once while she talks to you. "Mounds are still restless, far as I've heard. Whatever you're doing about it, it isn't finished yet."
+COMPLETE For once the Rider looks past you toward the mounds instead of watching your hands. "Quiet again, up there. Whatever you put back down, it's staying down." She considers you a beat longer than usual. "That's a reason, all right. Sit at our fires as long as you've got cause to."
+GIVER the Rider at the Plains of Dust
+SLAY ghoul 2 Put to rest whatever has risen from the old burial mounds
+REWARD_STEEL 40
+REWARD_XP 90
 END
