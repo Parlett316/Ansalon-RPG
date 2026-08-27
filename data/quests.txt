@@ -37,6 +37,14 @@
 # hardy_seed_grain) and turned in at data/zones/thorbardin.txt's existing
 # Refugee Quarter POI -- no REQUIRE, same broadly-offered shape as
 # ore_for_the_forge.
+# what_the_stones_remember, word_to_the_wilder_kin, and new_faces_on_the_road
+# (below) are a three-quest content pass reframing hooks that were already
+# written into existing TALK/TOPIC/SUBJECT flavor text but never paid off --
+# a SLAY quest at Darken Wood's Unicorn explaining the Old Ruins' "kept
+# back" ground, a TALK quest carrying word from Southern Ergoth's Silvanesti
+# Sentry to the previously-scenery-only Wilder Elves' Camp, and a SLAY quest
+# at Haven's Seeker Guard paying off his own "new faces aren't pilgrims"
+# line. None carries a REQUIRE; none needed an engine change.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -191,6 +199,42 @@ PROGRESS The old woman's needle doesn't slow. "Still no grain. Still a mountains
 COMPLETE She takes the sack from your hands like it weighs more than it does, turning it over once before she trusts it. "Well. Somebody down there had sense enough to spare it." For a moment the needlework stops entirely. "Might be we plant something after all."
 GIVER the older woman in Thorbardin's Refugee Quarter
 DELIVER hardy_seed_grain 1 Bring seed grain to the Pax Tharkas refugees sheltering in Thorbardin
+REWARD_STEEL 35
+REWARD_XP 80
+END
+
+QUEST what_the_stones_remember
+NAME What the Stones Remember
+OFFER The certainty that arrives in your thoughts this time carries a different weight than before -- not judgment, but something closer to a request. "The stones you passed hold silence for a reason not their own. Something nests there now, and takes more from this wood than it gives -- the opposite of what I ask of everyone who crosses beneath these trees. Clear it, if you are able, and you will have answered my judgment before I ever need to speak it again."
+ACCEPT You understand the shape of what's being asked, unicorn-plain as it is: whatever has denned in the Old Ruins, the wood wants it gone, and wants you to be the one who decides that's worth doing.
+PROGRESS The certainty returns, patient as ever. "The stones are still bare. Whatever nests there has not yet answered for it."
+COMPLETE The certainty that meets you this time carries something unicorn silence rarely shows -- plain approval. "The ground already feels less bare, and the wood remembers who did that." Where the bared earth was, the stones lie disturbed, and hard against exposed roots you find what the ruins had actually been guarding: a small hoard, old coin gone green with verdigris, more than enough to prove your judgment sound. "Take what the stones no longer need to hide. I judge what I am shown, traveler, and I have been shown enough."
+GIVER the Unicorn in Darken Wood
+SLAY owlbear 1 Clear whatever has denned among the Old Ruins
+REWARD_STEEL 45
+REWARD_XP 110
+END
+
+QUEST word_to_the_wilder_kin
+NAME Word to the Wilder Kin
+OFFER "You'll have found the Kaganesti camp by now, if you've wandered this coast at all -- or near enough to it that they've noticed you first, which is more likely." She considers a moment, something almost like discomfort crossing her face. "We don't speak to them as often as neighbors ought to, and the fault's more ours than theirs. If you're willing to carry something across that distance -- even just word that we're not blind to them -- I'd take it as a kindness I haven't earned the right to ask for directly."
+ACCEPT You understand well enough what's being asked, plainly stated or not: go where the Sentry hasn't gone herself, and say what she hasn't said.
+PROGRESS "You haven't been to the camp yet, or you'd have mentioned it," the Sentry says. "No shame in taking your time. I've had longer than you and still haven't managed it myself."
+COMPLETE Something in the Sentry's bearing eases when you tell her the word was carried and heard. "Small thing, carrying a sentence across a beach," she says, "and somehow it's more than any of us managed on our own in months of watching each other from a distance." She presses a share of coin into your hand -- practical thanks, not grand. "Whatever this coast turns us into eventually, I'd rather it wasn't strangers to the people it's teaching us to share it with."
+GIVER the Silvanesti Sentry on Southern Ergoth
+TALK southern_ergoth:K Carry word from the Silvanesti Sentry to the Wilder Elves' camp
+REWARD_STEEL 30
+REWARD_XP 60
+END
+
+QUEST new_faces_on_the_road
+NAME New Faces on the Road
+OFFER The guard's easy manner drops, just slightly. "You heard me say the new faces on the road aren't pilgrims. I'll be plainer, since you're headed out there anyway: gnolls, a pack of them, working the trade road east of the towers. Temple can't spare anyone -- Highseeker's line is longer than ever, and the roads aren't the Theocracy's to guard, officially. Unofficially, somebody ought to."
+ACCEPT You take his meaning well enough -- officially nobody's job, unofficially yours now, if you're headed that way regardless.
+PROGRESS The guard's eyes flick toward the eastern road out of old habit. "Still hearing about gnolls out there. Roads haven't gotten any quieter since we talked."
+COMPLETE The guard actually looks relieved, more than the pay he hands over quite accounts for. "Fewer howling voices on that road tonight, then. I'll not pretend the Theocracy will thank you for it -- officially it never asked. Unofficially, I do."
+GIVER the Seeker Guard in Haven
+SLAY gnoll 3 Clear the gnoll pack off the trade road east of Haven
 REWARD_STEEL 35
 REWARD_XP 80
 END

@@ -430,6 +430,105 @@ needs one.
 
 ## Shipped quests
 
+### A three-quest content pass: `what_the_stones_remember`, `word_to_the_wilder_kin`, `new_faces_on_the_road`
+
+A user-requested "more quests" pass, picked with the same "unforced hook"
+method every prior quest-content milestone used: every `TALK`-having POI
+across all 23 zone files was checked for a `QUEST` line, and the
+quest-less ones cross-referenced against their own already-written
+`TALK`/`TOPIC`/`SUBJECT` flavor text. Most turned out thin (Crossing's
+Ferry Keeper, Palanthas's Knight/Astinus, Sancrist's Embarkation Officer,
+Flotsam's dockhand, Port Balifor's innkeeper, Tarsis's Sailor/Runner, Pax
+Tharkas's Fortress Guard) — real content, but nothing pointed at an
+actionable objective without inventing new lore, matching this file's own
+"Extending this later" note that remaining hooks are increasingly hard to
+find. Three held up. All three are pure data content — no new `REQUIRE`
+condition, no new reward flag, no `.cpp`/`.h` changes, no save-format
+changes.
+
+**`what_the_stones_remember`** — Darken Wood's Unicorn (`U`, canonically
+the Forestmaster, DL1's guardian of the wood — see
+`docs/ZONE_NOTES.md`'s Darken Wood section), whose own `TOPIC "Guardian
+of the Wood"` already establishes her test-of-worth judgment ("what a
+life has given more than it has taken"). Reframes that judgment into a
+`SLAY owlbear 1` objective against whatever's denning in the zone's Old
+Ruins POI, whose own description already reads "the ground nearby is
+oddly bare, as if something is still keeping the forest back" — an
+unexplained detail this quest pays off rather than a new one invented.
+Owlbear (`data/monsters.txt`, forest `TERRAIN_BIAS`) was previously
+quest-unused. No `REQUIRE` — the Unicorn already engages both good and
+evil travelers (`SAY_IF good`/`SAY_IF evil`), just differently, so this
+stays broadly offered like `road_wolves`. The `COMPLETE` text explains
+away the "kept back" ground and has the player find a small, mundane
+coin hoard among the disturbed stonework rather than having the Unicorn
+hand over steel directly — 45 steel / 110 XP, above the 2-Hobgoblin
+`bazaar_road_raiders` tier since a solo HD5+2 Owlbear outweighs that, but
+below the item-granting quests' tier since nothing but steel/XP changes
+hands. `QUEST U what_the_stones_remember` added under the existing `TALK
+U` block in `data/zones/darken_wood.txt` — no new POI, no new dialogue
+beyond the quest's own text.
+
+**`word_to_the_wilder_kin`** — Southern Ergoth's Silvanesti Sentry (`S`),
+whose own `TOPIC "Three Peoples, One Coast"` already admits real,
+already-shipped discomfort about the Kaganesti/"Wilder Elves" sharing
+this coast ("we call them primitive when we're being unkind, which is
+more often than I'd like to admit"). This quest turns that admitted gap
+into an actual `TALK` errand. The Wilder Elves' Camp POI (`G`) was
+already placed on the map but is this zone's `TIMELINE_ANCHOR` — and
+this project keeps anchor tiles pure scenery (no zone before this one
+had combined a `TIMELINE_ANCHOR` with its own zone-native `TALK` line;
+`ore_for_the_forge`, Milestone-era, explicitly avoided the combination
+for the same reason) — so rather than making `G` itself talkable, a new
+POI, `K` ("A Kaganesti Lookout"), was placed two tiles east of it on the
+grid, the same "split a talkable NPC off a shared/scenery tile" treatment
+`data/zones/solace_inn.txt`'s `O`/`Y` (Otik/Tika, split off the shared
+`K "The Bar"`) already established. `K` gets the standard `TALK`/
+`TALK_AGAIN`/two-`SUBJECT`/`SUBJECT_UNKNOWN` treatment as a new,
+unnamed Kaganesti voice. Unlike `kin_beyond_the_border`, no `REQUIRE
+elf` — the Sentry is speaking generally to "another one out of the
+water," not gated by kinship, and a non-elf emissary crossing this
+specific line is closer to the point. `TALK southern_ergoth:K` is the
+objective (the met-id, not a display name — see "The met-id trap"
+above). This is also the first POI in the project to carry both `QUEST`
+and `BOAT` (the Sentry already grants `BOAT S sancrist_isle 60`) —
+`GameLoop::talkTo` already runs quest-offer/turn-in and the boat offer as
+two independent, sequential checks (see "Turn-in flow" above and the
+boat-offer code right after it), so nothing needed to change; confirmed
+by the throwaway self-test and the piped smoke test, not by new code.
+Reward: 30 steel / 60 XP, matching `kin_beyond_the_border`/
+`word_for_the_tower`'s TALK/VISIT-only tier.
+
+**`new_faces_on_the_road`** — Haven's Seeker Guard (`G`), whose own
+`SUBJECT war,dragons,army,armies` and `TALK_BEFORE` lines already read
+"the roads are busier than they used to be, and the new faces aren't
+pilgrims... it's only going to get worse before it gets better" — an
+explicit "roads getting dangerous" hook that had never been paid off
+with an actual objective. Haven was otherwise the only major town
+without its own `SLAY`-type "clear the roads" quest (Solace, Solace Inn,
+Kalaman, Ice Wall, and Xak Tsaroth all have one). `SLAY gnoll 3` reuses a
+previously quest-unused monster rather than a fourth Wolf/Goblin/
+Hobgoblin quest, and its Monster Manual flavor ("shoulders through the
+brush, jaws slack with a wet, laughing snarl") suits "unwelcome new
+faces" better than a straight reskin would. No `REQUIRE`, same
+broadly-offered shape as `inn_supply_run`. Reward: 35 steel / 80 XP,
+between `inn_supply_run` (30/70, 3 weaker Goblins) and
+`bazaar_road_raiders` (45/100, 2 tougher Hobgoblins). `QUEST G
+new_faces_on_the_road` added under the existing `TALK G` block in
+`data/zones/haven.txt` — no new POI.
+
+Verified via a throwaway self-test (`QuestLoader` against the real,
+now-15-quest `data/quests.txt` confirming each new quest's requirement/
+objective/reward shape; `ZoneLoader` parsing all three edited zone files,
+confirming each new `QUEST <char> <quest-id>` binding, the new `K` POI's
+grammar at `southern_ergoth.txt`, and that `G` there still has no
+dialogue), a clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h`
+changes), and the piped smoke test (confirms `main.cpp`'s cross-validation
+accepts all three new zone bindings against the loaded `QuestCatalog`).
+Interactive verification — actually accepting/completing all three, and
+confirming the Sentry's quest-then-boat sequence reads naturally in a real
+conversation — still needs the user's own keyboard, the same `_getch()`
+limitation flagged for every prior quest milestone.
+
 ### A second DELIVER quest: `seed_for_thorbardin`
 
 The equipment-expansion milestone's other content addition, proving
@@ -816,3 +915,13 @@ design is now shipped; what's still open:
   NPC checked had only a VISIT/TALK-shaped hook already well covered by
   existing quests. A future pass would need a genuinely new zone or
   NPC to find another one rather than reusing an existing hook.
+- **The `what_the_stones_remember`/`word_to_the_wilder_kin`/
+  `new_faces_on_the_road` pass (see "Shipped quests" above) confirms the
+  well is nearly dry.** A full sweep of every `TALK`-having POI across
+  all 23 zone files turned up only three strong, unforced hooks; the rest
+  (Crossing, Palanthas's Knight/Astinus, Sancrist's Embarkation Officer,
+  Flotsam, Port Balifor, Tarsis's Sailor/Runner, Pax Tharkas's Fortress
+  Guard) would need real invention, not reframing, to force into a
+  quest. Absent a new zone/NPC or a concrete user ask, don't re-run this
+  sweep expecting to find more — same caution as the DLA magic-items
+  chapter above.

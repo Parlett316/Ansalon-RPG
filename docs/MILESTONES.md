@@ -3134,6 +3134,46 @@ section).
     conversation, same `_getch()` limitation as every prior UI-reachable
     milestone. See `docs/TIMELINE_NOTES.md`'s "Ask about anything" section.
 
+105. Three more quests -- a user-requested "more quests and things to do"
+    content pass, using the same "unforced hook" method every prior
+    quest-content milestone used: every `TALK`-having POI across all 23
+    zone files was checked for a missing `QUEST` line, then cross-referenced
+    against that POI's own already-written `TALK`/`TOPIC`/`SUBJECT` flavor
+    text rather than inventing new lore. Most candidates (Crossing,
+    Palanthas's Knight/Astinus, Sancrist's Embarkation Officer, Flotsam,
+    Port Balifor, Tarsis's Sailor/Runner, Pax Tharkas's Fortress Guard)
+    turned out too thin to ground without real invention; three held up.
+    `what_the_stones_remember` (Darken Wood's Unicorn/Forestmaster, `SLAY
+    owlbear 1`) reframes her established "judge what a life gives versus
+    takes" characterization and pays off the zone's Old Ruins POI's own
+    unexplained "kept back" ground. `word_to_the_wilder_kin` (Southern
+    Ergoth's Silvanesti Sentry, `TALK southern_ergoth:K`) turns the
+    Sentry's own admitted Kaganesti/Silvanesti distance into an errand --
+    and since the obvious destination POI, the Wilder Elves' Camp, is this
+    zone's `TIMELINE_ANCHOR` (which this project keeps pure scenery), a new
+    POI (`K`, "A Kaganesti Lookout") was split off it instead, the same
+    `data/zones/solace_inn.txt` `O`/`Y`-off-`K`-the-Bar treatment already
+    established; this is also the first POI in the project combining
+    `QUEST` and `BOAT` on one tile, which needed no code changes since
+    `GameLoop::talkTo` already runs both offers as independent sequential
+    checks. `new_faces_on_the_road` (Haven's Seeker Guard, `SLAY gnoll 3`)
+    pays off his own already-written "the new faces aren't pilgrims" line
+    and gives Haven the "clear the roads" quest every other major town
+    already had, using a previously quest-unused monster (Gnoll) instead of
+    a fourth Wolf/Goblin/Hobgoblin reskin. All three are pure data content
+    -- no new `REQUIRE`, no new reward flag, no `.cpp`/`.h` changes, no
+    save-format changes. Verified via a throwaway self-test (`QuestLoader`
+    against the real, now-15-quest `data/quests.txt`; `ZoneLoader` parsing
+    all three edited zone files, confirming each new `QUEST <char>
+    <quest-id>` binding and the new Kaganesti Lookout POI's grammar), a
+    clean `/W4` rebuild (zero new warnings), and the piped smoke test
+    (confirms `main.cpp`'s cross-validation accepts all three new zone
+    bindings). **Interactive verification still needed** -- accepting/
+    completing all three quests, and confirming the Sentry's quest-then-
+    boat sequence reads naturally -- same `_getch()` limitation as every
+    prior quest milestone. See `docs/QUEST_NOTES.md`'s "Shipped quests" and
+    `docs/ZONE_NOTES.md`'s "Southern Ergoth" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

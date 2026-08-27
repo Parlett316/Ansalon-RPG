@@ -2,6 +2,27 @@
 
 Nothing in flight.
 
+Milestone 105 (2026-08-27) shipped three new quests, at the user's request
+for "more quests and things to do for the PC": `what_the_stones_remember`
+(Darken Wood's Unicorn, `SLAY owlbear 1`), `word_to_the_wilder_kin`
+(Southern Ergoth's Silvanesti Sentry, `TALK southern_ergoth:K`, via a new
+"A Kaganesti Lookout" POI split off the zone's `TIMELINE_ANCHOR`), and
+`new_faces_on_the_road` (Haven's Seeker Guard, `SLAY gnoll 3`). All three
+reframe hooks already written into existing `TALK`/`TOPIC`/`SUBJECT`
+flavor text -- pure data content, no `.cpp`/`.h` changes, no save-format
+changes. Verified via a throwaway self-test, a clean `/W4` rebuild, and the
+piped smoke test (no real save existed at `build\Debug\` to protect this
+session). **Interactive verification still needed** -- accepting/
+completing all three quests, and confirming Southern Ergoth's Sentry
+reads naturally now that she offers both a quest and (already) a boat
+voyage in the same conversation. See `docs/MILESTONES.md` entry 105 and
+`docs/QUEST_NOTES.md`'s "Shipped quests" section.
+
+`docs/QUEST_NOTES.md`'s "Extending this later" section now flags that a
+full sweep of every zone found only these three unforced hooks left --
+don't re-run that sweep expecting more without a new zone/NPC or a
+concrete user ask.
+
 Milestone 104 (2026-08-27) made the "ask about anything" screen show its
 available keywords ("You could ask about: Caramon, Goldmoon, ...") instead
 of making the player type a subject blind. Purely additive:

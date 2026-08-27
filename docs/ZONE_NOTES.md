@@ -1313,9 +1313,9 @@ like every other location.
 `data/zones/southern_ergoth.txt` — a 40×16 grid, open ground with no
 border at all (an outdoor wilderness camp, same borderless idiom as
 Godshome, not the walled-fortress idiom of Ice Wall/Sancrist/Neraka).
-Three POIs: the Wrecked Shore (`W`, flavor-only — the salvaged wreckage
-proving someone made it to land), a Silvanesti Sentry (`S`, the zone's
-one talkable NPC), and the Wilder Elves' Camp (`G`, the
+Three POIs at Milestone 95: the Wrecked Shore (`W`, flavor-only — the
+salvaged wreckage proving someone made it to land), a Silvanesti Sentry
+(`S`, the zone's one talkable NPC), and the Wilder Elves' Camp (`G`, the
 `TIMELINE_ANCHOR` — where Silvara and Fizban's tracked `PRESENCE`
 windows resolve, alongside Sturm/Flint/Tasslehoff/Laurana's own).
 
@@ -1328,10 +1328,21 @@ space.
 The Sentry carries this project's now-standard two-`SUBJECT` "ask about
 anything" treatment (the three elven kindreds sharing this coast; the
 wreck and the stranger things that have washed up since) plus a `TOPIC`
-covering the same ground at more length, and the new `BOAT S
-sancrist_isle 60` grant — see "Boats" above. No `SHOP`, `BED`, or
-`QUEST` — none of those are sourced here, and this project doesn't add
-them speculatively.
+covering the same ground at more length, and the `BOAT S sancrist_isle
+60` grant — see "Boats" above.
+
+A fourth POI, a Kaganesti Lookout (`K`, a later quest-content pass), was
+added standing apart from the Camp tile rather than making `G` itself
+talkable — `G` is this zone's `TIMELINE_ANCHOR`, and this project keeps
+anchor tiles pure scenery, same split-off-a-neighboring-tile treatment
+`data/zones/solace_inn.txt`'s `O`/`Y` (Otik/Tika, split off the shared
+`K "The Bar"` POI) already established. The Lookout carries `QUEST K
+word_to_the_wilder_kin`, the Sentry's own errand asking the player to
+carry word across the Silvanesti/Kaganesti divide her `TOPIC "Three
+Peoples, One Coast"` already admits neither side has bridged — see
+`docs/QUEST_NOTES.md`'s "Shipped quests" for the full grounding. Still
+deliberately no `SHOP` or `BED` here — neither is sourced, and this
+project doesn't add them speculatively.
 
 Reached only via the repointed `data/zones/ice_wall.txt` `BOAT B
 southern_ergoth 48` (see "Boats" above) — no `ROAD_PAIRS` entry, same
@@ -1353,7 +1364,8 @@ the occupation). William gets the standard `TALK`/`TALK_AGAIN`, two
 `TOPIC`s (Raistlin's illusion act; Goldmoon's quietly-spreading healing
 reputation), and three `SUBJECT` entries — deliberately no `SHOP`,
 `BED`, or `QUEST`, matching this project's "don't add grammar the
-source doesn't call for" rule (see Southern Ergoth's Sentry, above).
+source doesn't call for" rule — William's dialogue is comic relief with
+no actionable hook to ground one.
 
 `data/zones/flotsam.txt` — a 40×16 walled grid, same idiom. Four POIs:
 the Refugees' Inn (`I`, flavor-only, the `TIMELINE_ANCHOR` — where the

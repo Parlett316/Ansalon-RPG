@@ -39,6 +39,7 @@ SUBJECT G temple,seekers,highseeker Highseeker hears every petitioner like it's 
 SUBJECT G market,stalls,idols Vendors two streets over will sell you a clay god for a copper piece, no questions asked about which one you're buying. Good business. I try not to think too hard about the theology.
 SUBJECT G war,dragons,army,armies He lowers his voice, like even a temple guard doesn't like saying it too loud. "Word from every direction says there's a war building, dragons and all, though nobody official's said so outright. All I know for certain is the roads are busier than they used to be, and the new faces aren't pilgrims. Draw your own conclusions. I've mostly stopped needing to draw mine."
 SUBJECT_UNKNOWN G The guard shakes his head. "Not my department, that one. Try the temple. Bring patience -- the line's long."
+QUEST G new_faces_on_the_road
 TIMELINE_ANCHOR K
 SHOP K market
 END

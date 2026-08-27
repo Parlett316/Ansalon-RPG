@@ -35,5 +35,6 @@ SUBJECT U ruins,stones The stones you passed were old before this wood learned y
 SUBJECT U trail,path,lost The path that confused you was never lost. You were. The wood does not rearrange itself for cruelty's sake -- only to see who keeps walking anyway, and who turns back to blame the trees.
 SUBJECT U guardian,judge,judgment The certainty that answers carries no doubt at all. "I judge everyone who crosses into this wood uninvited, and I have never once judged by strength or wealth or the cut of a traveler's cloth. Only by what a life has given more than it has taken. Most who ask this question already suspect the answer they will not like."
 SUBJECT_UNKNOWN U The certainty in your thoughts goes still, unanswering. Whatever you asked, the wood has not yet decided it is yours to know.
+QUEST U what_the_stones_remember
 TIMELINE_ANCHOR F
 END

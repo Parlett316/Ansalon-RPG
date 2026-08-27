@@ -18,7 +18,7 @@ GRID
 ........................................
 ........................................
 ........................................
-....................G...................
+....................G.K.................
 ........................................
 ........................................
 ........................................
@@ -26,12 +26,19 @@ ENDGRID
 POI W "The Wrecked Shore" Splintered planking and a length of torn rigging lie half-buried in the sand, already going gray with salt. Whatever else the sea took when this ship broke apart, it left enough behind to prove someone made it to shore alive.
 POI S "A Silvanesti Sentry" She watches the treeline with a bow half-drawn, not quite pointed at you, not quite not. Whatever put that wariness in her didn't start with you, but it hasn't finished with anyone who washes up on this coast, either.
 POI G "The Wilder Elves' Camp" Threadbare tents ring a low fire here, pitched by hands that have clearly done this before -- and expect to do it again. The people who live in them watch newcomers the way a burned hand watches an open flame.
+POI K "A Kaganesti Lookout" She stands apart from the tents, close enough to the camp's edge to reach it fast and far enough out that nothing gets near it without her noticing first.
 TALK S "Another one out of the water. We're getting good at this." She doesn't lower the bow so much as forget it's raised. "Three peoples call this coast home now, and not one of us asked to be neighbors. You'll want to know which is which before you say something that gets you struck the way our elflord friend was struck, earlier."
 TALK_AGAIN S "Still watching the treeline. Old habit, these days. Somebody's always coming out of that water with a story attached."
 TOPIC S "Three Peoples, One Coast" "Silvanesti, like me -- driven off our own land by a dragon none of us could stop. Qualinesti, driven off theirs by the dragonarmies, camped a hard walk south of here. And under both of us, longer than either, the Kaganesti -- the Wilder Elves. We call them primitive when we're being unkind about it, which is more often than I'd like to admit." She shifts her grip on the bow. "None of us are quite the 'one people' the old songs claim. This coast makes that difficult to keep pretending."
 SUBJECT S silvanesti,qualinesti,kaganesti,wilder,elves "Three kindreds, one drowned coast, and a great deal less agreement between us than outsiders assume," she says. "I'd tell you it gets easier. It hasn't, yet."
 SUBJECT S dragon,orb,wreck "Your ship isn't the first this coast has broken, and the dragon that broke it isn't the strangest thing that's come ashore here lately either," she says, something unreadable in her voice. "Ask about the Wilder Elves, if you want the stranger part."
 SUBJECT_UNKNOWN S "Ask that of someone with less to watch than I have," she says, eyes back on the treeline.
+QUEST S word_to_the_wilder_kin
 BOAT S sancrist_isle 60
+TALK K A weathered Kaganesti woman turns before you're within twenty paces, a skinning knife not quite hidden in her hand. "Far enough," she says, not unkindly, but not warmly either. "We've had Silvanesti scouts watching this camp since we pitched it. Now we've got their strangers walking up to it too. What is it this time?"
+TALK_AGAIN K The same woman glances up from whatever she's working on, knife already put away. "Back again. The Silvanesti still haven't come themselves, I notice. Seems that's your job now."
+SUBJECT K silvanesti,qualinesti,neighbors "They watch us from the treeline and call it courtesy. We watch them back and call it the same." She shrugs, not quite bitter. "None of us chose this coast or each other. Doesn't mean we can't share a fire's smoke, so long as nobody asks us to share much else."
+SUBJECT K kaganesti,wilder,elves,tribe "Wilder Elves, they call us, when they're being polite about it. We were living free on this island before either of their kingdoms had a wall built. Being called primitive by people who needed walls doesn't sting the way they seem to think it should."
+SUBJECT_UNKNOWN K She goes back to her work without looking up again. "Ask your own kind that. We've got enough to watch without answering for things we don't know."
 TIMELINE_ANCHOR G
 END
