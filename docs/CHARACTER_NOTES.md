@@ -417,6 +417,28 @@ PHB or Dragonlance Adventures (the book itself states a wizard "is
 unaffected by phases of the moons" below 3rd level anyway, so the moon-
 phase half was never a level-1 concern either).
 
+**Milestone 103**: the Test itself gained three distinct outcome passages
+(`character::applyPendingLevelUps`, `Leveling.cpp`, switched on the
+already-computed `RobeColor`) in place of one generic templated line.
+Sourced from rendered page images of DLA pp.33–37 (this section's text is
+column-garbled in `pdftotext`, unreadable without rendering) — "The Test of
+High Sorcery"/"Wizards of the White/Red/Black Robes." The book gives no
+single canonical Test to transcribe (each initiate's is individually
+designed around their own weaknesses, and failure means death); instead it
+lists design guidelines a DM builds a Test from — at least three trials
+unsolvable by magic alone, a combat against a known ally, a solo combat
+against a stronger-than-usual opponent. Each of the three new passages
+freshly dramatizes one of those named elements rather than inventing
+unrelated flavor: White reframes "unsolvable by magic" as refusing to
+spend a trusted illusion for personal power; Red dramatizes the robe's own
+defining "balance" identity (p.36, "the widest range of spells available")
+as every trial resolving into a mercy-vs-cruelty choice and refusing both;
+Black reframes the "combat against an ally" guideline as choosing yourself
+over a friend, with the Conclave marking *that* choice, not the spell, as
+the pass condition. `robeColorName`/`robeMoonName` (`WizardOrder.cpp`) are
+still reused for the "you emerge a ___, sworn to ___" clause rather than
+hardcoding robe/moon names into each passage.
+
 ## Leveling / experience
 
 `character::applyPendingLevelUps` (`Leveling.h/.cpp`) is called from

@@ -3069,6 +3069,41 @@ section).
     `docs/CHARACTER_NOTES.md`'s "Equipment"/"Six shops, six catalogs" and
     `docs/QUEST_NOTES.md`'s "A second DELIVER quest".
 
+103. Three distinct Tests of High Sorcery -- a user-requested follow-up to
+    the existing level-3 Robe-assignment flavor moment (Milestone-era, see
+    "Wizards of High Sorcery" in `docs/CHARACTER_NOTES.md`), which until now
+    gave every Mage the exact same generic line regardless of which Robe
+    they were assigned. Research first (rendered page images of DLA
+    pp.33-37, since this section's text is column-garbled in `pdftotext` and
+    unreadable without rendering) found the book deliberately gives no
+    single canonical Test to transcribe -- each initiate's is individually
+    designed around their own weaknesses, and failure means death -- only
+    design guidelines a DM builds a Test from: at least three trials
+    unsolvable by magic alone, a combat against a known ally, a solo combat
+    against a stronger-than-usual opponent, casting every spell the
+    initiate knows. Three new passages (`character::applyPendingLevelUps`,
+    `Leveling.cpp`, a new `switch` on the already-computed `RobeColor`) each
+    freshly dramatize one of those named elements rather than inventing
+    unrelated flavor: White reframes "unsolvable by magic" as refusing to
+    spend a trusted illusion for personal power; Red dramatizes the Robe's
+    own defining "balance" identity (p.36, "the widest range of spells
+    available") as every trial resolving into a mercy-vs-cruelty choice and
+    refusing both; Black reframes the "combat against an ally" guideline as
+    choosing yourself over a friend, with the Conclave marking that choice,
+    not the spell, as the pass condition. All three still reuse the
+    existing `robeColorName`/`robeMoonName` helpers (`WizardOrder.cpp`) for
+    the "you emerge a ___, sworn to ___" clause rather than hardcoding
+    Robe/moon names. Pure flavor-text change -- no new fields, no
+    save-format changes, no header changes. Verified via a clean `/W4`
+    rebuild (zero new warnings) and the piped smoke test (confirms nothing
+    broke on load; the user's real save, a level 4 Human Fighter, loaded
+    untouched); no throwaway self-test needed, since the new logic is a
+    straight switch over an already-tested enum with no new state.
+    **Interactive verification still needed** -- a Mage actually reaching
+    level 3 under each of the three alignment groups to see all three new
+    passages -- same `_getch()` limitation as every prior UI-reachable
+    milestone. See `docs/CHARACTER_NOTES.md`'s "Wizards of High Sorcery".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
