@@ -20,13 +20,23 @@ images (same discipline as every other rules pass in this project):
 - **Initiative** (PHB p.124): one d10 per side per round, lower roll acts
   first. Ties are re-rolled rather than resolved "simultaneously" as the
   book describes — this project's round loop is strictly ordered (one
-  side attacks, then the other, with the second attacker skipped if the
-  first already ended the fight), which has no way to represent two
-  things happening at once. See `combat::playerActsFirst`.
-- **One attack per round at 1st level**: confirmed for Fighter via Table
-  15 (Warriors); Cleric/Mage/Thief have no equivalent table in the PHB at
-  all, which — combined with the text scoping multiple attacks to
-  "warriors" — supports 1/round for them too in the base rules.
+  side acts, then the other, with the second side skipped if the first
+  already ended the fight), which has no way to represent two things
+  happening at once. See `combat::playerActsFirst`. A warrior's side of
+  that exchange can now be more than one swing (see Table 15 below) —
+  those all resolve together within that side's own turn, still ordered
+  strictly against the monster's single action.
+- **Attacks per round** (PHB Table 15, p.36, "Warrior Melee Attacks per
+  Round"): Fighter (this project's only implemented Warrior-group class —
+  Paladin/Ranger don't exist here) gets 1/round at levels 1–6, 3/2 rounds
+  at 7–12, 2/round at 13+; every other class stays at 1/round, per the
+  book's own text scoping multiple attacks to "warriors." Modeled as of
+  Milestone 108 via `character::meleeAttacksThisRound`, consumed by
+  `GameLoop::runCombat`'s `playerAttacks` lambda — see
+  `docs/CHARACTER_NOTES.md`'s "Leveling / experience" section. The "3/2
+  rounds" rate's odd/even split (1 attack on odd rounds of the fight, 2 on
+  even) is this project's interpretation, not printed verbatim — the book
+  states the rate but not which rounds carry the extra swing.
 
 **Not specifically re-verified this pass, called out honestly rather than
 overclaimed**: damage is floored at 1 on a hit
@@ -720,10 +730,6 @@ either.
   upgrades exist now (see `docs/CHARACTER_NOTES.md`'s "Equipment"
   section), but there's still no carried-item inventory, no selling gear
   back, and only one shop (Solace's General Store).
-- **Fighter's extra attacks per round** (level 7+, PHB Table 15): the
-  round loop resolves exactly one attack per side; a second attacker
-  needs the loop restructured. THAC0 diverging by level is already done
-  (`docs/CHARACTER_NOTES.md`).
 - **Saving throws for effects other than poison/breath weapon**:
   `rollSavingThrow` is general-purpose, but the Giant Spider's poison bite
   and (as of Milestone 99) the Aurak's breath weapon are still the only

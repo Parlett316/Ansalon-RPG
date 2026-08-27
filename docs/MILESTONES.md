@@ -3252,6 +3252,42 @@ section).
     pure-content monster milestone. See `docs/COMBAT_NOTES.md`'s "Accuracy:
     what's sourced, what's invented" and "Extending this later" sections.
 
+108. Fighter multi-attacks per round -- the first real engine change in
+    several milestones (107 and before were pure data), closing a gap
+    both `docs/CHARACTER_NOTES.md` and `docs/COMBAT_NOTES.md` had flagged
+    as "not modeled" since the combat system's own introduction: the
+    round loop always resolved exactly one attack per side, deferred
+    because level 7 was "far off" at the time. Picked from the backlog
+    at the user's request once the quest well and DLA magic items were
+    both re-confirmed dry this session. PHB Table 15 ("Warrior Melee
+    Attacks per Round," p.36, visually confirmed via a rendered page
+    image, not OCR alone -- the raw text extraction badly garbles this
+    table) is scoped to "warriors" (Fighter/Paladin/Ranger); this project
+    only has Fighter in `ClassGroup::Warrior`, so Paladin/Ranger are moot.
+    New `character::meleeAttacksThisRound(ClassId, level, roundNumber)`
+    (`Leveling.h`/`.cpp`): 1-6 = 1/round, 7-12 = 3/2 rounds, 13+ =
+    2/round, every non-Warrior class always 1. The "3/2 rounds" rate
+    isn't printed with a specific odd/even breakdown, so this project
+    took the standard interpretation (1 attack on odd rounds of the
+    fight, 2 on even) as an invented-but-flagged convention, same
+    treatment as the sell-back half-price rule (Milestone 28).
+    `GameLoop::runCombat`'s `playerAttacks` lambda now loops that many
+    times per round (breaking early if the monster already fell, mirroring
+    the loop's existing early-exit pattern), fed by a new local
+    `roundNumber` counter incremented once per `for(;;)` iteration; only
+    ordinary weapon attacks get the multiplier -- casting/potions/webnet/
+    Brooch/Staff of Curing stay one action per round, matching the real
+    rule's scope to melee attacks specifically. No save-format changes, no
+    new `Character` field. Verified via a throwaway self-test (13
+    assertions across the level 6/7/12/13 boundaries, the 7-12 bracket's
+    odd/even split, and every non-Warrior class), a clean `/W4` rebuild
+    (zero new warnings), and the piped smoke test. **Interactive
+    verification still needed** -- a Fighter actually reaching level 7 and
+    13 in a real fight to see the extra swings and the odd/even pattern
+    live -- same `_getch()` limitation as every other combat-facing
+    milestone. See `docs/CHARACTER_NOTES.md`'s "Leveling / experience" and
+    `docs/COMBAT_NOTES.md`'s "Accuracy" and "Attacks per round" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

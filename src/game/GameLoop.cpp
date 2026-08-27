@@ -1411,15 +1411,23 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
         }
     }
+    // roundNumber feeds character::meleeAttacksThisRound's 7-12-level
+    // alternating pattern (PHB Table 15) -- incremented once per
+    // for(;;) iteration below, since each iteration is exactly one round.
+    int roundNumber = 1;
     auto playerAttacks = [&]() {
-        combat::AttackOutcome outcome =
-            combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
-        if (outcome.hit) {
-            monsterHp -= outcome.damage;
-            log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ". " +
-                           describeToHit(outcome) + " " + describeDamage(outcome));
-        } else {
-            log.push_back("You miss the " + monster.name + ". " + describeToHit(outcome));
+        int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
+                                                         roundNumber);
+        for (int i = 0; i < attacks && monsterHp > 0; ++i) {
+            combat::AttackOutcome outcome =
+                combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
+            if (outcome.hit) {
+                monsterHp -= outcome.damage;
+                log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ". " +
+                               describeToHit(outcome) + " " + describeDamage(outcome));
+            } else {
+                log.push_back("You miss the " + monster.name + ". " + describeToHit(outcome));
+            }
         }
     };
     // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
@@ -1730,6 +1738,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             monsterAttacks();
             if (state_.character.currentHp > 0) playerActs();
         }
+        ++roundNumber;
 
         if (monsterHp <= 0) {
             // Lifetime kill tally, incremented regardless of any quest -- a

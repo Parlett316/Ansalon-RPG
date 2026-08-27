@@ -28,6 +28,16 @@ int thac0ForLevel(ClassId id, int level);
 // Table 60 (PHB p.134), a level-bracket lookup, levels 1-21+ (clamped).
 SavingThrows savesForLevel(ClassId id, int level);
 
+// Table 15 (PHB p.36): warrior-group classes (Fighter, the only one this
+// project implements from that group -- Paladin/Ranger don't exist here)
+// gain extra melee attacks with level: 1-6 = 1/round, 7-12 = 3/2 rounds,
+// 13+ = 2/round. roundNumber is the fight's own 1-based round counter,
+// needed only for the 7-12 bracket's alternating pattern (1 attack on odd
+// rounds, 2 on even -- the book states the 3/2 rate but not which rounds
+// get the extra swing; this is the standard interpretation, not printed
+// verbatim). Every other class always returns 1.
+int meleeAttacksThisRound(ClassId id, int level, int roundNumber);
+
 // Applies every level-up `character.experience` has earned, one level at
 // a time (so a single big XP award still visits every intermediate level
 // -- needed so the level-3 flavor moments below are never skipped).

@@ -2,6 +2,31 @@
 
 Nothing in flight.
 
+Milestone 108 (2026-08-27) shipped Fighter multi-attacks per round --
+the first real engine change in several milestones (107 and earlier were
+pure data), picked by the user from a backlog menu offered once the
+session confirmed the quest well and DLA magic items were both still dry.
+New `character::meleeAttacksThisRound(ClassId, level, roundNumber)`
+(`Leveling.h`/`.cpp`), sourced from PHB Table 15 ("Warrior Melee Attacks
+per Round," p.36, visually confirmed via a rendered page image): Fighter
+(the only implemented Warrior-group class) gets 1/round at levels 1-6,
+3/2 rounds at 7-12, 2/round at 13+; every other class stays at 1/round.
+The 7-12 bracket's odd/even split (1 attack on odd rounds of the fight, 2
+on even) is this project's own interpretation of the book's un-detailed
+"3/2 rounds" rate -- an invented-but-flagged convention, same treatment
+as the sell-back half-price rule (Milestone 28). `GameLoop::runCombat`'s
+`playerAttacks` lambda now loops that many times per round, fed by a new
+local `roundNumber` counter; only ordinary weapon attacks get the
+multiplier, not casting/potions/Webnet/Brooch/Staff of Curing. No
+save-format changes. Verified via a throwaway self-test (13 assertions
+across the level boundaries and the odd/even split), a clean `/W4`
+rebuild (zero new warnings), and the piped smoke test. **Interactive
+verification still needed** -- a Fighter actually reaching level 7 and 13
+in a real fight to see the extra swings and the odd/even pattern live --
+same `_getch()` limitation as every other combat-facing milestone. See
+`docs/MILESTONES.md` entry 108, `docs/CHARACTER_NOTES.md`'s "Leveling /
+experience", and `docs/COMBAT_NOTES.md`'s "Accuracy" section.
+
 Milestone 107 (2026-08-27) shipped three new monsters -- Black Bear, Worg,
 Ice Bear -- bringing the roster to 23, picked from `docs/COMBAT_NOTES.md`'s
 "Extending this later" bestiary backlog once a fresh check confirmed quests

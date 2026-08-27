@@ -473,11 +473,16 @@ sourced from the PHB, visually confirmed against rendered page images:
   (`applyRacialSavingThrowBonus`) are reapplied after every level's table
   lookup, same as at character creation.
 
-**Not modeled**: Fighter's extra attacks per round past 6th level (PHB
-Table 15) — the combat round loop resolves exactly one attack per side;
-adding a second would mean restructuring it, deferred since level 7 is
-far off given the XP costs above. Demihuman level limits — same standing
-deferral as every other race/subrace ability-range cut in this document.
+**Modeled (as of Milestone 108)**: Fighter's extra attacks per round past
+6th level (PHB Table 15, p.36) — `character::meleeAttacksThisRound`
+(`Leveling.h`/`.cpp`), consumed by `GameLoop::runCombat`'s `playerAttacks`
+lambda. 1–6: 1/round; 7–12: 3/2 rounds (this project's interpretation of
+that rate: 1 attack on odd rounds of the fight, 2 on even — the book
+states the rate but not which rounds carry the extra swing); 13+: 2/round.
+Every non-Warrior-group class always gets 1. See `docs/COMBAT_NOTES.md`.
+
+**Not modeled**: Demihuman level limits — same standing deferral as every
+other race/subrace ability-range cut in this document.
 
 **Flavor, then (as of Milestone 53) real**: a Knight of the Crown reaching
 level 3 still gets a foreshadowing line about the Order of the Sword
@@ -1309,9 +1314,6 @@ stored in `GameState::character` and never reassigned after that; pressing
   doesn't give single-class thresholds beyond that either, so extending
   further would mean a different (optional/epic-level) rule set, not
   just more of the same table.
-- **Fighter's extra attacks per round** (level 7+, PHB Table 15): needs
-  the combat round loop restructured to resolve more than one attack per
-  side — see "Leveling / experience" above and `docs/COMBAT_NOTES.md`.
 - **Spellcasting**: real multi-level spell selection/memorization now
   exists (see "Spellcasting" above) -- 49 of the 88 PHB/DQoK-sourced
   spells across Mage's 9 levels and Cleric's 7. The other 39 are sourced
