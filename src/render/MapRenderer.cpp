@@ -820,8 +820,17 @@ void MapRenderer::drawPickerFrame(const std::string& title, const std::vector<st
     std::cout << out.str();
 }
 
-void MapRenderer::drawAskInputFrame(const std::string& npcName) {
+void MapRenderer::drawAskInputFrame(const std::string& npcName, const std::vector<std::string>& hints) {
     std::vector<std::string> lines;
+    if (!hints.empty()) {
+        std::string hintLine = "You could ask about: ";
+        for (size_t i = 0; i < hints.size(); ++i) {
+            if (i > 0) hintLine += ", ";
+            hintLine += hints[i];
+        }
+        lines.push_back(hintLine);
+        lines.push_back("");
+    }
     lines.push_back("Type a subject to ask " + npcName + " about, then press Enter.");
     lines.push_back("(Esc cancels.)");
 

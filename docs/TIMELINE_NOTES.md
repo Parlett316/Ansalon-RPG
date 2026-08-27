@@ -197,6 +197,27 @@ reached yet (e.g. asking Raistlin about a title from later in his own
 in-universe arc that this project's Chronicles-only scope doesn't model) —
 an in-character non-answer either way, no special-casing needed.
 
+**The keywords are shown, not guessed at blind (Milestone 104).**
+`drawAskInputFrame` now also renders a "You could ask about: ..." hint line
+built from every `SUBJECT` in scope — one label per entry, taken as
+`keywords.front()` (the canonical term authored first, aliases after) with
+its first letter capitalized for display; the underlying keyword lists stay
+lowercase in the data files since that's what `matchSubject` compares
+against, unchanged. A fully clickable keyword menu (turning each `SUBJECT`
+into its own `drawPickerFrame` row, the same shape `TOPIC` already uses) was
+considered and rejected: `drawPickerFrame`/`writeBoxed` have no scrolling —
+the box just grows to fit every line — and a character with a large
+character-level subject pool (Raistlin, at 20+ entries) would produce an
+unusably tall, unscrollable menu. The hint line sidesteps that entirely: it's
+one wrapped line (`writeBoxed`'s existing `wrapLongLines`/`wrapText`
+pipeline handles the wrap for free, same as any other long prose line on an
+"organic" screen — see `docs/ARCHITECTURE.md`), and typing still goes
+through the unchanged `readLine`/`tokenizeAskInput`/`matchSubject` path
+below. `SUBJECT_UNKNOWN` stays fully reachable — the hint line only shows
+the player *labels* that exist, it doesn't stop them typing a typo, a
+synonym that isn't in that entry's alias list, or something unrelated
+entirely, so the mismatch path is still real, not just legacy dead code.
+
 **Free-text input avoids `std::cin` entirely.** `Console::readLine` reads
 raw characters one at a time via the same `_getch()` primitive `readKey()`
 uses, rather than `std::cin`/`getline` — see `docs/GOTCHAS.md` for why

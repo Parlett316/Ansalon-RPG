@@ -981,7 +981,21 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
             } else if (key == render::Key::Enter) {
                 if (selected == nothingThanksIndex) return;
                 if (selected == askAnythingIndex) {
-                    render::MapRenderer::drawAskInputFrame(name);
+                    // Display-only hint labels so the player isn't guessing
+                    // blind -- keywords are authored lowercase for
+                    // case-insensitive matchSubject lookups (see
+                    // docs/TIMELINE_NOTES.md's "Ask about anything"), not
+                    // for display, so the canonical first keyword gets its
+                    // first letter capitalized here.
+                    std::vector<std::string> hints;
+                    for (const auto& subject : speech.subjects) {
+                        std::string hint = subject.keywords.front();
+                        if (!hint.empty()) {
+                            hint[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(hint[0])));
+                        }
+                        hints.push_back(hint);
+                    }
+                    render::MapRenderer::drawAskInputFrame(name, hints);
                     std::string input = render::Console::readLine(60);
                     if (!input.empty()) {
                         const Speech::SubjectEntry* match = matchSubject(speech.subjects, input);

@@ -167,12 +167,14 @@ public:
                                  int selectedIndex, const std::string& footer);
 
     // Draws the "ask about something else..." free-text prompt: a boxed
-    // instruction line naming `npcName`, then a plain (unboxed) "> " prompt
-    // printed immediately below with no trailing newline, so the cursor is
-    // left right after it -- render::Console::readLine's raw per-keystroke
-    // echo prints directly there. See game::GameLoop::talkTo and
-    // docs/TIMELINE_NOTES.md's "Ask about anything".
-    static void drawAskInputFrame(const std::string& npcName);
+    // hint line listing `hints` (the askable subjects' display labels, so
+    // the player isn't guessing blind -- see docs/TIMELINE_NOTES.md's "Ask
+    // about anything"), an instruction line naming `npcName`, then a plain
+    // (unboxed) "> " prompt printed immediately below with no trailing
+    // newline, so the cursor is left right after it --
+    // render::Console::readLine's raw per-keystroke echo prints directly
+    // there. See game::GameLoop::talkTo.
+    static void drawAskInputFrame(const std::string& npcName, const std::vector<std::string>& hints);
 
     // Renders the shop screen: `shopName` (the POI's own name, e.g.
     // "General Store" or "Market Stalls") as the heading, the character's

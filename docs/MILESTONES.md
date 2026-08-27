@@ -3104,6 +3104,36 @@ section).
     passages -- same `_getch()` limitation as every prior UI-reachable
     milestone. See `docs/CHARACTER_NOTES.md`'s "Wizards of High Sorcery".
 
+104. The "ask about anything" screen shows its own keywords instead of
+    making the player guess blind. `render::MapRenderer::drawAskInputFrame`
+    gained a `hints` parameter -- a "You could ask about: ..." line built in
+    `game::GameLoop::talkTo` from every `Speech::SubjectEntry` in scope
+    (`keywords.front()`, capitalized for display; the data stays lowercase
+    since that's what `matchSubject` compares against). A fully clickable
+    keyword menu (each `SUBJECT` as its own `drawPickerFrame` row, like
+    `TOPIC`) was considered first and rejected: `drawPickerFrame`/
+    `writeBoxed` have no scrolling, and Raistlin's character-level subject
+    pool alone runs 20+ entries -- a menu that long would just render an
+    unusably tall, unscrollable box. The hint line sidesteps that: it's one
+    line, wrapped for free by `writeBoxed`'s existing prose-wrap pipeline,
+    same as any other long line on an "organic" screen. `matchSubject`/
+    `tokenizeAskInput`/`SUBJECT_UNKNOWN`/`Console::readLine` and every
+    `data/*.txt` file are completely unchanged -- this is a presentation-only
+    addition confirmed with the user (`AskUserQuestion`) before building,
+    given the picker-overflow risk the full-menu alternative carried.
+    Verified via a throwaway `AskHintSelfTest.cpp` (piped to a file, `cat -v`
+    inspected -- confirmed the hint line renders, wraps correctly inside the
+    box, and that the no-`SUBJECT` case looks byte-for-byte identical to
+    before), a clean `/W4` rebuild (zero new warnings), and the piped smoke
+    test (`echo "1" | ansalon_rpg.exe` -- the empty-`echo ""` form this
+    project's docs previously called out no longer reaches character
+    creation on its own now that Milestone 89 added the save-slot menu in
+    front of it; a slot number must be piped first). **Interactive
+    verification still needed** -- actually talking to a large-subject-pool
+    character (Raistlin) and confirming the hint line reads well in a real
+    conversation, same `_getch()` limitation as every prior UI-reachable
+    milestone. See `docs/TIMELINE_NOTES.md`'s "Ask about anything" section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
