@@ -213,13 +213,15 @@ somewhere to go — press `p` at a shop to buy real gear. Six shops now
 exist across five towns, each with its own distinct catalog rather than
 one shared list: Solace's General Store (the flagship, everything below)
 and Flint's Smithy (armor/weapons only, locked until you deliver ore for
-the `ore_for_the_forge` quest), Haven's Market Stalls (Leather armor and
-a potion), Tarsis's Old Sailor (a potion and a salvaged enchanted
-weapon), Kalaman's Market Square (Leather/Chain armor, a weapon upgrade,
-a potion), and Palanthas's Harbor (all three armor tiers, an enchanted
-weapon, a potion). Where armor's on offer you can buy real Leather/Chain
-Mail/Splint Mail (Mages and Tinkers can't wear armor at all, per the
-PHB's own rule) and a weapon upgrade, or press `i` inside the shop to
+the `ore_for_the_forge` quest), Haven's Market Stalls (Leather/Studded
+Leather armor and a potion), Tarsis's Old Sailor (a potion and a
+salvaged enchanted weapon), Kalaman's Market Square (Leather/Studded
+Leather/Chain armor, a weapon upgrade, a potion), and Palanthas's Harbor
+(all five armor tiers, an enchanted weapon, a potion). Where armor's on
+offer you can buy real Leather/Studded Leather/Chain Mail/Splint
+Mail/Plate Mail (Mages and Tinkers can't wear armor at all, per the
+PHB's own rule) and a weapon upgrade — every class has one now, down to
+a Mage's Quarterstaff and a Tinker's Light Crossbow — or press `i` inside the shop to
 switch to selling gear back for half its price. Purchases land in a real
 carried inventory rather than being worn automatically — press `i`
 outside a shop to see what you're carrying and equip it, which actually
@@ -233,8 +235,7 @@ Disks of Mishakal early in the story; drink one from the inventory screen
 (`i`, `Enter`) or mid-fight (`i` again, spending your round on it instead
 of attacking) — see `docs/CHARACTER_NOTES.md`'s "Potions" section. Most
 shops also carry a "+1" enchanted weapon, one per class (an Ensorcelled
-version of your class's own upgrade weapon, or, for a Mage or Tinker who
-has no mundane upgrade at all, their first weapon upgrade of any kind) —
+version of your class's own upgrade weapon) —
 sourced from the DMG's magic-item tables and Dragonlance Adventures' own
 "Magical Items of Krynn" chapter, and the first thing in the game to add
 a real to-hit bonus beyond Strength. At Solace's General Store only, a
@@ -259,7 +260,7 @@ press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
 reward — the moment every objective's actually done, the game says so
 itself ("...is ready to turn in -- return to..."), so you never have to
-guess or walk back speculatively. Eleven ship so far — Solace's Notice
+guess or walk back speculatively. Twelve ship so far — Solace's Notice
 Board offers a bounty to clear three timber wolves off the south road;
 Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
 Tower, and Kalaman's City Watchman each have their own reason to send you
@@ -278,11 +279,15 @@ built around a real, granted-in-the-world object rather than a place
 visited or a foe slain; and a Ruin-Scavenger picking through the sunken
 ruins of Xak Tsaroth has a priest's rod they can't use and would rather
 see go to someone who can, if a Cleric first clears out what's nested in
-the old well shaft below; and Ice Wall Castle's Young Knight has a
+the old well shaft below; Ice Wall Castle's Young Knight has a
 Frostreaver none of his own company is strong enough to lift, salvaged
 off a dead Ice Folk raider, theirs for the taking if they're strong
 enough to wield it and willing to thin the thanoi still testing the
-castle's gate — see `docs/QUEST_NOTES.md` for the full design, what
+castle's gate; and a displaced farmer sheltering in Thorbardin, driven
+from Pax Tharkas, would trade real seed grain for a real shot at
+planting something come spring — a Farmer's Cart in Haven has more than
+its own fields will use this season, if you're willing to carry a sack
+the distance — see `docs/QUEST_NOTES.md` for the full design, what
 ships, and how more get authored.
 
 If you're picking this project up fresh (human or AI), read

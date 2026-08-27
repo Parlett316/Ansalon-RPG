@@ -17,20 +17,33 @@ namespace {
 // and shield +1)" -- a quest reward (see docs/QUEST_NOTES.md's
 // solamnic_armor), cost 0 since it's never sold or sellable (see
 // resaleValueStl below).
-constexpr std::array<ArmorInfo, 5> kArmorTable = {{
+constexpr std::array<ArmorInfo, 7> kArmorTable = {{
     {ArmorId::None, "No Armor", 10, 0},
     {ArmorId::Leather, "Leather Armor", 8, 5},
+    {ArmorId::StuddedLeather, "Studded Leather", 7, 20},
     {ArmorId::ChainMail, "Chain Mail", 5, 75},
     {ArmorId::SplintMail, "Splint Mail", 4, 80},
+    {ArmorId::PlateMail, "Plate Mail", 3, 600},
     {ArmorId::SolamnicArmor, "Solamnic Armor", 0, 0},
 }};
 
 // Table 44 (Weapons, p.94), visually confirmed: Two-Handed Sword 1d10/50stl
 // (no flat bonus), Footman's Flail 1d6+1/15stl, Long Sword 1d8/15stl (no
-// flat bonus). Mage/Tinker deliberately have no entry -- see Equipment.h.
+// flat bonus).
 const WeaponUpgrade kFighterUpgrade{"Two-Handed Sword", 10, 0, 50};
 const WeaponUpgrade kClericUpgrade{"Footman's Flail", 6, 1, 15};
 const WeaponUpgrade kThiefUpgrade{"Long Sword", 8, 0, 15};
+
+// Mage/Tinker's first-ever mundane upgrade (equipment-expansion milestone
+// -- see docs/CHARACTER_NOTES.md and Equipment.h's weaponUpgradeFor doc
+// comment). Quarterstaff (Table 44, p.95): 1d6, no flat bonus; the PHB
+// prices it "--" (a cut length of wood), so 2stl here is an invented,
+// flagged nominal price, not a sourced number. Light Crossbow (Table 44,
+// p.94): the crossbow itself carries no damage in the PHB -- its Light
+// Quarrel ammunition does (1d4+1, Table 44) -- reused directly here since
+// this engine doesn't model ammunition separately from the weapon.
+const WeaponUpgrade kMageUpgrade{"Quarterstaff", 6, 0, 2};
+const WeaponUpgrade kTinkerUpgrade{"Light Crossbow", 4, 1, 35};
 
 // "+1" enchanted weapons -- see Equipment.h's MagicWeapon for sourcing
 // (DMG Table 109, p.140: Sword +1 = 400stl, Other Weapon +1 = 500stl).
@@ -44,9 +57,10 @@ const MagicWeapon kTinkerMagicWeapon{"Ensorcelled Wrench", 4, 0, 1, 500};
 
 // Which slots each ShopCatalog offers -- see docs/CHARACTER_NOTES.md's
 // "Six shops, six catalogs" for the reasoning behind each one. armorTiers
-// is aligned with kBuyableArmor (Leather, Chain Mail, Splint Mail).
+// is aligned with kBuyableArmor (Leather, Studded Leather, Chain Mail,
+// Splint Mail, Plate Mail).
 struct ShopCatalogDef {
-    std::array<bool, 3> armorTiers;
+    std::array<bool, 5> armorTiers;
     bool shield;
     bool weaponUpgrade;
     bool magicWeapon;
@@ -56,20 +70,25 @@ struct ShopCatalogDef {
 
 const ShopCatalogDef& catalogDef(ShopCatalog catalog) {
     // Solace's General Store -- the original, unchanged baseline.
-    static const ShopCatalogDef kGeneral{{true, true, true}, true, true, true, true, true};
+    static const ShopCatalogDef kGeneral{{true, true, true, true, true}, true, true, true, true, true};
     // Flint's Smithy (Solace) -- an armorer: everything wearable/wieldable,
     // nothing consumable or arcane.
-    static const ShopCatalogDef kArmory{{true, true, true}, true, true, true, false, false};
-    // Haven's Market Stalls -- a pedestrian goods market, not a smith.
-    static const ShopCatalogDef kMarketGoods{{true, false, false}, true, false, false, true, false};
+    static const ShopCatalogDef kArmory{{true, true, true, true, true}, true, true, true, false, false};
+    // Haven's Market Stalls -- a pedestrian goods market, not a smith --
+    // gained Studded Leather as a modest step up from bare Leather, but
+    // not Plate Mail, still out of a market stall's league.
+    static const ShopCatalogDef kMarketGoods{{true, true, false, false, false}, true, false, false, true, false};
     // Tarsis's Old Sailor -- a ruined port trading in scavenged relics, not
     // mundane armor/weapons.
-    static const ShopCatalogDef kSalvage{{false, false, false}, false, false, true, true, false};
-    // Kalaman's Market Square -- a real bazaar, but no enchanted goods.
-    static const ShopCatalogDef kBazaar{{true, true, false}, true, true, false, true, false};
+    static const ShopCatalogDef kSalvage{{false, false, false, false, false}, false, false, true, true, false};
+    // Kalaman's Market Square -- a real bazaar, but no enchanted goods --
+    // gained Studded Leather alongside its existing Leather/Chain Mail,
+    // but Plate Mail stays out of a bazaar's reach.
+    static const ShopCatalogDef kBazaar{{true, true, true, false, false}, true, true, false, true, false};
     // Palanthas's Harbor -- the one surviving great port, trades in
-    // finished goods rather than smithing its own weapon upgrades.
-    static const ShopCatalogDef kHarborTrade{{true, true, true}, true, false, true, true, false};
+    // finished goods rather than smithing its own weapon upgrades -- now
+    // carries the full armor range, budget to premium.
+    static const ShopCatalogDef kHarborTrade{{true, true, true, true, true}, true, false, true, true, false};
     switch (catalog) {
         case ShopCatalog::General: return kGeneral;
         case ShopCatalog::Armory: return kArmory;
@@ -183,8 +202,8 @@ const WeaponUpgrade* weaponUpgradeFor(ClassId classId) {
         case ClassId::Fighter: return &kFighterUpgrade;
         case ClassId::Cleric: return &kClericUpgrade;
         case ClassId::Thief: return &kThiefUpgrade;
-        case ClassId::Mage: return nullptr;
-        case ClassId::Tinker: return nullptr;
+        case ClassId::Mage: return &kMageUpgrade;
+        case ClassId::Tinker: return &kTinkerUpgrade;
     }
     return nullptr;
 }

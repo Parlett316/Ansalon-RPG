@@ -32,6 +32,11 @@
 # character::kFrostreaverName (see docs/CHARACTER_NOTES.md's "Magic
 # items"). First quest to gate on a raw ability score rather than
 # race/class/knight-rank.
+# seed_for_thorbardin (below) is this project's second DELIVER quest,
+# granted at data/zones/haven.txt's new "F" POI (GRANTS_ITEM
+# hardy_seed_grain) and turned in at data/zones/thorbardin.txt's existing
+# Refugee Quarter POI -- no REQUIRE, same broadly-offered shape as
+# ore_for_the_forge.
 
 QUEST road_wolves
 NAME The Wolves on the Solace Road
@@ -176,4 +181,16 @@ SLAY thanoi 2 Thin the thanoi still testing Ice Wall's gate
 REWARD_STEEL 50
 REWARD_XP 120
 REWARD_FROSTREAVER
+END
+
+QUEST seed_for_thorbardin
+NAME A Season to Plant
+OFFER The old woman doesn't look up from her mending. "Come spring we're meant to try the mountainside for crops, so I hear. Rocky soil, short seasons, and not a seed among us that was ever bred for either. If you're the sort who travels, and it isn't too far out of your way, real seed grain would do this lot more good than another kind word."
+ACCEPT You understand plainly enough -- these are farmers with no farm and no seed to plant one with, if a farm is ever even found for them.
+PROGRESS The old woman's needle doesn't slow. "Still no grain. Still a mountainside out there waiting on it, far as I know."
+COMPLETE She takes the sack from your hands like it weighs more than it does, turning it over once before she trusts it. "Well. Somebody down there had sense enough to spare it." For a moment the needlework stops entirely. "Might be we plant something after all."
+GIVER the older woman in Thorbardin's Refugee Quarter
+DELIVER hardy_seed_grain 1 Bring seed grain to the Pax Tharkas refugees sheltering in Thorbardin
+REWARD_STEEL 35
+REWARD_XP 80
 END

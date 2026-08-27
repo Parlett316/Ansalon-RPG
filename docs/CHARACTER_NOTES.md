@@ -760,15 +760,20 @@ census of implemented-vs-excluded spells. Everything below was visually confirme
 rendered PHB pages (this scan's OCR badly garbles table columns, so text
 search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
 
-- **Armor tiers**: Leather (AC 8, 5stl), Chain Mail (AC 5, 75stl), Splint
-  Mail (AC 4, 80stl) — Table 46 (Armor Class Ratings, p.99) for the AC
-  values, Table 47 (Armor, p.92) for cost (the PHB's own gold-piece
-  numbers, applied here as Steel Pieces, Krynn's real currency — see
-  "Gold -> Steel" below). Splint Mail is offered instead of Banded/Bronze
-  Plate Mail for the same AC 4 tier because it's the cheapest real item at
-  that protection level (80stl vs 200stl/400stl) — Plate Mail and heavier
-  are priced far beyond any level-1 character's starting steel and aren't
-  offered yet.
+- **Armor tiers**: Leather (AC 8, 5stl), Studded Leather (AC 7, 20stl),
+  Chain Mail (AC 5, 75stl), Splint Mail (AC 4, 80stl), Plate Mail (AC 3,
+  600stl) — Table 46 (Armor Class Ratings, p.99) for the AC values, Table
+  47 (Armor, p.92) for cost (the PHB's own gold-piece numbers, applied
+  here as Steel Pieces, Krynn's real currency — see "Gold -> Steel"
+  below). Splint Mail is offered instead of Banded/Bronze Plate Mail for
+  the same AC 4 tier because it's the cheapest real item at that
+  protection level (80stl vs 200stl/400stl). Studded Leather and Plate
+  Mail (the equipment-expansion milestone) round out the curve with a
+  budget mid-tier and a premium tier priced for a character with banked
+  quest/kill rewards rather than starting steel — Field Plate/Full Plate
+  (AC 2/1/0) are still not offered, priced at 2,000-10,000stl, far beyond
+  even a well-quested character's steel, and Solamnic Armor (below)
+  already fills the AC 0 niche for a Sword Knight.
 - **Shield**: -1 AC, 7stl (Table 47's "Medium" shield entry). Table 46
   confirms a shield always improves AC by exactly 1 over the same armor
   without one, so this is modeled as a flat subtraction, not a separate
@@ -780,13 +785,23 @@ search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
   for its saves/steel/hit die, see "Tinker Gnome" above). Mirrors the
   existing Kender/subrace arcane-magic-block precedent as a genuine
   class-differentiating rule, not an oversight.
-- **One weapon upgrade per class that can use one** (Table 44, Weapons,
-  p.94): Fighter's Long Sword (1d8) upgrades to Two-Handed Sword (1d10,
-  50stl); Cleric's Mace (1d6) upgrades to Footman's Flail (1d6+1, 15stl);
-  Thief's Short Sword (1d6) upgrades to Long Sword (1d8, 15stl). Mage and
-  Tinker have no upgrade offered — their dagger/wrench stays as-is,
-  consistent with wizards' traditionally short allowed-weapons list and
-  their fragile-caster identity being intentional, not a gap.
+- **One weapon upgrade per class** (Table 44, Weapons, p.94-95): Fighter's
+  Long Sword (1d8) upgrades to Two-Handed Sword (1d10, 50stl); Cleric's
+  Mace (1d6) upgrades to Footman's Flail (1d6+1, 15stl) — real 2e
+  restricts standard clerics to blunt weapons only (this PHB's own Money
+  and Equipment chapter: "Standard clerics ... are allowed to use only
+  blunt, bludgeoning weapons," visually confirmed), which the Flail
+  satisfies; Thief's Short Sword (1d6) upgrades to Long Sword (1d8,
+  15stl). **Mage and Tinker's own upgrades were added by the
+  equipment-expansion milestone**, closing a gap this document used to
+  flag as deliberate: Mage's Dagger (1d4) upgrades to a Quarterstaff
+  (1d6) — the PHB prices it "--" (a cut length of wood, no real cost), so
+  its 2stl shop price is a small invented number, flagged in
+  `character/Equipment.cpp` the same way `kWebnetCostStl` is; Tinker's
+  Wrench upgrades to a Light Crossbow (1d4+1, 35stl, reusing the Light
+  Quarrel's damage since this engine doesn't track ammunition separately
+  from the weapon) — a mechanical weapon fitting the class's gadgeteer
+  identity rather than a sword-and-board reskin.
 - **`Character::armorClass` is always kept in sync**, not derived on the
   fly: `Equipment::recomputeArmorClass` runs at character creation
   (equivalent to the old `10 - Dex adjustment` formula, since
@@ -862,12 +877,18 @@ already-written flavor text rather than arbitrary assignment:
 
 | Catalog | Shop | Contents |
 |---|---|---|
-| `general` | Solace's General Store (`G`) | unchanged baseline: all 3 armor tiers, shield, class weapon upgrade, magic weapon, potion, webnet/brooch |
-| `armory` | Solace's Flint's Smithy (`S`, new) | all 3 armor tiers, shield, class weapon upgrade, magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
-| `market` | Haven's Market Stalls (`K`) | Leather armor, shield, potion only — a pedestrian goods market |
+| `general` | Solace's General Store (`G`) | unchanged baseline: all 5 armor tiers, shield, class weapon upgrade, magic weapon, potion, webnet/brooch |
+| `armory` | Solace's Flint's Smithy (`S`, new) | all 5 armor tiers, shield, class weapon upgrade, magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
+| `market` | Haven's Market Stalls (`K`) | Leather + Studded Leather armor, shield, potion only — a pedestrian goods market, budget tier only |
 | `salvage` | Tarsis's Old Sailor (`S`) | potion, magic weapon only — extends the existing "scavenged pre-Cataclysm relic" framing (see "Potions" below) to a salvaged enchanted weapon too; no mundane armor/weapon/shield, a ruined port isn't an armorer |
-| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Chain Mail armor, shield, class weapon upgrade, potion — a real bazaar, but no enchanted goods |
-| `harbor` | Palanthas's Harbor (`H`, new) | Leather + Chain + Splint Mail armor, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade) |
+| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Studded Leather + Chain Mail armor, shield, class weapon upgrade, potion — a real bazaar, but no Plate Mail or enchanted goods |
+| `harbor` | Palanthas's Harbor (`H`, new) | all 5 armor tiers, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade) |
+
+(Studded Leather and Plate Mail, added by the equipment-expansion
+milestone, follow each catalog's already-established character rather
+than appearing everywhere: General/Armory/Harbor carry the full 5-tier
+range; Market/Bazaar gain the budget Studded Leather but not the premium
+Plate Mail; Salvage stays armorless, unchanged.)
 
 **Webnet/Brooch of Imog are now General-Store-exclusive** — a real
 behavior change from Milestone 56, which sold them at every shop. Called
@@ -1295,8 +1316,16 @@ stored in `GameState::character` and never reassigned after that; pressing
   later pass (see "Magic items" above) re-read the same chapter directly
   from rendered page images and shipped the Staff of Striking/Curing,
   modeled without the charge pool Milestone 56 originally flagged it as
-  needing (see "Magic items" for why). What's left in the chapter still
-  needs an unbuilt subsystem: creature command/charm (Golden Circlet), a
+  needing (see "Magic items" for why). The equipment-expansion milestone
+  re-confirmed this list directly against every remaining rendered page
+  image (pp.91-99) and found nothing else buildable -- see
+  `docs/QUEST_NOTES.md`'s "Extending this later" for the fuller
+  accounting, including the chapter's later "Special Magical Items of
+  Krynn" section (Staff/Dagger of Magius, Bupu's Emerald, the Bloodstone
+  of Fistandantilus, Dalamar's items, Tasslehoff's ring, the Nightjewel,
+  Warbringer, and more), every one of which turned out to be a named
+  artifact permanently owned by a specific canon character. What's left
+  in the chapter still needs an unbuilt subsystem: creature command/charm (Golden Circlet), a
   translation flag (Glasses of Arcanist), environmental wind control
   (Flute of Wind Dancing), a plot-key/door mechanic (Keys of Quinarost),
   or moon-phase magic (Scroll of the Stellar Path) — plus Armor and

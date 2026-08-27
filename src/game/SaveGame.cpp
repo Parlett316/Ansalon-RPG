@@ -245,7 +245,7 @@ GameState SaveGame::load(const std::string& path) {
             character::InventoryItem item;
             if (itemKeyword == "ARMOR") {
                 item.kind = character::ItemKind::Armor;
-                item.armorId = parseEnumInt<character::ArmorId>(path, lineNumber, itemRest, "inventory ARMOR", 5);
+                item.armorId = parseEnumInt<character::ArmorId>(path, lineNumber, itemRest, "inventory ARMOR", 7);
             } else if (itemKeyword == "SHIELD") {
                 item.kind = character::ItemKind::Shield;
             } else if (itemKeyword == "POTION") {
@@ -354,10 +354,11 @@ GameState SaveGame::load(const std::string& path) {
             // old save keeps loading; the next autosave rewrites it as STEEL.
             if (!(iss >> state.character.steelPieces)) fail(path, lineNumber, "malformed GOLD");
         } else if (keyword == "ARMOR") {
-            // 5 ArmorId values: None, Leather, ChainMail, SplintMail,
-            // SolamnicArmor -- see character/Equipment.h.
+            // 7 ArmorId values: None, Leather, ChainMail, SplintMail,
+            // SolamnicArmor, StuddedLeather, PlateMail -- see
+            // character/Equipment.h.
             state.character.equippedArmor =
-                parseEnumInt<character::ArmorId>(path, lineNumber, rest, "ARMOR", 5);
+                parseEnumInt<character::ArmorId>(path, lineNumber, rest, "ARMOR", 7);
         } else if (keyword == "SHIELD") {
             int value = -1;
             if (!(iss >> value) || (value != 0 && value != 1)) {

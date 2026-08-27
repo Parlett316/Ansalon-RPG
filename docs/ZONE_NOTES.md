@@ -517,11 +517,14 @@ independently-existing pieces of state -- deliberately not a special link
 between them, same "objective is a query, not a counter" shape as every
 other objective kind.
 
-As of the DELIVER milestone, exactly one POI carries `GRANTS_ITEM`:
-`data/zones/pax_tharkas.txt`'s `O "An Ore Cart"`, granting
-`raw_tharkadan_ore` -- see `docs/QUEST_NOTES.md`'s "Shipped:
-ore_for_the_forge" and this file's own Pax Tharkas section below for why
-it's a new POI rather than added to the existing Mine Entrance.
+Two POIs carry `GRANTS_ITEM` so far: `data/zones/pax_tharkas.txt`'s `O
+"An Ore Cart"`, granting `raw_tharkadan_ore` (see `docs/QUEST_NOTES.md`'s
+"Shipped: ore_for_the_forge" and this file's own Pax Tharkas section
+below for why it's a new POI rather than added to the existing Mine
+Entrance), and `data/zones/haven.txt`'s `F "A Farmer's Cart"` (added by
+the equipment-expansion milestone), granting `hardy_seed_grain` for
+`seed_for_thorbardin` -- see this file's own Haven section below and
+`docs/QUEST_NOTES.md`'s "A second DELIVER quest".
 
 ## Beds: POIs for complete bed-rest (Milestone 41)
 
@@ -858,7 +861,11 @@ non-infringing approach as everywhere else in this project):
   (his wariness sharpening toward an actual cleric, on the "hollow
   imitation of real faith" angle) and a `TOPIC "The Highseeker's Line"`
   (grousing texture on his existing "hearing petitioners" line, still no
-  new plot facts).
+  new plot facts). The equipment-expansion milestone added a second POI,
+  `F "A Farmer's Cart"` (reframing the Seeker Guard's own already-written
+  "Farmers wanting rain blessed" line rather than inventing a new NPC
+  archetype -- see `docs/QUEST_NOTES.md`'s "A second DELIVER quest"),
+  carrying `GRANTS_ITEM F hardy_seed_grain Sack of Seed Grain`.
 - `data/zones/xak_tsaroth.txt` — a small overlook/plaza slice of the
   sunken ruins, not the full multi-level dungeon DL1 describes (this
   game doesn't model that crawl). Broken towers, a waterfall, the old
@@ -1222,6 +1229,12 @@ Tsaroth's Ruin-Scavenger already established.
 See `docs/TIMELINE_NOTES.md`'s "Thorbardin" section for the full
 sourcing and the `PRESENCE thorbardin 13 19` content shipped for all 8
 Heroes.
+
+The equipment-expansion milestone bound the Refugee Quarter's own
+existing "come spring we're meant to try the mountainside for crops"
+line to a new quest, `QUEST R seed_for_thorbardin` (`docs/QUEST_NOTES.md`'s
+"A second DELIVER quest") -- no new dialogue was needed; her existing
+`TALK`/`TALK_AGAIN`/`TOPIC` lines already carried the hook.
 
 ## Sancrist Isle (Milestone 86, gained a talkable NPC + departure Milestone 92, topic depth Milestone 97)
 

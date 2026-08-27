@@ -3018,6 +3018,57 @@ section).
     "Six shops, six catalogs", and `docs/QUEST_NOTES.md`'s
     `ore_for_the_forge` entry.
 
+102. More shop items, quest items, and weapons/armor for every class -- a
+    user-requested content pass, picked once the NEXT UP backlog below was
+    otherwise exhausted. Research first (rendered PHB/DLA page images, same
+    discipline as every prior equipment milestone) found DLA's "Magical
+    Items of Krynn" chapter (pp.91-99) fully mined -- everything left is
+    either a unique artifact permanently owned by a named canon character
+    or needs an unbuilt subsystem, now stated explicitly in
+    `docs/QUEST_NOTES.md` so a future session doesn't re-open that chapter
+    expecting to find something. The real gap turned out to be the PHB's
+    own Weapons/Armor tables, only partly drawn from originally. Two new
+    armor tiers (`character::ArmorId`, appended after `SolamnicArmor`,
+    append-only-safe): Studded Leather (AC7, 20stl, a budget mid-tier) and
+    Plate Mail (AC3, 600stl, the next real tier above Splint Mail, priced
+    for banked quest/kill rewards rather than starting steel) -- each shop's
+    `ShopCatalogDef` picks up the new tiers per its already-established
+    character (General/Armory/Harbor get both; Market/Bazaar get Studded
+    Leather only; Salvage stays armorless). Mage and Tinker's own long-
+    documented "no mundane weapon upgrade" gap is closed:
+    `character::weaponUpgradeFor` used to return `nullptr` for both --
+    Mage now gets a Quarterstaff (1d6, priced nominally at 2stl since the
+    PHB lists no real cost for a cut length of wood) and Tinker a Light
+    Crossbow (1d4+1, reusing the Light Quarrel's damage since this engine
+    doesn't track ammunition separately, a mechanical weapon fitting the
+    class's gadgeteer identity). Fighter/Cleric/Thief keep their single
+    existing upgrade unchanged -- a deliberate scoping choice, since giving
+    every class a *second* tier would need `WeaponUpgrade` restructured
+    into a per-class list rather than just new data. A second `DELIVER`
+    quest, `seed_for_thorbardin`, proves the mechanism isn't a one-off
+    after `ore_for_the_forge`: a zone-file scan for quest-less `TALK` NPCs
+    found exactly one strong, unforced item hook left -- Thorbardin's
+    Refugee Quarter, whose existing dialogue ("come spring we're meant to
+    try the mountainside for crops") already wrote the quest for itself.
+    Granted at a new POI in `data/zones/haven.txt` (`F`, "A Farmer's Cart",
+    reframing the Seeker Guard's own "farmers wanting rain blessed" line),
+    turned in at Thorbardin's existing Refugee Quarter POI with no new
+    dialogue needed there. `SaveGame.cpp`'s two `ArmorId` bound checks moved
+    5->7, append-only-safe (confirmed directly against the user's real
+    save, which still loads unchanged). Verified via a throwaway self-test
+    (44 assertions covering the new armor tiers' AC/cost/resale, both
+    classes' new `WeaponUpgrade`, per-catalog armor-tier filtering,
+    `QuestLoader` parsing the new quest, `ZoneLoader` parsing both edited
+    zone files, and a `SaveGame` round-trip through the widened `ArmorId`
+    bound), a clean `/W4` rebuild (zero new warnings), the piped smoke
+    test, and a direct check that the user's real save loads byte-for-byte
+    unchanged. Interactive verification (buying the new armor tiers at the
+    right shops, equipping the Mage/Tinker upgrades, completing
+    `seed_for_thorbardin`) still needs the user's own keyboard, the same
+    `_getch()` limitation flagged for every prior milestone. See
+    `docs/CHARACTER_NOTES.md`'s "Equipment"/"Six shops, six catalogs" and
+    `docs/QUEST_NOTES.md`'s "A second DELIVER quest".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

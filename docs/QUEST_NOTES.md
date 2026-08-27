@@ -430,6 +430,34 @@ needs one.
 
 ## Shipped quests
 
+### A second DELIVER quest: `seed_for_thorbardin`
+
+The equipment-expansion milestone's other content addition, proving
+`DELIVER` isn't a one-off after `ore_for_the_forge`. **Sink** --
+`data/zones/thorbardin.txt`'s existing `R` POI (the displaced farmer in
+the Refugee Quarter, present since Milestone 86), whose own dialogue
+already reads "Come spring we're meant to try the mountainside for
+crops... I don't know what we'll do the season after that" -- a
+DELIVER hook that needed no new lore, just a `QUEST R
+seed_for_thorbardin` line. **Source** -- a new POI at `data/zones/
+haven.txt`, `F` ("A Farmer's Cart"), reframing the Seeker Guard's own
+already-written "Farmers wanting rain blessed" line rather than inventing
+a new NPC archetype; `TALK F`/`GRANTS_ITEM F hardy_seed_grain` follows the
+exact "dig through it, granted once" phrasing `ore_for_the_forge`'s Ore
+Cart established. No `REQUIRE` (matches `ore_for_the_forge`'s
+broadly-offered precedent), one `DELIVER hardy_seed_grain 1` objective,
+35 steel / 80 XP reward (identical to `ore_for_the_forge` -- the only
+other DELIVER-only quest). Verified via a throwaway self-test
+(`QuestLoader` parsing the real, now-twelve-quest `data/quests.txt`
+including the new quest's shape; `ZoneLoader` parsing both edited zone
+files and confirming the new POI/QUEST binding resolve correctly), a
+clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h` changes -- pure
+data content), the piped smoke test, and a direct check that the user's
+real save still loads cleanly (no save-format change was needed here).
+Interactive verification (finding the Farmer's Cart, accepting and
+completing the quest at Thorbardin) still needs the user's own keyboard,
+the same `_getch()` limitation flagged for every quest milestone so far.
+
 ### Dragonlance magical items, continued: `frostreaver_salvage`
 
 The third item-granting quest reward, following `staff_of_striking_curing`'s
@@ -764,8 +792,27 @@ conditions beyond `knight`, and an item-granting reward are all proven
 live in real, played content. Every objective kind from the original
 design is now shipped; what's still open:
 
-- **More of DLA's "Magical Items of Krynn" chapter** (Rods/Staves/Wands,
-  Crystals and Gems, Miscellaneous Magic) is real, sourced, and
-  unused — see `docs/CHARACTER_NOTES.md`'s "Magic items" for what's
-  already sourced and why the chapter's unique named artifacts
-  specifically stay out of scope regardless.
+- **DLA's "Magical Items of Krynn" chapter (pp.91-99) is now fully
+  mined** — the equipment-expansion milestone viewed every remaining
+  un-shipped entry directly (rendered page images, `.research/img/
+  dla_magicitems-092.png` through `-100.png`). All of it is either a
+  unique artifact permanently owned by a named canon character (Staff/
+  Dagger of Magius, Bupu's Emerald, the Bloodstone of Fistandantilus,
+  Dalamar's Bracelet/Ring/Wand, Tasslehoff's Magic Mouse Ring, the
+  Nightjewel, Warbringer, the Axe of Brotherhood/Sword of Friendship,
+  Raistlin's Cursed Money, Rabbitslayer, the Helm of Griffon Mane — see
+  `docs/CHARACTER_NOTES.md`'s "Magic items" for why these stay off-limits,
+  same reasoning as Alhana/Derek/Gunthar staying off-stage) or needs a
+  subsystem this engine doesn't have (creature charm/command, a
+  translation flag, time travel, moon-phase magic, a plot-key/door
+  mechanic). Don't re-open this chapter expecting to find something
+  buildable — the next equipment gap, if any, is in the PHB's own
+  Weapons/Armor tables instead (see `docs/CHARACTER_NOTES.md`'s
+  "Equipment" section for what's already been drawn from there).
+- **A second DELIVER quest reward, or item-granting quest, is still
+  possible** — the equipment-expansion milestone's zone-file scan found
+  exactly one more strong, unforced item-fetch hook (Thorbardin's
+  Refugee Quarter, now `seed_for_thorbardin`); every other quest-less
+  NPC checked had only a VISIT/TALK-shaped hook already well covered by
+  existing quests. A future pass would need a genuinely new zone or
+  NPC to find another one rather than reusing an existing hook.

@@ -33,5 +33,6 @@ TOPIC R "Living Under a Mountain" "It's not the dark I mind, not really -- you g
 SUBJECT R hammer,kharas Word is that's why the dwarves took us in at all -- some old promise about the Hammer of Kharas, lost and found again. I don't pretend to understand dwarven honor. I just know it bought eight hundred of us a roof, and I'm not too proud to be grateful for that.
 SUBJECT R southgate,gate That gate could seal shut the whole kingdom from anything short of an earthquake, they say. Some nights I lie awake thinking about that -- how it doesn't much matter whether what's sealed out is a dragonarmy or the sky itself. Either way, we're the ones on the inside.
 SUBJECT_UNKNOWN R "Can't help you there. Ask one of the dwarves -- or one of your own company, if you came in with that half-elf and his friends. They seem to know more of what's coming than the rest of us."
+QUEST R seed_for_thorbardin
 TIMELINE_ANCHOR H
 END

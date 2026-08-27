@@ -10,19 +10,22 @@ namespace character {
 
 struct Character;
 
-// Armor tiers offered at the General Store -- see docs/CHARACTER_NOTES.md.
+// Armor tiers offered across the game's shops -- see docs/CHARACTER_NOTES.md.
 // A deliberate subset of the PHB's full armor list (Table 46, Armor Class
 // Ratings, p.99), same "pick a few, not the whole book" discipline as this
-// project's core-four-class scope: Leather/Chain Mail/Splint Mail cover a
-// real, meaningfully-priced progression a level-1 character can actually
-// reach for. Splint Mail is chosen over Banded/Bronze Plate for the same
+// project's core-four-class scope: Leather/Studded Leather/Chain Mail/
+// Splint Mail/Plate Mail cover a real, meaningfully-priced progression from
+// a level-1 character's starting steel up through banked quest/kill
+// rewards. Splint Mail is chosen over Banded/Bronze Plate for the same
 // AC 4 tier because it's the cheapest real item at that AC (Table 47,
 // Armor, p.92: Splint 80stl vs Banded 200stl vs Bronze Plate 400stl for
 // identical protection -- prices are the PHB's own gold-piece numbers,
 // applied here as Steel Pieces, Krynn's real currency, see
-// docs/CHARACTER_NOTES.md's "Gold -> Steel" note) -- Plate Mail and
-// heavier are priced far beyond any level-1 starting steel and aren't
-// offered yet. SolamnicArmor is NOT one of these -- it's a quest reward
+// docs/CHARACTER_NOTES.md's "Gold -> Steel" note). Field Plate/Full Plate
+// (AC2/AC1/AC0) are still not offered -- priced at 2,000-10,000stl, far
+// beyond even a well-quested character's steel, and Solamnic Armor (see
+// below) already fills the AC0 niche for a Sword Knight. SolamnicArmor
+// itself is NOT one of these buyable tiers -- it's a quest reward
 // (docs/QUEST_NOTES.md's solamnic_armor), never sold, deliberately absent
 // from kBuyableArmor below.
 enum class ArmorId {
@@ -31,6 +34,8 @@ enum class ArmorId {
     ChainMail,
     SplintMail,
     SolamnicArmor,
+    StuddedLeather,
+    PlateMail,
 };
 
 struct ArmorInfo {
@@ -42,10 +47,12 @@ struct ArmorInfo {
 
 const ArmorInfo& armorInfo(ArmorId id);
 
-constexpr std::array<ArmorId, 3> kBuyableArmor = {
+constexpr std::array<ArmorId, 5> kBuyableArmor = {
     ArmorId::Leather,
+    ArmorId::StuddedLeather,
     ArmorId::ChainMail,
     ArmorId::SplintMail,
+    ArmorId::PlateMail,
 };
 
 // Table 47 (p.92): a Medium shield is 7stl. Table 46 confirms a shield always
@@ -70,11 +77,17 @@ struct WeaponUpgrade {
     int costStl;
 };
 
-// One real upgrade per class that can use one, sourced from Table 44
-// (Weapons, p.94) -- nullptr for Mage/Tinker (no upgrade offered; their
-// dagger/wrench stays as-is, consistent with wizards' traditionally short
-// allowed-weapons list and their fragile-caster identity being intentional,
-// not a gap).
+// One real upgrade per class, sourced from Table 44 (Weapons, p.94-95).
+// Mage gets a Quarterstaff (1d6) -- the PHB prices it as "--" (a cut
+// length of wood, no real cost), so its shop price is a small invented
+// number, flagged in Equipment.cpp the same way kWebnetCostStl is. Tinker
+// gets a Light Crossbow (1d4+1, reusing the Light Quarrel's damage since
+// this engine doesn't track ammunition separately from the weapon
+// itself) -- a mechanical weapon fitting the class's gadgeteer identity
+// rather than a sword-and-board reskin. Never nullptr for any class as of
+// the equipment-expansion milestone (see docs/CHARACTER_NOTES.md) -- this
+// used to return nullptr for Mage/Tinker, a documented gap that pass
+// closed.
 const WeaponUpgrade* weaponUpgradeFor(ClassId classId);
 
 // A "+1" enchanted weapon, one per class, sold alongside the mundane
