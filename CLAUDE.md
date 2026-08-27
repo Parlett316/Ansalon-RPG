@@ -90,11 +90,12 @@ cmake --build build --config Debug
 ```
 
 Executable lands at `build\Debug\ansalon_rpg.exe`. It locates
-`data/locations.txt` etc. (and `save.txt`) next to itself at runtime — a
-CMake post-build step keeps `data/` populated in `build\Debug`/
-`build\Release` automatically, so this needs no extra step in normal dev
-use (see `docs/GOTCHAS.md`). To hand a runnable build to someone outside
-this source tree, run `tools/package_release.ps1` — see its header comment.
+`data/locations.txt` etc. (and its save-slot files, `save1.txt`/
+`save2.txt`/`save3.txt`) next to itself at runtime — a CMake post-build
+step keeps `data/` populated in `build\Debug`/`build\Release`
+automatically, so this needs no extra step in normal dev use (see
+`docs/GOTCHAS.md`). To hand a runnable build to someone outside this
+source tree, run `tools/package_release.ps1` — see its header comment.
 
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.
@@ -106,14 +107,24 @@ tested headlessly. The one exception is character creation
 end-to-end without a human at the keyboard:
 
 ```powershell
-echo "" | ./build/Debug/ansalon_rpg.exe
+echo "<empty-slot-number>" | ./build/Debug/ansalon_rpg.exe
 ```
+
+An empty line no longer works on its own — Milestone 89's save-slot menu
+sits in front of character creation now, and it needs a slot number that
+is actually empty (piping the number of an occupied slot instead lands on
+the "Continue this character? (y/n)" prompt and EOF-fails there, never
+reaching character creation). Slot occupancy varies as the user plays —
+don't assume slot 1 is empty. If unsure, run once with any digit first
+just to read the printed "Save slots:" listing, note which one says
+`(empty)`, then rerun piping that number.
 
 This should reach the character-creation prompts cleanly (not complete
 them) before EOF-failing — proof `World`/`ZoneCatalog`/`Timeline`/
-`MonsterCatalog` all loaded without throwing. If a real `save.txt`
-exists, move it aside first, run this, then move it back — never leave
-the user's real save clobbered or missing.
+`MonsterCatalog` all loaded without throwing. If real `save1.txt`/
+`save2.txt`/`save3.txt` files exist, move them aside first, run this,
+then move them back — never leave the user's real save clobbered or
+missing.
 
 **Throwaway self-test pattern** for verifying new logic: write a
 `*SelfTest.cpp`, add a temporary `add_executable` CMake target with only
