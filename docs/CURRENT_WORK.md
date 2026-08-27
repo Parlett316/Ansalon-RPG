@@ -2,6 +2,27 @@
 
 Nothing in flight.
 
+Milestone 107 (2026-08-27) shipped three new monsters -- Black Bear, Worg,
+Ice Bear -- bringing the roster to 23, picked from `docs/COMBAT_NOTES.md`'s
+"Extending this later" bestiary backlog once a fresh check confirmed quests
+(`docs/QUEST_NOTES.md`) and DLA magic items (`docs/CHARACTER_NOTES.md`) are
+both exhausted. Black Bear and Worg are ordinary Monster Manual entries
+(pp.17/362, visually confirmed via rendered page images); Ice Bear is this
+project's first roster pull from DLA's broader "Creatures of Krynn" chapter
+(p.76) beyond the Draconians/Thanoi, and shares the Thanoi's `ONLY_TERRAIN`
+glacier restriction since the book's own prose ties the two together
+(thanoi use ice bears to track prey and share the kill). Ice Bear's THAC0
+(un-printed in DLA, same recurring gap as every other Krynn-specific
+monster) was derived via this project's established HD-to-THAC0 pattern;
+its XP is a real per-hp formula simplified to a flat value, same treatment
+as the five Draconians. Pure data content -- no `.cpp`/`.h` changes, no
+save-format changes. Verified via a clean `/W4` rebuild and the piped smoke
+test only, no throwaway self-test needed (same reasoning as every prior
+pure-monster-roster milestone, 34 and 100) -- no "interactive verification
+needed" flag either, since parsing is the only thing to confirm and the
+piped smoke test already covers it. See `docs/MILESTONES.md` entry 107 and
+`docs/COMBAT_NOTES.md`'s roster/"Extending this later" sections.
+
 Milestone 106 (2026-08-27) shipped one new quest, `reason_worth_giving`, at
 the Plains of Dust -- the user asked for a new content milestone; DELIVER/
 item rewards turned out already shipped (Milestones 51-102), and the

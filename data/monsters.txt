@@ -20,7 +20,15 @@
 # not modeled the same way (see COMBAT_NOTES.md) and still not modeled;
 # Baaz's, Kapak's, Bozak's, Sivak's, Aurak's, and Thanoi's XP values are
 # also simplified, see below. This project models Krynn specifically -- no
-# orcs, matching Dragonlance's distinct bestiary.
+# orcs, matching Dragonlance's distinct bestiary. The Black Bear and Worg
+# (added in Milestone 107) are visually confirmed against rendered Monster
+# Manual page images (p.17, p.362); the Ice Bear (also Milestone 107) is
+# visually confirmed against a rendered Dragonlance Adventures page image
+# (p.76, the "Creatures of Krynn" chapter, same source as the Draconians
+# and Thanoi) -- its THAC0 isn't printed (same gap as every other
+# DLA-sourced monster) and is derived from this project's established
+# HD-to-THAC0 pattern, and its XP is a per-hp formula simplified to a flat
+# value near the average roll, same treatment as the Draconians' XP.
 #
 # MONSTER <id>            starts a block
 # NAME <text>              display name
@@ -457,4 +465,69 @@ XP 1400
 # every other special defense in this roster.
 MIN_TOWN_DISTANCE 35
 DESC A gaunt, green-hided horror unfolds to its full height, claws flexing, wounds already knitting shut before your eyes.
+END
+
+MONSTER blackbear
+NAME Black Bear
+HP 3 8 3
+AC 7
+THAC0 17
+# Real attack is three hits (claw/claw/bite, 1-3/1-3/1-6) -- simplified to
+# one representative die, same treatment as the Ghoul's claw/claw/bite
+# above: the bite, its single most damaging hit.
+DAMAGE 1 6 0
+STEEL 0 0 0
+XP 175
+# Real Climate/Terrain is "Temperate land" (broad) -- weighted toward
+# forest/hills as an invented flavor bias, same "informed by, not
+# transcribed from" treatment as Bugbear's/Owlbear's own bias lines.
+TERRAIN_BIAS % ^
+DESC A black bear rears up with a rumbling growl, claws already raised, in no mood to be crowded off the trail.
+END
+
+MONSTER worg
+NAME Worg
+HP 3 8 3
+AC 6
+THAC0 17
+DAMAGE 2 4 0
+STEEL 0 0 0
+XP 120
+# Real Climate/Terrain is "Any forest" -- an offshoot of dire wolf stock
+# that "often serve as mounts of goblins" (Monster Manual p.362), a direct
+# thematic tie to the Goblin/Hobgoblin already in this roster.
+TERRAIN_BIAS %
+DESC A big, wolfish shape breaks from the treeline with an unnervingly calculating gleam -- too clever, too cruel, to be any common wolf.
+END
+
+MONSTER icebear
+NAME Ice Bear
+HP 6 8 2
+AC 6
+# THAC0 isn't printed (same gap as every other DLA-sourced monster) --
+# derived as 14 from this project's established HD-to-THAC0 pattern:
+# Owlbear's real HD5+2 -> THAC0 15 sits one bracket below plain HD6's own
+# real value (Sivak, HD6 -> THAC0 15), so a "+2" bonus behaves like
+# roughly one extra full Hit Die in this progression -- applying that same
+# step to HD6+2 lands one bracket below Sivak's HD6, at 14.
+THAC0 14
+# Real attack is three hits (claw/claw/bite, 1d8/1d8/2d8) -- simplified to
+# one representative die, same treatment as the Black Bear above: the
+# bite, its single most damaging hit. Its real "hugs for 2d6 if both claws
+# hit" is left unmodeled, same restraint as the Owlbear's own hug.
+DAMAGE 2 8 0
+STEEL 0 0 0
+# Real XP formula is "475 + 8/hp" -- simplified to a flat value near the
+# average roll (6d8+2 averages 29), same treatment as the Draconians' XP:
+# 475 + 8(29) = 707.
+XP 707
+# No Climate/Terrain field is printed for the Ice Bear (same gap as the
+# Thanoi) -- ONLY_TERRAIN glacier is an invented restriction, not a
+# sourced field, justified by the prose ("track prey over snow and ice...
+# the thanoi use them for this purpose, sharing the reward") -- the same
+# restriction the Thanoi already carries, and a direct in-book lore tie
+# between the two. Immune to cold is real (Dragonlance Adventures p.76)
+# but left flavor-only, same restraint as the Thanoi's own cold immunity.
+ONLY_TERRAIN :
+DESC A great white bear hauls itself up from the snow, small dark eyes fixed on you with the patient hunger of a hunter that has never gone hungry for long.
 END

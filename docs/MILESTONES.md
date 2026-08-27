@@ -3215,6 +3215,43 @@ section).
     `docs/QUEST_NOTES.md`'s "Shipped quests" and `docs/ZONE_NOTES.md`'s
     Plains of Dust section.
 
+107. Three more monsters -- Black Bear, Worg, Ice Bear -- bringing the
+    roster to 23, picked from `docs/COMBAT_NOTES.md`'s "Extending this
+    later" backlog at the user's request for a new content pass, once a
+    fresh check confirmed the quest well is dry (`docs/QUEST_NOTES.md`)
+    and DLA's magic items are fully mined (`docs/CHARACTER_NOTES.md`) --
+    the same "pick from the bestiary backlog once everything else is
+    exhausted" path Milestone 100 took. **Black Bear** and **Worg**
+    (*Monster Manual (2nd ed).pdf* pp.17/362, the "Bear"/"Wolf" comparison
+    tables) are ordinary, non-Krynn-specific entries, same precedent as
+    Bugbear/Ogre/Gnoll/Owlbear/Wight/Troll; both were visually confirmed
+    against rendered page images. The Worg's real "often serve as mounts
+    of goblins" line ties it directly to the Goblin/Hobgoblin already in
+    this roster. **Ice Bear** (*Dragonlance Adventures*, TSR 2021, p.76,
+    the "Creatures of Krynn" chapter) is this project's first roster
+    addition from DLA's own broader bestiary chapter beyond the Draconians
+    and Thanoi -- its prose directly references the Thanoi using ice bears
+    to track prey and sharing the kill, so it inherits the same
+    `ONLY_TERRAIN` glacier restriction and lands right alongside its
+    already-shipped kin at Ice Wall. Its THAC0 isn't printed (same
+    recurring DLA gap as every other Krynn-specific monster) and was
+    derived via this project's established HD-to-THAC0 pattern; its XP is
+    a real per-hp formula simplified to a flat value near the average
+    roll, same treatment as the five Draconians. All three follow the
+    existing "one representative die" simplification for multi-attack
+    monsters (Ghoul/Owlbear/Troll's own precedent) and get no steel reward,
+    matching the Wolf's own "wild animal, no worn treasure" precedent --
+    all three print `TREASURE: Nil` in their real stat blocks, so this is
+    sourced, not just tone-matched. Pure data addition to
+    `data/monsters.txt`, no `.cpp`/`.h` changes -- `combat::MonsterLoader`
+    already parses every keyword these three need (confirmed no monster id
+    is hardcoded anywhere in `src/`). Verified via a clean `/W4` rebuild
+    (zero new warnings) and the piped smoke test (confirms `MonsterCatalog`
+    parses the file cleanly end-to-end, including all three new blocks);
+    no throwaway self-test needed, same reasoning as every prior
+    pure-content monster milestone. See `docs/COMBAT_NOTES.md`'s "Accuracy:
+    what's sourced, what's invented" and "Extending this later" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

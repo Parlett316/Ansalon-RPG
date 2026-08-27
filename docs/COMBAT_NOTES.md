@@ -217,6 +217,42 @@ was chosen and checked with that constraint in mind.
   (regeneration — 3 hp/round starting three rounds after first blood,
   stopped only by fire or acid) is left unmodeled — no per-round monster HP
   recovery exists in `runCombat`.
+- **Black Bear** (Milestone 107, p.17, the "Bear" comparison table): HD 3+3,
+  AC 7, THAC0 17, XP 175 (all real, printed). Real attack is three hits
+  (claw/claw/bite, 1-3/1-3/1-6) — simplified to a single 1d6 hit (the bite,
+  its most damaging attack), same "one representative die" treatment as the
+  Ghoul's/Owlbear's/Troll's own multi-attack simplifications. Treasure: Nil
+  (printed) — no steel reward, same as the Wolf. Real Climate/Terrain is the
+  broad "Temperate land" — weighted toward forest/hills as an invented
+  flavor bias, same "informed by, not transcribed from" treatment as the
+  Bugbear's/Owlbear's own bias lines.
+- **Worg** (Milestone 107, p.362, the "Wolf" comparison table): HD 3+3,
+  AC 6, THAC0 17, damage 2d4 (2-8), XP 120 (all real, printed). Real
+  Climate/Terrain is "Any forest" — an offshoot of dire wolf stock that
+  "often serve as mounts of goblins," a direct thematic tie to the
+  Goblin/Hobgoblin already in this roster. Treasure: Nil (printed) — no
+  steel reward, same as the Wolf.
+- **Ice Bear** (Milestone 107, *Dragonlance Adventures*, TSR 2021, p.76,
+  the "Creatures of Krynn" chapter — same Krynn-specific source as the
+  Draconians and Thanoi): HD 6+2, AC 6, XP a per-hp formula ("475 + 8/hp",
+  real, printed) simplified to a flat 707 (475 + 8×29, using the average
+  roll of 6d8+2), same treatment as the Draconians' XP. Real attack is
+  three hits (claw/claw/bite, 1d8/1d8/2d8) — simplified to a single 2d8 hit
+  (the bite), same treatment as the Black Bear above; its real "hugs for
+  2d6 if both claws hit" is left unmodeled, same restraint as the Owlbear's
+  own hug. Immune to cold is real but left flavor-only, same restraint as
+  the Thanoi's own cold immunity. **THAC0 isn't printed** (same gap as
+  every other DLA-sourced monster) — derived as 14 from this project's
+  established HD-to-THAC0 pattern: Owlbear's real HD5+2 → THAC0 15 sits one
+  bracket below plain HD6's own real value (Sivak, HD6 → THAC0 15), so a
+  "+2" bonus behaves like roughly one extra full Hit Die in this
+  progression — applying that same step to HD6+2 lands one bracket below
+  Sivak's HD6, at 14. **No Climate/Terrain field is printed** (same gap as
+  the Thanoi) — `ONLY_TERRAIN` glacier is an invented restriction, not a
+  sourced field, justified by the prose ("track prey over snow and ice...
+  the thanoi use them for this purpose, sharing the reward") — the same
+  restriction the Thanoi already carries, and a direct in-book lore tie
+  between the two.
 
 **Sourcing caveat (Milestone 64)**: none of the four draconian/Thanoi
 entries above print THAC0 (Dragonlance Adventures' stat-block format never
@@ -698,11 +734,12 @@ either.
   resistance (a related but different mechanic -- resistance to being
   targeted at all, not a saving throw) still isn't modeled for any of
   them.
-- **More monsters**: twenty creatures are in the roster now (Goblin,
+- **More monsters**: twenty-three creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
   Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi,
-  Owlbear, Wight, Troll); `Monster Manual (2nd ed).pdf` and *Dragonlance
-  Adventures* still have more of Krynn's actual bestiary untouched. Can be
+  Owlbear, Wight, Troll, Black Bear, Worg, Ice Bear); `Monster Manual (2nd
+  ed).pdf` and *Dragonlance Adventures* still have more of Krynn's actual
+  bestiary untouched. Can be
   added the same way, one more sourced `MONSTER` block at a time. A new
   monster with real terrain flavor can also carry `TERRAIN_BIAS`/
   `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above.
