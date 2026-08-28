@@ -537,25 +537,34 @@ the equipment-expansion milestone), granting `hardy_seed_grain` for
 `seed_for_thorbardin` -- see this file's own Haven section below and
 `docs/QUEST_NOTES.md`'s "A second DELIVER quest".
 
-## Recruiting a companion (Milestone 116 Phase 1)
+## Recruiting a companion (Milestone 116 Phase 1; a real id payload at 118)
 
-`RECRUIT <char>` marks a POI whose `TALK` interaction offers to recruit the
-one companion this phase supports -- the same "layers an ability on top of
-an existing POI, tied to talking" pattern `BOAT`/`GRANTS_ITEM` established
-(same "must already have a TALK line" rule). Unlike those two, it carries no
-id payload at all: there's exactly one companion this phase (`character::
-buildCompanion()`, see `docs/ARCHITECTURE.md`'s "Party companions" section
-and `docs/COMBAT_NOTES.md`'s "Extending this later"), so there's nothing
-here needing cross-file validation.
+`RECRUIT <char> <companion-id>` marks a POI whose `TALK` interaction offers
+to recruit the named party companion -- the same "layers an ability on top
+of an existing POI, tied to talking" pattern `BOAT`/`GRANTS_ITEM` established
+(same "must already have a TALK line" rule). Like those two, it carries an
+id payload needing cross-file validation: `main.cpp` cross-checks every
+zone's `RECRUIT` id against `character::isKnownCompanionId` once all zones
+are loaded (`ZoneLoader` can't see `character::` directly, so it can't do
+this validation itself -- see `docs/ARCHITECTURE.md`'s "Party companions"
+section and `docs/COMBAT_NOTES.md`'s "Extending this later"). Milestone 116
+Phase 1 shipped this with no id payload at all, since only one companion
+existed; Milestone 118 added the id once a second companion made "which
+one" a real question.
 
 After the POI's `TALK`/`TALK_AGAIN` dialogue is shown, `GameLoop::talkTo`
 offers an Accept/Decline picker ("Join me" / "Not yet"), same shape as
-`BOAT`'s "Board" / "Not yet" -- gated on `GameState::hasCompanion` rather
-than a per-candidate "already offered" set, so a decline stays re-offerable
-on a later visit and an already-recruited companion never re-offers.
+`BOAT`'s "Board" / "Not yet" -- gated per-companion-id (is this specific id
+already somewhere in `GameState::companions`) rather than a single
+Milestone-116-vintage `hasCompanion` bool, so a decline stays re-offerable
+on a later visit, an already-recruited companion never re-offers, and
+different companions can be recruited independently, in any order.
 
-One POI carries `RECRUIT` so far: `data/zones/solace.txt`'s `K "Bren
-Alder"`, a Solace local looking for a reason to leave home.
+Two POIs carry `RECRUIT` so far: `data/zones/solace.txt`'s `K "Bren
+Alder"` (`RECRUIT K bren_alder`), a Solace local looking for a reason to
+leave home, and `data/zones/haven.txt`'s `I "A Watchful Stranger"`
+(`RECRUIT I dessa_corrin`), a market-district thief tired of Haven's thin
+pickings.
 
 ## Beds: POIs for complete bed-rest (Milestone 41)
 

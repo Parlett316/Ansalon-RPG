@@ -7,7 +7,8 @@ Zone::Zone(std::string name, std::vector<std::string> rows, int entryX, int entr
            std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
            std::string timelineLocationId, std::unordered_map<char, std::string> quests,
            std::unordered_map<char, BoatVoyage> boatVoyages,
-           std::unordered_map<char, std::string> shopLocks)
+           std::unordered_map<char, std::string> shopLocks,
+           std::unordered_map<char, std::string> recruits)
     : name_(std::move(name)),
       width_(rows.empty() ? 0 : static_cast<int>(rows.front().size())),
       height_(static_cast<int>(rows.size())),
@@ -20,7 +21,8 @@ Zone::Zone(std::string name, std::vector<std::string> rows, int entryX, int entr
       timelineLocationId_(std::move(timelineLocationId)),
       quests_(std::move(quests)),
       boatVoyages_(std::move(boatVoyages)),
-      shopLocks_(std::move(shopLocks)) {}
+      shopLocks_(std::move(shopLocks)),
+      recruits_(std::move(recruits)) {}
 
 char Zone::tileCodeAt(int x, int y) const {
     if (x < 0 || y < 0 || y >= height_ || x >= width_) return '#';

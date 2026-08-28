@@ -188,18 +188,19 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     for (const auto& [id, count] : state.monsterKills) {
         file << "KILL " << id << " " << count << "\n";
     }
-    // Milestone 116 Phase 1 saved only the fact of recruitment, since
-    // character::buildCompanion() is pure/deterministic and reconstructed an
-    // identical Character on load. Milestone 117 lets combat actually change
-    // the companion's HP, so a second field now carries currentHp -- every
-    // other field (race/class/scores/steel/...) still comes from
-    // buildCompanion() unchanged. Omitted entirely (rather than writing
-    // "COMPANION 0 0") when !hasCompanion, same "absence means false"
-    // convention as MET/VOYAGED above -- a pre-Milestone-116 save has no
-    // COMPANION line and loads with hasCompanion staying false. Must stay
-    // here, before ZONE/ZONESTACK, same reasoning as QUEST/KILL above.
-    if (state.hasCompanion) {
-        file << "COMPANION 1 " << state.companion.currentHp << "\n";
+    // Milestone 116 Phase 1 saved only the fact of recruitment via a single
+    // "COMPANION 1" line, since character::buildCompanion() is pure/
+    // deterministic and reconstructed an identical Character on load.
+    // Milestone 117 added currentHp as a second field. Milestone 118 ("A
+    // real multi-companion roster") writes one COMPANION line per recruited
+    // companion instead of at most one, each carrying its own id (so
+    // character::buildCompanionById can reconstruct it) and currentHp --
+    // every other field still comes from that call unchanged. Omitted
+    // entirely when the roster is empty, same "absence means false"
+    // convention as MET/VOYAGED above. Must stay here, before
+    // ZONE/ZONESTACK, same reasoning as QUEST/KILL above.
+    for (const RecruitedCompanion& companion : state.companions) {
+        file << "COMPANION " << companion.id << " " << companion.character.currentHp << "\n";
     }
     if (state.mode == Mode::Zone) {
         file << "ZONE " << state.currentZoneId << "\n";
@@ -537,27 +538,37 @@ GameState SaveGame::load(const std::string& path) {
             }
             state.monsterKills[id] = count;
         } else if (keyword == "COMPANION") {
-            // Optional, same backward-compat reasoning as QUEST/KILL above --
-            // a pre-Milestone-116 save simply has no COMPANION line, and
-            // hasCompanion staying false is the correct value for it. Every
+            // Optional, repeatable -- one line per recruited companion as of
+            // Milestone 118 (was: at most one). A pre-Milestone-116 save has
+            // no COMPANION line at all, and an empty companions vector is
+            // the correct value for it. The legacy Milestone-116/117 form
+            // was "COMPANION 1 [currentHp]" (the literal token "1", since
+            // Bren Alder was the only companion that could exist) -- that
+            // token still loads today, mapped to id "bren_alder", so a save
+            // written before this milestone still loads correctly. Every
             // field except currentHp is never read back: character::
-            // buildCompanion() is pure/deterministic, so reconstructing it
-            // here always matches what was saved. currentHp itself is a
-            // second, optional token -- present from Milestone 117 onward
-            // (combat can now actually change it); a Milestone-116-vintage
-            // save has only "COMPANION 1" with no HP, and defaults to full
+            // buildCompanionById is pure/deterministic given an id, so
+            // reconstructing it here always matches what was saved.
+            // currentHp itself is a second, optional token -- absent on a
+            // Milestone-116-vintage "COMPANION 1" line, defaulting to full
             // health, correct since combat never touched the companion
-            // before this milestone. See docs/GOTCHAS.md.
-            int value = -1;
-            if (!(iss >> value) || value != 1) {
-                fail(path, lineNumber, "malformed COMPANION (expected: COMPANION 1 [currentHp])");
+            // before Milestone 117. See docs/GOTCHAS.md.
+            std::string idToken;
+            if (!(iss >> idToken)) {
+                fail(path, lineNumber, "malformed COMPANION (expected: COMPANION <id> [currentHp])");
             }
-            state.hasCompanion = true;
-            state.companion = character::buildCompanion();
+            std::string id = idToken == "1" ? "bren_alder" : idToken;
+            if (!character::isKnownCompanionId(id)) {
+                fail(path, lineNumber, "malformed COMPANION (unknown companion id '" + id + "')");
+            }
+            RecruitedCompanion recruited;
+            recruited.id = id;
+            recruited.character = character::buildCompanionById(id);
             int currentHp = -1;
             if (iss >> currentHp) {
-                state.companion.currentHp = std::clamp(currentHp, 0, state.companion.maxHp);
+                recruited.character.currentHp = std::clamp(currentHp, 0, recruited.character.maxHp);
             }
+            state.companions.push_back(std::move(recruited));
         } else if (keyword == "ZONE") {
             state.currentZoneId = rest;
             haveZoneLine = true;

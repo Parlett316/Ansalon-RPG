@@ -178,15 +178,16 @@ planned), a Silvanesti Sentry on Southern Ergoth offers passage on to
 Sancrist proper, and an Embarkation Officer there offers passage on to
 Palanthas, each leg a ship's voyage of a few days rather than a
 tile-by-tile walk across open water — you can say no and ask them about it
-first, and the offer stands until you board. Solace also has a would-be
-adventurer of its own: talk to Bren Alder and he'll ask to join you (or you
-can put him off for later) — the first step toward a real party. He shows
-up on your character sheet and status panel, and now actually fights
-alongside you: he takes his own spot on the tactical combat grid and
-attacks automatically each round (no orders to give him yet — that's still
-ahead), monsters may go after him instead of you, and a real knock can put
-him down for the rest of that one fight without ending it, healed back up
-the same way you are, by resting or a real bed. Traveling the wilds now risks a random encounter — goblins, kobolds,
+first, and the offer stands until you board. Solace and Haven each have a
+would-be companion of their own: talk to Bren Alder in Solace or Dessa
+Corrin in Haven and they'll ask to join you (or you can put them off for
+later) — the start of a real party, and you can recruit both, in either
+order. Each shows up on your character sheet and status panel, and actually
+fights alongside you: they take their own spot on the tactical combat grid
+and attack automatically each round (no orders to give them yet — that's
+still ahead), monsters may go after any one of you, and a real knock can
+put a companion down for the rest of that one fight without ending it,
+healed back up the same way you are, by resting or a real bed. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
 skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real

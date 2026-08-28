@@ -1273,7 +1273,7 @@ between colored and plain lines. Deleted after use, along with the
 temporary CMake target, per CLAUDE.md. Real in-terminal rendering still
 needs the user's own eyes, same limitation as every prior color milestone.
 
-## Party companions: a small first step, then real combat (Milestones 116-117)
+## Party companions: a small first step, then real combat, then a real roster (Milestones 116-118)
 
 `docs/COMBAT_NOTES.md`'s "Extending this later" section had long flagged "a
 party of up to six characters" as the single biggest remaining gap between
@@ -1295,91 +1295,112 @@ both already operate on `const character::Character&`.
 
 **Deterministic base, mutable HP.** New sibling module `character/
 Companion.h`/`.cpp` (depends only on `character/`, same independence as
-`Leveling`/`Spellcasting`/`Equipment`/`WizardOrder`) exposes `character::
-buildCompanion()`, which builds a fixed, hand-authored level-1 Fighter using
-fixed ability scores and starting steel (deliberately never `character::
-roll`), reusing the same non-interactive rules functions `CharacterCreator::
-run()` already calls (`classInfo`, `hpAdjustmentForConstitution`,
-`recomputeArmorClass`, `applyRacialSavingThrowBonus`). Calling it twice
-always produces identical stats *except* `currentHp`, which combat can now
-change (Milestone 117) — `game::SaveGame` therefore persists two fields on
-the `COMPANION` line (the recruitment flag, still `1`, plus `currentHp`)
-instead of the flag alone; every other field still comes from
-`buildCompanion()` on load, unchanged from Phase 1. A pre-Milestone-117
-save has only the one-token `COMPANION 1` line and loads correctly,
-defaulting to full health — see `docs/GOTCHAS.md`.
+`Leveling`/`Spellcasting`/`Equipment`/`WizardOrder`) exposes two builders --
+`character::buildCompanion()` (Bren Alder, a level-1 Fighter) and
+`character::buildDessaCorrin()` (a level-1 Thief, added at Milestone 118) --
+plus `character::buildCompanionById(id)`, which dispatches to the right one
+and fails fast on an unrecognized id, same idiom as every other loader in
+this project. Both builders use fixed ability scores and starting steel
+(deliberately never `character::roll`), reusing the same non-interactive
+rules functions `CharacterCreator::run()` already calls (`classInfo`,
+`hpAdjustmentForConstitution`, `recomputeArmorClass`,
+`applyRacialSavingThrowBonus`). Calling either twice always produces
+identical stats *except* `currentHp`, which combat can change (Milestone
+117) — `game::SaveGame` therefore persists one `COMPANION <id> <currentHp>`
+line per recruited companion; every other field still comes from
+`buildCompanionById(id)` on load. A pre-Milestone-117 save has only the
+one-token `COMPANION 1` line (the literal token `"1"`, mapped to id
+`"bren_alder"`) and still loads correctly, defaulting to full health — see
+`docs/GOTCHAS.md`.
 
-**Exactly one companion slot** (`GameState::hasCompanion` + `GameState::
-companion`, not a `vector`) — matches this phase's scope precisely; a real
-multi-companion roster is a known, called-out future refactor, not
-attempted here. **No dismiss mechanic** (once recruited, they stay) and
-**no map glyph/independent position outside combat** (the companion is
-narratively "with you" between fights — character sheet and HUD only,
-never a second tile on the overworld/zone grid) are both deliberate
-omissions, not oversights. *Inside* combat, as of Milestone 117, the
-companion does get a real position — see below.
+**A real roster as of Milestone 118**: `GameState::companions` is a
+`std::vector<game::RecruitedCompanion>` (each entry pairing a save-format
+`id` with a full `character::Character`), replacing Milestone 116/117's
+single `hasCompanion`/`companion` fields. There's no hardcoded numeric cap
+— the roster's real size is bounded by how much content exists (two
+companions today: Bren Alder at Solace, Dessa Corrin at Haven), not a
+`kMaxPartySize` constant, matching this project's "no premature
+abstraction" rule. **No dismiss mechanic** (once recruited, a companion
+stays) and **no map glyph/independent position outside combat** (companions
+are narratively "with you" between fights — character sheet and HUD only,
+never a second tile on the overworld/zone grid) are both still deliberate
+omissions, not oversights. *Inside* combat, every companion gets a real
+position — see below.
 
 **Recruiting reuses the existing "TALK layers an ability onto a POI"
-pattern.** A new `RECRUIT <char>` zone-grammar line (`world::
-PointOfInterest::recruitsCompanion`, same "must already have a TALK line"
-validation `BOAT`/`GRANTS_ITEM`/`QUEST` already enforce — see
-`docs/ZONE_NOTES.md`) marks a POI as offering to recruit. `GameLoop::talkTo`
-gained a new block, in the same slot and shape as the existing `BOAT`
-accept/decline picker ("Board" / "Not yet"), offering "Join me" / "Not yet"
-whenever `TalkCandidate::recruitsCompanion` is set and `state_.hasCompanion`
-is still false; declining falls straight through to the ordinary topics
-picker and stays re-offerable on a later visit, exactly like a declined
-boat voyage. No cross-file id validation is needed the way `BOAT`/`QUEST`
-need one (a destination `world::Location` id, a `quest::Quest` id) — there's
-exactly one companion this phase, so `RECRUIT` carries no payload at all.
+pattern, now with a real id payload.** A `RECRUIT <char> <companion-id>`
+zone-grammar line (`world::PointOfInterest::recruitCompanionId`, same "must
+already have a TALK line" validation `BOAT`/`GRANTS_ITEM`/`QUEST` already
+enforce — see `docs/ZONE_NOTES.md`) marks a POI as offering to recruit a
+specific companion. Whether the id is real is cross-checked by `main.cpp`
+against `character::isKnownCompanionId` once all zones are loaded (`world::`
+can't see `character::` directly, so `ZoneLoader` itself can't validate
+this — the same deferred-cross-check shape `QUEST`/`SHOP_LOCKED` ids already
+use). `GameLoop::talkTo`'s recruit block is gated per-companion-id (is
+*this* id already somewhere in `state_.companions`) rather than a single
+Milestone-116-vintage bool, so a declined offer stays re-offerable on a
+later visit, an accepted one never re-offers, and Bren Alder and Dessa
+Corrin can each be recruited independently, in either order.
 
-**Combat, as of Milestone 117: the companion is a real, AI-controlled
-combatant.** `GameLoop::runCombat` now reads and mutates `GameState::
-hasCompanion`/`companion` directly — the first real touch to what used to
-be a single-`Character` function, made possible because `combat::
-resolvePlayerAttack`/`resolveMonsterAttack`/`rollSavingThrow` already took
-a generic `const character::Character&` (Phase 1's design doc predicted
-exactly this payoff from "the companion is a real Character, not a
-parallel struct"). The companion gets a `combat::GridPos` on the same
-tactical grid the player and monsters already occupy (Milestone 114),
-starting adjacent to the player. Each round, right after the player's own
-action (not a separate initiative roll — see `combat::playerActsFirst()`,
-unchanged), a `companionActs()` lambda resolves automatically: attack an
-adjacent alive monster instance, or take one `combat::stepToward` step
-toward the nearest one (using a new pure helper, `combat::
-chebyshevDistance`, to compare distances). Monster AI (`monstersAct()`) was
-restructured to choose between the player and the companion as its melee
-target — adjacent to only one, attack that one; adjacent to both, coin-flip
-(`character::roll(1,2)`); adjacent to neither, path toward whichever is
-nearer. `render::MapRenderer::drawCombatFrame` reuses the existing
-`CombatMonsterView` struct as a presentation-state carrier for the
-companion (not because it IS a monster) — a new optional trailing parameter
-threaded through every one of `runCombat`'s ~7 draw call sites via a
-`companionViewPtr()` lambda that rebuilds it fresh from live state on every
+**Combat, as of Milestone 117/118: every companion is a real, AI-controlled
+combatant.** `GameLoop::runCombat` reads and mutates `GameState::companions`
+directly — the touch that first broke `runCombat`'s old single-`Character`
+assumption, made possible because `combat::resolvePlayerAttack`/
+`resolveMonsterAttack`/`rollSavingThrow` already took a generic `const
+character::Character&` (Phase 1's design doc predicted exactly this payoff
+from "the companion is a real Character, not a parallel struct"). Each
+companion gets its own `combat::GridPos` on the same tactical grid the
+player and monsters already occupy (Milestone 114), starting adjacent to
+the player in a small alternating left/right pattern. Each round, right
+after the player's own action (not a separate initiative roll — see
+`combat::playerActsFirst()`, unchanged), a `companionActs()` lambda loops
+every companion in roster order and resolves each one automatically: attack
+an adjacent alive monster instance, or take one `combat::stepToward` step
+toward the nearest one (`combat::chebyshevDistance`, added at Milestone
+117). Monster AI (`monstersAct()`) builds a small local `PartyTarget` list
+(the player plus every alive companion) each turn and picks among whichever
+are adjacent — exactly one adjacent, attack that one; more than one
+adjacent, pick uniformly at random via `character::roll(1, N)` (this is the
+direct generalization of Milestone 117's player/companion coin-flip); none
+adjacent, path toward whichever is nearest. `render::MapRenderer::
+drawCombatFrame` reuses the existing `CombatMonsterView` struct as a
+presentation-state carrier for companions (not because they ARE monsters)
+— a `std::vector<CombatMonsterView>` (was: a single optional pointer)
+threaded through every one of `runCombat`'s draw call sites via a
+`companionViews()` lambda that rebuilds it fresh from live state on every
 redraw, same "no caching" precedent `buildViews()` already sets for
-monsters.
+monsters; each companion gets its own combat glyph (`'c'`, `'d'`, ...) so
+more than one reads clearly on the grid at once.
 
 A knocked-out companion (HP <= 0) is removed from acting/being targeted for
 the rest of that one fight (every AI decision above gates on a
-`companionAlive()` check) but does **not** end the fight — only the
-player's own knockout does that, unchanged. `GameLoop::handleRest`/
-`handleBedRest` heal the companion the same amount they already heal the
-player, with no separate `lastRestDay` gate of its own (it only ever rests
-when the player does).
+`companionAlive(i)` check) but does **not** end the fight — only the
+player's own knockout does that, unchanged. When the player's own knockout
+*does* end the fight (a party wipe), `knockedOutBy` restores every
+recruited companion to full HP right alongside the player's own "struck
+down... wake up back in <refuge>" recovery — a Milestone 118 same-session
+bug fix; before it, a companion knocked out during a losing fight stayed at
+0 HP indefinitely (silently benched from every fight until the next Rest/
+BedRest), since only the player was being healed on that path.
+`GameLoop::handleRest`/`handleBedRest` heal every companion the same amount
+they already heal the player, with no separate `lastRestDay` gate of its
+own (a companion only ever rests when the player does).
 
-**What Phase 2 deliberately still doesn't do**, honestly flagged rather
-than overlooked: the Brooch of Imog's globe wards the player only (it's the
+**What's deliberately still deferred**, honestly flagged rather than
+overlooked: the Brooch of Imog's globe wards the player only (it's the
 player's own item); Bozak's Magic Missile and Aurak's breath weapon stay
-hardcoded to always target the player (teaching them to pick between two
-targets is real extra scope, the same family as the already-deferred "no
-square-cursor for AoE" gap in `docs/COMBAT_NOTES.md`); Sivak's death-burst
-still only damages the player regardless of who lands the killing blow (a
-simplification that predates companions, not extended here); companion
-movement never provokes or takes opportunity attacks; and there's no
-"finish off a downed ally" mechanic. Player-directed control of the
-companion, a real multi-companion roster, deployment order, backstab, and
-sweep all stay reserved for Phase 3 — see `docs/COMBAT_NOTES.md`'s
-"Extending this later".
+hardcoded to always target the player (teaching them to pick among the
+whole party is real extra scope, the same family as the already-deferred
+"no square-cursor for AoE" gap in `docs/COMBAT_NOTES.md`); Sivak's
+death-burst still only damages the player regardless of who lands the
+killing blow (a simplification that predates companions, not extended
+here); companion movement never provokes or takes opportunity attacks; and
+there's no "finish off a downed ally" mechanic. Player-directed control of
+companions (a UIC-style toggle — DQoK.pdf's own manual: "You control the
+actions of PCs. The computer controls the actions of monsters, NPCs, and
+PCs set to computer control with the UIC command"), deployment order,
+backstab, and sweep all stay reserved for a later phase — see
+`docs/COMBAT_NOTES.md`'s "Extending this later".
 
 ## Extension points for later milestones
 

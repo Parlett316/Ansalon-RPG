@@ -42,5 +42,5 @@ SHOP_LOCKED S ore_for_the_forge
 POI K "Bren Alder" A broad-shouldered young man leans against a vallenwood trunk, running a whetstone along a well-worn shortsword. He watches every loaded pack and travel-stained cloak that passes with open envy.
 TALK K "You're headed out from Solace, aren't you? I can tell by the pack." He sheathes the blade and straightens up. "Patched roofs and hauled lumber in this town my whole life. Never been further than Haven. If you'll have me, I'd rather swing this sword at something worth fighting than spend another season up a vallenwood."
 TALK_AGAIN K Bren gives you a ready nod, whetstone still in hand.
-RECRUIT K
+RECRUIT K bren_alder
 END

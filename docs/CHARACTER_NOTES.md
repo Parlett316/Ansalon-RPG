@@ -1486,57 +1486,79 @@ there is deliberately no "drop" action. `SaveGame.cpp` touches: a new
 `QUESTITEM <item-id> <display-name...>` inventory-entry keyword,
 alongside `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON`/`WEBNET`/`BROOCH`.
 
-## Party companion (Milestone 116 Phase 1, combat added at Milestone 117)
+## Party companions (Milestone 116 Phase 1, combat at 117, a real roster at 118)
 
-The first step toward a real party (see `docs/COMBAT_NOTES.md`'s "Extending
+The first steps toward a real party (see `docs/COMBAT_NOTES.md`'s "Extending
 this later" and `docs/ARCHITECTURE.md`'s "Party companions" section for the
-full design reasoning): exactly one hand-authored, recruitable companion,
-`character::buildCompanion()` (`character/Companion.h`/`.cpp`) — Bren Alder,
-a Human Fighter, Neutral Good, level 1, fixed (not rolled) ability scores
-STR 15 / DEX 13 / CON 14 / INT 10 / WIS 10 / CHA 12, and fixed starting
-steel, so the function is pure and deterministic (calling it twice always
+full design reasoning): two hand-authored, recruitable companions, each
+built by `character::buildCompanionById(id)` (`character/Companion.h`/
+`.cpp`):
+
+- **Bren Alder** (id `bren_alder`) — a Human Fighter, Neutral Good, level 1,
+  fixed (not rolled) ability scores STR 15 / DEX 13 / CON 14 / INT 10 /
+  WIS 10 / CHA 12, and fixed starting steel. Recruited at Solace (`data/
+  zones/solace.txt`'s `K "Bren Alder"`).
+- **Dessa Corrin** (id `dessa_corrin`, added Milestone 118) — a Human Thief,
+  Chaotic Good, level 1, fixed ability scores STR 10 / DEX 16 / CON 12 /
+  INT 12 / WIS 10 / CHA 13, and fixed starting steel. Recruited at Haven
+  (`data/zones/haven.txt`'s `I "A Watchful Stranger"`).
+
+Both builders are pure and deterministic (calling either twice always
 produces identical stats — see `docs/GOTCHAS.md` on why that matters for
-save/load). Fighter was chosen specifically to avoid entangling this phase
-with spellcasting (a caster companion raises "can they memorize/cast"
-questions that belong in a later phase). Freshly invented (name, backstory,
-dialogue) rather than drawn from the novels — canon Heroes of the Lance are
-never recruitable, same restriction `docs/QUEST_NOTES.md` already documents
-for quest givers.
+save/load), reusing the same non-interactive rules functions
+`CharacterCreator::run()` calls. Both are non-spellcasters by design — the
+same reasoning Milestone 116 gave for Bren Alder's class ("a caster
+companion raises 'can they memorize/cast' questions that belong in a later
+phase") still holds for Dessa Corrin, so Thief was picked over Cleric/Mage
+specifically to keep that scope closed a second time. Both are freshly
+invented (name, backstory, dialogue) rather than drawn from the novels —
+canon Heroes of the Lance are never recruitable, same restriction
+`docs/QUEST_NOTES.md` already documents for quest givers.
 
-Recruited via a new `RECRUIT <char>` zone-grammar line at `data/zones/
-solace.txt`'s `K "Bren Alder"` — see `docs/ZONE_NOTES.md`'s "Recruiting a
-companion". Once joined, shown on the character sheet (`MapRenderer::
-drawCharacterSheet`'s terse "Companion:" block — identity and HP/AC/THAC0
-only) and the overworld/zone HUD (a "Companion: name HP x/y" status-panel
-line), both reading live off `GameState::companion` so a fight's damage
-shows up immediately. Persists across save/load via `GameState::
-hasCompanion` plus, as of Milestone 117, a real `currentHp` field on
-`SaveGame`'s `COMPANION` line (`COMPANION 1 <currentHp>`) — every other
-field still comes from `buildCompanion()` on load, since only HP can
-change. A pre-Milestone-117 save has the old one-token `COMPANION 1` line
-and loads correctly, defaulting to full health.
+Recruited via a `RECRUIT <char> <companion-id>` zone-grammar line — see
+`docs/ZONE_NOTES.md`'s "Recruiting a companion". Once joined, each shows on
+the character sheet (`MapRenderer::drawCharacterSheet`'s terse
+"Companions:" block, one entry per recruit — identity and HP/AC/THAC0 only)
+and the overworld/zone HUD (one "Companion: name HP x/y" status-panel line
+per recruit), both reading live off `GameState::companions` (a
+`std::vector<game::RecruitedCompanion>`, replacing Milestone 116/117's
+single `hasCompanion`/`companion` fields) so a fight's damage shows up
+immediately. Persists across save/load via one `SaveGame` `COMPANION <id>
+<currentHp>` line per recruited companion — every other field still comes
+from `buildCompanionById(id)` on load, since only HP can change. A
+pre-Milestone-118 save has the old one-token `COMPANION 1` line (at most
+one, always Bren Alder) and still loads correctly, defaulting to full
+health if no HP token is present.
 
-**Milestone 117: the companion actually fights, AI-controlled.** In combat
-it occupies its own cell on the tactical grid (Milestone 114), starting
-adjacent to the player, and acts automatically each round — attacking an
-adjacent monster or closing distance on the nearest one — with no player
-input of its own (a target picker/action menu for the companion is Phase 3
-territory). Monsters may attack the companion instead of the player
-(whichever they're adjacent to; a coin-flip if adjacent to both). A
-knocked-out companion (HP <= 0) stops fighting for the rest of that
-encounter but doesn't end it, and heals back up the same way the player
-does: `Rest` (1 hp) or `BedRest` (full heal). See `docs/COMBAT_NOTES.md`'s
-"Extending this later" for the full Phase 2 writeup and what it
-deliberately still leaves player-only (the Brooch of Imog's globe, Bozak's
-Magic Missile, Aurak's breath weapon, Sivak's death-burst) or unmodeled
-(opportunity attacks from companion movement, finishing off a downed ally).
+**Milestone 117: companions actually fight, AI-controlled.** In combat each
+occupies its own cell on the tactical grid (Milestone 114), starting
+adjacent to the player, and acts automatically each round in roster order —
+attacking an adjacent monster or closing distance on the nearest one — with
+no player input of its own (a target picker/action menu for companions is a
+later-phase item). Monsters pick among the player and every alive companion
+as their melee target — whichever they're adjacent to; uniformly at random
+if adjacent to more than one (Milestone 117's player/companion coin-flip
+generalized at Milestone 118 to `character::roll(1, N)`). A knocked-out
+companion (HP <= 0) stops fighting for the rest of that encounter but
+doesn't end it, and heals back up the same way the player does: `Rest`
+(1 hp), `BedRest` (full heal), or — a same-session Milestone 118 bug fix —
+a party wipe, which now fully heals every companion right alongside the
+player's own "carried back to safety" recovery, instead of leaving a
+knocked-out companion stuck at 0 HP until the next Rest/BedRest. See
+`docs/COMBAT_NOTES.md`'s "Extending this later"
+for the full writeup and what it deliberately still leaves player-only (the
+Brooch of Imog's globe, Bozak's Magic Missile, Aurak's breath weapon,
+Sivak's death-burst) or unmodeled (opportunity attacks from companion
+movement, finishing off a downed ally).
 
-**Still not attempted**: the companion cannot shop, cannot gain levels or
-spend steel, cannot be dismissed once recruited, has no independent
-position/glyph outside combat, and never acts on the player's own command
-(Phase 3 territory — a real multi-companion roster, deployment order,
-backstab, sweep, `UIC`). See `docs/COMBAT_NOTES.md`'s "Extending this
-later".
+**Still not attempted**: companions cannot shop, cannot gain levels or
+spend steel, cannot be dismissed once recruited, have no independent
+position/glyph outside combat, and never act on the player's own command.
+There's no hardcoded roster cap (`GameState::companions` is a plain
+`vector`), but only two companions exist as content today. Player-directed
+control (a UIC-style toggle), deployment order, thief backstab, and fighter
+sweep all stay reserved for a later phase — see `docs/COMBAT_NOTES.md`'s
+"Extending this later".
 
 ## Where a character lives
 

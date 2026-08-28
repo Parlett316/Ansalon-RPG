@@ -151,6 +151,18 @@ std::string writeHeaderLine(const character::Character& c, const game::GameState
     return kTitle + std::string(static_cast<size_t>(std::max(gap, 1)), ' ') + rightStr;
 }
 
+// Projects game::GameState::companions (a vector of game::RecruitedCompanion,
+// pairing a save-format id with a real character::Character) down to just
+// the Characters -- the only party the rest of this file (buildStatusPanel,
+// and every caller of drawCharacterSheet/drawCombatFrame in GameLoop.cpp)
+// actually needs to render. Keeps render:: from having to know
+// RecruitedCompanion's id field exists.
+std::vector<character::Character> companionCharacters(const game::GameState& state) {
+    std::vector<character::Character> result;
+    for (const game::RecruitedCompanion& companion : state.companions) result.push_back(companion.character);
+    return result;
+}
+
 // Builds the status panel shown to the right of the map in
 // drawOverworldFrame/drawZoneFrame (Milestone 43): a fixed 12-row header
 // (mode, current location/zone, coordinates, and the AC/THAC0/Steel
@@ -158,13 +170,14 @@ std::string writeHeaderLine(const character::Character& c, const game::GameState
 // then the scrolling "> "-prefixed log tail (buildLogPanel) filling
 // whatever rows remain. Every returned line is already exactly `width`
 // visible columns, safe to merge with a map row with no further padding.
-// `companion` (Milestone 116 Phase 1) is non-null only when
-// game::GameState::hasCompanion is set -- adds one extra "Companion:" line
-// to the header when present; the header grows/shrinks around it via
-// headerRows below, same as every other conditional-less line here.
+// `companions` (Milestone 116 Phase 1; a real roster as of Milestone 118)
+// is empty when no companion has been recruited -- adds one "Companion:"
+// line per entry to the header when present; the header grows/shrinks
+// around them via headerRows below, same as every other conditional-less
+// line here.
 std::vector<std::string> buildStatusPanel(const char* modeLabel, const std::string& standingOnName, int posX,
                                            int posY, const character::Character& c,
-                                           const character::Character* companion,
+                                           const std::vector<character::Character>& companions,
                                            const std::vector<std::string>& log, int width, int height) {
     std::vector<std::string> lines;
     lines.push_back(colorLine(std::string("MODE: ") + modeLabel, "\x1b[96m", width));
@@ -182,10 +195,10 @@ std::vector<std::string> buildStatusPanel(const char* modeLabel, const std::stri
     std::ostringstream stats2;
     stats2 << "Steel: " << c.steelPieces << " stl";
     lines.push_back(padPlain(stats2.str(), width));
-    if (companion != nullptr) {
+    for (const character::Character& companion : companions) {
         std::ostringstream companionLine;
-        companionLine << "Companion: " << companion->name << "  HP " << companion->currentHp << "/"
-                       << companion->maxHp;
+        companionLine << "Companion: " << companion.name << "  HP " << companion.currentHp << "/"
+                       << companion.maxHp;
         lines.push_back(padPlain(companionLine.str(), width));
     }
     lines.push_back(padPlain("", width));
@@ -382,8 +395,8 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
     std::string standingOn =
         here != nullptr ? here->name : std::string(world::terrainFor(grid.terrainCodeAt(state.x, state.y)).name);
     std::vector<std::string> statusPanel =
-        buildStatusPanel("EXPLORING", standingOn, state.x, state.y, state.character,
-                          state.hasCompanion ? &state.companion : nullptr, log, kLogPanelWidth, kViewportHeight);
+        buildStatusPanel("EXPLORING", standingOn, state.x, state.y, state.character, companionCharacters(state), log,
+                          kLogPanelWidth, kViewportHeight);
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H"; // clear + cursor home (see Console::clearScreen -- same VT100 sequence)
@@ -437,10 +450,9 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
                                  const std::vector<std::string>& log) {
     const int kContentWidth = kViewportWidth + kLogPanelGap + kLogPanelWidth;
 
-    std::vector<std::string> statusPanel = buildStatusPanel("INDOORS", zone.name(), state.zoneX, state.zoneY,
-                                                              state.character,
-                                                              state.hasCompanion ? &state.companion : nullptr, log,
-                                                              kLogPanelWidth, kViewportHeight);
+    std::vector<std::string> statusPanel =
+        buildStatusPanel("INDOORS", zone.name(), state.zoneX, state.zoneY, state.character, companionCharacters(state),
+                          log, kLogPanelWidth, kViewportHeight);
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -487,7 +499,7 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
 }
 
 void MapRenderer::drawCharacterSheet(const character::Character& c, long long currentDay,
-                                      const character::Character* companion) {
+                                      const std::vector<character::Character>& companions) {
     const auto& race = character::raceInfo(c.race);
     const auto& cls = character::classInfo(c.charClass);
     const character::SubraceInfo* sub = character::subraceInfo(c.subrace);
@@ -604,24 +616,25 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
         }
     }
 
-    // Milestone 116 Phase 1's one recruitable companion -- non-null only
-    // when game::GameState::hasCompanion is set. Deliberately terse (no
-    // saves/weapon/steel breakdown): the companion doesn't fight, shop, or
-    // level yet, so nothing beyond identity/HP/AC/THAC0 can change or
-    // matters yet -- see docs/COMBAT_NOTES.md's "Extending this later".
-    if (companion != nullptr) {
+    // Recruitable party companions -- Milestone 116 Phase 1 shipped one
+    // slot, Milestone 118 a real roster (0+ entries). Deliberately terse
+    // per entry (no saves/weapon/steel breakdown): only identity/HP/AC/
+    // THAC0 -- see docs/COMBAT_NOTES.md's "Extending this later".
+    if (!companions.empty()) {
         lines.push_back({"", nullptr});
-        lines.push_back({"Companion:", kSectionLabelColor});
-        const auto& compRace = character::raceInfo(companion->race);
-        const character::SubraceInfo* compSub = character::subraceInfo(companion->subrace);
-        std::ostringstream compLine1;
-        compLine1 << "  " << companion->name << ", " << (compSub != nullptr ? compSub->name : compRace.name) << " "
-                   << character::classInfo(companion->charClass).name << ", level " << companion->level;
-        lines.push_back({compLine1.str(), nullptr});
-        std::ostringstream compLine2;
-        compLine2 << "  HP " << companion->currentHp << "/" << companion->maxHp << "   AC "
-                   << companion->armorClass << "   THAC0 " << companion->thac0;
-        lines.push_back({compLine2.str(), nullptr});
+        lines.push_back({"Companions:", kSectionLabelColor});
+        for (const character::Character& companion : companions) {
+            const auto& compRace = character::raceInfo(companion.race);
+            const character::SubraceInfo* compSub = character::subraceInfo(companion.subrace);
+            std::ostringstream compLine1;
+            compLine1 << "  " << companion.name << ", " << (compSub != nullptr ? compSub->name : compRace.name)
+                       << " " << character::classInfo(companion.charClass).name << ", level " << companion.level;
+            lines.push_back({compLine1.str(), nullptr});
+            std::ostringstream compLine2;
+            compLine2 << "  HP " << companion.currentHp << "/" << companion.maxHp << "   AC "
+                       << companion.armorClass << "   THAC0 " << companion.thac0;
+            lines.push_back({compLine2.str(), nullptr});
+        }
     }
 
     lines.push_back({"", nullptr});
@@ -686,7 +699,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                                    const std::vector<CombatMonsterView>& monsters,
                                    const std::vector<std::string>& log, long long currentDay,
                                    const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
-                                   const CombatPrompt& prompt, const CombatMonsterView* companion) {
+                                   const CombatPrompt& prompt, const std::vector<CombatMonsterView>& companions) {
     std::vector<BoxLine> lines;
 
     // Tactical grid (Milestone 114). Plain text, no per-cell ANSI -- this
@@ -722,13 +735,17 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                                                              : std::string(" ") + glyph + " ";
             } else if (playerPos.x == gx && playerPos.y == gy) {
                 row += " @ ";
-            } else if (companion != nullptr && companion->alive && companion->pos.x == gx &&
-                       companion->pos.y == gy) {
-                // Milestone 117 -- the companion's own cell, never a
+            } else if (const CombatMonsterView* here = [&]() -> const CombatMonsterView* {
+                           for (const CombatMonsterView& companion : companions) {
+                               if (companion.alive && companion.pos.x == gx && companion.pos.y == gy) return &companion;
+                           }
+                           return nullptr;
+                       }()) {
+                // Milestone 117/118 -- a companion's own cell, never a
                 // pickTarget candidate (gridCursorIndex only ever names an
                 // index into `monsters`), so it never gets the "[X]" bracket
                 // treatment, just its plain glyph like the player's own '@'.
-                row += std::string(" ") + companion->glyph + " ";
+                row += std::string(" ") + here->glyph + " ";
             } else {
                 row += std::string(" ") + floorTerrain.glyph + " ";
             }
@@ -742,18 +759,18 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                << character.armorClass << "   Weapon: " << character.weaponName;
     lines.push_back({playerLine.str(), kPlayerCombatColor});
 
-    // Milestone 117: the companion's own HP/AC line, right after the
-    // player's -- never gets the roster's "> " target-picker cursor (it's
-    // not a pickTarget candidate), same "informational only" treatment as
-    // the player's own line above. "(knocked out)" once HP reaches 0,
-    // same wording convention as a defeated monster's "(defeated)" below,
-    // but distinct -- a knocked-out companion isn't dead, just out of the
-    // rest of this fight (see docs/COMBAT_NOTES.md).
-    if (companion != nullptr) {
+    // Milestone 117/118: one HP/AC line per companion, right after the
+    // player's -- never gets the roster's "> " target-picker cursor (not a
+    // pickTarget candidate), same "informational only" treatment as the
+    // player's own line above. "(knocked out)" once HP reaches 0, same
+    // wording convention as a defeated monster's "(defeated)" below, but
+    // distinct -- a knocked-out companion isn't dead, just out of the rest
+    // of this fight (see docs/COMBAT_NOTES.md).
+    for (const CombatMonsterView& companion : companions) {
         std::ostringstream companionLine;
-        companionLine << companion->name << " -- HP " << std::max(0, companion->hp) << "/" << companion->maxHp
-                       << "   AC " << companion->armorClass;
-        if (!companion->alive) companionLine << " (knocked out)";
+        companionLine << companion.name << " -- HP " << std::max(0, companion.hp) << "/" << companion.maxHp
+                       << "   AC " << companion.armorClass;
+        if (!companion.alive) companionLine << " (knocked out)";
         lines.push_back({companionLine.str(), kCompanionCombatColor});
     }
 

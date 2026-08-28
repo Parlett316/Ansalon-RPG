@@ -1,5 +1,6 @@
 #include "character/CharacterCreator.h"
 #include "character/CharClass.h"
+#include "character/Companion.h"
 #include "character/Race.h"
 #include "combat/Monster.h"
 #include "combat/MonsterLoader.h"
@@ -253,6 +254,21 @@ int main(int argc, char** argv) {
                     std::cerr << "Zone '" << zoneId << "' locks the shop at POI '" << code
                                << "' behind quest '" << questId << "', but no such quest is defined in "
                                << dataDir << "/quests.txt.\n";
+                    return 1;
+                }
+            }
+        }
+
+        // Same reasoning as the QUEST/SHOP_LOCKED cross-checks above, for a
+        // zone's RECRUIT <char> <companion-id> line -- ZoneLoader only
+        // validated that the POI already has a TALK line, not that the
+        // companion id is real (it can't see character:: -- see
+        // docs/ZONE_NOTES.md's "Recruiting a companion").
+        for (const auto& [zoneId, zone] : zones.allZones()) {
+            for (const auto& [code, companionId] : zone.recruits()) {
+                if (!character::isKnownCompanionId(companionId)) {
+                    std::cerr << "Zone '" << zoneId << "' recruits companion '" << companionId
+                               << "' at POI '" << code << "', but no such companion is defined.\n";
                     return 1;
                 }
             }

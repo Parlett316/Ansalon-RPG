@@ -121,14 +121,16 @@ struct TalkCandidate {
     // ongoing truth, not a one-time event, and the condition self-expires
     // once the Heroes actually arrive.
     std::string dialogueBefore;
-    // True for a zone POI marked RECRUIT (world::PointOfInterest::
-    // recruitsCompanion) -- talkTo() offers to join Milestone 116 Phase 1's
-    // one companion the first time such a candidate is talked to and no
-    // companion has been recruited yet. Always false for timeline
-    // candidates, same restriction as boatDestinationId/questId/grantsItemId
-    // above (canon Heroes are never recruitable -- see docs/QUEST_NOTES.md's
-    // equivalent note on quest givers).
-    bool recruitsCompanion = false;
+    // Non-empty for a zone POI marked RECRUIT (world::PointOfInterest::
+    // recruitCompanionId) -- talkTo() offers to add this companion id to the
+    // party the first time such a candidate is talked to and it isn't
+    // already recruited. Always empty for timeline candidates, same
+    // restriction as boatDestinationId/questId/grantsItemId above (canon
+    // Heroes are never recruitable -- see docs/QUEST_NOTES.md's equivalent
+    // note on quest givers). Milestone 118 gave this a real id payload; it
+    // was a plain bool through Milestone 116/117, since only one companion
+    // existed.
+    std::string recruitCompanionId;
 };
 
 // A look-at-someone candidate -- read-only counterpart to TalkCandidate (no

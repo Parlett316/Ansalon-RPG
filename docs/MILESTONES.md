@@ -3830,6 +3830,101 @@ section).
      combat-facing milestone -- see `docs/CURRENT_WORK.md` for the specific
      scenarios still needing a real playthrough.
 
+118. A real multi-companion roster, Phase 3a of the party system --
+     `NEXT UP` item 6, continued after Milestone 117 shipped full mutual
+     combat for the one existing companion. The user picked to start Phase
+     3, then, offered a further scope split via `AskUserQuestion` between
+     "player-directed control (a UIC toggle)" and "a real multi-companion
+     roster" for this first Phase-3 slice, chose the roster -- growing the
+     *count* dimension while leaving the *control* dimension (still
+     AI-only) for later, the same "ship the smaller half first" precedent
+     every prior party-system phase has followed. Before planning, the
+     real DQoK.pdf manual (already used to source the combat grid and the
+     Hoopak) was re-read for its own "UIC" command, confirming it really is
+     a separate, deferred feature ("You control the actions of PCs. The
+     computer controls the actions of monsters, NPCs, and PCs set to
+     computer control with the UIC command") and that party deployment
+     order is a pre-combat camp-menu step, not something this slice needed
+     to touch. `GameState::hasCompanion`/`companion` (a single slot) became
+     `GameState::companions`, a `std::vector<game::RecruitedCompanion>`
+     (each entry pairing a save-format id with a real `character::
+     Character`) -- deliberately no hardcoded numeric cap, bounded by
+     content (two companions) rather than a `kMaxPartySize` constant, per
+     "no premature abstraction." A second companion, **Dessa Corrin** (a
+     Human Thief, id `dessa_corrin`, Chaotic Good, fixed level-1 stats same
+     as Bren Alder's own non-rolled convention), joins at Haven via a new
+     `I "A Watchful Stranger"` POI -- deliberately another non-spellcaster,
+     same reasoning Milestone 116 gave for Bren Alder's own class ("a
+     caster companion raises 'can they memorize/cast' questions that
+     belong in a later phase"). `RECRUIT <char>` grew a required id payload
+     (`RECRUIT <char> <companion-id>`), cross-checked by `main.cpp` against
+     new `character::isKnownCompanionId` once all zones load, the same
+     deferred-cross-check shape already established for `QUEST`/
+     `SHOP_LOCKED` ids -- `world::` still never references `character::`
+     directly. Recruitment gating moved from a single `hasCompanion` bool
+     to a per-companion-id check against the roster, so Bren Alder and
+     Dessa Corrin can each be recruited independently, in either order.
+     The real engineering core was generalizing `GameLoop::runCombat` from
+     a binary (player vs. one companion) to an N-ary party: each companion
+     gets its own starting grid position (a small alternating left/right
+     pattern off the player) and its own combat glyph (`'c'`, `'d'`, ...);
+     `companionActs()` now loops every companion in roster order; monster
+     AI's old "adjacent to player / adjacent to companion / coin-flip"
+     logic became a small local `PartyTarget` list (the player plus every
+     alive companion) picked among uniformly at random via `character::
+     roll(1, N)` when more than one is adjacent -- collapsing what used to
+     be duplicated attack-resolution code (identical `resolveMonsterAttack`/
+     poison-save/knockout-log shape written out twice) into one shared
+     block, a real simplification alongside the added scope, not just
+     more code. `render::MapRenderer::drawStatusPanel`/`drawCharacterSheet`/
+     `drawCombatFrame` all grew their single-companion parameter into a
+     `std::vector`. `SaveGame`'s `COMPANION` line grew a real id token
+     (`COMPANION <id> <currentHp>`, one line per recruit, repeatable) --
+     backward-compatible with the legacy one-token `COMPANION 1` line
+     (mapped to id `bren_alder`). Confirmed with none of Bozak's Magic
+     Missile/Aurak's breath weapon/the Brooch's globe/Sivak's death-burst
+     needing any code change to stay player-only: `grep` confirmed none of
+     those call sites ever referenced the companion at all. Full design
+     writeup: `docs/ARCHITECTURE.md`'s "Party companions" section,
+     `docs/CHARACTER_NOTES.md`'s "Party companions" section, and
+     `docs/COMBAT_NOTES.md`'s "Extending this later" section. Verified via
+     a throwaway self-test (`buildCompanionById` for both known ids plus a
+     fail-fast unknown-id check; a `SaveGame` round-trip proving two
+     recruited companions' ids/currentHp both survive save/load exactly,
+     and that a hand-inserted legacy one-token `COMPANION 1` line still
+     loads as Bren Alder alone at full health -- 16 assertions, all
+     passed, deleted after), a clean `/W4` rebuild (zero new warnings), the
+     piped smoke test (all three real saves moved aside to reach character
+     creation cleanly, confirming the new zone grammar and `main.cpp`
+     cross-check both load without error, then restored byte-for-byte),
+     and a direct check that the real `save1.txt` -- which already carried
+     a live Milestone-117-vintage `COMPANION 1 0` line -- still loads
+     correctly through the real executable (slot listing shows "Mike,
+     level 1 Human Fighter (Day 1)" with no error), the strongest possible
+     confirmation of the legacy-compat path since it's a real save, not a
+     synthetic fixture. **Interactive verification needed**, same
+     `_getch()` limitation as every other combat-facing milestone -- see
+     `docs/CURRENT_WORK.md` for the specific scenarios still needing a
+     real playthrough.
+
+**Follow-up, same session**: the user's own real playthrough recruited
+Dessa Corrin alongside Bren Alder and fought with both (the real save file
+confirms both surviving combat with distinct, correctly tracked HP) and
+surfaced a real bug: a party wipe (`GameLoop::runCombat`'s `knockedOutBy`,
+which restores the player to full HP and carries them back to the nearest
+refuge) only healed the player -- a companion knocked out during that same
+losing fight stayed at 0 HP indefinitely afterward, silently benched from
+every subsequent fight until the next Rest/BedRest, since nothing else
+ever revived a companion outside those two commands. Fixed by healing
+every recruited companion to full inside `knockedOutBy`, right alongside
+the player's own recovery. Verified via a clean `/W4` rebuild (zero new
+warnings) and the piped smoke test (real saves moved aside and restored
+byte-for-byte); not yet re-confirmed by the user in an actual party-wipe
+scenario, since triggering one wasn't part of this session's own
+playtesting. See `docs/ARCHITECTURE.md`'s "Party companions" section and
+`docs/CHARACTER_NOTES.md`'s "Party companions" section for the updated
+recovery description.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -3910,9 +4005,12 @@ session's work.
    companion, no combat) shipped at Milestone 116. Phase 2 (the companion
    actually fights, AI-controlled, full mutual combat -- the first real
    change to `GameLoop::runCombat`'s single-`Character` assumption)
-   shipped at Milestone 117.** Still open: Phase 3 (a real multi-companion
-   roster, player-directed control, deployment order, backstab, sweep,
-   `UIC`) -- plus the smaller gaps Milestone 117 deliberately deferred
-   (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
-   no opportunity attacks from companion movement, no "finish off a downed
-   ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.
+   shipped at Milestone 117. Phase 3a (a real multi-companion roster --
+   `GameState::companions` is now a `vector`, and a second companion,
+   Dessa Corrin, joins Bren Alder) shipped at Milestone 118.** Still open:
+   player-directed control (a UIC-style toggle), deployment order,
+   backstab, sweep -- plus the smaller gaps Milestone 117 deliberately
+   deferred (Brooch/Magic Missile/breath weapon/death-burst all still
+   player-only, no opportunity attacks from companion movement, no
+   "finish off a downed ally"). See `docs/COMBAT_NOTES.md`'s "Extending
+   this later" section.

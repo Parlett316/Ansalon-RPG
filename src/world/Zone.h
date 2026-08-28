@@ -114,14 +114,16 @@ struct PointOfInterest {
     // docs/QUEST_NOTES.md's "DELIVER").
     std::string grantsItemId;
     std::string grantsItemName;
-    // True if talking to this POI offers to recruit Milestone 116 Phase 1's
-    // one companion (accept/decline, same "Board"/"Not yet" picker shape as
-    // BOAT) -- set via a RECRUIT line, which must reference an
-    // already-declared POI that also has a TALK line (see docs/ZONE_NOTES.md).
-    // No id payload: there's exactly one companion this phase, so unlike
-    // BOAT/QUEST there's nothing here needing cross-file validation -- see
-    // docs/COMBAT_NOTES.md's "Extending this later".
-    bool recruitsCompanion = false;
+    // Non-empty if talking to this POI offers to recruit a party companion
+    // (accept/decline, same "Board"/"Not yet" picker shape as BOAT) -- the
+    // companion id to recruit, e.g. "bren_alder". Set via a RECRUIT line,
+    // which must reference an already-declared POI that also has a TALK
+    // line (see docs/ZONE_NOTES.md). Same "id payload needing cross-file
+    // validation" shape as grantsItemId -- whether the id is a real
+    // character:: companion is checked later, in main.cpp (Milestone 118;
+    // Milestone 116 Phase 1 had no id at all, since only one companion
+    // existed).
+    std::string recruitCompanionId;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in
@@ -144,13 +146,17 @@ public:
     // must be Complete before the shop will open (see docs/ZONE_NOTES.md's
     // SHOP_LOCKED) -- same "id payload needing cross-file validation"
     // shape as quests above, not a plain PointOfInterest bool, since only
-    // main.cpp can confirm the quest id is real.
+    // main.cpp can confirm the quest id is real. `recruits` maps a POI char
+    // to the id of the party companion it recruits (Milestone 118) -- same
+    // "id payload needing cross-file validation" shape, checked against
+    // character::isKnownCompanionId by main.cpp.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
          std::unordered_map<char, PointOfInterest> pois,
          std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
          std::string timelineLocationId, std::unordered_map<char, std::string> quests,
          std::unordered_map<char, BoatVoyage> boatVoyages,
-         std::unordered_map<char, std::string> shopLocks);
+         std::unordered_map<char, std::string> shopLocks,
+         std::unordered_map<char, std::string> recruits);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -195,6 +201,12 @@ public:
     // quest::QuestCatalog at startup, same reasoning as quests() above.
     const std::unordered_map<char, std::string>& shopLocks() const { return shopLocks_; }
 
+    // Every RECRUIT declared in this zone, keyed by POI char -- for
+    // main.cpp to cross-validate each companion id against
+    // character::isKnownCompanionId at startup, same reasoning as quests()
+    // above (Milestone 118).
+    const std::unordered_map<char, std::string>& recruits() const { return recruits_; }
+
     // Returns the boat voyage granted at (x, y), or nullptr if the tile
     // there doesn't grant one.
     const BoatVoyage* boatAt(int x, int y) const;
@@ -228,6 +240,7 @@ private:
     std::unordered_map<char, std::string> quests_;
     std::unordered_map<char, BoatVoyage> boatVoyages_;
     std::unordered_map<char, std::string> shopLocks_;
+    std::unordered_map<char, std::string> recruits_;
 };
 
 } // namespace world

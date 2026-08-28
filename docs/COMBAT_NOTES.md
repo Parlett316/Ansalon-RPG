@@ -1161,9 +1161,31 @@ playthrough.
     lands the kill; companion movement never provokes/takes opportunity
     attacks; there's no "finish off a downed ally" mechanic. See
     `docs/ARCHITECTURE.md`'s "Party companions" section for the full design.
-  - **Still open**: Phase 3 (a real multi-companion roster, player-directed
-    control in combat, deployment order, backstab, sweep, `UIC`), plus the
-    smaller Phase 2 gaps listed just above.
+  - **Phase 3a (Milestone 118) shipped a real multi-companion roster.**
+    `GameState::companions` grew from a single `hasCompanion`/`companion`
+    pair to a `std::vector<game::RecruitedCompanion>`, with no hardcoded
+    numeric cap -- bounded by content, not a constant. A second companion,
+    Dessa Corrin (a Human Thief, id `dessa_corrin`, recruited at Haven),
+    joins Bren Alder; `RECRUIT` gained a real id payload (`RECRUIT <char>
+    <companion-id>`), cross-checked by `main.cpp` against `character::
+    isKnownCompanionId` the same deferred way `QUEST`/`SHOP_LOCKED` ids
+    already are. Combat control stayed exactly AI-only -- this phase grew
+    the *count* dimension, not the *control* dimension: `companionActs()`
+    now loops every companion in roster order, and monster AI's old
+    player/companion coin-flip generalized to a `PartyTarget` list (player
+    + every alive companion) picked among uniformly at random via
+    `character::roll(1, N)` when more than one is adjacent. `SaveGame`'s
+    `COMPANION` line gained an id token (`COMPANION <id> <currentHp>`,
+    repeatable, one per recruit), backward-compatible with the legacy
+    one-token `COMPANION 1` form (mapped to id `bren_alder`). See
+    `docs/ARCHITECTURE.md`'s "Party companions" section for the full
+    design.
+  - **Still open**: player-directed control in combat (a UIC-style toggle
+    -- DQoK.pdf's own manual: "You control the actions of PCs. The
+    computer controls the actions of monsters, NPCs, and PCs set to
+    computer control with the UIC command"), deployment order, backstab,
+    sweep, plus the smaller Phase 2 gaps listed just above (still true
+    for however many companions exist).
 - **The rest of the roster's real group sizes**: Milestone 113 (see
   "Monster encounter groups" above) only applied sourced `GROUP` data to
   14 of the 26 monsters -- the dozen left solo despite real No. Appearing

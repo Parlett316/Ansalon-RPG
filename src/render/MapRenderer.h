@@ -122,12 +122,12 @@ public:
     // (hoursElapsed/24) is only used to display whether today's spells
     // have been memorized yet (character::Character::spellsCastDay) and,
     // if so, how many slots remain -- see character::memorizeSpells.
-    // `companion` (Milestone 116 Phase 1) is non-null only when
-    // game::GameState::hasCompanion is set -- appends a short, terse
-    // "Companion:" block (identity + HP/AC/THAC0 only, nothing that can
-    // change yet -- see docs/COMBAT_NOTES.md's "Extending this later").
+    // `companions` (Milestone 116 Phase 1's one slot; a real roster as of
+    // Milestone 118) appends a short, terse "Companions:" block, one entry
+    // per recruited companion (identity + HP/AC/THAC0 only) -- see
+    // docs/COMBAT_NOTES.md's "Extending this later".
     static void drawCharacterSheet(const character::Character& character, long long currentDay,
-                                    const character::Character* companion = nullptr);
+                                    const std::vector<character::Character>& companions = {});
 
     // Renders the full spell roster for the character's class
     // (character::spellListFor), grouped by level up to
@@ -207,8 +207,8 @@ public:
     // DQoK.pdf's own manual describing the combat map as "a detailed view
     // of the terrain the party was in"; `playerPos` and each alive
     // monster's `CombatMonsterView::pos` place the `@`/lettered glyphs, and
-    // `companion` -- Milestone 117 -- its own glyph when non-null and
-    // alive), then the player's HP/AC, the companion's HP/AC when present
+    // each alive entry in `companions` -- Milestone 117/118 -- its own
+    // glyph), then the player's HP/AC, one HP/AC line per companion
     // ("(knocked out)" once its HP reaches 0, same convention as a
     // defeated monster below), every monster instance's HP/AC (defeated
     // ones marked, still shown so the roster visibly shrinks rather than
@@ -222,17 +222,18 @@ public:
     // (character::availableCombatItems) and, as of Milestone 115, is what
     // an idle `prompt` (default-constructed CombatPrompt) renders instead
     // of the old fixed footer hints -- see CombatPrompt above for the
-    // chooser states GameLoop::runCombat can request instead. `companion`
+    // chooser states GameLoop::runCombat can request instead. `companions`
     // reuses CombatMonsterView purely as a presentation-state carrier (not
-    // because the companion IS a monster) -- non-null only when
-    // GameLoop::runCombat's own companionViewPtr() lambda determines
-    // GameState::hasCompanion is set; never a target for the player's own
+    // because a companion IS a monster) -- built fresh each redraw by
+    // GameLoop::runCombat's own companionViews() helper from
+    // GameState::companions; never a target for the player's own
     // pickTarget, which only ever indexes into `monsters`.
     static void drawCombatFrame(const character::Character& character,
                                  const std::vector<CombatMonsterView>& monsters,
                                  const std::vector<std::string>& log, long long currentDay,
                                  const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
-                                 const CombatPrompt& prompt = {}, const CombatMonsterView* companion = nullptr);
+                                 const CombatPrompt& prompt = {},
+                                 const std::vector<CombatMonsterView>& companions = {});
 
     struct DialogueLine {
         std::string speaker;

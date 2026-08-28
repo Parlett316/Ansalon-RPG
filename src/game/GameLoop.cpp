@@ -402,11 +402,11 @@ void GameLoop::handleRest() {
 
     int healed = std::min(1, c.maxHp - c.currentHp); // DMG p.74: 1 hp per day of rest
     c.currentHp += healed;
-    // Milestone 117: the companion heals the same way, on the same
-    // overnight rest -- no separate lastRestDay gate of its own, since it
-    // only ever rests when the player does.
-    if (state_.hasCompanion) {
-        state_.companion.currentHp = std::min(state_.companion.maxHp, state_.companion.currentHp + 1);
+    // Milestone 117: every companion heals the same way, on the same
+    // overnight rest -- no separate lastRestDay gate of its own, since a
+    // companion only ever rests when the player does.
+    for (RecruitedCompanion& companion : state_.companions) {
+        companion.character.currentHp = std::min(companion.character.maxHp, companion.character.currentHp + 1);
     }
 
     std::string message = "You settle in and rest through the night.";
@@ -440,9 +440,9 @@ void GameLoop::handleBedRest() {
 
     bool alreadyFull = c.currentHp >= c.maxHp;
     c.currentHp = c.maxHp; // complete bed-rest: a real bed, a full night, fully healed
-    // Milestone 117: the companion gets the same complete heal.
-    if (state_.hasCompanion) {
-        state_.companion.currentHp = state_.companion.maxHp;
+    // Milestone 117: every companion gets the same complete heal.
+    for (RecruitedCompanion& companion : state_.companions) {
+        companion.character.currentHp = companion.character.maxHp;
     }
 
     std::string message = "You spend the night resting soundly in a real bed.";
@@ -551,9 +551,10 @@ void GameLoop::chooseSpellLoadout() {
 }
 
 void GameLoop::showCharacterSheet() {
+    std::vector<character::Character> companions;
+    for (const RecruitedCompanion& companion : state_.companions) companions.push_back(companion.character);
     for (;;) {
-        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24,
-                                                 state_.hasCompanion ? &state_.companion : nullptr);
+        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24, companions);
         render::Key key = render::Console::readKey();
         // 's' (South, off the sheet's own dismiss-with-any-key convention)
         // drills into the full spell roster, then loops back to the sheet
@@ -773,7 +774,7 @@ void GameLoop::handleTalk() {
                                      boat != nullptr ? boat->hours : 0,
                                      questId != nullptr ? *questId : std::string(),
                                      poi->grantsItemId, poi->grantsItemName};
-            candidate.recruitsCompanion = poi->recruitsCompanion;
+            candidate.recruitCompanionId = poi->recruitCompanionId;
             if (!poi->dialogueAfter.empty()) {
                 int latestDayEnd = timeline_.latestDayEnd(effectiveId);
                 if (latestDayEnd >= 0 && dayNow > latestDayEnd) {
@@ -977,14 +978,18 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
         // topics/SUBJECT picker below, same as any other POI's declined
         // offer (see offerOrTurnInQuest).
     }
-    // Milestone 116 Phase 1's one recruitable companion -- same Accept/
-    // Decline picker shape as the BOAT block above, gated on state_.
-    // hasCompanion (not a per-candidate "already offered" set, since there's
-    // exactly one companion slot this phase) so a declined offer stays
-    // re-offerable on a later visit, and an accepted one never re-offers.
-    // See character::buildCompanion() and docs/COMBAT_NOTES.md's "Extending
-    // this later".
-    if (candidate.recruitsCompanion && !state_.hasCompanion) {
+    // Recruitable party companions -- same Accept/Decline picker shape as
+    // the BOAT block above. Gated per-companion-id (Milestone 118: is
+    // *this* companion already in state_.companions), not a single
+    // Milestone-116-vintage state_.hasCompanion bool -- so a declined offer
+    // stays re-offerable on a later visit, an accepted one never re-offers,
+    // and both Bren Alder and Dessa Corrin can be recruited independently.
+    // See character::buildCompanionById and docs/COMBAT_NOTES.md's
+    // "Extending this later".
+    bool alreadyRecruited = std::any_of(
+        state_.companions.begin(), state_.companions.end(),
+        [&](const RecruitedCompanion& companion) { return companion.id == candidate.recruitCompanionId; });
+    if (!candidate.recruitCompanionId.empty() && !alreadyRecruited) {
         std::vector<std::string> labels = {"Join me", "Not yet"};
         int selected = 0;
         bool join = false;
@@ -1002,8 +1007,10 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
             }
         }
         if (join) {
-            state_.hasCompanion = true;
-            state_.companion = character::buildCompanion();
+            RecruitedCompanion recruited;
+            recruited.id = candidate.recruitCompanionId;
+            recruited.character = character::buildCompanionById(candidate.recruitCompanionId);
+            state_.companions.push_back(std::move(recruited));
             pushLog(name + " joins your party.");
         }
         // "Not yet"/q -- falls through to the ordinary topics/SUBJECT picker
@@ -1481,31 +1488,34 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
     }
 
-    // Milestone 117: the companion's own cell on this same tactical grid,
-    // starting adjacent to the player -- kCombatGridWidth is always odd
-    // (11), so playerPos.x + 1 never leaves the grid. Meaningless while
-    // !state_.hasCompanion, same "flag + payload" convention
-    // GameState::hasCompanion/companion already uses. Purely local to this
-    // one runCombat call, never written to GameState/SaveGame, same as
-    // playerPos/instancePositions above -- only state_.companion.currentHp
+    // Milestone 117/118: each companion's own cell on this same tactical
+    // grid, starting adjacent to the player in a small alternating right/
+    // left pattern (kCombatGridWidth is always odd (11), so a couple of
+    // cells either side of playerPos.x never leaves the grid). Empty when
+    // no companion is recruited. Purely local to this one runCombat call,
+    // never written to GameState/SaveGame, same as playerPos/
+    // instancePositions above -- only each entry's character.currentHp
     // itself (mutated directly below) survives past this fight.
-    combat::GridPos companionPos{playerPos.x + 1, playerPos.y};
-    auto companionAlive = [&]() { return state_.hasCompanion && state_.companion.currentHp > 0; };
+    std::vector<combat::GridPos> companionPositions(state_.companions.size());
+    for (size_t i = 0; i < companionPositions.size(); ++i) {
+        int offset = (i % 2 == 0) ? static_cast<int>(i / 2) + 1 : -(static_cast<int>(i / 2) + 1);
+        companionPositions[i] = {playerPos.x + offset, playerPos.y};
+    }
+    auto companionAlive = [&](size_t i) { return state_.companions[i].character.currentHp > 0; };
     // Rebuilt fresh from live state on every redraw, same "no caching"
     // precedent buildViews() below sets for monster instances -- reuses
     // CombatMonsterView purely as a presentation-state carrier (see
-    // MapRenderer.h's drawCombatFrame doc comment), not because the
-    // companion IS a monster. Returns nullptr when there's no companion,
-    // so every drawCombatFrame call site below can pass this
-    // unconditionally.
-    render::MapRenderer::CombatMonsterView companionView;
-    auto companionViewPtr = [&]() -> const render::MapRenderer::CombatMonsterView* {
-        if (!state_.hasCompanion) return nullptr;
-        companionView = {state_.companion.name,       std::max(0, state_.companion.currentHp),
-                          state_.companion.maxHp,      state_.companion.armorClass,
-                          state_.companion.currentHp > 0, companionPos,
-                          'c'};
-        return &companionView;
+    // MapRenderer.h's drawCombatFrame doc comment), not because a
+    // companion IS a monster. Each companion gets its own combat glyph
+    // ('c', 'd', ...) so multiple are visually distinct on the grid.
+    auto companionViews = [&]() -> std::vector<render::MapRenderer::CombatMonsterView> {
+        std::vector<render::MapRenderer::CombatMonsterView> views;
+        for (size_t i = 0; i < state_.companions.size(); ++i) {
+            const character::Character& c = state_.companions[i].character;
+            views.push_back({c.name, std::max(0, c.currentHp), c.maxHp, c.armorClass, c.currentHp > 0,
+                              companionPositions[i], static_cast<char>('c' + i)});
+        }
+        return views;
     };
 
     // Declared here (rather than down where it's first populated, below)
@@ -1574,7 +1584,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             prompt.gridCursorIndex = candidates[static_cast<size_t>(selected)];
             prompt.footer = allowCancel ? "up/down=select   Enter=choose   q=cancel" : "up/down=select   Enter=choose";
             render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24,
-                                                  hereTerrain, playerPos, prompt, companionViewPtr());
+                                                  hereTerrain, playerPos, prompt, companionViews());
             render::Key pickKey = render::Console::readKey();
             if (pickKey == render::Key::North) {
                 selected = (selected - 1 + static_cast<int>(candidates.size())) % static_cast<int>(candidates.size());
@@ -1678,6 +1688,13 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         const world::Location* refuge = nearestRefuge();
         const std::string refugeName = refuge != nullptr ? refuge->name : "town";
         state_.character.currentHp = state_.character.maxHp;
+        // Milestone 118 bug fix: the whole party gets carried back and
+        // fully healed alongside the player, not just the player -- a
+        // knocked-out companion previously stayed at 0 HP (companionAlive()
+        // gates every AI decision on it) until the next Rest/BedRest, so a
+        // party wipe silently sidelined them from every fight in between
+        // with no way back short of resting.
+        for (RecruitedCompanion& companion : state_.companions) companion.character.currentHp = companion.character.maxHp;
         log.push_back("You are struck down... and wake up back in " + refugeName + ", battered but alive.");
         if (refuge != nullptr) {
             state_.x = refuge->x;
@@ -1685,7 +1702,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
         log.push_back("Press any key to continue.");
         render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
-                                              playerPos, {}, companionViewPtr());
+                                              playerPos, {}, companionViews());
         render::Console::readKey();
         pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
     };
@@ -1824,76 +1841,87 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             }
         }
     };
-    // Milestone 117: the companion's own turn, resolved automatically right
-    // after the player's own action (see the playerActsFirst() dispatch
-    // below) -- AI-controlled, never opens a picker or asks the player
-    // anything (player-directed control is Phase 3 -- see
-    // docs/COMBAT_NOTES.md's "Extending this later"). Attacks the first
-    // adjacent alive instance found (fixed A->B->C order, same as
-    // monstersAct below) if one exists; otherwise takes one
-    // combat::stepToward step toward the nearest alive instance, the same
-    // pathing mechanism monster AI already uses. A complete no-op once
-    // !companionAlive() -- a knocked-out companion simply stops acting.
+    // Milestone 117/118: every companion's own turn, resolved automatically
+    // right after the player's own action (see the playerActsFirst()
+    // dispatch below), one companion at a time in roster order -- AI-
+    // controlled, never opens a picker or asks the player anything
+    // (player-directed control is Phase 3 -- see docs/COMBAT_NOTES.md's
+    // "Extending this later"). Each companion attacks the first adjacent
+    // alive instance found (fixed A->B->C order, same as monstersAct
+    // below) if one exists; otherwise takes one combat::stepToward step
+    // toward the nearest alive instance, the same pathing mechanism
+    // monster AI already uses. A knocked-out companion (!companionAlive)
+    // simply stops acting; stops the whole loop early if the fight ends
+    // mid-way (e.g. one companion's kill triggers a death-burst).
     auto companionActs = [&]() {
-        if (!companionAlive()) return;
-        int targetIndex = -1;
-        for (size_t i = 0; i < instances.size(); ++i) {
-            if (instances[i].hp > 0 && combat::isAdjacent(companionPos, instancePositions[i])) {
-                targetIndex = static_cast<int>(i);
-                break;
-            }
-        }
-        if (targetIndex < 0) {
-            combat::GridPos nearest{};
-            int nearestDist = -1;
+        for (size_t ci = 0; ci < state_.companions.size(); ++ci) {
+            if (fightAlreadyEnded) return;
+            if (!companionAlive(ci)) continue;
+            character::Character& companion = state_.companions[ci].character;
+            combat::GridPos& companionPos = companionPositions[ci];
+            int targetIndex = -1;
             for (size_t i = 0; i < instances.size(); ++i) {
-                if (instances[i].hp <= 0) continue;
-                int dist = combat::chebyshevDistance(companionPos, instancePositions[i]);
-                if (nearestDist < 0 || dist < nearestDist) {
-                    nearestDist = dist;
-                    nearest = instancePositions[i];
+                if (instances[i].hp > 0 && combat::isAdjacent(companionPos, instancePositions[i])) {
+                    targetIndex = static_cast<int>(i);
+                    break;
                 }
             }
-            if (nearestDist < 0) return; // nothing left alive to chase
-            // Same "block the destination's own cell too" trick monster
-            // pathing below already relies on -- `nearest` is itself one of
-            // the alive instances pushed into `blocked`, so stepToward
-            // naturally stops adjacent rather than walking onto it.
-            std::vector<combat::GridPos> blocked{playerPos};
-            for (size_t i = 0; i < instances.size(); ++i) {
-                if (instances[i].hp > 0) blocked.push_back(instancePositions[i]);
-            }
-            combat::GridPos next = combat::stepToward(companionPos, nearest, render::MapRenderer::kCombatGridWidth,
-                                                        render::MapRenderer::kCombatGridHeight, blocked);
-            if (next.x != companionPos.x || next.y != companionPos.y) companionPos = next;
-            return;
-        }
-        int attacks =
-            character::meleeAttacksThisRound(state_.companion.charClass, state_.companion.level, roundNumber);
-        for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
-            if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
-                int retarget = -1;
-                for (size_t j = 0; j < instances.size(); ++j) {
-                    if (instances[j].hp > 0 && combat::isAdjacent(companionPos, instancePositions[j])) {
-                        retarget = static_cast<int>(j);
-                        break;
+            if (targetIndex < 0) {
+                combat::GridPos nearest{};
+                int nearestDist = -1;
+                for (size_t i = 0; i < instances.size(); ++i) {
+                    if (instances[i].hp <= 0) continue;
+                    int dist = combat::chebyshevDistance(companionPos, instancePositions[i]);
+                    if (nearestDist < 0 || dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = instancePositions[i];
                     }
                 }
-                if (retarget < 0) break;
-                targetIndex = retarget;
-            }
-            std::string targetName = monsterLabel(targetIndex);
-            combat::AttackOutcome outcome = combat::resolvePlayerAttack(state_.companion, monster, 0, 0);
-            if (outcome.hit) {
-                instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                log.push_back(state_.companion.name + " hits the " + targetName + " for " +
-                               std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
-                               describeDamage(outcome));
-                if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
-                    if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
+                if (nearestDist < 0) continue; // nothing left alive to chase
+                // Same "block the destination's own cell too" trick monster
+                // pathing below already relies on -- `nearest` is itself one
+                // of the alive instances pushed into `blocked`, so
+                // stepToward naturally stops adjacent rather than walking
+                // onto it. Also blocks every other alive companion's cell,
+                // so companions never stack on top of one another.
+                std::vector<combat::GridPos> blocked{playerPos};
+                for (size_t i = 0; i < instances.size(); ++i) {
+                    if (instances[i].hp > 0) blocked.push_back(instancePositions[i]);
                 }
-            } else {
-                log.push_back(state_.companion.name + " misses the " + targetName + ". " + describeToHit(outcome));
+                for (size_t oi = 0; oi < state_.companions.size(); ++oi) {
+                    if (oi != ci && companionAlive(oi)) blocked.push_back(companionPositions[oi]);
+                }
+                combat::GridPos next = combat::stepToward(companionPos, nearest, render::MapRenderer::kCombatGridWidth,
+                                                            render::MapRenderer::kCombatGridHeight, blocked);
+                if (next.x != companionPos.x || next.y != companionPos.y) companionPos = next;
+                continue;
+            }
+            int attacks = character::meleeAttacksThisRound(companion.charClass, companion.level, roundNumber);
+            for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
+                if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                    int retarget = -1;
+                    for (size_t j = 0; j < instances.size(); ++j) {
+                        if (instances[j].hp > 0 && combat::isAdjacent(companionPos, instancePositions[j])) {
+                            retarget = static_cast<int>(j);
+                            break;
+                        }
+                    }
+                    if (retarget < 0) break;
+                    targetIndex = retarget;
+                }
+                std::string targetName = monsterLabel(targetIndex);
+                combat::AttackOutcome outcome = combat::resolvePlayerAttack(companion, monster, 0, 0);
+                if (outcome.hit) {
+                    instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
+                    log.push_back(companion.name + " hits the " + targetName + " for " +
+                                   std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
+                                   describeDamage(outcome));
+                    if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                        if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
+                    }
+                } else {
+                    log.push_back(companion.name + " misses the " + targetName + ". " + describeToHit(outcome));
+                }
             }
         }
     };
@@ -1902,6 +1930,15 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // immediately if the player is dropped to 0 HP partway through, so a
     // downed player never takes further "hits" from monsters still queued
     // that round.
+    // A single melee-target candidate for monster AI (Milestone 117/118) --
+    // either the player or one alive companion. `character` points into
+    // state_.character or state_.companions[i].character, so mutating
+    // currentHp through it mutates the real party member.
+    struct PartyTarget {
+        combat::GridPos pos;
+        character::Character* character;
+        bool isPlayer;
+    };
     auto monstersAct = [&]() {
         for (size_t i = 0; i < instances.size() && state_.character.currentHp > 0; ++i) {
             if (instances[i].hp <= 0) continue;
@@ -1966,28 +2003,40 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 continue;
             }
             // Melee-locked, same as the player (Milestone 114) -- no
-            // monster in this roster has a ranged attack. Milestone 117:
-            // now picks between the player and the companion (when alive)
-            // as its melee target -- attacks whichever it's adjacent to,
-            // coin-flips if adjacent to both, or closes on whichever is
-            // nearer (combat::chebyshevDistance) if adjacent to neither.
-            // combat::stepToward avoids every occupied cell (both possible
-            // targets plus every other still-alive instance).
-            bool adjacentToPlayer = combat::isAdjacent(instancePositions[i], playerPos);
-            bool adjacentToCompanion = companionAlive() && combat::isAdjacent(instancePositions[i], companionPos);
-            if (!adjacentToPlayer && !adjacentToCompanion) {
-                combat::GridPos pursue = playerPos;
-                if (companionAlive() &&
-                    combat::chebyshevDistance(instancePositions[i], companionPos) <
-                        combat::chebyshevDistance(instancePositions[i], playerPos)) {
-                    pursue = companionPos;
+            // monster in this roster has a ranged attack. Milestone 117/118:
+            // picks among the player and every alive companion as its melee
+            // target -- attacks whichever it's adjacent to (uniformly at
+            // random via character::roll when adjacent to more than one),
+            // or closes on whichever is nearest (combat::chebyshevDistance)
+            // if adjacent to none. combat::stepToward avoids every occupied
+            // cell (every possible target plus every other still-alive
+            // instance).
+            std::vector<PartyTarget> party{{playerPos, &state_.character, true}};
+            for (size_t pi = 0; pi < state_.companions.size(); ++pi) {
+                if (companionAlive(pi)) {
+                    party.push_back({companionPositions[pi], &state_.companions[pi].character, false});
                 }
-                std::vector<combat::GridPos> blocked{playerPos};
-                if (companionAlive()) blocked.push_back(companionPos);
+            }
+            std::vector<size_t> adjacentTargets;
+            for (size_t pi = 0; pi < party.size(); ++pi) {
+                if (combat::isAdjacent(instancePositions[i], party[pi].pos)) adjacentTargets.push_back(pi);
+            }
+            if (adjacentTargets.empty()) {
+                size_t nearest = 0;
+                int nearestDist = -1;
+                for (size_t pi = 0; pi < party.size(); ++pi) {
+                    int dist = combat::chebyshevDistance(instancePositions[i], party[pi].pos);
+                    if (nearestDist < 0 || dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = pi;
+                    }
+                }
+                std::vector<combat::GridPos> blocked;
+                for (const PartyTarget& target : party) blocked.push_back(target.pos);
                 for (size_t j = 0; j < instances.size(); ++j) {
                     if (j != i && instances[j].hp > 0) blocked.push_back(instancePositions[j]);
                 }
-                combat::GridPos next = combat::stepToward(instancePositions[i], pursue,
+                combat::GridPos next = combat::stepToward(instancePositions[i], party[nearest].pos,
                                                             render::MapRenderer::kCombatGridWidth,
                                                             render::MapRenderer::kCombatGridHeight, blocked);
                 if (next.x != instancePositions[i].x || next.y != instancePositions[i].y) {
@@ -1996,75 +2045,58 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 }
                 continue;
             }
-            // Adjacent to both -> coin-flip; adjacent to only one -> that one.
-            bool targetPlayer = adjacentToPlayer && (!adjacentToCompanion || character::roll(1, 2) == 1);
-            if (targetPlayer) {
-                // The Brooch's globe wards the player only (see
-                // docs/COMBAT_NOTES.md's "Extending this later") -- it does
-                // NOT protect the companion, so this check only applies
-                // once the resolved target is actually the player.
-                if (globeActive) {
-                    log.push_back("The globe of invulnerability absorbs the blow from the " + name + "!");
-                    continue;
-                }
-                combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character, playerAcBonus,
-                                                                               monsterThac0Penalty[i],
-                                                                               monsterDamagePenalty[i]);
-                if (outcome.hit) {
-                    state_.character.currentHp -= outcome.damage;
-                    log.push_back("The " + name + " hits you for " + std::to_string(outcome.damage) + ". " +
-                                   describeToHit(outcome) + " " + describeDamage(outcome));
-                    // Giant Spider's real Type F poison bite (Monstrous Manual
-                    // p.329): a failed save is "immediate death" in the book,
-                    // but this project never permadeaths the player (see
-                    // docs/COMBAT_NOTES.md) -- setting currentHp to 0 here lets
-                    // the existing knockout check after monstersAct returns
-                    // handle it exactly like any other lethal hit.
-                    if (monster.poisonOnHit) {
-                        if (combat::rollSavingThrow(state_.character, character::SaveCategory::ParalyzationPoisonDeath)) {
-                            log.push_back("You resist the poison.");
-                        } else {
-                            log.push_back("The poison overwhelms you!");
-                            state_.character.currentHp = 0;
-                        }
+            // Adjacent to exactly one -> that one; adjacent to more than one
+            // -> pick uniformly at random among them (was a plain coin-flip
+            // when the only two possible targets were the player and one
+            // companion; character::roll(1, N) generalizes that to any N).
+            size_t chosen = adjacentTargets.size() == 1
+                                 ? adjacentTargets.front()
+                                 : adjacentTargets[static_cast<size_t>(
+                                       character::roll(1, static_cast<int>(adjacentTargets.size())) - 1)];
+            const PartyTarget& target = party[chosen];
+            // The Brooch's globe wards the player only (see
+            // docs/COMBAT_NOTES.md's "Extending this later") -- it does NOT
+            // protect any companion, so this check only applies once the
+            // resolved target is actually the player.
+            if (target.isPlayer && globeActive) {
+                log.push_back("The globe of invulnerability absorbs the blow from the " + name + "!");
+                continue;
+            }
+            std::string targetName = target.isPlayer ? "you" : target.character->name;
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(
+                monster, *target.character, target.isPlayer ? playerAcBonus : 0, monsterThac0Penalty[i],
+                monsterDamagePenalty[i]);
+            if (outcome.hit) {
+                target.character->currentHp -= outcome.damage;
+                log.push_back("The " + name + " hits " + targetName + " for " + std::to_string(outcome.damage) +
+                               ". " + describeToHit(outcome) + " " + describeDamage(outcome));
+                // Giant Spider's real Type F poison bite (Monstrous Manual
+                // p.329): a failed save is "immediate death" in the book, but
+                // this project never permadeaths the player (see
+                // docs/COMBAT_NOTES.md) -- setting currentHp to 0 here lets
+                // the existing knockout check (player: after monstersAct
+                // returns; companion: right below) handle it exactly like
+                // any other lethal hit.
+                if (monster.poisonOnHit) {
+                    if (combat::rollSavingThrow(*target.character, character::SaveCategory::ParalyzationPoisonDeath)) {
+                        log.push_back(target.isPlayer ? "You resist the poison." : targetName + " resists the poison.");
+                    } else {
+                        log.push_back("The poison overwhelms " + targetName + "!");
+                        target.character->currentHp = 0;
                     }
-                } else {
-                    log.push_back("The " + name + " misses you. " + describeToHit(outcome));
+                }
+                // Knocked out, not killed -- removed from acting/being
+                // targeted for the rest of THIS fight (companionAlive()
+                // gates every AI decision above), but never ends the fight
+                // the way the player's own knockout does. See
+                // docs/COMBAT_NOTES.md. Player knockout is handled outside
+                // monstersAct instead (see its own call sites below).
+                if (!target.isPlayer && target.character->currentHp <= 0) {
+                    target.character->currentHp = 0;
+                    log.push_back(targetName + " is knocked out!");
                 }
             } else {
-                // Same attack/poison math against the companion instead --
-                // both combat::resolveMonsterAttack and rollSavingThrow
-                // already take a generic const character::Character&, so no
-                // signature changes were needed to reuse them here. No
-                // globe check: it's the player's own item.
-                combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.companion, 0,
-                                                                               monsterThac0Penalty[i],
-                                                                               monsterDamagePenalty[i]);
-                if (outcome.hit) {
-                    state_.companion.currentHp -= outcome.damage;
-                    log.push_back("The " + name + " hits " + state_.companion.name + " for " +
-                                   std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
-                                   describeDamage(outcome));
-                    if (monster.poisonOnHit) {
-                        if (combat::rollSavingThrow(state_.companion, character::SaveCategory::ParalyzationPoisonDeath)) {
-                            log.push_back(state_.companion.name + " resists the poison.");
-                        } else {
-                            log.push_back("The poison overwhelms " + state_.companion.name + "!");
-                            state_.companion.currentHp = 0;
-                        }
-                    }
-                    // Knocked out, not killed -- removed from acting/being
-                    // targeted for the rest of THIS fight (companionAlive()
-                    // gates every AI decision above), but never ends the
-                    // fight the way the player's own knockout does. See
-                    // docs/COMBAT_NOTES.md.
-                    if (state_.companion.currentHp <= 0) {
-                        state_.companion.currentHp = 0;
-                        log.push_back(state_.companion.name + " is knocked out!");
-                    }
-                } else {
-                    log.push_back("The " + name + " misses " + state_.companion.name + ". " + describeToHit(outcome));
-                }
+                log.push_back("The " + name + " misses " + targetName + ". " + describeToHit(outcome));
             }
         }
     };
@@ -2203,14 +2235,14 @@ void GameLoop::runCombat(const combat::Monster& monster) {
 
     for (;;) {
         render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
-                                              playerPos, {}, companionViewPtr());
+                                              playerPos, {}, companionViews());
         render::Key key = render::Console::readKey();
 
         if (key == render::Key::Flee) {
             log.push_back("You break off and retreat.");
             log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
-                                                  playerPos, {}, companionViewPtr());
+                                                  playerPos, {}, companionViews());
             render::Console::readKey();
             pushLog(useLetters ? ("You fled from the " + pluralMonsterName(monster.name) + ".")
                                 : ("You fled from the " + monster.name + "."));
@@ -2247,9 +2279,13 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     break;
                 }
             }
-            // Milestone 117: the companion's own cell is occupied too.
-            if (!occupied && companionAlive() && companionPos.x == destination.x && companionPos.y == destination.y) {
-                occupied = true;
+            // Milestone 117/118: every alive companion's own cell is
+            // occupied too.
+            for (size_t ci = 0; ci < state_.companions.size() && !occupied; ++ci) {
+                if (companionAlive(ci) && companionPositions[ci].x == destination.x &&
+                    companionPositions[ci].y == destination.y) {
+                    occupied = true;
+                }
             }
             if (occupied) {
                 log.push_back("Something's in the way.");
@@ -2302,7 +2338,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     prompt.footer = "up/down=select   Enter=cast   q=cancel";
                     render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log,
                                                           state_.hoursElapsed / 24, hereTerrain, playerPos, prompt,
-                                                          companionViewPtr());
+                                                          companionViews());
                     render::Key pickKey = render::Console::readKey();
                     if (pickKey == render::Key::North) {
                         selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
@@ -2351,7 +2387,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     prompt.footer = "up/down=select   Enter=use   q=cancel";
                     render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log,
                                                           state_.hoursElapsed / 24, hereTerrain, playerPos, prompt,
-                                                          companionViewPtr());
+                                                          companionViews());
                     render::Key pickKey = render::Console::readKey();
                     if (pickKey == render::Key::North) {
                         selected = (selected - 1 + static_cast<int>(itemLabels.size())) %
@@ -2423,7 +2459,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                                       : ("You defeated the " + monster.name + "."));
             log.push_back("Press any key to continue.");
             render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
-                                                  playerPos, {}, companionViewPtr());
+                                                  playerPos, {}, companionViews());
             render::Console::readKey();
             pushLog(useLetters ? ("You defeated the " + pluralMonsterName(monster.name) + ".")
                                 : ("You defeated the " + monster.name + "."));

@@ -34,6 +34,18 @@ enum class QuestStatus {
     ReadyToTurnIn = 2,
 };
 
+// One recruited party companion. `id` is one of character::
+// isKnownCompanionId's known ids ("bren_alder", "dessa_corrin") -- the
+// thing game::SaveGame writes to disk and game::GameLoop::talkTo compares
+// against to decide whether a given RECRUIT candidate is already in the
+// party. `character` is a full character::Character built by character::
+// buildCompanionById(id); only its currentHp ever diverges from what that
+// call would produce fresh, since buildCompanionById is otherwise pure.
+struct RecruitedCompanion {
+    std::string id;
+    character::Character character;
+};
+
 // Where to resume when leaving a zone that was entered via a PORTAL from
 // another zone (e.g. stepping out of the Inn of the Last Home's interior
 // back into Solace's town square), rather than from the overworld.
@@ -97,18 +109,15 @@ struct GameState {
     std::vector<ZoneReturnPoint> zoneStack; // parent zone(s) to pop back to on
                                              // exit -- see ZoneReturnPoint above
 
-    // Milestone 116 Phase 1's one recruitable party companion -- `companion`
-    // is meaningless while `hasCompanion` is false, same "flag + payload"
-    // convention Character::knightOrder's KnightOrder::None already uses.
-    // Exactly one slot for now, not a roster (see docs/COMBAT_NOTES.md's
-    // "Extending this later" -- a real multi-companion party is a much
-    // bigger, deliberately deferred change). Never combat-affecting yet:
-    // game::GameLoop::runCombat doesn't read this at all this phase.
-    // character::buildCompanion() is pure/deterministic, so game::SaveGame
-    // only persists the bool, not companion's own fields -- see
+    // The party's recruited companions -- Milestone 116 Phase 1 shipped
+    // exactly one slot; Milestone 118 ("A real multi-companion roster")
+    // turned it into a real roster. Empty means no companion recruited yet.
+    // Recruited via a zone's RECRUIT line (game::GameLoop::talkTo); combat
+    // (game::GameLoop::runCombat) mutates each entry's character.currentHp
+    // directly, exactly like the player's own. game::SaveGame persists
+    // each entry's id + currentHp only, not every field -- see
     // docs/GOTCHAS.md.
-    bool hasCompanion = false;
-    character::Character companion;
+    std::vector<RecruitedCompanion> companions;
 };
 
 } // namespace game
