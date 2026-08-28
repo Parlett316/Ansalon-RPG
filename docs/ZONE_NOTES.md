@@ -142,6 +142,17 @@ GRANTS_ITEM <char> <item-id>            optional, marks a POI as granting
                                         DELIVER object" below); same "must
                                         already have a POI **and** a TALK
                                         line" rule as BOAT
+RECRUIT <char>                          optional, marks a POI as offering to
+                                        recruit Milestone 116 Phase 1's one
+                                        party companion the first time it's
+                                        talked to (see "Recruiting a
+                                        companion" below); same "must
+                                        already have a POI **and** a TALK
+                                        line" rule as BOAT. Unlike BOAT/
+                                        QUEST, carries no id payload --
+                                        there's exactly one companion this
+                                        phase, so nothing here needs
+                                        cross-file validation.
 BED <char>                              optional, marks a POI as a bed --
                                         pressing 'z' on that tile fully
                                         heals and advances 8 hours (see
@@ -525,6 +536,26 @@ Entrance), and `data/zones/haven.txt`'s `F "A Farmer's Cart"` (added by
 the equipment-expansion milestone), granting `hardy_seed_grain` for
 `seed_for_thorbardin` -- see this file's own Haven section below and
 `docs/QUEST_NOTES.md`'s "A second DELIVER quest".
+
+## Recruiting a companion (Milestone 116 Phase 1)
+
+`RECRUIT <char>` marks a POI whose `TALK` interaction offers to recruit the
+one companion this phase supports -- the same "layers an ability on top of
+an existing POI, tied to talking" pattern `BOAT`/`GRANTS_ITEM` established
+(same "must already have a TALK line" rule). Unlike those two, it carries no
+id payload at all: there's exactly one companion this phase (`character::
+buildCompanion()`, see `docs/ARCHITECTURE.md`'s "Party companions" section
+and `docs/COMBAT_NOTES.md`'s "Extending this later"), so there's nothing
+here needing cross-file validation.
+
+After the POI's `TALK`/`TALK_AGAIN` dialogue is shown, `GameLoop::talkTo`
+offers an Accept/Decline picker ("Join me" / "Not yet"), same shape as
+`BOAT`'s "Board" / "Not yet" -- gated on `GameState::hasCompanion` rather
+than a per-candidate "already offered" set, so a decline stays re-offerable
+on a later visit and an already-recruited companion never re-offers.
+
+One POI carries `RECRUIT` so far: `data/zones/solace.txt`'s `K "Bren
+Alder"`, a Solace local looking for a reason to leave home.
 
 ## Beds: POIs for complete bed-rest (Milestone 41)
 

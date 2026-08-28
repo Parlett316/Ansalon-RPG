@@ -39,6 +39,7 @@ add_executable(ansalon_rpg
     src/character/Leveling.cpp
     src/character/Spellcasting.cpp
     src/character/Equipment.cpp
+    src/character/Companion.cpp
     src/character/CharacterCreator.cpp
     src/render/Console.cpp
     src/render/MapRenderer.cpp

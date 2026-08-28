@@ -1486,6 +1486,42 @@ there is deliberately no "drop" action. `SaveGame.cpp` touches: a new
 `QUESTITEM <item-id> <display-name...>` inventory-entry keyword,
 alongside `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON`/`WEBNET`/`BROOCH`.
 
+## Party companion (Milestone 116 Phase 1)
+
+The first step toward a real party (see `docs/COMBAT_NOTES.md`'s "Extending
+this later" and `docs/ARCHITECTURE.md`'s "Party companions" section for the
+full design reasoning): exactly one hand-authored, recruitable companion,
+`character::buildCompanion()` (`character/Companion.h`/`.cpp`) — Bren Alder,
+a Human Fighter, Neutral Good, level 1, fixed (not rolled) ability scores
+STR 15 / DEX 13 / CON 14 / INT 10 / WIS 10 / CHA 12, and fixed starting
+steel, so the function is pure and deterministic (calling it twice always
+produces identical stats — see `docs/GOTCHAS.md` on why that matters for
+save/load). Fighter was chosen specifically to avoid entangling this phase
+with spellcasting (a caster companion raises "can they memorize/cast"
+questions that belong in a later phase). Freshly invented (name, backstory,
+dialogue) rather than drawn from the novels — canon Heroes of the Lance are
+never recruitable, same restriction `docs/QUEST_NOTES.md` already documents
+for quest givers.
+
+Recruited via a new `RECRUIT <char>` zone-grammar line at `data/zones/
+solace.txt`'s `K "Bren Alder"` — see `docs/ZONE_NOTES.md`'s "Recruiting a
+companion". Once joined, shown on the character sheet (`MapRenderer::
+drawCharacterSheet`'s new terse "Companion:" block — identity and HP/AC/
+THAC0 only, since nothing else about them can change yet) and the
+overworld/zone HUD (a "Companion: name HP x/y" status-panel line). Persists
+across save/load via a single `GameState::hasCompanion` bool (`SaveGame`'s
+`COMPANION 1` line) — the companion's own fields are never serialized, since
+`buildCompanion()` reconstructs them identically every time.
+
+**Deliberately not attempted this phase**: the companion cannot fight
+(`GameLoop::runCombat` doesn't read `GameState::hasCompanion`/`companion` at
+all), cannot shop, cannot gain levels or spend steel, cannot be dismissed
+once recruited, and has no independent position/glyph on the overworld or
+zone grid. All of these are real, sourced gaps this project's own
+`References/DQoK.pdf` describes for a full party — recorded honestly as
+future phases, not oversights. See `docs/COMBAT_NOTES.md`'s "Extending this
+later".
+
 ## Where a character lives
 
 `CharacterCreator::run()` executes once, in `main.cpp`, before `GameState`

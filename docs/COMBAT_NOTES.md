@@ -1129,6 +1129,18 @@ playthrough.
   Recorded here honestly as a real candidate, not proposed lightly --
   this would touch the save format, character creation, and every combat
   (and probably several non-combat) screen.
+  - **Phase 1 (Milestone 116) shipped the smallest real slice**: one
+    recruitable companion (`character::buildCompanion()`, a fixed Human
+    Fighter), joined via a new `RECRUIT` zone-grammar line, shown on the
+    character sheet and HUD, and persisted via a single save-format bool
+    -- see `docs/ARCHITECTURE.md`'s "Party companions" and
+    `docs/CHARACTER_NOTES.md`'s "Party companion" section. Combat is
+    completely untouched: `runCombat` doesn't read the companion at all.
+  - **Still open**: Phase 2 (the companion actually fights alongside the
+    player, AI-controlled -- the first real touch to `runCombat`'s
+    single-`Character` assumption) and Phase 3 (a real multi-companion
+    roster, player-directed control in combat, deployment order,
+    backstab, sweep, `UIC`).
 - **The rest of the roster's real group sizes**: Milestone 113 (see
   "Monster encounter groups" above) only applied sourced `GROUP` data to
   14 of the 26 monsters -- the dozen left solo despite real No. Appearing

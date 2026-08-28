@@ -3713,6 +3713,58 @@ section).
      full design writeup and `docs/CURRENT_WORK.md` for the specific
      scenarios still needing a real playthrough.
 
+116. A recruitable party companion, Phase 1 of a party system -- `NEXT UP`
+     item 6 (recorded at Milestone 115), picked at the user's request to
+     start work toward a real party. Offered a choice via `AskUserQuestion`
+     between a full one-pass build and an incremental first slice, the
+     user chose the smaller slice: **recruitment only, no combat yet** --
+     the same "ship the smaller half first" precedent Milestone 113
+     (monster groups) set before Milestone 114 (the grid). Research
+     confirmed why the full version wasn't attempted in one pass:
+     `GameLoop::runCombat` is already one large function built entirely
+     around a single `character::Character`, and `combat::
+     resolvePlayerAttack`/`render::MapRenderer::drawCombatFrame`/the HUD/
+     `CharacterCreator` all assume exactly one PC exists. New sibling
+     module `character::buildCompanion()` (`Companion.h`/`.cpp`) builds a
+     fixed, deterministic level-1 Human Fighter (Bren Alder, Neutral Good)
+     -- fixed ability scores and starting steel, never `character::roll`,
+     reusing the same non-interactive rules functions `CharacterCreator::
+     run()` calls -- so `game::SaveGame` only needs to persist a single
+     `COMPANION 1` bool (`GameState::hasCompanion`) rather than serializing
+     the companion's own fields; reloading just calls `buildCompanion()`
+     again. Recruited via a new `RECRUIT <char>` zone-grammar line (`world::
+     PointOfInterest::recruitsCompanion`, same "must already have a POI and
+     a TALK line" validation as `BOAT`/`GRANTS_ITEM`/`QUEST`, but no id
+     payload -- there's exactly one companion this phase) at `data/zones/
+     solace.txt`'s new `K "Bren Alder"` POI; `GameLoop::talkTo` gained an
+     Accept/Decline picker ("Join me" / "Not yet") in the same slot/shape as
+     the existing `BOAT` block. Once joined, shown on the character sheet
+     (a new terse "Companion:" block) and the overworld/zone HUD status
+     panel (a "Companion: name HP x/y" line). Deliberately not attempted
+     this phase, honestly flagged: the companion cannot fight (`runCombat`
+     doesn't read `hasCompanion`/`companion` at all -- a fight plays out
+     exactly as before, companion or not), cannot shop, level, or spend
+     steel, cannot be dismissed once recruited, and has no independent
+     position/glyph on the map -- all real, sourced gaps reserved for later
+     phases (Phase 2: the companion fights, AI-controlled; Phase 3: a real
+     multi-companion roster, player-directed control, deployment order,
+     backstab, sweep, `UIC`), not oversights. Full design writeup:
+     `docs/ARCHITECTURE.md`'s "Party companions" section,
+     `docs/CHARACTER_NOTES.md`'s "Party companion" section, and
+     `docs/COMBAT_NOTES.md`'s "Extending this later". Verified via a
+     throwaway self-test (`character::buildCompanion()` called twice,
+     asserting determinism across every field, plus sanity checks against
+     `classInfo(Fighter)`), a clean `/W4` rebuild, and the piped smoke test
+     (confirmed the new `RECRUIT` zone-grammar line and edited
+     `solace.txt` load cleanly, and that all three of the user's real
+     saves -- written before `COMPANION` existed -- still load correctly
+     with no companion). **Interactive verification needed**, same
+     `_getch()` limitation as every other `GameLoop`-facing milestone --
+     talking to Bren Alder in Solace, declining then confirming the offer
+     re-appears on a later visit, accepting and confirming the character
+     sheet/HUD both show the companion, and saving/reloading to confirm the
+     companion persists with identical stats. See `docs/CURRENT_WORK.md`.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -3789,5 +3841,10 @@ session's work.
    the multi-target EXIT/QUIC commands -- all real, sourced mechanics that
    structurally can't exist with a solo PC. Not proposed lightly: this
    would touch the save format, character creation, and every combat (and
-   probably several non-combat) screen. See `docs/COMBAT_NOTES.md`'s
-   "Extending this later" section.
+   probably several non-combat) screen. **Phase 1 (one recruitable
+   companion, no combat) shipped at Milestone 116.** Still open: Phase 2
+   (the companion actually fights, AI-controlled -- the first real change
+   to `GameLoop::runCombat`'s single-`Character` assumption) and Phase 3
+   (a real multi-companion roster, player-directed control, deployment
+   order, backstab, sweep, `UIC`). See `docs/COMBAT_NOTES.md`'s "Extending
+   this later" section.

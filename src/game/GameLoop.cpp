@@ -1,5 +1,6 @@
 #include "game/GameLoop.h"
 #include "game/SaveGame.h"
+#include "character/Companion.h"
 #include "character/Dice.h"
 #include "character/Equipment.h"
 #include "character/Leveling.h"
@@ -541,7 +542,8 @@ void GameLoop::chooseSpellLoadout() {
 
 void GameLoop::showCharacterSheet() {
     for (;;) {
-        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24);
+        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24,
+                                                 state_.hasCompanion ? &state_.companion : nullptr);
         render::Key key = render::Console::readKey();
         // 's' (South, off the sheet's own dismiss-with-any-key convention)
         // drills into the full spell roster, then loops back to the sheet
@@ -761,6 +763,7 @@ void GameLoop::handleTalk() {
                                      boat != nullptr ? boat->hours : 0,
                                      questId != nullptr ? *questId : std::string(),
                                      poi->grantsItemId, poi->grantsItemName};
+            candidate.recruitsCompanion = poi->recruitsCompanion;
             if (!poi->dialogueAfter.empty()) {
                 int latestDayEnd = timeline_.latestDayEnd(effectiveId);
                 if (latestDayEnd >= 0 && dayNow > latestDayEnd) {
@@ -963,6 +966,38 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
         // "Not yet"/q -- ends up here, falling through to the ordinary
         // topics/SUBJECT picker below, same as any other POI's declined
         // offer (see offerOrTurnInQuest).
+    }
+    // Milestone 116 Phase 1's one recruitable companion -- same Accept/
+    // Decline picker shape as the BOAT block above, gated on state_.
+    // hasCompanion (not a per-candidate "already offered" set, since there's
+    // exactly one companion slot this phase) so a declined offer stays
+    // re-offerable on a later visit, and an accepted one never re-offers.
+    // See character::buildCompanion() and docs/COMBAT_NOTES.md's "Extending
+    // this later".
+    if (candidate.recruitsCompanion && !state_.hasCompanion) {
+        std::vector<std::string> labels = {"Join me", "Not yet"};
+        int selected = 0;
+        bool join = false;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame("Ask " + name + " to join your journey?", labels, selected,
+                                                  "up/down=select   Enter=choose   q=cancel");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North || key == render::Key::South) {
+                selected = selected == 0 ? 1 : 0;
+            } else if (key == render::Key::Enter) {
+                join = (selected == 0);
+                break;
+            } else if (key == render::Key::Quit) {
+                break;
+            }
+        }
+        if (join) {
+            state_.hasCompanion = true;
+            state_.companion = character::buildCompanion();
+            pushLog(name + " joins your party.");
+        }
+        // "Not yet"/q -- falls through to the ordinary topics/SUBJECT picker
+        // below, same as BOAT's decline path above.
     }
 
     bool canAskAnything = !speech.subjects.empty();

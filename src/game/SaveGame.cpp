@@ -1,5 +1,6 @@
 #include "game/SaveGame.h"
 #include "character/CharClass.h"
+#include "character/Companion.h"
 #include "character/Equipment.h"
 #include "character/Knighthood.h"
 #include "character/Race.h"
@@ -185,6 +186,17 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     }
     for (const auto& [id, count] : state.monsterKills) {
         file << "KILL " << id << " " << count << "\n";
+    }
+    // Milestone 116 Phase 1's one recruitable companion -- only the fact of
+    // recruitment is saved, not any of the companion's own fields, since
+    // character::buildCompanion() is pure/deterministic and reconstructs an
+    // identical Character on load. Omitted entirely (rather than writing
+    // "COMPANION 0") when !hasCompanion, same "absence means false"
+    // convention as MET/VOYAGED above -- a pre-Milestone-116 save has no
+    // COMPANION line and loads with hasCompanion staying false. Must stay
+    // here, before ZONE/ZONESTACK, same reasoning as QUEST/KILL above.
+    if (state.hasCompanion) {
+        file << "COMPANION 1\n";
     }
     if (state.mode == Mode::Zone) {
         file << "ZONE " << state.currentZoneId << "\n";
@@ -521,6 +533,19 @@ GameState SaveGame::load(const std::string& path) {
                 fail(path, lineNumber, "malformed KILL (expected: KILL <monster-id> <count>)");
             }
             state.monsterKills[id] = count;
+        } else if (keyword == "COMPANION") {
+            // Optional, same backward-compat reasoning as QUEST/KILL above --
+            // a pre-Milestone-116 save simply has no COMPANION line, and
+            // hasCompanion staying false is the correct value for it. The
+            // companion's own fields are never read back: character::
+            // buildCompanion() is pure/deterministic, so reconstructing it
+            // here always matches what was saved. See docs/GOTCHAS.md.
+            int value = -1;
+            if (!(iss >> value) || value != 1) {
+                fail(path, lineNumber, "malformed COMPANION (expected: COMPANION 1)");
+            }
+            state.hasCompanion = true;
+            state.companion = character::buildCompanion();
         } else if (keyword == "ZONE") {
             state.currentZoneId = rest;
             haveZoneLine = true;

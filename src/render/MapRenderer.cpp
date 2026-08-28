@@ -158,8 +158,13 @@ std::string writeHeaderLine(const character::Character& c, const game::GameState
 // then the scrolling "> "-prefixed log tail (buildLogPanel) filling
 // whatever rows remain. Every returned line is already exactly `width`
 // visible columns, safe to merge with a map row with no further padding.
+// `companion` (Milestone 116 Phase 1) is non-null only when
+// game::GameState::hasCompanion is set -- adds one extra "Companion:" line
+// to the header when present; the header grows/shrinks around it via
+// headerRows below, same as every other conditional-less line here.
 std::vector<std::string> buildStatusPanel(const char* modeLabel, const std::string& standingOnName, int posX,
                                            int posY, const character::Character& c,
+                                           const character::Character* companion,
                                            const std::vector<std::string>& log, int width, int height) {
     std::vector<std::string> lines;
     lines.push_back(colorLine(std::string("MODE: ") + modeLabel, "\x1b[96m", width));
@@ -177,6 +182,12 @@ std::vector<std::string> buildStatusPanel(const char* modeLabel, const std::stri
     std::ostringstream stats2;
     stats2 << "Steel: " << c.steelPieces << " stl";
     lines.push_back(padPlain(stats2.str(), width));
+    if (companion != nullptr) {
+        std::ostringstream companionLine;
+        companionLine << "Companion: " << companion->name << "  HP " << companion->currentHp << "/"
+                       << companion->maxHp;
+        lines.push_back(padPlain(companionLine.str(), width));
+    }
     lines.push_back(padPlain("", width));
     lines.push_back(padPlain("ACTION LOG:", width));
     lines.push_back(padPlain("", width));
@@ -368,7 +379,8 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
     std::string standingOn =
         here != nullptr ? here->name : std::string(world::terrainFor(grid.terrainCodeAt(state.x, state.y)).name);
     std::vector<std::string> statusPanel =
-        buildStatusPanel("EXPLORING", standingOn, state.x, state.y, state.character, log, kLogPanelWidth, kViewportHeight);
+        buildStatusPanel("EXPLORING", standingOn, state.x, state.y, state.character,
+                          state.hasCompanion ? &state.companion : nullptr, log, kLogPanelWidth, kViewportHeight);
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H"; // clear + cursor home (see Console::clearScreen -- same VT100 sequence)
@@ -423,7 +435,9 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
     const int kContentWidth = kViewportWidth + kLogPanelGap + kLogPanelWidth;
 
     std::vector<std::string> statusPanel = buildStatusPanel("INDOORS", zone.name(), state.zoneX, state.zoneY,
-                                                              state.character, log, kLogPanelWidth, kViewportHeight);
+                                                              state.character,
+                                                              state.hasCompanion ? &state.companion : nullptr, log,
+                                                              kLogPanelWidth, kViewportHeight);
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
@@ -469,7 +483,8 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
     std::cout << out.str();
 }
 
-void MapRenderer::drawCharacterSheet(const character::Character& c, long long currentDay) {
+void MapRenderer::drawCharacterSheet(const character::Character& c, long long currentDay,
+                                      const character::Character* companion) {
     const auto& race = character::raceInfo(c.race);
     const auto& cls = character::classInfo(c.charClass);
     const character::SubraceInfo* sub = character::subraceInfo(c.subrace);
@@ -584,6 +599,26 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
             }
             lines.push_back({spellLine.str(), nullptr});
         }
+    }
+
+    // Milestone 116 Phase 1's one recruitable companion -- non-null only
+    // when game::GameState::hasCompanion is set. Deliberately terse (no
+    // saves/weapon/steel breakdown): the companion doesn't fight, shop, or
+    // level yet, so nothing beyond identity/HP/AC/THAC0 can change or
+    // matters yet -- see docs/COMBAT_NOTES.md's "Extending this later".
+    if (companion != nullptr) {
+        lines.push_back({"", nullptr});
+        lines.push_back({"Companion:", kSectionLabelColor});
+        const auto& compRace = character::raceInfo(companion->race);
+        const character::SubraceInfo* compSub = character::subraceInfo(companion->subrace);
+        std::ostringstream compLine1;
+        compLine1 << "  " << companion->name << ", " << (compSub != nullptr ? compSub->name : compRace.name) << " "
+                   << character::classInfo(companion->charClass).name << ", level " << companion->level;
+        lines.push_back({compLine1.str(), nullptr});
+        std::ostringstream compLine2;
+        compLine2 << "  HP " << companion->currentHp << "/" << companion->maxHp << "   AC "
+                   << companion->armorClass << "   THAC0 " << companion->thac0;
+        lines.push_back({compLine2.str(), nullptr});
     }
 
     lines.push_back({"", nullptr});

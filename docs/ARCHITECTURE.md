@@ -1273,6 +1273,71 @@ between colored and plain lines. Deleted after use, along with the
 temporary CMake target, per CLAUDE.md. Real in-terminal rendering still
 needs the user's own eyes, same limitation as every prior color milestone.
 
+## Party companions: a small first step (Milestone 116 Phase 1)
+
+`docs/COMBAT_NOTES.md`'s "Extending this later" section had long flagged "a
+party of up to six characters" as the single biggest remaining gap between
+this project and a real Gold Box game, but also warned it wasn't proposed
+lightly — `game::GameLoop::runCombat` is one large function already built
+entirely around a single `character::Character`, and `combat::
+resolvePlayerAttack`, `render::MapRenderer::drawCombatFrame`, the HUD, and
+`CharacterCreator` all assume exactly one PC exists. Rather than attempt the
+whole thing (deployment order, front/back lines, `UIC` NPC control, thief
+backstab, fighter "sweep") in one pass, this milestone deliberately shipped
+the smallest real slice first: **one recruitable companion, with no combat
+integration at all** — the same "ship the smaller half first" precedent
+Milestone 113 (monster *groups*) set before Milestone 114 (the *grid*).
+
+**The companion is a real `character::Character`, not a parallel struct.**
+This is what lets a later combat-integration phase reuse `combat::
+resolvePlayerAttack`/`render::MapRenderer::drawCombatFrame` unchanged, since
+both already operate on `const character::Character&`.
+
+**Deterministic, not randomly rolled.** New sibling module `character/
+Companion.h`/`.cpp` (depends only on `character/`, same independence as
+`Leveling`/`Spellcasting`/`Equipment`/`WizardOrder`) exposes `character::
+buildCompanion()`, which builds a fixed, hand-authored level-1 Fighter using
+fixed ability scores and starting steel (deliberately never `character::
+roll`), reusing the same non-interactive rules functions `CharacterCreator::
+run()` already calls (`classInfo`, `hpAdjustmentForConstitution`,
+`recomputeArmorClass`, `applyRacialSavingThrowBonus`). Calling it twice
+always produces identical stats. This is *why* `game::SaveGame` only needs
+to persist a single `bool` (`GameState::hasCompanion`) rather than
+serializing the companion's own fields at all — reloading just calls
+`buildCompanion()` again. Full serialization only becomes necessary once a
+later phase lets combat actually change the companion's HP — see
+`docs/GOTCHAS.md`.
+
+**Exactly one companion slot** (`GameState::hasCompanion` + `GameState::
+companion`, not a `vector`) — matches this phase's scope precisely; a real
+multi-companion roster is a known, called-out future refactor, not
+attempted here. **No dismiss mechanic** (once recruited, they stay) and
+**no map glyph/independent position** (the companion is narratively "with
+you" — character sheet and HUD only, never a second tile on the overworld/
+zone grid) are both deliberate omissions, not oversights.
+
+**Recruiting reuses the existing "TALK layers an ability onto a POI"
+pattern.** A new `RECRUIT <char>` zone-grammar line (`world::
+PointOfInterest::recruitsCompanion`, same "must already have a TALK line"
+validation `BOAT`/`GRANTS_ITEM`/`QUEST` already enforce — see
+`docs/ZONE_NOTES.md`) marks a POI as offering to recruit. `GameLoop::talkTo`
+gained a new block, in the same slot and shape as the existing `BOAT`
+accept/decline picker ("Board" / "Not yet"), offering "Join me" / "Not yet"
+whenever `TalkCandidate::recruitsCompanion` is set and `state_.hasCompanion`
+is still false; declining falls straight through to the ordinary topics
+picker and stays re-offerable on a later visit, exactly like a declined
+boat voyage. No cross-file id validation is needed the way `BOAT`/`QUEST`
+need one (a destination `world::Location` id, a `quest::Quest` id) — there's
+exactly one companion this phase, so `RECRUIT` carries no payload at all.
+
+**Combat is completely untouched.** `runCombat` never reads `GameState::
+hasCompanion`/`companion` — a fight plays out exactly as it always has,
+whether or not a companion has been recruited. Closing that gap (the
+companion actually fighting, then eventually a real multi-companion roster
+with player-directed control, deployment order, and `UIC`) is explicitly
+reserved for later phases — see `docs/COMBAT_NOTES.md`'s "Extending this
+later".
+
 ## Extension points for later milestones
 
 These are the seams intentionally left in the code so later systems can

@@ -114,6 +114,14 @@ struct PointOfInterest {
     // docs/QUEST_NOTES.md's "DELIVER").
     std::string grantsItemId;
     std::string grantsItemName;
+    // True if talking to this POI offers to recruit Milestone 116 Phase 1's
+    // one companion (accept/decline, same "Board"/"Not yet" picker shape as
+    // BOAT) -- set via a RECRUIT line, which must reference an
+    // already-declared POI that also has a TALK line (see docs/ZONE_NOTES.md).
+    // No id payload: there's exactly one companion this phase, so unlike
+    // BOAT/QUEST there's nothing here needing cross-file validation -- see
+    // docs/COMBAT_NOTES.md's "Extending this later".
+    bool recruitsCompanion = false;
 };
 
 // A loaded walkable interior (e.g. Solace's town square), hand-authored in

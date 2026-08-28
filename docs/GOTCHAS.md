@@ -343,6 +343,20 @@ you hit something surprising — that's the whole point of it existing.
   ones) the moment the stack is non-empty. Any future new save keyword
   needs the same check: does it land before
   `ZONESTACK`, or does it break the count?
+- **`COMPANION` (Milestone 116 Phase 1) persists a bool, not a character.**
+  Unlike every other per-character field, `GameState::companion`'s own stats
+  are never written to the save file -- `character::buildCompanion()` is
+  pure/deterministic (fixed ability scores/steel, never `character::roll`),
+  so `SaveGame::load` just calls it again to reconstruct an identical
+  companion whenever `COMPANION 1` is present. Optional, same "absence means
+  false" convention as `MET`/`VOYAGED`/`QUEST`/`KILL` -- a pre-Milestone-116
+  save has no `COMPANION` line and `hasCompanion` correctly stays false. If
+  a later phase ever lets combat change the companion's HP (or otherwise
+  makes them mutable), this deterministic-reconstruction shortcut stops
+  being valid and `COMPANION` will need to grow into real serialized fields,
+  same evolution `RACE`/`CLASS`/`ALIGNMENT` already went through. Must stay
+  before `ZONESTACK`, same ordering rule as every other optional keyword
+  above.
 - **A quest's `TALK <met-id>` objective isn't validated against real
   character/NPC ids at load time.** `quest::QuestLoader` can't see
   `data/timeline.txt` or `data/zones/*.txt` (same one-way dependency

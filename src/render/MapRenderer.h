@@ -122,7 +122,12 @@ public:
     // (hoursElapsed/24) is only used to display whether today's spells
     // have been memorized yet (character::Character::spellsCastDay) and,
     // if so, how many slots remain -- see character::memorizeSpells.
-    static void drawCharacterSheet(const character::Character& character, long long currentDay);
+    // `companion` (Milestone 116 Phase 1) is non-null only when
+    // game::GameState::hasCompanion is set -- appends a short, terse
+    // "Companion:" block (identity + HP/AC/THAC0 only, nothing that can
+    // change yet -- see docs/COMBAT_NOTES.md's "Extending this later").
+    static void drawCharacterSheet(const character::Character& character, long long currentDay,
+                                    const character::Character* companion = nullptr);
 
     // Renders the full spell roster for the character's class
     // (character::spellListFor), grouped by level up to

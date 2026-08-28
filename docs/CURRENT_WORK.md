@@ -1,9 +1,51 @@
 # Current work
 
-Nothing in flight -- Milestone 115 is implemented, self-tested, and
+Nothing in flight -- Milestone 116 Phase 1 is implemented, self-tested, and
 rebuilt clean, but carries the same interactive-verification flag every
-combat-facing milestone has, since none of the actual play loop can be
+`GameLoop`-facing milestone has, since none of the actual play loop can be
 driven headlessly.
+
+Milestone 116 (2026-08-28) shipped Phase 1 of a party system: one
+recruitable companion, no combat integration. Picked at the user's request
+to start work toward `docs/MILESTONES.md`'s `NEXT UP` item 6 ("a party of
+up to six characters"); offered a choice via `AskUserQuestion` between a
+full one-pass build and a smaller first slice, the user picked the smaller
+slice -- the same "ship the smaller half first" precedent Milestone 113
+(monster groups) set before Milestone 114 (the grid). Research confirmed
+why: `GameLoop::runCombat` is already one large function built entirely
+around a single `character::Character`, and `combat::resolvePlayerAttack`/
+`render::MapRenderer::drawCombatFrame`/the HUD/`CharacterCreator` all assume
+exactly one PC exists -- teaching all of that about a second combatant in
+the same pass as the save format and character creation was judged too much
+for one sitting. New `character::buildCompanion()` (`Companion.h`/`.cpp`)
+builds a fixed, deterministic level-1 Human Fighter (Bren Alder, Neutral
+Good) -- fixed ability scores/steel, never `character::roll` -- so
+`game::SaveGame` only persists a single `COMPANION 1` bool
+(`GameState::hasCompanion`) rather than the companion's own fields; reload
+just calls `buildCompanion()` again. Recruited via a new `RECRUIT <char>`
+zone-grammar line (`data/zones/solace.txt`'s new `K "Bren Alder"` POI),
+same "must already have a TALK line" validation as `BOAT`/`GRANTS_ITEM`/
+`QUEST`, offered through the same Accept/Decline picker shape as `BOAT`'s
+"Board"/"Not yet". Shown on the character sheet and HUD once recruited.
+**Deliberately not attempted this phase**: the companion cannot fight
+(`runCombat` never reads `hasCompanion`/`companion`), shop, level, be
+dismissed, or move independently on the map -- reserved for Phase 2
+(companion fights, AI-controlled) and Phase 3 (real multi-companion roster,
+player-directed control, deployment order, backstab, sweep, `UIC`). Full
+writeup: `docs/ARCHITECTURE.md`'s "Party companions", `docs/
+CHARACTER_NOTES.md`'s "Party companion", `docs/COMBAT_NOTES.md`'s
+"Extending this later". Verified via a throwaway self-test
+(`buildCompanion()` determinism + sanity checks, deleted after), a clean
+`/W4` rebuild, and the piped smoke test -- confirmed the new zone grammar
+loads cleanly and all three of the user's real saves (written before
+`COMPANION` existed) still load correctly with no companion.
+**Interactive verification needed** (`_getch()` blocks all of it) -- a real
+playthrough should confirm: talking to Bren Alder in Solace offers "Join
+me"/"Not yet", declining leaves the offer re-appearing on a later visit,
+accepting shows "Bren Alder joins your party." in the log and immediately
+updates the character sheet/HUD, and saving then reloading (or restarting)
+keeps the companion recruited with identical stats. See
+`docs/MILESTONES.md` entry 116.
 
 Milestone 115 (2026-08-28) shipped Phase 3 of the Gold Box-style combat
 pass, fixing the user's own complaint: "the picking who to attack takes

@@ -178,7 +178,11 @@ planned), a Silvanesti Sentry on Southern Ergoth offers passage on to
 Sancrist proper, and an Embarkation Officer there offers passage on to
 Palanthas, each leg a ship's voyage of a few days rather than a
 tile-by-tile walk across open water — you can say no and ask them about it
-first, and the offer stands until you board. Traveling the wilds now risks a random encounter — goblins, kobolds,
+first, and the offer stands until you board. Solace also has a would-be
+adventurer of its own: talk to Bren Alder and he'll ask to join you (or you
+can put him off for later) — the first step toward a real party, though for
+now he just travels with you and shows up on your character sheet and
+status panel; he doesn't fight yet. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
 skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real

@@ -96,6 +96,19 @@ struct GameState {
     int zoneY = 0;
     std::vector<ZoneReturnPoint> zoneStack; // parent zone(s) to pop back to on
                                              // exit -- see ZoneReturnPoint above
+
+    // Milestone 116 Phase 1's one recruitable party companion -- `companion`
+    // is meaningless while `hasCompanion` is false, same "flag + payload"
+    // convention Character::knightOrder's KnightOrder::None already uses.
+    // Exactly one slot for now, not a roster (see docs/COMBAT_NOTES.md's
+    // "Extending this later" -- a real multi-companion party is a much
+    // bigger, deliberately deferred change). Never combat-affecting yet:
+    // game::GameLoop::runCombat doesn't read this at all this phase.
+    // character::buildCompanion() is pure/deterministic, so game::SaveGame
+    // only persists the bool, not companion's own fields -- see
+    // docs/GOTCHAS.md.
+    bool hasCompanion = false;
+    character::Character companion;
 };
 
 } // namespace game

@@ -109,6 +109,15 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // Same "applied after the whole file is parsed" treatment as shopLines
     // above -- keyed by code, value is the line number BED appeared on.
     std::unordered_map<char, int> bedLines;
+    // RECRUIT (Milestone 116 Phase 1) -- same "applied after the whole file
+    // is parsed, must reference an already-declared POI with a TALK line"
+    // treatment as boatLines/grantsItemLines/questLines above: joining is a
+    // side effect of talking to the POI (see game::GameLoop::talkTo). No id
+    // payload -- there's exactly one companion this phase (see
+    // docs/COMBAT_NOTES.md's "Extending this later"), so unlike BOAT/QUEST
+    // there's nothing here that needs cross-file validation. Value is just
+    // the line number RECRUIT appeared on.
+    std::unordered_map<char, int> recruitLines;
     // SAY_IF/TOPIC get the same "collected by POI char, applied after the
     // whole file is parsed" treatment as talkLines/shopLines above -- but
     // unlike those (one dialogue per POI), a POI can have zero or more of
@@ -309,6 +318,13 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed BED (expected: BED <char>)");
                 }
                 bedLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "RECRUIT") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed RECRUIT (expected: RECRUIT <char>)");
+                }
+                recruitLines[codeToken[0]] = lineNumber;
             } else if (keyword == "SAY_IF") {
                 std::istringstream iss(rest);
                 std::string codeToken, condition;
@@ -585,6 +601,19 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             fail(path, lineNum, "BED '" + std::string(1, code) + "' has no matching POI declaration");
         }
         it->second.isBed = true;
+    }
+    // Same rule for RECRUIT as BOAT/GRANTS_ITEM/QUEST: joining is a side
+    // effect of talking to the POI (see game::GameLoop::talkTo), so it needs
+    // the same "already-declared POI with a TALK line" validation.
+    for (const auto& [code, lineNum] : recruitLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "RECRUIT '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "RECRUIT '" + std::string(1, code) + "' has no TALK line to offer it through");
+        }
+        it->second.recruitsCompanion = true;
     }
     // Same rule for SAY_IF: it must reference an already-declared POI --
     // but SAY_IF is reactive dialogue, so its POI must also already have a
