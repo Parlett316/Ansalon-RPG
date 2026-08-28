@@ -2,6 +2,35 @@
 
 Nothing in flight.
 
+Milestone 112 (2026-08-28) added three more Monster Manual monsters --
+Lizard Man, Giant Toad, Ettin -- bringing the roster to 26, picked once a
+fresh check confirmed the `NEXT UP` backlog and the quest well (Milestone
+106) were both dry, leaving the bestiary as the one genuinely open
+backlog item per `docs/COMBAT_NOTES.md`'s own "Extending this later"
+section. Before picking these, DLA's "Common Creatures of Krynn" chapter
+was rechecked for anything unused since Milestone 107's Ice Bear --
+Dreamshadow, Dreamwraith, Fetch, Minotaur (Bloodsea), Shadowpeople, and
+Spectral Minion are all real entries there, but none fit this project's
+wandering-overworld-encounter model (illusion-only, mirror-only,
+civilized-race, Sanction-only, and death-site-bound respectively), so the
+DLA well stays confirmed dry beyond Ice Bear. All three actual additions
+are visually confirmed against rendered Monster Manual page images
+(pp.227, 345, 135). Lizard Man's and Ettin's real multi-attack stat lines
+are each simplified to their single most damaging hit (same treatment as
+the Ghoul/Owlbear); Lizard Man and Giant Toad both carry `TERRAIN_BIAS *`
+(bog), sourced directly from their own real swamp/near-water Climate/
+Terrain fields and filling what was an almost-unused terrain code; Ettin
+carries `TERRAIN_BIAS ^ A` (hills+mountains, its own real field) and
+`MIN_TOWN_DISTANCE 40` (HD10, the roster's new highest, between Sivak's
+35 and Aurak's 45). Pure data content -- no `.cpp`/`.h` changes (every
+keyword needed already exists in `MonsterLoader.cpp`), no save-format
+changes. Verified via a clean `/W4` rebuild and the piped smoke test
+only, no throwaway self-test needed (same reasoning as Milestones 34,
+100, and 107) -- no interactive verification flag either, since parsing
+is the only thing to confirm and the smoke test already covers it. See
+`docs/MILESTONES.md` entry 112 and `docs/COMBAT_NOTES.md`'s roster/
+"Extending this later" and `MIN_TOWN_DISTANCE` sections.
+
 Milestone 111 (2026-08-27) added the Hoopak (a real, race-gated Kender-only
 weapon sourced from DQoK.pdf's Weapons Table, since neither the PHB nor
 Dragonlance Adventures stats it) plus two new armor tiers, Hide Armor

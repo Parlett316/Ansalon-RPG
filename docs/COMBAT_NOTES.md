@@ -548,10 +548,14 @@ is only HD3, weaker on paper than Ogre's HD4+1, but its real
 paralysis-poison bite is disproportionately punishing for a low-level
 character, so the user asked for it grouped with the higher tier rather
 than left with Baaz; **Bozak Draconian** (`25`); **Sivak Draconian**
-(`35`); **Aurak Draconian** (`45`, the most powerful thing in the roster,
-kept farthest out). Left deliberately untouched — no `MIN_TOWN_DISTANCE`,
-same as ever: Goblin, Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz
-Draconian, Bugbear, Gnoll, Ghoul, Skeleton, Zombie — the HD1-3 "line
+(`35`); **Ettin** (`40`, added at Milestone 112 — HD10 is the highest in
+the roster, and its two guaranteed club hits out-damage Aurak's own
+average round in raw combat math, even though Aurak stays the most
+*magically* loaded thing in the roster, unmodeled abilities included);
+**Aurak Draconian** (`45`, kept farthest out). Left deliberately
+untouched — no `MIN_TOWN_DISTANCE`, same as ever: Goblin, Kobold,
+Hobgoblin, Timber Wolf, Giant Spider, Baaz Draconian, Bugbear, Gnoll,
+Ghoul, Skeleton, Zombie, Lizard Man, Giant Toad — the HD1-3 "line
 troop"/wildlife tier. "Lower hit die monsters around Solace and other
 cities" (the user's own framing) falls out naturally from this exclusion
 list rather than needing a second, positive-bias mechanism: once the HD4+
@@ -740,12 +744,16 @@ either.
   resistance (a related but different mechanic -- resistance to being
   targeted at all, not a saving throw) still isn't modeled for any of
   them.
-- **More monsters**: twenty-three creatures are in the roster now (Goblin,
+- **More monsters**: twenty-six creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
   Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi,
-  Owlbear, Wight, Troll, Black Bear, Worg, Ice Bear); `Monster Manual (2nd
-  ed).pdf` and *Dragonlance Adventures* still have more of Krynn's actual
-  bestiary untouched. Can be
+  Owlbear, Wight, Troll, Black Bear, Worg, Ice Bear, Lizard Man, Giant
+  Toad, Ettin); `Monster Manual (2nd ed).pdf` and *Dragonlance Adventures*
+  still have more of Krynn's actual bestiary untouched, though the DLA
+  well (its "Common Creatures of Krynn" chapter) is now confirmed dry
+  beyond Ice Bear — see Milestone 112's writeup in `docs/MILESTONES.md`
+  for why Dreamshadow/Dreamwraith/Fetch/Minotaur/Shadowpeople/Spectral
+  Minion don't fit this project's wandering-encounter model. Can be
   added the same way, one more sourced `MONSTER` block at a time. A new
   monster with real terrain flavor can also carry `TERRAIN_BIAS`/
   `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above.

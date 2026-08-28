@@ -65,6 +65,31 @@
 #                          docs/COMBAT_NOTES.md.
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
+#
+# The Lizard Man, Giant Toad, and Ettin (added in Milestone 112) are
+# visually confirmed against rendered Monster Manual page images (p.227,
+# p.345, p.135). Before picking these, DLA's own "Common Creatures of
+# Krynn" chapter (pp.74-78, the same chapter Thanoi/Ice Bear came from)
+# was checked for anything else unused: Dreamshadow/Dreamwraith (only
+# exist inside a mindspin spell's illusion, not wandering monsters), Fetch
+# (only reachable through mirrors/reflections), Minotaur (Bloodsea, a
+# civilized, organized race, not monster-roster material -- same reason
+# Kender/Gnomes aren't monsters), Shadowpeople (Sanction-only, and
+# Sanction itself is out of scope, see docs/TIMELINE_NOTES.md), and
+# Spectral Minion (bound to one specific death-site, a location/quest
+# fixture, not a roaming encounter) -- none hold up under this project's
+# wandering-overworld-encounter model, so the DLA well stays dry beyond
+# Ice Bear. Lizard Man's real three-attack claw/claw/bite is simplified to
+# its single most damaging hit (the bite), same treatment as the Ghoul's
+# own claw/claw/bite; its advanced/Lizard-King tribal variants (same page)
+# are left out, same restraint as the Troll's un-modeled variants. Giant
+# Toad's real single 2-8 attack (2d4) needed no simplification; its Fire/
+# Ice/Poisonous Toad variants (same page) are left out for the same
+# reason. Ettin's real two-attack (2d8 left arm/3d6 right arm) is
+# simplified to its stronger right-arm hit, same treatment as the Owlbear's
+# own beak-only simplification; its real ability to speak "orc, goblin,
+# giant" dialects is left out of its DESC entirely, same "no orcs on
+# Krynn" restraint already applied to this whole roster.
 
 MONSTER goblin
 NAME Goblin Raider
@@ -530,4 +555,61 @@ XP 707
 # but left flavor-only, same restraint as the Thanoi's own cold immunity.
 ONLY_TERRAIN :
 DESC A great white bear hauls itself up from the snow, small dark eyes fixed on you with the patient hunger of a hunter that has never gone hungry for long.
+END
+
+MONSTER lizardman
+NAME Lizard Man
+HP 2 8 1
+AC 5
+THAC0 19
+# Real attack is three hits (claw/claw/bite, 1-2/1-2/1-6) -- simplified to
+# one representative die, same treatment as the Ghoul's claw/claw/bite:
+# the bite, its single most damaging hit.
+DAMAGE 1 6 0
+STEEL 2 4 0
+XP 65
+# Real Climate/Terrain is "Tropical, subtropical and temperate swamp" --
+# this project has no separate swamp code, so bog is the honest mapping.
+TERRAIN_BIAS *
+DESC A green-scaled lizard man rises hissing from the reeds, spear notched with old kills, ready to add one more.
+END
+
+MONSTER giantoad
+NAME Giant Toad
+HP 2 8 4
+AC 6
+THAC0 17
+# Real attack is a single bite, "2-8" (2d4) -- no simplification needed.
+DAMAGE 2 4 0
+STEEL 0 0 0
+XP 120
+# Real Climate/Terrain is broad ("Non-arctic or subterranean"), but the
+# book's own text calls out "near water" habitat -- bog bias is informed
+# by, not transcribed from, that line, same treatment as the Bugbear's/
+# Owlbear's own bias lines.
+TERRAIN_BIAS *
+DESC A toad the size of a hound squats in the muck, throat pulsing, before it lunges with a wet snap of its jaws.
+END
+
+MONSTER ettin
+NAME Ettin
+HP 10 8 0
+AC 3
+THAC0 10
+# Real attack is two clubs (2d8 left arm/3d6 right arm) -- simplified to
+# one representative die, same treatment as the Owlbear's beak-only
+# simplification: the stronger right-arm hit.
+DAMAGE 3 6 0
+STEEL 5 10 0
+XP 3000
+# Real Climate/Terrain is "Subarctic to temperate / Hills and mountains" --
+# maps directly onto the same hills+mountains bias combo the Bugbear
+# already uses.
+TERRAIN_BIAS ^ A
+# HD10 is the highest in the roster (above Aurak's HD8) and its two
+# guaranteed club hits out-damage Aurak's own average round -- kept
+# farther from town than Sivak, just short of Aurak. Invented gameplay
+# tuning, user-precedent-matched, not sourced.
+MIN_TOWN_DISTANCE 40
+DESC A hulking, two-headed brute lurches from the rocks, one head snarling while the other watches your back trail, twin clubs already rising.
 END

@@ -3467,6 +3467,61 @@ section).
     annotates and blocks all three Evil options, while every other race
     still offers all 9 freely.
 
+112. Three more Monster Manual monsters -- Lizard Man, Giant Toad, Ettin --
+    bringing the roster to 26, picked once a fresh check confirmed the
+    `NEXT UP` backlog below was essentially exhausted and Milestone 106
+    had already declared the quest-hook well dry. `docs/COMBAT_NOTES.md`'s
+    own "Extending this later" section still named the bestiary as the one
+    genuinely open backlog item. Before returning to the ordinary Monster
+    Manual, this session first checked DLA's own "Common Creatures of
+    Krynn" chapter (pp.74-78, the same chapter Thanoi/Ice Bear came from,
+    Milestone 107) for anything still unused -- Dreamshadow, Dreamwraith,
+    Fetch, Minotaur (Bloodsea), Shadowpeople, and Spectral Minion are all
+    real entries there, but none hold up under this project's
+    wandering-overworld-encounter model: the first two only exist inside a
+    *mindspin* spell's illusion, Fetch is reachable only through mirrors,
+    Minotaurs are a civilized organized race (same reason Kender/Gnomes
+    aren't monsters), Shadowpeople are Sanction-only (and Sanction itself
+    is out of scope, see `docs/TIMELINE_NOTES.md`), and Spectral Minions
+    are bound to one specific death-site, a location/quest fixture rather
+    than a roaming encounter -- confirming the DLA well really is dry
+    beyond Ice Bear. All three actual additions are visually confirmed
+    against rendered Monster Manual page images (Lizard Man p.227, Giant
+    Toad p.345, Ettin p.135, `pdftoppm`). Lizard Man's real three-attack
+    claw/claw/bite and Ettin's real two-club attack are each simplified to
+    their single most damaging hit, same "one representative die"
+    treatment as the Ghoul's and Owlbear's own multi-attack
+    simplifications; Giant Toad's real single 2-8 (2d4) bite needed no
+    simplification. Lizard Man and Giant Toad both carry `TERRAIN_BIAS *`
+    (bog), the project's only swamp-equivalent code and, until now, an
+    almost-unused one -- both sourced directly from their own real
+    Climate/Terrain fields (swamp; "near water"), not invented. Ettin
+    carries `TERRAIN_BIAS ^ A` (hills+mountains, its own real field,
+    reusing the exact combo Bugbear already established) and
+    `MIN_TOWN_DISTANCE 40` -- HD10 is the highest in the roster, kept
+    between Sivak (35) and Aurak (45); see `docs/COMBAT_NOTES.md`'s updated
+    `MIN_TOWN_DISTANCE` writeup for the full Ettin-vs-Aurak comparison.
+    Deliberate omissions, same restraint as every prior bestiary milestone:
+    Lizard Man's advanced-tribe/Lizard King variant, Giant Toad's Fire/Ice/
+    Poisonous Toad variants (all on the same source pages), and Ettin's
+    real "speaks orc, goblin, giant dialects" flavor line, left out of its
+    `DESC` entirely -- the same "no orcs on Krynn" restraint already
+    applied to this whole roster. Pure data content -- no `.cpp`/`.h`
+    changes (confirmed by reading `src/combat/MonsterLoader.cpp`: every
+    keyword these three need already exists), no save-format changes.
+    `README.md`'s Status paragraph's inline monster-name list was
+    deliberately left untouched -- it's already been stale since Milestone
+    100 (Owlbear/Wight/Troll/Black Bear/Worg/Ice Bear were never
+    backfilled into it either), so it's treated as the established,
+    illustrative example list it's already become rather than taking on an
+    unrelated six-monster backfill here. Verified via a clean `/W4`
+    rebuild and the piped smoke test only, no throwaway self-test needed
+    (same reasoning as every prior pure-monster-roster milestone, 34, 100,
+    and 107) -- no "interactive verification needed" flag either, since
+    parsing is the only thing to confirm and the piped smoke test already
+    covers it. See `docs/COMBAT_NOTES.md`'s roster/"Extending this later"
+    sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
