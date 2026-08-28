@@ -41,12 +41,12 @@ int hpAdjustmentForConstitution(int constitution, bool isWarrior);
 int acAdjustmentForDexterity(int dexterity); // positive = better (lower) AC
 
 // Table 9 (Constitution Saving Throw Bonuses, p.28) -- the "+1 per 3.5
-// points of Constitution" bonus Dwarves, Gnomes, Halflings, and (per
-// Dragonlance Adventures, p.53) Kender get against magical wands, staves,
-// rods, and spells -- and, for Dwarves/Halflings/Kender specifically, also
-// against poison (see character::Race for which categories each race
-// applies this to). Returns 0 below the table's range (Constitution 3, reachable
-// via 3d6, isn't covered by the printed table).
+// points of Constitution" bonus Dwarves, Gnomes, and (per Dragonlance
+// Adventures, p.53) Kender get against magical wands, staves, rods, and
+// spells -- and, for Dwarves/Kender specifically, also against poison (see
+// character::Race for which categories each race applies this to). Returns
+// 0 below the table's range (Constitution 3, reachable via 3d6, isn't
+// covered by the printed table).
 int constitutionMagicResistanceBonus(int constitution);
 
 // Table 1 (Strength, PHB p.19), transcribed directly from the rendered

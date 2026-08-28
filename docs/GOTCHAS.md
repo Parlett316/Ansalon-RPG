@@ -294,7 +294,21 @@ you hit something surprising — that's the whole point of it existing.
   different race/class/alignment. There's no version field to detect this.
   Acceptable for a single personal save file; would need addressing (a
   format version, or switching to stored names) before this format could
-  ever be shared between builds.
+  ever be shared between builds. **Removing** a value is the sharper edge
+  of this same fragility, and it's the one that's actually bitten this
+  project: deleting `RaceId::Halfling` (Milestone 110) silently renumbered
+  `Kender` from 6 down to 5 and broke a real, freshly-created save
+  (`RACE 6`) within the same session. Fixed by pinning `Kender = 6`
+  explicitly rather than letting it renumber, leaving 5 permanently unused
+  — see `character::kRaceIdCount` (used only by `SaveGame.cpp`'s RACE
+  bounds check, `kAllClasses`/`kClassIdCount` below has the same shape for
+  Tinker). **Before ever removing an enum value from `RaceId`/`ClassId`/
+  `Alignment`, check every real `save*.txt` this repo can reach** (root
+  `save.txt` and `build/<Config>/save1.txt`/`save2.txt`/`save3.txt` — the
+  build directory copy is easy to forget since it's gitignored and doesn't
+  show up in `git status`) for the raw int the removed value used to be,
+  and pin any higher-numbered surviving value that would otherwise shift
+  down past it, the same way `Kender` was pinned here.
 - **Autosave happens after every processed keypress, unconditionally** — see
   `GameLoop::run()`. This was a deliberate simplicity choice over only
   saving on state-changing keys (`Look`/`Sheet` don't mutate `GameState`,

@@ -25,7 +25,7 @@
 #                           that matches the player's character wins over
 #                           the plain SAY. Conditions: good, evil (align-
 #                           ment's ethical axis), human/dwarf/elf/gnome/
-#                           halfelf/halfling/kender (race), fighter/mage/
+#                           halfelf/kender (race), fighter/mage/
 #                           cleric/thief/tinker (class)
 # SAY_AGAIN <text>          optional; shown on every talk after the first,
 #                           instead of the generic recognition fallback

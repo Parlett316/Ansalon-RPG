@@ -294,8 +294,13 @@ GameState SaveGame::load(const std::string& path) {
         if (keyword == "NAME") {
             state.character.name = rest;
         } else if (keyword == "RACE") {
-            state.character.race = parseEnumInt<character::RaceId>(
-                path, lineNumber, rest, "RACE", static_cast<int>(character::kAllRaces.size()));
+            // kRaceIdCount, not kAllRaces.size() -- Kender's raw ordinal is
+            // pinned at 6 (one past kAllRaces' count of 6) so a save
+            // written before Halfling was removed still means Kender at
+            // RACE 6, not silently something else; kAllRaces.size() would
+            // wrongly reject it. See character/Race.h.
+            state.character.race =
+                parseEnumInt<character::RaceId>(path, lineNumber, rest, "RACE", character::kRaceIdCount);
         } else if (keyword == "SUBRACE") {
             // None + every elf subrace + every dwarf subrace -- see character/Race.h.
             int subraceCount = 1 + static_cast<int>(character::kElfSubraces.size()) +

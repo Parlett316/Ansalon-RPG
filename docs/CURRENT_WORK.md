@@ -2,6 +2,55 @@
 
 Nothing in flight.
 
+Milestone 110 (2026-08-27) removed Halfling as a playable race at the
+user's request -- Krynn has no separate Halfling people in Dragonlance
+canon, Kender already fill that niche. `RaceId::Halfling` and all its
+data-table/condition-vocabulary references removed. Along the way this
+surfaced a real instance of `docs/GOTCHAS.md`'s raw-enum-int save
+fragility: deleting `Halfling` (ordinal 5) silently renumbered `Kender`
+from 6 to 5 and broke a real save the user had created minutes earlier in
+this same session while testing Milestone 109 (`build/Debug/save1.txt`,
+a level-1 Kender Thief named "Mason"). Fixed by pinning
+`RaceId::Kender = 6` explicitly (leaving ordinal 5 unused) and adding
+`character::kRaceIdCount` for `SaveGame.cpp`'s RACE bounds check, the
+same shape already used for `ClassId`/`kClassIdCount`. **Confirmed fixed
+by reloading the real save through the built executable** -- the slot
+menu shows "Mason, level 1 Kender Thief (Day 0)" and loads cleanly again;
+this is stronger proof than a synthetic test, so none was added. Clean
+`/W4` rebuild and the piped smoke test also pass. No new interactive-
+verification flag beyond what Milestone 109 below already carries. See
+`docs/MILESTONES.md` entry 110, `docs/GOTCHAS.md`'s `RACE`/`CLASS`/
+`ALIGNMENT` note, and `docs/CHARACTER_NOTES.md`'s "Kender in place of
+Half-Orc and Halfling" section.
+
+Milestone 109 (2026-08-27) shipped ability score ranges and class level
+limits -- closing a gap flagged "not modeled, deliberately" since the
+Elf/Dwarf subrace and Kender milestones, picked from the backlog at the
+user's request once the quest well, DLA magic items, and Fighter
+multi-attacks (Milestone 108) were all confirmed shipped. Sourced from
+rendered page images, not OCR (badly garbled for every one of these
+tables): PHB Table 7 (p.27), DMG Table 7 ("Racial Class and Level Limits,"
+p.15 -- genuinely absent from the PHB itself, which defers this to "ask
+your DM"), and Dragonlance Adventures' per-subrace/Kender tables
+(pp.53,59-61,66-67). New `character::meetsAbilityRange`/
+`meetsSubraceAbilityRange`/`classLevelCap` (`Race.h`/`.cpp`), both
+**hard-enforced** in `CharacterCreator` (reject-and-reprompt, not the
+project's older soft-annotate UX) -- Human always qualifies for the race
+check so the player is never dead-ended. Fixes two real, previously-live
+mismatches: Halfling could be a Mage, Silvanesti Elf could be a Thief;
+both are blocked now. `Leveling.cpp` stops converting XP into levels once
+a demihuman hits their class's cap (XP itself still accrues). Mage/Cleric
+map onto Dragonlance's licensed rows (Wizard of High Sorcery, Holy Orders
+of the Stars), a user-confirmed interpretation. No save-format changes.
+Verified via a throwaway self-test (30+ assertions), a clean `/W4`
+rebuild, and the piped smoke test. **Interactive verification still
+needed** -- triggering a real reject-and-reprompt on the race/class
+screens with actual (random) rolls, and a demihuman actually hitting a
+level cap in a long real playthrough -- same `_getch()` limitation as
+every other character-creation/leveling milestone. See
+`docs/MILESTONES.md` entry 109 and `docs/CHARACTER_NOTES.md`'s "Ability
+score ranges and class level limits" section.
+
 Milestone 108 (2026-08-27) shipped Fighter multi-attacks per round --
 the first real engine change in several milestones (107 and earlier were
 pure data), picked by the user from a backlog menu offered once the

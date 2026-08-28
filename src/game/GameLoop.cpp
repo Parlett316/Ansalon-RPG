@@ -148,7 +148,6 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     if (condition == "elf") return c.race == character::RaceId::Elf;
     if (condition == "gnome") return c.race == character::RaceId::Gnome;
     if (condition == "halfelf") return c.race == character::RaceId::HalfElf;
-    if (condition == "halfling") return c.race == character::RaceId::Halfling;
     if (condition == "kender") return c.race == character::RaceId::Kender;
     if (condition == "fighter") return c.charClass == character::ClassId::Fighter;
     if (condition == "mage") return c.charClass == character::ClassId::Mage;

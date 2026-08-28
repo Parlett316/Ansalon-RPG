@@ -3288,6 +3288,82 @@ section).
     milestone. See `docs/CHARACTER_NOTES.md`'s "Leveling / experience" and
     `docs/COMBAT_NOTES.md`'s "Accuracy" and "Attacks per round" sections.
 
+109. Ability score ranges and class level limits -- closes a gap flagged as
+    "not modeled, deliberately" since the Elf/Dwarf subrace milestone and
+    the Kender milestone before it, picked from the backlog at the user's
+    request once the quest well, DLA magic items, and (per Milestone 108)
+    Fighter multi-attacks were all confirmed shipped. Sourced from
+    rendered page images (not OCR, which badly garbles all of these
+    tables): PHB Table 7 (p.27, ability-score min/max for base Gnome/
+    Half-Elf/Halfling), DMG Table 7 ("Racial Class and Level Limits,"
+    p.15 -- genuinely absent from the PHB, which explicitly defers this to
+    "ask your DM"), and Dragonlance Adventures' own per-subrace/Kender
+    ability-range and class-limit tables (pp.53,59-61,66-67). New
+    `character::AbilityRange`/`meetsAbilityRange`/
+    `meetsSubraceAbilityRange` and `classLevelCap` (`Race.h`/`.cpp`,
+    replacing the old single-purpose `canBeMage` bool with a general
+    per-class table `effectiveCanBeMage` now wraps). Both are
+    **hard-enforced** in `CharacterCreator`: the race/subrace prompts
+    reject a pick whose base (pre-adjustment) rolled scores fall outside
+    its range and reprompt (Human always qualifies, so the player can
+    never be dead-ended), and the class prompt rejects a class the
+    sourcebooks mark "N/E" for that race/subrace, generalizing the old
+    Mage-only block to all four core classes -- fixing two real,
+    previously-live mismatches the cross-check turned up (Halfling could
+    be a Mage; Silvanesti Elf could be a Thief). `Leveling.cpp`'s
+    `applyPendingLevelUps` stops converting XP into levels once a
+    demihuman hits their class's cap; XP itself keeps accruing, no new
+    save field needed. Mage/Cleric map onto Dragonlance's licensed/
+    sanctioned class rows (Wizard of High Sorcery, Holy Orders of the
+    Stars) rather than the Renegade/Heathen ones, a user-confirmed project
+    interpretation matching how those classes already play (Test of High
+    Sorcery, real Cleric spells from the start). Two DM-optional/DL-edge-
+    case "exceed the cap via an exceptional prime requisite" bonus-level
+    mechanics (DMG Table 8, Kender's own STR 17/18 footnote) are
+    deliberately not modeled, same restraint as Sword/Rose Knight's other
+    unmodeled real abilities. No save-format changes. Verified via a
+    throwaway self-test (30+ assertions: range boundaries for a
+    representative sample of races/subraces, the two fixed mismatches,
+    numeric cap spot-checks, and `applyPendingLevelUps` stopping exactly
+    at a capped level even with enormous XP), a clean `/W4` rebuild (zero
+    new warnings), and the piped smoke test. **Interactive verification
+    still needed** -- triggering an actual reject-and-reprompt on both the
+    race and class screens with real (random) rolls, and a demihuman
+    Fighter/Cleric actually hitting their level cap in a long real
+    playthrough -- same `_getch()` limitation as every other character-
+    creation/leveling milestone. See `docs/CHARACTER_NOTES.md`'s "Ability
+    score ranges and class level limits" section.
+
+110. Removed Halfling as a playable race, at the user's request -- Krynn
+    has no separate Halfling people in Dragonlance canon, the same reason
+    Half-Orc was never one; Kender already fill that niche and (per
+    Dragonlance Adventures p.53) are mechanically built on the PHB's own
+    Halfling chassis anyway. `RaceId::Halfling` removed from `Race.h`/
+    `.cpp` along with its `kTable`/`classLevelCap` entries; `kAllRaces`
+    drops from 7 to 6; `game::conditionMatches`'s `"halfling"` REQUIRE/
+    SAY_IF condition removed (confirmed unused by any `data/*.txt` file
+    first). This surfaced a real, live instance of the raw-enum-int save
+    fragility `docs/GOTCHAS.md` already documented but had never actually
+    hit: deleting `Halfling` (ordinal 5) silently renumbered `Kender` from
+    6 to 5, and a real save created minutes earlier in this same session
+    (`build/Debug/save1.txt`, a level-1 Kender Thief named "Mason" -- the
+    user's own test of Milestone 109) failed to load as a result. Fixed by
+    pinning `RaceId::Kender = 6` explicitly rather than letting it
+    renumber, leaving ordinal 5 permanently unused, plus a new
+    `character::kRaceIdCount` (7, not `kAllRaces.size()`'s 6) for
+    `SaveGame.cpp`'s RACE bounds check -- the same shape `ClassId`/
+    `kClassIdCount` already used for Tinker's ordinal. Confirmed fixed by
+    directly reloading the real save through the built executable (not
+    just a unit test): the slot menu now shows "Mason, level 1 Kender
+    Thief (Day 0)" and loads cleanly again. See `docs/GOTCHAS.md`'s
+    `RACE`/`CLASS`/`ALIGNMENT` raw-enum-int fragility note for the
+    general trap this confirms, and `docs/CHARACTER_NOTES.md`'s "Kender in
+    place of Half-Orc and Halfling" section. No new self-test needed --
+    the live-save reload is a stronger end-to-end proof than a synthetic
+    one would be; a clean `/W4` rebuild (zero new warnings) and the piped
+    smoke test cover the rest. No further interactive verification flagged
+    beyond what Milestone 109 already carries.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

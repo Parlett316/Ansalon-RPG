@@ -43,7 +43,7 @@ SAY_IF <condition> <text>  optional, zero or more, follows SAY -- a
                           first condition matching the player's character
                           wins over the plain SAY. Condition vocabulary:
                           good, evil (Alignment's ethical axis); human,
-                          dwarf, elf, gnome, halfelf, halfling, kender
+                          dwarf, elf, gnome, halfelf, kender
                           (race); fighter, mage, cleric, thief, tinker
                           (class). An unrecognized condition just never
                           matches -- checked at talk-time against runtime

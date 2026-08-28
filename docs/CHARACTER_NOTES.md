@@ -83,15 +83,17 @@ image; this page's two-column layout mis-orders under `pdftotext
 the project owner chose to switch. See `docs/MILESTONES.md`'s Milestone
 69 entry.
 
-## Racial magic resistance (Dwarf, Gnome, Halfling, Kender)
+## Racial magic resistance (Dwarf, Gnome, Kender)
 
-Per PHB p.28 (Dwarf) and p.29 (Halfling), and Dragonlance Adventures p.53
-(Kender, "all standard halfling abilities"): these races gain a bonus
-against magic that scales with Constitution via Table 9
-(`character::constitutionMagicResistanceBonus`), not a flat number. The
-bonus applies to Rod/Staff/Wand and Spell saves for all four races, and
-*additionally* to the Paralyzation/Poison/Death category (specifically
-representing poison resistance) for Dwarf, Halfling, and Kender — but
+Per PHB p.28 (Dwarf), and Dragonlance Adventures p.53 (Kender, "all
+standard halfling abilities" — the book builds Kender on the PHB's
+Halfling chassis, even though this project has no separate playable
+Halfling race, see "Kender in place of Half-Orc and Halfling" below):
+these races gain a bonus against magic that scales with Constitution via
+Table 9 (`character::constitutionMagicResistanceBonus`), not a flat
+number. The bonus applies to Rod/Staff/Wand and Spell saves for all three
+races, and *additionally* to the Paralyzation/Poison/Death category
+(specifically representing poison resistance) for Dwarf and Kender — but
 **not** Gnome, whose PHB entry (p.30) only mentions the wand/staff/rod/
 spell bonus. See `character::applyRacialSavingThrowBonus`.
 
@@ -103,18 +105,24 @@ no spell-casting system to resist). Not a bug: this is a genuine gap
 between the source material's granularity and what the game currently
 models, left for whenever a magic system exists to make it meaningful.
 
-## Kender in place of Half-Orc
+## Kender in place of Half-Orc and Halfling
 
 Ability adjustments (STR −1, DEX +2) and the "cannot learn Mage/illusionist
 spells" restriction are from Dragonlance Adventures (TSR 2021), p.53 —
 kender have innate magic resistance that specifically blocks arcane
-spellcasting. This restriction is *flagged*, not hard-blocked, in character
-creation — consistent with how prime-requisite mismatches are handled
-elsewhere (see `CharacterCreator::run`): a player who insists on a kender
-Mage can still make one; the game just tells them why that's unusual.
+spellcasting. Halfling was removed as a separate playable race for the
+same reason Half-Orc was never one: Krynn has no distinct Halfling people
+in Dragonlance canon — Kender fill that niche (and, per the book's own
+"all standard halfling abilities" line above, are mechanically built on
+the same PHB Halfling chassis anyway). `RaceId::Halfling` no longer
+exists. This restriction is **hard-blocked** in character creation as
+of "Ability score ranges and class level limits" below (a kender picking
+Mage is rejected and reprompted) — a change from this project's earlier
+"flagged, not hard-blocked" UX, which is still how the *unrelated*
+prime-requisite-minimum check works elsewhere (see `CharacterCreator::run`).
 Kender racial ability *ranges* (min/max caps) and class level limits from
-the same source are not enforced, consistent with every other race here
-not having min/max enforcement either.
+the same source are enforced too — see "Ability score ranges and class
+level limits" below.
 
 ## Scope: what this milestone does and doesn't model
 
@@ -130,7 +138,9 @@ skip for now rather than build unused:
   behavior at level 1 — THAC0 only diverges by class as levels are gained.
   Once leveling exists, THAC0 needs a per-class, per-level progression
   table.
-- **No demihuman level limits.** Irrelevant until leveling exists.
+- ~~**No demihuman level limits.** Irrelevant until leveling exists.~~ Shipped
+  once leveling did — see "Ability score ranges and class level limits"
+  below.
 - **No alignment restrictions.** The player picks freely from all 9
   alignments regardless of race/class.
 - **No spellbook or spell selection at character creation.** A Mage or
@@ -156,10 +166,11 @@ skip for now rather than build unused:
 
 ## Race and class scope
 
-Six core 2e PHB races (Human, Dwarf, Elf, Gnome, Half-Elf, Halfling) plus
-Kender (see above, replacing Half-Orc), and the four foundational classes
-(Fighter, Mage, Cleric, Thief — confirmed on PHB p.35 as "the standard
-classes... appropriate to any sort of AD&D game campaign"), plus a fifth,
+Five core 2e PHB races (Human, Dwarf, Elf, Gnome, Half-Elf) plus Kender
+(see above, replacing both Half-Orc and Halfling), and the four
+foundational classes (Fighter, Mage, Cleric, Thief — confirmed on PHB p.35
+as "the standard classes... appropriate to any sort of AD&D game
+campaign"), plus a fifth,
 Dragonlance-only class, Tinker, forced automatically onto every Gnome PC
 (see "Tinker Gnome" below) rather than offered as a menu choice. Paladin,
 Ranger, Druid, Bard, and specialist wizards are not implemented — adding
@@ -196,19 +207,12 @@ There's no generic "Elf" or "Dwarf" PC on Krynn — choosing either race in
   restriction the base Dwarf entry doesn't have).
 - **Mountain Dwarf** (p.68): same CHA−1/CON+1. Also cannot be a Mage.
 
-`character::effectiveCanBeMage(race, subrace)` returns the subrace's
-`canBeMage` when one is selected, else the base race's — this is how
-Kagonesti/Hill/Mountain block Mage while Silvanesti/Qualinesti don't, using
-the same non-blocking "flagged, not hard-blocked" UX as Kender's Mage
-restriction (see above).
-
-**Not modeled, deliberately**: each subrace's book page also lists ability
-score *ranges* (min/max caps) and class *level limit* tables (e.g. a
-Silvanesti Fighter capped at level 10) — left unenforced, extending the
-exact same precedent already documented for Kender ("racial ability ranges
-and class level limits... not enforced, consistent with every other race
-here"). Level limits specifically are moot anyway until a leveling system
-exists (see "No demihuman level limits" above).
+`character::effectiveCanBeMage(race, subrace)` is now a one-line wrapper
+over `classLevelCap(race, subrace, ClassId::Mage) > 0` (see "Ability score
+ranges and class level limits" below) — this is still how Kagonesti/Hill/
+Mountain block Mage while Silvanesti/Qualinesti don't, just derived from
+the same table that also drives Fighter/Cleric/Thief now, instead of its
+own separately-maintained `canBeMage` bool.
 
 **Gully Dwarf is deliberately not included** as a third Dwarf subrace
 option, even though it's in the source book (p.69) and was on this
@@ -219,6 +223,65 @@ generation. Approximating it with a flat
 ability adjustment (the way every other subrace works) would misrepresent
 a genuinely different generation method rather than honestly model it, so
 it's left as clearly-flagged future work instead of a fudged approximation.
+
+## Ability score ranges and class level limits
+
+Shipped at Milestone 109 (see `docs/MILESTONES.md`), closing the gap the
+"Not modeled, deliberately" note used to flag here and in the Kender
+section above. Two real 2e mechanics,
+both keyed off a race or subrace, both checked in `CharacterCreator::run`
+against the character's *base*, pre-racial-adjustment rolled scores (PHB
+p.27: "Consult Table 7 *before* making any racial adjustments... Once you
+satisfy the requirements at the start, you never have to worry about them
+again"):
+
+- **Ability score ranges** (`character::meetsAbilityRange`/
+  `meetsSubraceAbilityRange`, `Race.h`/`.cpp`): PHB Table 7 (p.27) for the
+  base Gnome/Half-Elf entries, Dragonlance Adventures p.53 for Kender, and
+  the same per-subrace pages already cited above (p.60/61/62
+  Elves, p.67/68 Dwarves) for Silvanesti/Qualinesti/Kagonesti/Hill/
+  Mountain — visually confirmed via rendered page images, not the scan's
+  badly-garbled OCR text layer. Human has no Table 7 entry at all (p.27:
+  "Any character can be a human, if the player so desires") and is always
+  selectable regardless of scores. **Hard-enforced**: the race and Elf/
+  Dwarf-subrace prompts reject a pick whose scores don't qualify and
+  reprompt, rather than merely annotating it — Human staying always-legal
+  means the player can never be dead-ended with no valid choice.
+- **Class eligibility and level limits** (`character::classLevelCap`,
+  `Race.h`/`.cpp`): DMG Table 7, "Racial Class and Level Limits" (2e DMG
+  p.15) — genuinely **not** in the PHB, which explicitly defers this to
+  "ask your DM for the level limits imposed on nonhuman characters" (p.27),
+  the reason a second rulebook needed to be consulted at all — plus
+  Dragonlance Adventures' own per-subrace/Kender class-limit tables (same
+  pages as their ability ranges above). Returns 0 for a class the
+  sourcebook marks "N/E" (not eligible at all) or this project's own real
+  level ceiling, 20, standing in for "Unlimited"/"U". **Hard-enforced** at
+  the class prompt, generalizing the old Mage-only `canBeMage` block to all
+  four core classes. Fixed a real, previously-live mismatch this
+  cross-check turned up: Silvanesti Elf could be a Thief (Table 7 says
+  "—") — now blocked. (A second mismatch it also found, Halfling being
+  allowed as a Mage, was mooted by Halfling's later removal as a playable
+  race entirely — see "Kender in place of Half-Orc and Halfling" above.)
+  `Leveling.cpp`'s `applyPendingLevelUps` stops converting XP into levels
+  once a demihuman hits their class's cap, matching the DMG's own "cannot
+  advance beyond the listed level" verbatim — XP itself keeps accruing
+  unmodified, no new save field needed.
+- **Project interpretation, not a purely mechanical fact**: Dragonlance
+  Adventures splits both Mage and Cleric into two parallel tracks with
+  different caps — Magic-User (Renegade) vs. Wizard of High Sorcery, and
+  Cleric (Heathen) vs. Holy Orders of the Stars. This project's Mage/Cleric
+  classes don't distinguish these, so `classLevelCap` maps onto the
+  licensed/sanctioned row (Wizard of High Sorcery, Holy Orders of the
+  Stars) for both, matching how they're already played elsewhere in this
+  project (the Test of High Sorcery robe assignment at level 3; real
+  Cleric spells from the start, not a pre-Goldmoon "Heathen" restriction).
+- **Deliberately not modeled**: two DM-optional/edge-case "exceed the cap
+  via an exceptional prime requisite" bonus-level mechanics — DMG Table 8
+  ("Exceeding Level Limits," explicitly labeled an *Optional Rule*) and
+  Kender's own DLA p.53 footnote (Strength 17 → Fighter cap 6, Strength
+  18 → cap 7). Skipped for the same "flag it, don't build every edge case"
+  restraint already applied to Sword/Rose Knight's unmodeled real
+  abilities.
 
 ### Tinker Gnome replaces the generic PHB Gnome entirely, and Tinker is a real class
 
@@ -241,9 +304,11 @@ nothing to choose), and it never appears as an option for any other race —
 **Tinker's stats** (Dragonlance Adventures pp.22–23/printed pp.21–22,
 "Gnome Advancement Table," visually confirmed): prime requisite
 **Intelligence 10+**, hit die **d4**. The book also states Dexterity 12+
-and a maximum Wisdom of 12 for Tinkers — **not enforced**, consistent with
-this project's standing precedent of never enforcing ability score ranges
-(see "Elf and Dwarf subraces" above).
+and a maximum Wisdom of 12 for Tinkers — **not enforced**: this is a
+class-specific requirement, not a race-level PHB Table 7/DLA entry (see
+"Ability score ranges and class level limits" below, which covers race,
+not class, ability requirements), and Gnome has no class-choice prompt to
+gate in the first place (every Gnome PC is unconditionally a Tinker).
 
 **Not in the source book at all — a real gap, not an OCR failure**: a
 dedicated research pass read the entire Tinker chapter and confirmed the
@@ -376,8 +441,8 @@ was not found in the researched pages** (the class-limit tables checked
 were specifically the Elf/Dwarf subrace ones) — they default to allowed
 rather than guessed-excluded, since Solamnic Knights are portrayed as
 predominantly-but-not-exclusively human in the wider setting. Revisit if a
-source page covering Human/Half-Elf/Halfling/Kender/Gnome Knighthood
-eligibility turns up.
+source page covering Human/Half-Elf/Kender/Gnome Knighthood eligibility
+turns up.
 
 **Not modeled**: no saving-throw bonus tied to Crown rank was found
 anywhere in the chapter (any such bonus would come from the base Cavalier
@@ -481,8 +546,10 @@ that rate: 1 attack on odd rounds of the fight, 2 on even — the book
 states the rate but not which rounds carry the extra swing); 13+: 2/round.
 Every non-Warrior-group class always gets 1. See `docs/COMBAT_NOTES.md`.
 
-**Not modeled**: Demihuman level limits — same standing deferral as every
-other race/subrace ability-range cut in this document.
+**Modeled** (see "Ability score ranges and class level limits" above): a
+Fighter's `classLevelCap` applies here too, so a demihuman Knight of the
+Crown/Sword stops advancing once their race's Fighter cap is reached, same
+as any other Fighter.
 
 **Flavor, then (as of Milestone 53) real**: a Knight of the Crown reaching
 level 3 still gets a foreshadowing line about the Order of the Sword
@@ -1381,11 +1448,6 @@ stored in `GameState::character` and never reassigned after that; pressing
 - **Gully Dwarf**: needs its own ability-score generation method (e.g.
   Strength 4d4+2) instead of this project's 4d6-drop-lowest — see "Elf
   and Dwarf subraces" above for why it wasn't approximated instead.
-- **Ability score ranges and class level limits** for every race/subrace
-  (not just Kender) — a real 2e/Dragonlance mechanic, consistently left
-  unenforced across this whole project so far; would need a decision on
-  what happens when a roll falls outside a race's range (reroll that one
-  score? clamp it?) before implementing.
 - **Cavalier class**: would let Knights of Solamnia be modeled on their
   actual book chassis instead of the current Fighter-plus-flag
   simplification — see "Knights of Solamnia" above.

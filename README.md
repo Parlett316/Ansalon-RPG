@@ -21,10 +21,13 @@ colorized, screen-per-step character creation wizard: roll 4d6-drop-lowest abili
 scores six times (reroll the whole set as many times as you like), then
 freely assign each roll to an ability; a race screen — Elf and Dwarf
 prompt a Dragonlance subrace, with the resulting ability adjustments shown
-before/after — a class screen, and an alignment screen (qualifying
-Fighters can join the Knights of Solamnia, and Gnomes are always
-Tinkers), your scores carried along and visible at every step, before
-dropping you into the world with a real character behind the `@`.
+before/after, and both the race and class screens reject a choice your
+rolled scores don't qualify for (demihuman races/classes also cap out at
+a real, race-specific level once you're playing) — a class screen, and an
+alignment screen (qualifying Fighters can join the Knights of Solamnia,
+and Gnomes are always Tinkers), your scores carried along and visible at
+every step, before dropping you into the world with a real character
+behind the `@`.
 Progress autosaves continuously. The overworld/zone screen is a wide, frameless, side-by-side
 view — no box border, just `=`/`-` rule dividers — a one-line header
 (name/class, an ASCII HP bar, in-game day/hour) above, the walkable map on

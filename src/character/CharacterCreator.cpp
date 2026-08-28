@@ -103,6 +103,28 @@ void pauseForEnter() {
     promptLine("\n(Press Enter to continue) ");
 }
 
+// PHB p.27 (base races) / Dragonlance Adventures pp.59-61,66-67 (Elf/Dwarf
+// subraces) -- true if `scores` (the character's base, pre-adjustment
+// rolled scores) let this race be chosen at all. Elf/Dwarf are checked via
+// "does at least one subrace qualify," since there's no generic Elf/Dwarf
+// character on Krynn (see Race.h); Human always qualifies (no Table 7
+// entry at all).
+bool raceIsSelectable(RaceId race, const AbilityScores& scores) {
+    if (race == RaceId::Elf) {
+        for (SubraceId sub : kElfSubraces) {
+            if (meetsSubraceAbilityRange(sub, scores)) return true;
+        }
+        return false;
+    }
+    if (race == RaceId::Dwarf) {
+        for (SubraceId sub : kDwarfSubraces) {
+            if (meetsSubraceAbilityRange(sub, scores)) return true;
+        }
+        return false;
+    }
+    return meetsAbilityRange(race, scores);
+}
+
 constexpr std::array<Ability, 6> kAbilityOrder = {
     Ability::Strength, Ability::Dexterity, Ability::Constitution,
     Ability::Intelligence, Ability::Wisdom, Ability::Charisma,
@@ -206,29 +228,76 @@ Character CharacterCreator::run() {
     printStepHeader(2, "RACE");
     printScoresRecap(scores);
 
-    std::cout << "Choose a race:\n";
-    for (size_t i = 0; i < kAllRaces.size(); ++i) {
-        std::cout << "  " << (i + 1) << ". " << raceInfo(kAllRaces[i]).name << "\n";
+    // Hard-blocks a pick whose base (pre-adjustment) rolled scores fall
+    // outside that race's PHB/DLA ability range -- PHB p.27: "If the basic
+    // scores that you rolled up meet the requirements for a particular
+    // race, your character can be of that race" implies the converse too.
+    // Human is always selectable (no Table 7 entry), so this can never
+    // dead-end the player with no legal choice.
+    for (;;) {
+        std::cout << "Choose a race:\n";
+        for (size_t i = 0; i < kAllRaces.size(); ++i) {
+            std::cout << "  " << (i + 1) << ". " << raceInfo(kAllRaces[i]).name;
+            if (!raceIsSelectable(kAllRaces[i], scores)) {
+                std::cout << "  (your ability scores don't qualify)";
+            }
+            std::cout << "\n";
+        }
+        int raceChoice = promptChoice("> ", 1, static_cast<int>(kAllRaces.size()));
+        RaceId candidate = kAllRaces[static_cast<size_t>(raceChoice - 1)];
+        if (!raceIsSelectable(candidate, scores)) {
+            std::cout << "\nYour rolled ability scores don't meet " << raceInfo(candidate).name
+                       << "'s requirements. Choose a different race.\n\n";
+            continue;
+        }
+        character.race = candidate;
+        break;
     }
-    int raceChoice = promptChoice("> ", 1, static_cast<int>(kAllRaces.size()));
-    character.race = kAllRaces[static_cast<size_t>(raceChoice - 1)];
 
     // Elf and Dwarf always resolve to one of Dragonlance's real subraces --
     // there's no generic "Elf" or "Dwarf" character on Krynn. See Race.h.
+    // raceIsSelectable already confirmed at least one subrace qualifies, so
+    // this loop can't dead-end either.
     if (character.race == RaceId::Elf) {
-        std::cout << "\nChoose an elven heritage:\n";
-        for (size_t i = 0; i < kElfSubraces.size(); ++i) {
-            std::cout << "  " << (i + 1) << ". " << subraceInfo(kElfSubraces[i])->name << "\n";
+        for (;;) {
+            std::cout << "\nChoose an elven heritage:\n";
+            for (size_t i = 0; i < kElfSubraces.size(); ++i) {
+                std::cout << "  " << (i + 1) << ". " << subraceInfo(kElfSubraces[i])->name;
+                if (!meetsSubraceAbilityRange(kElfSubraces[i], scores)) {
+                    std::cout << "  (your ability scores don't qualify)";
+                }
+                std::cout << "\n";
+            }
+            int choice = promptChoice("> ", 1, static_cast<int>(kElfSubraces.size()));
+            SubraceId candidate = kElfSubraces[static_cast<size_t>(choice - 1)];
+            if (!meetsSubraceAbilityRange(candidate, scores)) {
+                std::cout << "\nYour rolled ability scores don't meet " << subraceInfo(candidate)->name
+                           << "'s requirements. Choose a different heritage.\n";
+                continue;
+            }
+            character.subrace = candidate;
+            break;
         }
-        int choice = promptChoice("> ", 1, static_cast<int>(kElfSubraces.size()));
-        character.subrace = kElfSubraces[static_cast<size_t>(choice - 1)];
     } else if (character.race == RaceId::Dwarf) {
-        std::cout << "\nChoose a dwarven clan:\n";
-        for (size_t i = 0; i < kDwarfSubraces.size(); ++i) {
-            std::cout << "  " << (i + 1) << ". " << subraceInfo(kDwarfSubraces[i])->name << "\n";
+        for (;;) {
+            std::cout << "\nChoose a dwarven clan:\n";
+            for (size_t i = 0; i < kDwarfSubraces.size(); ++i) {
+                std::cout << "  " << (i + 1) << ". " << subraceInfo(kDwarfSubraces[i])->name;
+                if (!meetsSubraceAbilityRange(kDwarfSubraces[i], scores)) {
+                    std::cout << "  (your ability scores don't qualify)";
+                }
+                std::cout << "\n";
+            }
+            int choice = promptChoice("> ", 1, static_cast<int>(kDwarfSubraces.size()));
+            SubraceId candidate = kDwarfSubraces[static_cast<size_t>(choice - 1)];
+            if (!meetsSubraceAbilityRange(candidate, scores)) {
+                std::cout << "\nYour rolled ability scores don't meet " << subraceInfo(candidate)->name
+                           << "'s requirements. Choose a different clan.\n";
+                continue;
+            }
+            character.subrace = candidate;
+            break;
         }
-        int choice = promptChoice("> ", 1, static_cast<int>(kDwarfSubraces.size()));
-        character.subrace = kDwarfSubraces[static_cast<size_t>(choice - 1)];
     }
 
     AbilityScores beforeRaceAdjustments = scores;
@@ -266,28 +335,47 @@ Character CharacterCreator::run() {
         printStepHeader(3, "CLASS");
         printScoresRecap(scores);
 
-        bool raceCanBeMage = effectiveCanBeMage(character.race, character.subrace);
         // Krynn-specific Mage prerequisite on top of the base INT 9+
         // (Dragonlance Adventures p.35, "Student Wizard Minimum Scores"):
-        // Dexterity 6+.
+        // Dexterity 6+. Deliberately left as a soft (annotated, not
+        // blocking) check, same as the prime-requisite annotation below --
+        // neither is part of this milestone's race-based eligibility work.
         bool mageDexOk = scores.dexterity >= 6;
-        std::cout << "Choose a class:\n";
-        for (size_t i = 0; i < kAllClasses.size(); ++i) {
-            const ClassInfo& c = classInfo(kAllClasses[i]);
-            bool qualifies = scores.get(c.primeRequisite) >= c.primeRequisiteMinimum;
-            bool blockedByRace = c.id == ClassId::Mage && !raceCanBeMage;
-            std::cout << "  " << (i + 1) << ". " << c.name;
-            if (blockedByRace) {
-                std::cout << "  (cannot learn arcane magic)";
-            } else if (c.id == ClassId::Mage && !mageDexOk) {
-                std::cout << "  (wizardry on Krynn also requires Dexterity 6+)";
-            } else if (!qualifies) {
-                std::cout << "  (does not meet prime requisite)";
+
+        // Hard-blocks a class DMG Table 7 / Dragonlance Adventures marks
+        // "N/E" (not eligible) for this race/subrace -- classLevelCap
+        // returns 0 for those. Every race can be at least Fighter, Cleric,
+        // or Thief (see Race.cpp's raceClassCaps/subraceClassCaps), so this
+        // can't dead-end the player either.
+        for (;;) {
+            std::cout << "Choose a class:\n";
+            for (size_t i = 0; i < kAllClasses.size(); ++i) {
+                const ClassInfo& c = classInfo(kAllClasses[i]);
+                bool qualifies = scores.get(c.primeRequisite) >= c.primeRequisiteMinimum;
+                bool blockedByRace = classLevelCap(character.race, character.subrace, c.id) == 0;
+                std::cout << "  " << (i + 1) << ". " << c.name;
+                if (blockedByRace) {
+                    std::cout << (c.id == ClassId::Mage ? "  (cannot learn arcane magic)"
+                                                          : "  (not eligible for this race)");
+                } else if (c.id == ClassId::Mage && !mageDexOk) {
+                    std::cout << "  (wizardry on Krynn also requires Dexterity 6+)";
+                } else if (!qualifies) {
+                    std::cout << "  (does not meet prime requisite)";
+                }
+                std::cout << "\n";
             }
-            std::cout << "\n";
+            int classChoice = promptChoice("> ", 1, static_cast<int>(kAllClasses.size()));
+            ClassId candidate = kAllClasses[static_cast<size_t>(classChoice - 1)];
+            if (classLevelCap(character.race, character.subrace, candidate) == 0) {
+                std::cout << "\n" << classInfo(candidate).name << " is not open to a "
+                           << (subraceInfo(character.subrace) != nullptr ? subraceInfo(character.subrace)->name
+                                                                          : raceInfo(character.race).name)
+                           << " character. Choose a different class.\n\n";
+                continue;
+            }
+            character.charClass = candidate;
+            break;
         }
-        int classChoice = promptChoice("> ", 1, static_cast<int>(kAllClasses.size()));
-        character.charClass = kAllClasses[static_cast<size_t>(classChoice - 1)];
     }
     const ClassInfo& chosenClass = classInfo(character.charClass);
 

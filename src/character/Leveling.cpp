@@ -190,6 +190,13 @@ int applyPendingLevelUps(Character& character, std::vector<std::string>& message
         int nextLevel = character.level + 1;
         if (character.experience < xpThresholdForLevel(character.charClass, nextLevel)) break;
 
+        // DMG Table 7 / Dragonlance Adventures demihuman class/level limits
+        // (see Race.h's classLevelCap): XP keeps accruing past this point,
+        // it just stops converting into levels -- matches the sourcebook's
+        // own "cannot advance beyond the listed level" verbatim, no need to
+        // cap or discard character.experience itself.
+        if (nextLevel > classLevelCap(character.race, character.subrace, character.charClass)) break;
+
         int hpGain;
         if (nextLevel <= rollCutoff) {
             int dieRoll = roll(1, classInfo(character.charClass).hitDieSides);
