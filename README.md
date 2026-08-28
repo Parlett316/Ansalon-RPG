@@ -189,7 +189,13 @@ hobgoblins, wolves, bugbears, gnolls, ghouls, skeletons, zombies, Baaz
 draconians, worgs, black bears, lizard men, giant toads) now turn up in
 real, book-sourced numbers rather than always solo, each shown with its
 own HP and a letter (Goblin A, Goblin B, ...) so you can pick a target
-when more than one's still standing — three of the draconians fight back with real, book-sourced
+when more than one's still standing. Fights now play out on a real
+terrain-flavored tactical grid (`w`/`a`/`s`/`d` to move) sourced from an
+actual SSI Gold Box Dark Queen of Krynn manual: melee attacks need you
+adjacent to your target, a Tinker's Light Crossbow can shoot anyone on
+the board until an enemy closes in (then it's refused outright), monsters
+close the distance when they're not next to you, and pulling back from an
+adjacent enemy risks a free opportunity attack — three of the draconians fight back with real, book-sourced
 abilities beyond a plain weapon swing: Bozaks sometimes cast Magic Missile
 instead of attacking, Auraks sometimes breathe a noxious cloud (save for
 half damage, or take full damage and fight on blinded), and Sivaks burst

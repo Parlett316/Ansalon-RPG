@@ -1,11 +1,45 @@
 # Current work
 
-Nothing in flight -- Milestone 113 is implemented, self-tested, and
-rebuilt clean. The core of its interactive-verification flag (see below)
-is now confirmed by the user's own playthrough: a Kender Thief hit a real
-2-monster group encounter and saw the lettered target picker (A/B) render
-and work correctly. What's still unconfirmed is narrower now -- see the
-trimmed list below.
+Nothing in flight -- Milestone 114 is implemented, self-tested, and
+rebuilt clean, but carries the same heavier-than-usual interactive-
+verification flag Milestone 113 did (see below), since none of the
+actual play loop can be driven headlessly.
+
+Milestone 114 (2026-08-28) shipped Phase 2 of the Gold Box-style combat
+pass: a real tactical grid with player/monster positions and movement,
+picked as the next milestone from a backlog menu the user chose over
+extending group sizes to the roster's dangerous tier or adding more
+monsters. Before finalizing the design, `References/DQoK.pdf` (the actual
+SSI Dark Queen of Krynn manual, already used for the Hoopak) was re-read
+for its own real "COMBAT" section -- this corrected two assumptions in
+the first draft (ranged weapons are disabled *while* adjacent, not usable
+unconditionally; the grid is terrain-flavored) and surfaced a real,
+sourced opportunity attack for moving away from an adjacent enemy, all
+folded into the design before any code was written. It also surfaced a
+real discrepancy in already-shipped Milestone 113 code -- a Fighter's
+multi-attack should retarget after a kill instead of wasting the
+remaining swings -- which the user asked to fix in the same session.
+Melee attacks now require adjacency; the Tinker's Light Crossbow is this
+project's first-ever ranged weapon (works at any range while unengaged,
+refused outright once an enemy closes to melee); monsters close distance
+via simple pathing when not adjacent instead of attacking from range.
+Full design writeup, the DQoK.pdf sourcing, and the deliberately-deferred
+findings (segmented initiative, encumbrance-based movement speed,
+speed-based Flee, missile ammunition/range brackets, thief backstab):
+`docs/COMBAT_NOTES.md`'s "Positional combat grid" section.
+**Interactive verification needed, same heavier-than-usual flag as
+Milestone 113** (`_getch()` blocks all of it) -- a real playthrough
+should confirm: the grid renders with a terrain-appropriate backdrop and
+correct player/monster glyphs, `w`/`a`/`s`/`d` moves the player and
+consumes the round, a melee attack is refused with a message when
+nothing is adjacent, closing distance and then attacking works, a Tinker
+with the Light Crossbow can hit a non-adjacent monster but is refused
+once something closes to melee range, moving away from an adjacent
+monster triggers its free opportunity attack first, monsters visibly
+approach when not adjacent and attack once they are, a Fighter's
+multi-attack correctly retargets to a new opponent after a kill instead
+of wasting the swing, and a solo fight's starting distance/pacing feels
+reasonable rather than dragging. See `docs/MILESTONES.md` entry 114.
 
 Milestone 113 (2026-08-28) shipped Phase 1 of a Gold Box-style combat
 pass, at the user's request ("when a random battle begins we get a battle

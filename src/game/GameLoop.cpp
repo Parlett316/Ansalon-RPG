@@ -1409,6 +1409,33 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // overwhelming majority of encounters) keeps the exact pre-Milestone-113
     // wording below with no letter at all.
     const bool useLetters = instances.size() > 1;
+
+    // Terrain lookup, lifted out of the Frostreaver-only check further
+    // below so the combat grid's backdrop can reuse it too (Milestone
+    // 114) -- runCombat's only call site is tryMoveOverworld, so
+    // state_.x/state_.y are always the tile this fight is happening on.
+    const world::TerrainInfo& hereTerrain = world::terrainFor(grid_.terrainCodeAt(state_.x, state_.y));
+
+    // Starting layout (Milestone 114, see docs/COMBAT_NOTES.md's
+    // "Positional combat grid" section): player near the bottom-center,
+    // monster instances spread evenly across a row a few tiles above --
+    // close enough that a melee character reaches combat within a couple
+    // of rounds, far enough that positioning/ranged options are real.
+    // Purely local to this one runCombat call, never touching
+    // GameState/SaveGame, same "combat isn't saved" precedent as
+    // instances/log above.
+    combat::GridPos playerPos{render::MapRenderer::kCombatGridWidth / 2, render::MapRenderer::kCombatGridHeight - 2};
+    std::vector<combat::GridPos> instancePositions(instances.size());
+    {
+        constexpr int kMonsterSpacing = 2;
+        const int centerX = render::MapRenderer::kCombatGridWidth / 2;
+        const int count = static_cast<int>(instances.size());
+        for (int i = 0; i < count; ++i) {
+            int offsetIndex = i - (count - 1) / 2;
+            instancePositions[static_cast<size_t>(i)] = {centerX + offsetIndex * kMonsterSpacing, 2};
+        }
+    }
+
     auto monsterLabel = [&](int idx) -> std::string {
         if (!useLetters) return monster.name;
         return monster.name + " " + std::string(1, static_cast<char>('A' + idx));
@@ -1417,7 +1444,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         std::vector<render::MapRenderer::CombatMonsterView> views;
         for (size_t i = 0; i < instances.size(); ++i) {
             views.push_back({monsterLabel(static_cast<int>(i)), std::max(0, instances[i].hp), instances[i].maxHp,
-                              monster.armorClass, instances[i].hp > 0});
+                              monster.armorClass, instances[i].hp > 0, instancePositions[i],
+                              static_cast<char>('A' + i)});
         }
         return views;
     };
@@ -1428,23 +1456,28 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
         return count;
     };
-    // Target selection is driven by how many instances are CURRENTLY alive,
-    // not the group size chosen at the start -- so a solo fight and a group
-    // fight fought down to its last survivor both auto-target the same way,
-    // and the picker only ever appears while 2+ are still standing. Returns
-    // -1 only if allowCancel and the player backs out via Quit (used for
-    // spellcasting, where "cast at someone" can still be reconsidered the
-    // same way choosing which spell already can); attacking never allows
-    // this, since Enter has always committed to attacking.
-    auto pickTarget = [&](const std::string& title, bool allowCancel) -> int {
-        std::vector<int> aliveIndices;
+    // Target selection is driven by how many instances are CURRENTLY alive
+    // (filtered further by `eligible`, e.g. adjacency for a melee weapon --
+    // Milestone 114), not the group size chosen at the start -- so a solo
+    // fight and a group fight fought down to its last eligible survivor
+    // both auto-target the same way, and the picker only ever appears
+    // while 2+ eligible instances are still standing. Returns -1 if
+    // nothing is eligible, or if allowCancel and the player backs out via
+    // Quit (used for spellcasting, where "cast at someone" can still be
+    // reconsidered the same way choosing which spell already can);
+    // attacking never allows cancellation, since Enter has always
+    // committed to attacking.
+    auto pickTarget = [&](const std::string& title, bool allowCancel, const std::function<bool(int)>& eligible) -> int {
+        std::vector<int> candidates;
         for (size_t i = 0; i < instances.size(); ++i) {
-            if (instances[i].hp > 0) aliveIndices.push_back(static_cast<int>(i));
+            if (instances[i].hp <= 0) continue;
+            if (!eligible(static_cast<int>(i))) continue;
+            candidates.push_back(static_cast<int>(i));
         }
-        if (aliveIndices.empty()) return -1; // defensive -- shouldn't happen, caller already checked
-        if (aliveIndices.size() == 1) return aliveIndices.front();
+        if (candidates.empty()) return -1;
+        if (candidates.size() == 1) return candidates.front();
         std::vector<std::string> labels;
-        for (int idx : aliveIndices) {
+        for (int idx : candidates) {
             labels.push_back(monsterLabel(idx) + " -- HP " + std::to_string(instances[static_cast<size_t>(idx)].hp) +
                               "/" + std::to_string(instances[static_cast<size_t>(idx)].maxHp));
         }
@@ -1459,12 +1492,16 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             } else if (pickKey == render::Key::South) {
                 selected = (selected + 1) % static_cast<int>(labels.size());
             } else if (pickKey == render::Key::Enter) {
-                return aliveIndices[static_cast<size_t>(selected)];
+                return candidates[static_cast<size_t>(selected)];
             } else if (allowCancel && pickKey == render::Key::Quit) {
                 return -1;
             }
         }
     };
+    // Always-eligible filter for position-independent target selection
+    // (spells, Webnet) -- see docs/COMBAT_NOTES.md's "Positional combat
+    // grid" section on why those stay unaffected by adjacency.
+    auto anyAlive = [](int) { return true; };
 
     std::vector<std::string> log;
     if (useLetters) {
@@ -1501,6 +1538,23 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // chosen enemy rather than the whole group.
     std::vector<int> blockedAttacksRemaining(instances.size(), 0);
     std::vector<bool> incapacitatedRestOfFight(instances.size(), false);
+    // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
+    // once/day, blocks the rest of this fight -- see
+    // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
+    // "Magic items"), and spell-based crowd control (Sleep, Hold Person,
+    // Charm, Confusion, Fear, ... -- character::SpellEffect::
+    // BlockMonsterAttacks) all share one mechanism: blockedAttacksRemaining
+    // (above) counts down a finite number of blocked attacks per targeted
+    // instance; incapacitatedRestOfFight[i] covers the "until the fight
+    // ends" spells (character::kBlockRestOfFight). The Brooch's globe,
+    // unlike those two, wards the PLAYER rather than debuffing one
+    // monster, so it stays a single shared bool blocking every instance's
+    // attack (and, as of Milestone 114, every opportunity attack too) --
+    // purely local to this one runCombat call, same as the log/instances
+    // above, never written into the character's real saved fields (only
+    // the Brooch's daily charge itself, Character::lastBroochUseDay,
+    // persists).
+    bool globeActive = false;
     // Frostreaver (see character::kFrostreaverName/kFrostreaverMagicBonus
     // and docs/CHARACTER_NOTES.md's "Magic items"): DLA p.94 says it only
     // holds its "+4" while it's glacier ice, not melted slush -- modeled
@@ -1509,7 +1563,6 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // is tryMoveOverworld, so state_.x/state_.y are always the tile this
     // fight is happening on.
     if (state_.character.weaponName == character::kFrostreaverName) {
-        const world::TerrainInfo& hereTerrain = world::terrainFor(grid_.terrainCodeAt(state_.x, state_.y));
         if (std::string(hereTerrain.name) == "glacier") {
             playerThac0Bonus += character::kFrostreaverMagicBonus;
             playerDamageBonus += character::kFrostreaverMagicBonus;
@@ -1520,16 +1573,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // alternating pattern (PHB Table 15) -- incremented once per
     // for(;;) iteration below, since each iteration is exactly one round.
     int roundNumber = 1;
-    // Set true only by handleInstanceDeath below, when a death-burst
-    // (Sivak) finishes the player off after they already landed the
-    // killing blow -- every caller of handleInstanceDeath checks this and
-    // stops, and the main loop returns immediately once it's set, since
-    // knockedOutBy already rendered the "struck down" ending itself.
-    bool fightEndedByBurst = false;
+    // Set true by handleInstanceDeath below (a death-burst finishing the
+    // player off after the killing blow) or by playerMoves further down
+    // (an opportunity attack doing the same while retreating) -- every
+    // caller checks this and stops, and the main loop returns immediately
+    // once it's set, since knockedOutBy already rendered the "struck down"
+    // ending itself. Named generically as of Milestone 114 since it now
+    // covers more than just Sivak's burst.
+    bool fightAlreadyEnded = false;
     // Knockout ending -- shared by the ordinary "an attack drops you to 0"
-    // check at the bottom of the round loop and the Sivak death-burst
-    // below, which can finish the player off even after they already
-    // landed the killing blow. See docs/COMBAT_NOTES.md.
+    // check at the bottom of the round loop, the Sivak death-burst below,
+    // and an opportunity attack (Milestone 114) -- any of which can finish
+    // the player off outside the normal per-round check. See
+    // docs/COMBAT_NOTES.md.
     auto knockedOutBy = [&](const std::string& cause) {
         const world::Location* refuge = nearestRefuge();
         const std::string refugeName = refuge != nullptr ? refuge->name : "town";
@@ -1540,7 +1596,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             state_.y = refuge->y;
         }
         log.push_back("Press any key to continue.");
-        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
+        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
+                                              playerPos);
         render::Console::readKey();
         pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
     };
@@ -1588,20 +1645,81 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
         return false;
     };
+    // A real, sourced opportunity attack (DQoK.pdf's own manual, found
+    // while planning Milestone 114: "if you move away from an adjacent
+    // enemy, he gets a free attack at your back and has an improved
+    // chance to hit"). Triggers per-instance only when the player is
+    // truly leaving THAT instance's reach (was adjacent, won't be at
+    // `destination`) -- staying adjacent while sidestepping doesn't
+    // provoke one. Left as an ordinary attack roll rather than inventing a
+    // specific numeric bonus the manual doesn't print a value for. Skips
+    // an instance that couldn't act anyway (globe/incapacitated/blocked),
+    // same as monstersAct; doesn't replicate special-ability/poison checks
+    // -- a deliberate simplification, see docs/COMBAT_NOTES.md.
+    auto triggerOpportunityAttacks = [&](combat::GridPos destination) {
+        for (size_t i = 0; i < instances.size() && state_.character.currentHp > 0; ++i) {
+            if (instances[i].hp <= 0) continue;
+            bool leavingReach =
+                combat::isAdjacent(playerPos, instancePositions[i]) && !combat::isAdjacent(destination, instancePositions[i]);
+            if (!leavingReach) continue;
+            if (globeActive || incapacitatedRestOfFight[i] || blockedAttacksRemaining[i] > 0) continue;
+            std::string name = monsterLabel(static_cast<int>(i));
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character, playerAcBonus,
+                                                                           monsterThac0Penalty[i],
+                                                                           monsterDamagePenalty[i]);
+            if (outcome.hit) {
+                state_.character.currentHp -= outcome.damage;
+                log.push_back("As you pull back, the " + name + " gets a free strike! It hits you for " +
+                               std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
+                               describeDamage(outcome));
+            } else {
+                log.push_back("The " + name + " lunges as you pull back, but misses.");
+            }
+        }
+    };
     auto playerAttacks = [&]() {
-        int targetIndex = pickTarget("Attack which enemy?", false);
-        if (targetIndex < 0) return; // defensive -- shouldn't happen, the fight only continues while someone's alive
+        bool hasRangedWeapon = state_.character.weaponName == character::kLightCrossbowName;
+        bool adjacentToAny = false;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            if (instances[i].hp > 0 && combat::isAdjacent(playerPos, instancePositions[i])) {
+                adjacentToAny = true;
+                break;
+            }
+        }
+        // Sourced: "A character with a missile weapon... may not attack
+        // when adjacent to an enemy" (DQoK.pdf's own manual) -- a ranged
+        // weapon can hit anyone on the grid while unengaged, but is
+        // disabled outright the instant an enemy closes to melee range.
+        if (hasRangedWeapon && adjacentToAny) {
+            log.push_back("An enemy is too close to fire your crossbow!");
+            return;
+        }
+        std::function<bool(int)> eligible = hasRangedWeapon ? std::function<bool(int)>(anyAlive)
+                                                              : std::function<bool(int)>([&](int idx) {
+                                                                    return combat::isAdjacent(
+                                                                        playerPos,
+                                                                        instancePositions[static_cast<size_t>(idx)]);
+                                                                });
+        int targetIndex = pickTarget("Attack which enemy?", false, eligible);
+        if (targetIndex < 0) {
+            log.push_back("You're too far away to attack.");
+            return;
+        }
         int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
                                                          roundNumber);
-        for (int i = 0; i < attacks && !fightEndedByBurst; ++i) {
+        for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
             if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
-                // The target already fell earlier in this same volley --
-                // Gold Box convention: remaining swings this round aren't
-                // auto-redirected to a new target, they're simply wasted.
-                // Explicit, flagged simplification, not a new
-                // auto-retarget system -- see docs/COMBAT_NOTES.md.
-                log.push_back("Your remaining attack finds no target left standing.");
-                break;
+                // Real Gold Box rule (DQoK.pdf's own manual, re-checked
+                // while planning Milestone 114): "If the first target
+                // goes down with the first attack, you can aim the
+                // remaining attack at another target" -- retarget via the
+                // same eligibility filter instead of wasting the swing
+                // (Milestone 113's original, less accurate behavior).
+                targetIndex = pickTarget("Attack which enemy?", false, eligible);
+                if (targetIndex < 0) {
+                    log.push_back("No targets remain for your last attack.");
+                    break;
+                }
             }
             std::string targetName = monsterLabel(targetIndex);
             combat::AttackOutcome outcome =
@@ -1611,30 +1729,13 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) + ". " +
                                describeToHit(outcome) + " " + describeDamage(outcome));
                 if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
-                    if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                    if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
                 }
             } else {
                 log.push_back("You miss the " + targetName + ". " + describeToHit(outcome));
             }
         }
     };
-    // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
-    // once/day, blocks the rest of this fight -- see
-    // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
-    // "Magic items"), and spell-based crowd control (Sleep, Hold Person,
-    // Charm, Confusion, Fear, ... -- character::SpellEffect::
-    // BlockMonsterAttacks) all share one mechanism: blockedAttacksRemaining
-    // (declared above, alongside its per-instance sibling
-    // incapacitatedRestOfFight) counts down a finite number of blocked
-    // attacks per targeted instance; incapacitatedRestOfFight[i] covers the
-    // "until the fight ends" spells (character::kBlockRestOfFight). The
-    // Brooch's globe, unlike those two, wards the PLAYER rather than
-    // debuffing one monster, so it stays a single shared bool blocking
-    // every instance's attack -- purely local to this one runCombat call,
-    // same as the log/instances above, never written into the character's
-    // real saved fields (only the Brooch's daily charge itself,
-    // Character::lastBroochUseDay, persists).
-    bool globeActive = false;
     // One monster instance's turn -- called for every currently-alive
     // instance in fixed A->B->C order (see docs/COMBAT_NOTES.md). Stops
     // immediately if the player is dropped to 0 HP partway through, so a
@@ -1692,6 +1793,25 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 }
                 continue;
             }
+            // Melee-locked, same as the player (Milestone 114) -- no
+            // monster in this roster has a ranged attack, so every
+            // instance not yet adjacent spends its turn closing the
+            // distance instead of attacking. combat::stepToward avoids
+            // the player's own cell and every other still-alive instance.
+            if (!combat::isAdjacent(instancePositions[i], playerPos)) {
+                std::vector<combat::GridPos> blocked{playerPos};
+                for (size_t j = 0; j < instances.size(); ++j) {
+                    if (j != i && instances[j].hp > 0) blocked.push_back(instancePositions[j]);
+                }
+                combat::GridPos next =
+                    combat::stepToward(instancePositions[i], playerPos, render::MapRenderer::kCombatGridWidth,
+                                        render::MapRenderer::kCombatGridHeight, blocked);
+                if (next.x != instancePositions[i].x || next.y != instancePositions[i].y) {
+                    instancePositions[i] = next;
+                    log.push_back("The " + name + " closes in.");
+                }
+                continue;
+            }
             combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character, playerAcBonus,
                                                                            monsterThac0Penalty[i],
                                                                            monsterDamagePenalty[i]);
@@ -1735,7 +1855,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                             result.effect == character::SpellEffect::DebuffMonsterDamage ||
                             result.effect == character::SpellEffect::BuffPlayerAndDebuffMonsterThac0 ||
                             result.effect == character::SpellEffect::InstantDefeat;
-        int targetIndex = needsTarget ? pickTarget("Cast at which enemy?", false) : -1;
+        int targetIndex = needsTarget ? pickTarget("Cast at which enemy?", false, anyAlive) : -1;
         std::string targetName = targetIndex >= 0 ? monsterLabel(targetIndex) : monster.name;
         switch (result.effect) {
             case character::SpellEffect::DamageMonster:
@@ -1743,7 +1863,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("Your " + result.spellName + " strikes the " + targetName + " for " +
                                std::to_string(result.amount) + ".");
                 if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
-                    if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                    if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
                 }
                 break;
             case character::SpellEffect::HealCaster: {
@@ -1789,7 +1909,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             case character::SpellEffect::InstantDefeat:
                 log.push_back("Your " + result.spellName + " destroys the " + targetName + " outright!");
                 instances[static_cast<size_t>(targetIndex)].hp = 0;
-                if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
                 break;
         }
     };
@@ -1812,7 +1932,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         character::PurchaseResult result = character::useWebnet(state_.character, webnetIndex);
         log.push_back(result.message);
         if (result.success) {
-            int targetIndex = pickTarget("Tangle which enemy?", false);
+            int targetIndex = pickTarget("Tangle which enemy?", false, anyAlive);
             if (targetIndex >= 0) ++blockedAttacksRemaining[static_cast<size_t>(targetIndex)];
         }
     };
@@ -1829,15 +1949,38 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
         log.push_back(result.message);
     };
+    // Moves to an already-validated `destination` (the main loop's key
+    // handling below checks bounds/occupancy before ever setting this
+    // action up, same "reject before it costs a round" pattern Cast/
+    // Inventory already use) -- Milestone 114. Triggers any opportunity
+    // attacks first; if one knocks the player out, the move itself never
+    // completes, same "an attack can end the fight before anything else
+    // resolves" precedent the death-burst check already established.
+    auto playerMoves = [&](combat::GridPos destination) {
+        triggerOpportunityAttacks(destination);
+        if (state_.character.currentHp <= 0) {
+            knockedOutBy(monster.name);
+            fightAlreadyEnded = true;
+            return;
+        }
+        std::string dirLabel = destination.y < playerPos.y   ? "north"
+                                : destination.y > playerPos.y ? "south"
+                                : destination.x < playerPos.x ? "west"
+                                                               : "east";
+        playerPos = destination;
+        log.push_back("You move " + dirLabel + ".");
+    };
 
     for (;;) {
-        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
+        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
+                                              playerPos);
         render::Key key = render::Console::readKey();
 
         if (key == render::Key::Flee) {
             log.push_back("You break off and retreat.");
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
+            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
+                                                  playerPos);
             render::Console::readKey();
             pushLog(useLetters ? ("You fled from the " + pluralMonsterName(monster.name) + ".")
                                 : ("You fled from the " + monster.name + "."));
@@ -1850,7 +1993,37 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         bool usingWebnet = false;
         bool activatingBrooch = false;
         bool usingStaffCure = false;
-        if (key == render::Key::Cast) {
+        bool moving = false;
+        combat::GridPos moveTarget;
+        if (key == render::Key::North || key == render::Key::South || key == render::Key::East ||
+            key == render::Key::West) {
+            // Milestone 114: validated up front, same "reject before it
+            // costs a round" pattern Cast/Inventory already use below --
+            // an invalid move never enters the initiative-ordered
+            // playerActs dispatch at all.
+            int dx = key == render::Key::East ? 1 : key == render::Key::West ? -1 : 0;
+            int dy = key == render::Key::South ? 1 : key == render::Key::North ? -1 : 0;
+            combat::GridPos destination{playerPos.x + dx, playerPos.y + dy};
+            if (destination.x < 0 || destination.x >= render::MapRenderer::kCombatGridWidth || destination.y < 0 ||
+                destination.y >= render::MapRenderer::kCombatGridHeight) {
+                log.push_back("You can't move that way.");
+                continue;
+            }
+            bool occupied = false;
+            for (size_t i = 0; i < instances.size(); ++i) {
+                if (instances[i].hp > 0 && instancePositions[i].x == destination.x &&
+                    instancePositions[i].y == destination.y) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (occupied) {
+                log.push_back("Something's in the way.");
+                continue;
+            }
+            moveTarget = destination;
+            moving = true;
+        } else if (key == render::Key::Cast) {
             if (!character::canCastSpells(state_.character.charClass)) {
                 log.push_back("You have no spell to cast.");
                 continue;
@@ -1934,16 +2107,17 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             : usingWebnet ? std::function<void()>(playerUsesWebnet)
             : activatingBrooch ? std::function<void()>(playerActivatesBrooch)
             : usingStaffCure ? std::function<void()>(playerUsesStaffCure)
+            : moving ? std::function<void()>([&]() { playerMoves(moveTarget); })
                        : std::function<void()>(playerAttacks);
         if (combat::playerActsFirst()) {
             playerActs();
-            if (fightEndedByBurst) return;
+            if (fightAlreadyEnded) return;
             if (aliveCount() > 0) monstersAct();
         } else {
             monstersAct();
             if (state_.character.currentHp > 0) playerActs();
         }
-        if (fightEndedByBurst) return; // a death-burst already rendered its own ending -- see knockedOutBy above
+        if (fightAlreadyEnded) return; // an opportunity attack or death-burst already rendered its own ending
         ++roundNumber;
 
         if (aliveCount() == 0) {
@@ -1955,7 +2129,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back(useLetters ? ("The " + pluralMonsterName(monster.name) + " are defeated!")
                                       : ("You defeated the " + monster.name + "."));
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
+            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
+                                                  playerPos);
             render::Console::readKey();
             pushLog(useLetters ? ("You defeated the " + pluralMonsterName(monster.name) + ".")
                                 : ("You defeated the " + monster.name + "."));

@@ -873,19 +873,146 @@ fail-fast cases) and `combat::rollGroupSize`'s bounds. See
 `docs/CURRENT_WORK.md` for the specific scenarios still needing a real
 playthrough.
 
+## Positional combat grid (Milestone 114)
+
+Phase 2 of the Gold Box-style combat pass Milestone 113 started: a real
+tactical grid with player/monster positions and movement, instead of the
+strictly turn-ordered, positionless exchange combat had used until now.
+Unlike Milestone 113's group sizes, this system has a real, checkable
+source: `References/DQoK.pdf` (Dark Queen of Krynn, an actual SSI Gold
+Box Dragonlance game, already used for the Hoopak's weapon table at
+Milestone 111) has its own "COMBAT" section (manual pp.9-11) describing
+this exact system, re-read before finalizing the design. Everything below
+tagged **(sourced)** is transcribed from that section; everything tagged
+**(invented)** is this project's own Gold Box-inspired design, same
+"tuned for pacing/presentation, not a 2e rulebook mechanic" honesty as the
+"3/2 rounds" odd/even split and the sell-back half-price convention --
+core 2e AD&D combat itself is abstract "melee range," not squares.
+
+- **The grid** (invented sizing, sourced concept): 11x7 cells
+  (`render::MapRenderer::kCombatGridWidth`/`kCombatGridHeight`), small
+  enough to read inside the existing "organic" combat box, big enough
+  that closing distance takes a couple of real rounds. The manual's own
+  words: "Battle takes place on a tactical combat map that is a detailed
+  view of the terrain that the party was in when the combat began...set
+  up with an invisible square grid." The empty floor's glyph comes from
+  the real tile's `world::TerrainInfo` (`world::terrainFor(grid_.
+  terrainCodeAt(state_.x, state_.y))`, the same lookup Frostreaver's
+  glacier check already makes) -- a forest encounter's grid reads
+  differently from a plains one. **Color is not carried over**: this
+  project's "organic" screen family (`writeBoxed`/`BoxLine`, see
+  `docs/ARCHITECTURE.md`'s Milestone 32 note) only supports one color per
+  whole line, not per cell, so the grid renders in plain text -- the real
+  terrain's *glyph* still gives genuine flavor, just not its color.
+- **Starting layout** (invented): the player begins near the bottom
+  center; monster instances spread evenly across a row near the top,
+  centered and spaced two cells apart. Purely local state
+  (`GameLoop::runCombat`'s own `combat::GridPos playerPos` and
+  `std::vector<combat::GridPos> instancePositions`), never touching
+  `GameState`/`SaveGame`, same "combat isn't saved" precedent as monster
+  HP/the log.
+- **Movement** (invented mechanic, sourced as a real action in the
+  manual): `w`/`a`/`s`/`d` (`render::Key::North/South/East/West`,
+  previously ignored inside combat) move the player one cell as a full
+  round action -- validated up front (grid bounds, not occupied) the same
+  "reject before it costs a round" way an unusable `Cast`/`Inventory`
+  press already is, then resolved through the same initiative-ordered
+  `playerActs` dispatch as any other action.
+- **Melee requires adjacency** (sourced): an ordinary weapon attack can
+  only target an instance within `combat::isAdjacent` (Chebyshev distance
+  1, the 8 surrounding cells) of the player. If nothing eligible is
+  adjacent, the attack is refused ("You're too far away to attack.") and
+  the round isn't spent, same forgiving pattern as an unusable spell
+  press.
+- **Ranged weapons -- this project's first-ever melee/ranged distinction**
+  (sourced): the manual's own words, "A character with a missile weapon
+  (bow, sling, etc.) may not attack when adjacent to an enemy," and
+  separately, "Missile weapons cannot be fired if there is an adjacent
+  opponent." The Tinker's Light Crossbow (`character::kLightCrossbowName`,
+  `Equipment.h`, same plain-string-compare pattern as
+  `kFrostreaverName` -- no new `Character` field) can hit *any* alive
+  instance on the grid while the player isn't adjacent to anyone; the
+  instant an enemy closes to melee range, ranged attacks are refused
+  outright ("An enemy is too close to fire your crossbow!") -- the player
+  must melee, move away to re-open ranged options, or flee. This project
+  has no other ranged weapon; the Hoopak's own existing melee-only stat
+  choice (`docs/CHARACTER_NOTES.md`) is a separate, already-made decision,
+  not revisited here. **Not modeled**, explicitly flagged rather than
+  silently dropped: 2 arrows/3 darts per turn and real short/medium/long
+  range brackets -- the crossbow attacks once per round and hits anywhere
+  on the board while unengaged, same no-ammunition-tracking
+  simplification this project's crossbow already had.
+- **A real opportunity attack** (sourced): "if you move away from an
+  adjacent enemy, he gets a free attack at your back and has an improved
+  chance to hit." Triggers per-instance, only when a move genuinely takes
+  the player out of *that* instance's reach (was adjacent, won't be at
+  the destination) -- sidestepping while staying adjacent to it doesn't
+  provoke one. Rolled as an ordinary `resolveMonsterAttack`, since the
+  manual names the effect ("improved chance to hit") but prints no
+  specific numeric bonus to transcribe. Respects the globe of
+  invulnerability, `incapacitatedRestOfFight`, and `blockedAttacksRemaining`
+  (a webbed/asleep/blocked monster doesn't get a free swing either); does
+  **not** replicate Bozak/Aurak's special-ability rolls or the Giant
+  Spider's poison check -- an explicit simplification, "a plain weapon
+  strike as you turn to leave," not a full re-run of `monstersAct`'s
+  entire per-instance logic. If an opportunity attack drops the player to
+  0 HP, the move never completes and the ordinary knockout ending fires
+  immediately (`GameLoop::runCombat`'s `fightAlreadyEnded` flag, renamed
+  from Milestone 113's `fightEndedByBurst` now that more than a death-burst
+  can trigger it).
+- **Monster movement AI** (invented): no monster in this roster has a
+  ranged attack, so every instance is melee-locked by the same adjacency
+  rule as the player. An instance not adjacent to the player (and not
+  this round's Bozak/Aurak special-ability roll, which stays
+  position-independent, same reasoning as player spells below) spends its
+  turn closing the distance via `combat::stepToward` instead of attacking
+  ("The Goblin A closes in."), rather than attacking from wherever it
+  happens to be.
+- **Spells, potions, and items stay position-independent** (invented
+  scope cut, reasoned from the source): 2e spell ranges are already "at
+  range" in spirit, and gating potions/Webnet/Brooch by position would be
+  new complexity this pass doesn't need -- `playerCasts`'s
+  target-needing effects (damage, block, debuff, instant defeat) and
+  `playerUsesWebnet` still use the same unfiltered "any alive instance"
+  target list Milestone 113 already established.
+- **A Milestone 113 discrepancy found and fixed in the same pass**: the
+  manual's real rule for a Fighter's multi-attack is "if the first target
+  goes down with the first attack, you can aim the remaining attack at
+  another target" -- Milestone 113 originally wasted the remaining swings
+  instead ("Your remaining attack finds no target left standing.").
+  `playerAttacks` now re-picks a target (via the same eligibility filter)
+  each time the current one falls mid-volley, only giving up ("No targets
+  remain for your last attack.") when nothing eligible is left at all.
+
+**Deliberately out of scope, sourced findings included** (real DQoK.pdf
+mechanics, honestly flagged as not-adopted rather than silently ignored):
+segmented (1-10) initiative (this project keeps its existing single
+"which side goes first" roll, `combat::playerActsFirst`); variable
+movement speed from carried weight/strength/armor (no encumbrance system
+exists -- every character moves exactly 1 cell/round); speed-based,
+edge-of-map `Flee` (`Flee` keeps its existing "always succeeds
+immediately, no cost" behavior, already a documented deliberate
+simplification predating this milestone); thief backstab (a real,
+sourced, positional, thief-specific mechanic, but this project doesn't
+model backstab/sneak-attack in any form yet).
+
+**Interactive verification is required, same heavier-than-usual flag as
+Milestone 113** -- `_getch()` blocks the actual play loop from being
+driven headlessly. A throwaway self-test covers only the pure,
+extractable pieces: `combat::isAdjacent` across all 8 neighbors plus
+self/distance-2, and `combat::stepToward`'s bounds-respecting,
+collision-avoiding, greedy approach. See `docs/CURRENT_WORK.md` for the
+specific scenarios still needing a real playthrough.
+
 ## Extending this later
 
-- **The rest of the roster's real group sizes, plus a positional tactical
-  grid**: Milestone 113 (see "Monster encounter groups" above) only
-  applied sourced `GROUP` data to 14 of the 26 monsters -- the dozen left
-  solo despite real No. Appearing data supporting groups (Ogre, Kapak,
-  Bozak, Sivak, Aurak, Ettin, Wight, Troll, Thanoi, Owlbear, Ice Bear,
-  Giant Spider) would need a companion pass re-checking/adding
-  `MIN_TOWN_DISTANCE` gates before grouping is safe to ship for them. A
-  real Gold Box-style positional grid (multiple party members moving
-  tactically, not just a solo PC vs. a lettered roster) is a separate,
-  bigger, deliberately-unstarted engine change -- this project's combat
-  stays strictly turn-ordered and positionless for now.
+- **The rest of the roster's real group sizes**: Milestone 113 (see
+  "Monster encounter groups" above) only applied sourced `GROUP` data to
+  14 of the 26 monsters -- the dozen left solo despite real No. Appearing
+  data supporting groups (Ogre, Kapak, Bozak, Sivak, Aurak, Ettin, Wight,
+  Troll, Thanoi, Owlbear, Ice Bear, Giant Spider) would need a companion
+  pass re-checking/adding `MIN_TOWN_DISTANCE` gates before grouping is
+  safe to ship for them.
 - **Spellcasting**: Mage/Cleric now select and cast from a real,
   PHB/DQoK-sourced multi-level spellbook (49 implemented spells across
   Mage's 9 levels and Cleric's 7 — see `docs/CHARACTER_NOTES.md`'s

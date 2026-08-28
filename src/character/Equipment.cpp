@@ -54,7 +54,7 @@ const WeaponUpgrade kThiefUpgrade{"Long Sword", 8, 0, 15};
 // actually the Heavy Quarrel's damage; re-confirmed via a rendered page
 // image while researching the Hoopak/Hide Armor addition below.
 const WeaponUpgrade kMageUpgrade{"Quarterstaff", 6, 0, 2};
-const WeaponUpgrade kTinkerUpgrade{"Light Crossbow", 4, 0, 35};
+const WeaponUpgrade kTinkerUpgrade{kLightCrossbowName, 4, 0, 35};
 
 // "+1" enchanted weapons -- see Equipment.h's MagicWeapon for sourcing
 // (DMG Table 109, p.140: Sword +1 = 400stl, Other Weapon +1 = 500stl).

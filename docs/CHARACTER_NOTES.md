@@ -990,12 +990,17 @@ characters":
 | Hoopak (Melee) | 3-8 (1d6+2) | 3-6 (1d4+2) |
 | Hoopak (Missile) | 2-5 (1d4+1) | 2-7 (1d6+1) |
 
-This engine has no ranged/melee distinction for any weapon (see the
-Tinker's Light Crossbow above, already used identically to a melee
-weapon), so only one profile can be modeled — the higher-damage **Melee**
-line was chosen, the same "pick the number that matters, flag what's
-lost" simplification as Meteor Swarm's uniform damage in the Spellcasting
-census above. **Cost (50stl) is an invented, flagged number** — DQoK's
+At the time this was written, this engine had no ranged/melee distinction
+for any weapon (the Tinker's Light Crossbow was then still used
+identically to a melee weapon), so only one profile could be modeled —
+the higher-damage **Melee** line was chosen, the same "pick the number
+that matters, flag what's lost" simplification as Meteor Swarm's uniform
+damage in the Spellcasting census above. **This project does have a real
+ranged/melee distinction as of Milestone 114** (see
+`docs/COMBAT_NOTES.md`'s "Positional combat grid" section) — the Light
+Crossbow is now genuinely ranged in combat, but the Hoopak's own choice
+above (Melee over Missile) was never revisited when that shipped; it's a
+separate, standing decision, not an oversight. **Cost (50stl) is an invented, flagged number** — DQoK's
 manual has no in-game currency to reuse (unlike the Potion/magic weapons,
 which reuse real DMG gp values), so it's calibrated instead to the
 Fighter's Two-Handed Sword, this project's closest real peer by average

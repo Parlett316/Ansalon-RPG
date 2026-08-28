@@ -646,8 +646,39 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
 
 void MapRenderer::drawCombatFrame(const character::Character& character,
                                    const std::vector<CombatMonsterView>& monsters,
-                                   const std::vector<std::string>& log, long long currentDay) {
+                                   const std::vector<std::string>& log, long long currentDay,
+                                   const world::TerrainInfo& floorTerrain, combat::GridPos playerPos) {
     std::vector<BoxLine> lines;
+
+    // Tactical grid (Milestone 114). Plain text, no per-cell ANSI -- this
+    // "organic" screen family's BoxLine only supports one color for an
+    // entire line (see writeBoxed/colorLine above), the same restraint
+    // Milestone 32 already established for every non-map screen. The real
+    // terrain's glyph still fills the empty floor for flavor, just not its
+    // color -- see docs/COMBAT_NOTES.md's "Positional combat grid" section
+    // for why (DQoK.pdf's own manual describes the combat map as "a
+    // detailed view of the terrain the party was in").
+    for (int gy = 0; gy < kCombatGridHeight; ++gy) {
+        std::string row;
+        row.reserve(static_cast<size_t>(kCombatGridWidth) * 2);
+        for (int gx = 0; gx < kCombatGridWidth; ++gx) {
+            char glyph = floorTerrain.glyph;
+            if (playerPos.x == gx && playerPos.y == gy) {
+                glyph = '@';
+            } else {
+                for (const CombatMonsterView& m : monsters) {
+                    if (m.alive && m.pos.x == gx && m.pos.y == gy) {
+                        glyph = m.glyph;
+                        break;
+                    }
+                }
+            }
+            row.push_back(glyph);
+            if (gx + 1 < kCombatGridWidth) row.push_back(' ');
+        }
+        lines.push_back({row, nullptr});
+    }
+    lines.push_back({"", nullptr});
 
     std::ostringstream playerLine;
     playerLine << character.name << " -- HP " << character.currentHp << "/" << character.maxHp << "   AC "
@@ -677,7 +708,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
 
     lines.push_back({"", nullptr});
     std::ostringstream footer;
-    footer << "Enter=attack";
+    footer << "w/a/s/d=move   Enter=attack";
     // Only hinted when a spell is actually memorized and unspent today --
     // same "only show it when it's usable" precedent the potion/webnet/
     // brooch hints below already follow.

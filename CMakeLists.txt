@@ -28,6 +28,7 @@ add_executable(ansalon_rpg
     src/combat/Monster.cpp
     src/combat/MonsterLoader.cpp
     src/combat/Combat.cpp
+    src/combat/CombatGrid.cpp
     src/character/Dice.cpp
     src/character/Ability.cpp
     src/character/Race.cpp

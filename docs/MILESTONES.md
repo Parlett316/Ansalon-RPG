@@ -3603,6 +3603,64 @@ section).
      `docs/CURRENT_WORK.md` for the specific scenarios still needing a
      real playthrough.
 
+114. Positional combat grid, Phase 2 of the Gold Box-style combat pass --
+     the piece Milestone 113 deferred: a real tactical grid with
+     player/monster positions and movement, replacing the strictly
+     turn-ordered, positionless exchange combat had used until now. Unlike
+     Milestone 113's group sizes, this had a real source to check:
+     `References/DQoK.pdf` (Dark Queen of Krynn, an actual SSI Gold Box
+     Dragonlance game, already used for the Hoopak's weapon table at
+     Milestone 111) has its own "COMBAT" section (manual pp.9-11)
+     describing this exact system -- re-read before finalizing the design,
+     which corrected two assumptions and added a real mechanic the
+     original plan had gotten wrong or left out: ranged weapons are
+     disabled *while* adjacent to an enemy (not usable at any range
+     unconditionally, the plan's first draft), the combat map is
+     terrain-flavored (not a blank grid), and moving away from an
+     adjacent enemy provokes a real, sourced opportunity attack. New
+     `src/combat/CombatGrid.h`/`.cpp` (`combat::GridPos`, `isAdjacent`,
+     `stepToward` -- extracted as their own functions specifically so
+     they're unit-testable, same reasoning as `combat::rollGroupSize`),
+     an 11x7 grid (`render::MapRenderer::kCombatGridWidth`/
+     `kCombatGridHeight`) rendered in plain text (this project's
+     "organic" screen family only supports one color per line, not per
+     cell) but using the real tile's terrain glyph for the floor. Melee
+     attacks now require adjacency (`pickTarget` gained an eligibility
+     filter); the Tinker's Light Crossbow
+     (`character::kLightCrossbowName`, same plain-string-compare pattern
+     as `kFrostreaverName`) is this project's first-ever ranged weapon,
+     able to hit anyone on the grid while the player isn't adjacent to
+     anyone, refused outright the instant an enemy closes to melee range;
+     monsters (none of which have a ranged attack) close distance via
+     `combat::stepToward` when not adjacent instead of attacking from
+     wherever they stand. `w`/`a`/`s`/`d` (previously ignored inside
+     combat) move the player as a full round action, validated up front
+     the same "reject before it costs a round" way an unusable spell
+     press already is. Deliberately not adopted, honestly flagged rather
+     than silently dropped: segmented (1-10) initiative, variable
+     movement speed from encumbrance, speed-based/edge-of-map `Flee`, 2
+     arrows/3 darts per turn and real range brackets for missile weapons,
+     and thief backstab -- all real DQoK.pdf mechanics this project isn't
+     taking on this pass. **A Milestone 113 discrepancy was found and
+     fixed in the same session, at the user's request**: the manual's
+     real rule retargets a Fighter's remaining multi-attack swings to a
+     new opponent if the first target dies mid-volley, rather than
+     wasting them the way Milestone 113 originally shipped -- `fightEndedByBurst`
+     was also renamed to `fightAlreadyEnded` since an opportunity attack
+     can now end the fight the same way a death-burst already could. No
+     save-format changes. Verified via a throwaway self-test
+     (`combat::isAdjacent` across all 8 neighbors plus self/distance-2,
+     `combat::stepToward`'s bounds-respecting, collision-avoiding, greedy
+     approach), a clean `/W4` rebuild, and the piped smoke test
+     (confirming both of the user's real saves still load unchanged).
+     **Interactive verification required, same heavier-than-usual flag as
+     Milestone 113** -- `_getch()` blocks the actual play loop (the grid
+     itself, movement, the ranged-weapon lockout, the opportunity attack,
+     monster pathing) from being driven headlessly. See
+     `docs/COMBAT_NOTES.md`'s "Positional combat grid" section for the
+     full sourcing and design writeup, and `docs/CURRENT_WORK.md` for the
+     specific scenarios still needing a real playthrough.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

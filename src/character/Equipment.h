@@ -445,6 +445,15 @@ constexpr int kFrostreaverDamageSides = 8; // PHB Table 44, "Battle axe": 1d8
 constexpr int kFrostreaverMagicBonus = 4;  // "+4" to both hit and damage, glacier-only
 constexpr int kFrostreaverMinStrength = 13;
 
+// The Tinker's Light Crossbow upgrade (see kTinkerUpgrade in
+// Equipment.cpp) -- this project's one real ranged weapon as of Milestone
+// 114's positional combat grid (docs/COMBAT_NOTES.md). Same
+// name-string-compare pattern as kFrostreaverName above: no new
+// character::Character field, no threading through the purchase/equip
+// path, just a plain weaponName check at the one call site
+// (GameLoop::runCombat) that needs to know.
+inline constexpr const char* kLightCrossbowName = "Light Crossbow";
+
 // A quest item (ItemKind::QuestItem) -- a real, granted-in-the-world
 // object carried toward a quest::ObjectiveKind::Deliver objective, never
 // sold and never equipped (see docs/QUEST_NOTES.md's "DELIVER"). Unlike

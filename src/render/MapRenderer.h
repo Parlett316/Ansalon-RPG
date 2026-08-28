@@ -1,9 +1,11 @@
 #pragma once
 
 #include "character/Equipment.h"
+#include "combat/CombatGrid.h"
 #include "combat/Monster.h"
 #include "game/GameState.h"
 #include "world/OverworldGrid.h"
+#include "world/Terrain.h"
 #include "world/World.h"
 #include "world/Zone.h"
 
@@ -132,6 +134,16 @@ public:
     // drawCharacterSheet.
     static void drawSpellbookFrame(const character::Character& character, long long currentDay);
 
+    // The tactical combat grid's fixed size (Milestone 114, see
+    // docs/COMBAT_NOTES.md's "Positional combat grid" section) -- small
+    // enough to read comfortably inside the existing "organic" combat box
+    // (an 11-wide grid renders at 22 visible columns, well under
+    // kSecondaryBoxMaxWidth), big enough that closing distance takes a
+    // couple of real rounds. GameLoop::runCombat reads these same
+    // constants for placement/bounds-checking -- no duplicated numbers.
+    static constexpr int kCombatGridWidth = 11;
+    static constexpr int kCombatGridHeight = 7;
+
     // One monster instance's presentation state, built by GameLoop::runCombat
     // from its own std::vector<MonsterInstance> -- MapRenderer never sees
     // combat::Monster's other fields (special-ability flags, terrain data,
@@ -139,29 +151,44 @@ public:
     // JournalEntry/DialogueLine already establish. `name` already carries
     // the letter suffix ("Goblin A") when the encounter is a group of more
     // than one -- a solo encounter's `name` is just the plain monster name,
-    // identical to every combat screen before Milestone 113. See
-    // docs/COMBAT_NOTES.md's "Monster encounter groups" section.
+    // identical to every combat screen before Milestone 113. `pos` is new
+    // as of Milestone 114's positional grid.
     struct CombatMonsterView {
         std::string name;
         int hp = 0;
         int maxHp = 0;
         int armorClass = 0;
         bool alive = true;
+        combat::GridPos pos;
+        // The single character drawn on the grid at `pos` -- always a
+        // letter ('A' + instance index), even for a solo fight where
+        // `name` itself carries no letter suffix (its HP-list line just
+        // reads "Goblin"). Kept as its own field rather than derived from
+        // `name` in MapRenderer, which would be ambiguous for that solo
+        // case.
+        char glyph = '?';
     };
 
-    // Renders one combat frame: the player's HP/AC, every monster
-    // instance's HP/AC (defeated ones marked, still shown so the roster
-    // visibly shrinks rather than vanishing), a scrolling combat log (most
-    // recent entries last -- only the tail that fits is shown), and the
-    // available actions. Monster HP is tracked by GameLoop::runCombat, not
-    // the combat::Monster struct itself (which is static content shared by
-    // every encounter with that monster type) -- see docs/COMBAT_NOTES.md.
-    // `currentDay` (hoursElapsed/24, same convention as drawCharacterSheet
-    // above) is only used to decide whether the footer hints "i=use
-    // brooch" -- see character::broochAvailableToday.
+    // Renders one combat frame: a small tactical grid (Milestone 114 --
+    // `floorTerrain`'s glyph/color fills every empty cell, so a forest
+    // encounter's grid reads differently from a plains one, matching
+    // DQoK.pdf's own manual describing the combat map as "a detailed view
+    // of the terrain the party was in"; `playerPos` and each alive
+    // monster's `CombatMonsterView::pos` place the `@`/lettered glyphs),
+    // then the player's HP/AC, every monster instance's HP/AC (defeated
+    // ones marked, still shown so the roster visibly shrinks rather than
+    // vanishing), a scrolling combat log (most recent entries last -- only
+    // the tail that fits is shown), and the available actions. Monster HP
+    // is tracked by GameLoop::runCombat, not the combat::Monster struct
+    // itself (which is static content shared by every encounter with that
+    // monster type) -- see docs/COMBAT_NOTES.md. `currentDay`
+    // (hoursElapsed/24, same convention as drawCharacterSheet above) is
+    // only used to decide whether the footer hints "i=use brooch" -- see
+    // character::broochAvailableToday.
     static void drawCombatFrame(const character::Character& character,
                                  const std::vector<CombatMonsterView>& monsters,
-                                 const std::vector<std::string>& log, long long currentDay);
+                                 const std::vector<std::string>& log, long long currentDay,
+                                 const world::TerrainInfo& floorTerrain, combat::GridPos playerPos);
 
     struct DialogueLine {
         std::string speaker;
