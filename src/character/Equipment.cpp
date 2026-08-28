@@ -2,6 +2,7 @@
 #include "character/Ability.h"
 #include "character/Character.h"
 #include "character/Dice.h"
+#include "character/Leveling.h"
 
 #include <algorithm>
 
@@ -209,6 +210,11 @@ bool equipInventoryItem(Character& character, int index) {
 
 bool canWearArmor(ClassId classId) {
     return classId != ClassId::Mage && classId != ClassId::Tinker;
+}
+
+bool canBackstab(const Character& character) {
+    if (classGroupFor(character.charClass) != ClassGroup::Rogue) return false;
+    return character.equippedArmor == ArmorId::None || character.equippedArmor == ArmorId::Leather;
 }
 
 const WeaponUpgrade* weaponUpgradeFor(ClassId classId) {

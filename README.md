@@ -187,7 +187,13 @@ fights alongside you: they take their own spot on the tactical combat grid
 and attack automatically each round (no orders to give them yet — that's
 still ahead), monsters may go after any one of you, and a real knock can
 put a companion down for the rest of that one fight without ending it,
-healed back up the same way you are, by resting or a real bed. Traveling the wilds now risks a random encounter — goblins, kobolds,
+healed back up the same way you are, by resting or a real bed. A Fighter
+who's adjacent to two or more weak enemies at once (goblins, kobolds,
+hobgoblins, skeletons) automatically sweeps and hits them all in one round
+instead of picking just one, and a Thief standing on the exact opposite
+side of a monster from whichever ally engaged it first lands a backstab —
+better odds to hit and real bonus damage — both work the same whether
+it's you or Bren Alder/Dessa Corrin doing the swinging. Traveling the wilds now risks a random encounter — goblins, kobolds,
 hobgoblins, wolves, giant spiders, bugbears, ogres, gnolls, ghouls,
 skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real

@@ -16,6 +16,7 @@
 #include <cmath>
 #include <functional>
 #include <sstream>
+#include <utility>
 
 namespace game {
 
@@ -79,10 +80,20 @@ std::string describeToHit(const combat::AttackOutcome& outcome) {
 // actually hit.
 std::string describeDamage(const combat::AttackOutcome& outcome) {
     std::ostringstream out;
-    out << "[" << outcome.damageDiceCount << "d" << outcome.damageDiceSides << " " << outcome.damageRoll;
+    out << "[" << outcome.damageDiceCount << "d" << outcome.damageDiceSides << " "
+        << (outcome.damageMultiplier != 1 ? outcome.damageRoll / outcome.damageMultiplier : outcome.damageRoll);
+    // Milestone 119, thief backstab: damageRoll already has the PHB Table
+    // 30 multiplier baked in (see combat::resolvePlayerAttack) -- shown
+    // explicitly as "x3" etc. so the log never implies a 1d8 rolled higher
+    // than 8, rather than silently folding it into the raw roll shown above.
+    if (outcome.damageMultiplier != 1) {
+        out << " x" << outcome.damageMultiplier;
+    }
     if (outcome.damageBonus != 0) {
-        out << (outcome.damageBonus > 0 ? " +" : " ") << outcome.damageBonus << " = "
-            << (outcome.damageRoll + outcome.damageBonus);
+        out << (outcome.damageBonus > 0 ? " +" : " ") << outcome.damageBonus;
+    }
+    if (outcome.damageBonus != 0 || outcome.damageMultiplier != 1) {
+        out << " = " << (outcome.damageRoll + outcome.damageBonus);
     }
     out << "]";
     return out.str();
@@ -1671,6 +1682,68 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // alternating pattern (PHB Table 15) -- incremented once per
     // for(;;) iteration below, since each iteration is exactly one round.
     int roundNumber = 1;
+    // Milestone 119, thief backstab: DQoK.pdf's own manual, "A thief
+    // 'back stabs' if he attacks a target from exactly opposite the first
+    // character to attack the target." Tracks, per instance, WHO first
+    // attacked it (not reset per round -- "the first character," full
+    // stop, for that instance's whole lifetime in this fight): -1 = no
+    // one yet, 0 = the player, N = state_.companions[N-1]. Deliberately an
+    // identity, not a frozen position, so a later backstab check always
+    // compares against that character's CURRENT position (they almost
+    // always hold position while meleeing anyway -- see playerMoves/
+    // companionActs -- so this only matters for the rare retreat).
+    std::vector<int> firstAttackerId(instances.size(), -1);
+    auto positionOfAttacker = [&](int id) -> combat::GridPos {
+        return id == 0 ? playerPos : companionPositions[static_cast<size_t>(id - 1)];
+    };
+    // Records `attackerPos` as the first attacker on `targetIndex` if none
+    // is recorded yet; otherwise returns the backstab bonus (+4 to-hit,
+    // PHB Table 30's level-based damage multiplier) when `attacker` is a
+    // Thief-type in light-or-no armor (character::canBackstab) standing
+    // exactly opposite that first attacker's current position
+    // (combat::oppositeSide) -- {0, 1} (no bonus) otherwise, including
+    // when the first attacker was a companion who has since been knocked
+    // out (no living ally left to flank around). Shared by playerAttacks
+    // and companionActs below so the geometry is written once -- either
+    // side of the party can be "first attacker" for the other's thief.
+    auto backstabBonus = [&](const character::Character& attacker, int attackerId, combat::GridPos attackerPos,
+                              int targetIndex) -> std::pair<int, int> {
+        size_t idx = static_cast<size_t>(targetIndex);
+        if (firstAttackerId[idx] < 0) {
+            firstAttackerId[idx] = attackerId;
+            return {0, 1};
+        }
+        if (firstAttackerId[idx] == attackerId) return {0, 1}; // can't backstab around yourself
+        if (firstAttackerId[idx] > 0 && !companionAlive(static_cast<size_t>(firstAttackerId[idx] - 1))) {
+            return {0, 1};
+        }
+        combat::GridPos anchor = positionOfAttacker(firstAttackerId[idx]);
+        combat::GridPos opposite = combat::oppositeSide(instancePositions[idx], anchor);
+        if (attackerPos.x == opposite.x && attackerPos.y == opposite.y && character::canBackstab(attacker)) {
+            return {4, character::backstabDamageMultiplier(attacker.level)};
+        }
+        return {0, 1};
+    };
+    // Milestone 119, Fighter-type sweep -- DQoK.pdf's own manual:
+    // "Fighter-types may also 'sweep' through several weak opponents in
+    // one combat round. When a character 'sweeps,' he automatically
+    // attacks all of the weak opponents." Every alive instance adjacent to
+    // `pos`, or empty when this fight's monster isn't "weak"
+    // (combat::isSweepEligible) -- an encounter is always N copies of one
+    // Monster (never mixed types), so eligibility is a single check for
+    // the whole fight, not per-instance. Callers additionally require the
+    // result to have 2+ entries before treating this as a sweep (a single
+    // adjacent weak enemy is just an ordinary attack).
+    auto adjacentWeakInstances = [&](combat::GridPos pos) -> std::vector<int> {
+        std::vector<int> result;
+        if (!combat::isSweepEligible(monster)) return result;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            if (instances[i].hp > 0 && combat::isAdjacent(pos, instancePositions[i])) {
+                result.push_back(static_cast<int>(i));
+            }
+        }
+        return result;
+    };
     // Set true by handleInstanceDeath below (a death-burst finishing the
     // player off after the killing blow) or by playerMoves further down
     // (an opportunity attack doing the same while retreating) -- every
@@ -1799,6 +1872,38 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("An enemy is too close to fire your crossbow!");
             return;
         }
+        // Milestone 119: Fighter-type sweep bypasses the picker and
+        // meleeAttacksThisRound's progression entirely -- one swing per
+        // adjacent weak instance, no picker, no to-hit/damage bonus (the
+        // manual's own wording gives none; sweeping is an action-economy
+        // ability only). See adjacentWeakInstances's doc comment.
+        if (character::classGroupFor(state_.character.charClass) == character::ClassGroup::Warrior) {
+            std::vector<int> weakTargets = adjacentWeakInstances(playerPos);
+            if (weakTargets.size() >= 2) {
+                log.push_back("You sweep through the " + pluralMonsterName(monster.name) + "!");
+                for (int targetIndex : weakTargets) {
+                    if (fightAlreadyEnded) return;
+                    if (instances[static_cast<size_t>(targetIndex)].hp <= 0) continue;
+                    std::string targetName = monsterLabel(targetIndex);
+                    auto [backstabThac0, backstabMultiplier] =
+                        backstabBonus(state_.character, 0, playerPos, targetIndex);
+                    combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                        state_.character, monster, playerThac0Bonus + backstabThac0, playerDamageBonus,
+                        backstabMultiplier);
+                    if (outcome.hit) {
+                        instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
+                        log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) +
+                                       ". " + describeToHit(outcome) + " " + describeDamage(outcome));
+                        if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                            if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
+                        }
+                    } else {
+                        log.push_back("You miss the " + targetName + ". " + describeToHit(outcome));
+                    }
+                }
+                return;
+            }
+        }
         std::function<bool(int)> eligible = hasRangedWeapon ? std::function<bool(int)>(anyAlive)
                                                               : std::function<bool(int)>([&](int idx) {
                                                                     return combat::isAdjacent(
@@ -1827,11 +1932,13 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 }
             }
             std::string targetName = monsterLabel(targetIndex);
-            combat::AttackOutcome outcome =
-                combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
+            auto [backstabThac0, backstabMultiplier] = backstabBonus(state_.character, 0, playerPos, targetIndex);
+            combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                state_.character, monster, playerThac0Bonus + backstabThac0, playerDamageBonus, backstabMultiplier);
             if (outcome.hit) {
                 instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) + ". " +
+                log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + "You hit the " +
+                               targetName + " for " + std::to_string(outcome.damage) + ". " +
                                describeToHit(outcome) + " " + describeDamage(outcome));
                 if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                     if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
@@ -1896,6 +2003,39 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 if (next.x != companionPos.x || next.y != companionPos.y) companionPos = next;
                 continue;
             }
+            // Milestone 119: Fighter-type companion sweep -- same rule and
+            // same adjacentWeakInstances helper as the player's own sweep
+            // above. Ends this companion's turn (continue) rather than
+            // falling into the single-target loop below.
+            int attackerId = static_cast<int>(ci) + 1;
+            if (character::classGroupFor(companion.charClass) == character::ClassGroup::Warrior) {
+                std::vector<int> weakTargets = adjacentWeakInstances(companionPos);
+                if (weakTargets.size() >= 2) {
+                    log.push_back(companion.name + " sweeps through the " + pluralMonsterName(monster.name) + "!");
+                    for (int idx : weakTargets) {
+                        if (fightAlreadyEnded) return;
+                        if (instances[static_cast<size_t>(idx)].hp <= 0) continue;
+                        std::string targetName = monsterLabel(idx);
+                        auto [backstabThac0, backstabMultiplier] =
+                            backstabBonus(companion, attackerId, companionPos, idx);
+                        combat::AttackOutcome outcome =
+                            combat::resolvePlayerAttack(companion, monster, backstabThac0, 0, backstabMultiplier);
+                        if (outcome.hit) {
+                            instances[static_cast<size_t>(idx)].hp -= outcome.damage;
+                            log.push_back(companion.name + " hits the " + targetName + " for " +
+                                           std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
+                                           describeDamage(outcome));
+                            if (instances[static_cast<size_t>(idx)].hp <= 0) {
+                                if (handleInstanceDeath(idx)) fightAlreadyEnded = true;
+                            }
+                        } else {
+                            log.push_back(companion.name + " misses the " + targetName + ". " +
+                                           describeToHit(outcome));
+                        }
+                    }
+                    continue;
+                }
+            }
             int attacks = character::meleeAttacksThisRound(companion.charClass, companion.level, roundNumber);
             for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
                 if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
@@ -1910,12 +2050,15 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     targetIndex = retarget;
                 }
                 std::string targetName = monsterLabel(targetIndex);
-                combat::AttackOutcome outcome = combat::resolvePlayerAttack(companion, monster, 0, 0);
+                auto [backstabThac0, backstabMultiplier] =
+                    backstabBonus(companion, attackerId, companionPos, targetIndex);
+                combat::AttackOutcome outcome =
+                    combat::resolvePlayerAttack(companion, monster, backstabThac0, 0, backstabMultiplier);
                 if (outcome.hit) {
                     instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                    log.push_back(companion.name + " hits the " + targetName + " for " +
-                                   std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
-                                   describeDamage(outcome));
+                    log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + companion.name +
+                                   " hits the " + targetName + " for " + std::to_string(outcome.damage) + ". " +
+                                   describeToHit(outcome) + " " + describeDamage(outcome));
                     if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                         if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
                     }

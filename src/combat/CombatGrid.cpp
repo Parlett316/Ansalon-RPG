@@ -44,4 +44,8 @@ int chebyshevDistance(GridPos a, GridPos b) {
     return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
 }
 
+GridPos oppositeSide(GridPos target, GridPos from) {
+    return {2 * target.x - from.x, 2 * target.y - from.y};
+}
+
 } // namespace combat

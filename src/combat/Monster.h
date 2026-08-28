@@ -91,6 +91,20 @@ struct Monster {
     int xpValue = 0;
 };
 
+// True if `monster` counts as "weak" for a Fighter-type's sweep attack
+// (DQoK.pdf's own manual: "Fighter-types may also 'sweep' through several
+// weak opponents in one combat round... he automatically attacks all of the
+// weak opponents.") -- the manual gives no numeric threshold for "weak" in
+// the surviving text, so this project defines it as hpDiceCount <= 1, which
+// is already how this project encodes a monster's real 2e Hit Dice (N HD
+// rolls N HP dice). Confirmed against data/monsters.txt: Goblin/Kobold/
+// Hobgoblin/Skeleton (real HD 1-1/~1-2/1+1/1) are exactly the "line troop"
+// tier Milestone 113's GROUP feature already singled out. Since an
+// encounter is always N copies of one Monster (never mixed types), this is
+// a single check for the whole fight, not per-instance -- see
+// docs/COMBAT_NOTES.md.
+bool isSweepEligible(const Monster& monster);
+
 // Rolls how many of `monster` show up this encounter -- a uniform pick in
 // [groupMin, groupMax] via the same character::roll primitive every other
 // dice roll in this project uses (roll(1, N) shifted into range), not a

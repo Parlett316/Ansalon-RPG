@@ -35,4 +35,14 @@ GridPos stepToward(GridPos from, GridPos to, int width, int height, const std::v
 // unit-testability reasoning as stepToward above.
 int chebyshevDistance(GridPos a, GridPos b);
 
+// Mirrors `from` through `target`: the cell exactly opposite `from` on the
+// far side of `target` (target + (target - from)). Milestone 119's thief
+// backstab uses this -- DQoK.pdf's own manual: "A thief 'back stabs' if he
+// attacks a target from exactly opposite the first character to attack the
+// target." Always lands on one of the 8 cells around `target` when `from`
+// is itself one of them (isAdjacent(target, from) true), since the offset
+// is just negated. Doesn't itself check adjacency -- callers compare the
+// result against the backstabbing character's actual position.
+GridPos oppositeSide(GridPos target, GridPos from);
+
 } // namespace combat

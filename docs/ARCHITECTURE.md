@@ -1395,12 +1395,15 @@ whole party is real extra scope, the same family as the already-deferred
 death-burst still only damages the player regardless of who lands the
 killing blow (a simplification that predates companions, not extended
 here); companion movement never provokes or takes opportunity attacks; and
-there's no "finish off a downed ally" mechanic. Player-directed control of
-companions (a UIC-style toggle — DQoK.pdf's own manual: "You control the
-actions of PCs. The computer controls the actions of monsters, NPCs, and
-PCs set to computer control with the UIC command"), deployment order,
-backstab, and sweep all stay reserved for a later phase — see
-`docs/COMBAT_NOTES.md`'s "Extending this later".
+there's no "finish off a downed ally" mechanic. Thief backstab and
+Fighter sweep — both needed a second party member and both apply
+identically to the player and to companions — shipped at Milestone 119,
+see `docs/COMBAT_NOTES.md`'s "Thief backstab and Fighter sweep attacks".
+Player-directed control of companions (a UIC-style toggle — DQoK.pdf's
+own manual: "You control the actions of PCs. The computer controls the
+actions of monsters, NPCs, and PCs set to computer control with the UIC
+command") and deployment order still stay reserved for a later phase —
+see `docs/COMBAT_NOTES.md`'s "Extending this later".
 
 ## Extension points for later milestones
 

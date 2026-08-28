@@ -1,30 +1,37 @@
 # Current work
 
-Nothing in flight -- Milestone 118 (Phase 3a of the party system, "A real
-multi-companion roster") is implemented and rebuilt clean. Much of it is
-now confirmed by the user's own real playthrough: Dessa Corrin was
-recruited alongside Bren Alder on the same character, both fought, and the
-real save file shows both surviving combat with distinct, correctly
-tracked HP (`COMPANION bren_alder 9` / `COMPANION dessa_corrin 2`).
+Nothing in flight -- Milestone 119 (Thief backstab and Fighter sweep
+attacks) is implemented and rebuilt clean (`/W4`, zero new warnings), with
+a 26-assertion throwaway self-test passing and the piped character-
+creation smoke test confirming nothing else broke loading.
 
-**Bug found and fixed this session**: when a party wipe ends a fight
-(`GameLoop::runCombat`'s `knockedOutBy`), only the player was restored to
-full HP and carried back to the nearest refuge -- any companion knocked out
-during that same fight stayed at 0 HP indefinitely (only a later Rest/
-BedRest could revive them, silently benching them from every fight in
-between). Fixed by healing every recruited companion to full alongside the
-player in `knockedOutBy`. Rebuilt clean (`/W4`, zero new warnings); not yet
-re-confirmed by the user in an actual party-wipe scenario.
+**Interactive verification still open** (same `_getch()` limitation as
+every other combat-facing milestone -- neither ability can be exercised
+headlessly):
 
-**Interactive verification still open**: a party wipe (get both the player
-and a companion knocked out, then take the killing blow) actually restores
-every companion to full HP, not just the player; the coin-flip/random-pick
-targeting behavior when a monster is adjacent to more than one party member;
-Rest/BedRest healing every recruited companion (1 hp / full respectively);
-and a knocked-out companion not ending the fight while the other keeps
-fighting. See `docs/MILESTONES.md` entry 118 for the full design writeup,
-and `docs/ARCHITECTURE.md`'s "Party companions" / `docs/CHARACTER_NOTES.md`'s
-"Party companions" / `docs/COMBAT_NOTES.md`'s "Extending this later"
+- **Sweep**: a Fighter-type character (the player, or Bren Alder) adjacent
+  to 2+ weak monsters (Goblin, Kobold, Hobgoblin, or Skeleton -- the only
+  roster entries with `hpDiceCount <= 1`) in a GROUP encounter attacks all
+  of them in one round instead of opening the normal target picker. Log
+  should read "You sweep through the Goblin Raiders!" (or the companion's
+  own name) followed by one hit/miss line per adjacent weak instance, no
+  to-hit/damage bonus.
+- **Backstab**: with two party members (the player and a companion, or
+  vice versa) both adjacent to the same monster instance from exactly
+  opposite grid sides, and the second attacker a Thief-type
+  (`ClassId::Thief`) wearing no armor heavier than Leather, the second
+  attacker's hit should show `[... +4 = ...]` in the to-hit math and an
+  `x2`/`x3`/`x4`/`x5` (by level) multiplier in the damage math, with a
+  "Backstab! " prefix on the hit line. Confirm both directions: a
+  companion (Bren Alder or Dessa Corrin) backstabbing around the player's
+  engagement, and a Thief player backstabbing around a companion's.
+  Also confirm the negative cases: same-side positioning (no bonus),
+  armor heavier than Leather equipped (no bonus even when positioned
+  correctly), and a non-Thief attacker positioned correctly (no bonus).
+
+See `docs/MILESTONES.md` entry 119 for the full design writeup, and
+`docs/COMBAT_NOTES.md`'s "Thief backstab and Fighter sweep attacks" /
+`docs/CHARACTER_NOTES.md`'s "Party companions" and "Leveling / experience"
 sections for how the system works. Prior milestones' own history lives in
 `docs/MILESTONES.md`, not here -- see that file for the full numbered
 writeup of everything shipped before this.

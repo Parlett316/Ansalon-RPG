@@ -561,6 +561,16 @@ that rate: 1 attack on odd rounds of the fight, 2 on even — the book
 states the rate but not which rounds carry the extra swing); 13+: 2/round.
 Every non-Warrior-group class always gets 1. See `docs/COMBAT_NOTES.md`.
 
+**Modeled (Milestone 119)**: a Thief's backstab damage multiplier (PHB
+Table 30, p.57) — `character::backstabDamageMultiplier` (`Leveling.h`/
+`.cpp`, same file/family as `meleeAttacksThisRound` above): 1–4 = x2,
+5–8 = x3, 9–12 = x4, 13+ = x5. And a Warrior-group character's sweep
+attack against multiple weak (1 HD or less) opponents — no level
+dependency, gated on class group and adjacency count only. Both are
+party-wide, applying identically to the player and to any Fighter/Thief
+companion. See `docs/COMBAT_NOTES.md`'s "Thief backstab and Fighter sweep
+attacks".
+
 **Modeled** (see "Ability score ranges and class level limits" above): a
 Fighter's `classLevelCap` applies here too, so a demihuman Knight of the
 Crown/Sword stops advancing once their race's Fighter cap is reached, same
@@ -1551,14 +1561,23 @@ Brooch of Imog's globe, Bozak's Magic Missile, Aurak's breath weapon,
 Sivak's death-burst) or unmodeled (opportunity attacks from companion
 movement, finishing off a downed ally).
 
+**Milestone 119: Dessa Corrin's Thief class and Bren Alder's Fighter class
+both pay off directly in combat.** Backstab (Thief-type, positional --
+DQoK.pdf's own manual, not the classic PHB surprise version) and sweep
+(Fighter-type, vs. multiple weak/low-HD opponents) both apply to
+companions exactly the same way they apply to the player -- e.g. Bren
+Alder holding one flank of a monster while a Thief moves to the exact
+opposite grid side triggers a companion-assisted backstab, in either
+direction. See `docs/COMBAT_NOTES.md`'s "Thief backstab and Fighter sweep
+attacks" for the full mechanics.
+
 **Still not attempted**: companions cannot shop, cannot gain levels or
 spend steel, cannot be dismissed once recruited, have no independent
 position/glyph outside combat, and never act on the player's own command.
 There's no hardcoded roster cap (`GameState::companions` is a plain
 `vector`), but only two companions exist as content today. Player-directed
-control (a UIC-style toggle), deployment order, thief backstab, and fighter
-sweep all stay reserved for a later phase — see `docs/COMBAT_NOTES.md`'s
-"Extending this later".
+control (a UIC-style toggle) and deployment order stay reserved for a
+later phase — see `docs/COMBAT_NOTES.md`'s "Extending this later".
 
 ## Where a character lives
 

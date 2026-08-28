@@ -19,6 +19,10 @@ constexpr int kBiasWeight = 3;
 
 } // namespace
 
+bool isSweepEligible(const Monster& monster) {
+    return monster.hpDiceCount <= 1;
+}
+
 int rollGroupSize(const Monster& monster) {
     if (monster.groupMax <= monster.groupMin) return monster.groupMin;
     return monster.groupMin + character::roll(1, monster.groupMax - monster.groupMin + 1) - 1;

@@ -38,6 +38,18 @@ SavingThrows savesForLevel(ClassId id, int level);
 // verbatim). Every other class always returns 1.
 int meleeAttacksThisRound(ClassId id, int level, int roundNumber);
 
+// PHB Table 30 (p.57), "Backstab Damage Multipliers": levels 1-4 = x2,
+// 5-8 = x3, 9-12 = x4, 13+ = x5, multiplying the thief's raw weapon die
+// roll before Strength/magic bonuses -- see combat::resolvePlayerAttack's
+// damageMultiplier parameter. DQoK.pdf's own manual describes backstab
+// qualitatively ("does additional damage") but prints no numeric table of
+// its own, so this project reuses the PHB's real numbers, same convention
+// already used for magic weapon Steel prices (see docs/CHARACTER_NOTES.md).
+// Callers gate this on character::canBackstab (Equipment.h) first -- this
+// function itself doesn't check class, matching meleeAttacksThisRound's
+// own "just the number, caller decides when it applies" shape.
+int backstabDamageMultiplier(int level);
+
 // Applies every level-up `character.experience` has earned, one level at
 // a time (so a single big XP award still visits every intermediate level
 // -- needed so the level-3 flavor moments below are never skipped).

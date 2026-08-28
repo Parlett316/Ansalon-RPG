@@ -3925,6 +3925,84 @@ playtesting. See `docs/ARCHITECTURE.md`'s "Party companions" section and
 `docs/CHARACTER_NOTES.md`'s "Party companions" section for the updated
 recovery description.
 
+119. Thief backstab and Fighter sweep attacks -- `NEXT UP` item 6's last
+     open pair besides player-directed control/deployment order, picked by
+     the user to start this session. Both are real DQoK.pdf mechanics
+     flagged since Milestone 113/114 as needing a second party member,
+     which the multi-companion roster (Milestones 116-118) now provides.
+     `References/DQoK.pdf` (re-read via a fresh `pdftotext -layout` pass,
+     p.9-10 of the printed manual) gives the qualitative rule for both:
+     sweep ("Fighter-types may also 'sweep' through several weak
+     opponents in one combat round... automatically attacks all of the
+     weak opponents") and backstab, in its own **positional** form
+     distinct from the classic PHB surprise/unaware-target rule ("A thief
+     'back stabs' if he attacks a target from exactly opposite the first
+     character to attack the target. The thief may not 'back stab' if he
+     has readied armor heavier than leather.") -- this project follows
+     DQoK's positional version exclusively, its established preference
+     when DQoK's own combat-chapter wording differs from the classic PHB
+     text. `References/Player's Handbook (revised).pdf` (p.57, Table 30)
+     supplied the numeric backstab damage multiplier DQoK doesn't print
+     (level 1-4 = x2, 5-8 = x3, 9-12 = x4, 13+ = x5) and the +4 to-hit
+     bonus, same "reuse the PHB's real numbers when DQoK is silent"
+     convention already used for magic weapon Steel prices. Sweep's
+     "weak opponent" threshold has no surviving numeric definition in
+     DQoK's own extracted text either -- defined as `Monster::
+     hpDiceCount <= 1` (`combat::isSweepEligible`), which is already how
+     this project encodes a monster's real 2e Hit Dice, confirmed against
+     `data/monsters.txt`'s Goblin/Kobold/Hobgoblin/Skeleton (real HD
+     1-1/~1/2/1+1/1), the same "line troop" tier Milestone 113's GROUP
+     feature already singled out; since every encounter is N copies of
+     one `Monster`, eligibility is one check per fight, not per-instance.
+     New pure helpers, same "extracted for unit-testability" family as
+     `isAdjacent`/`stepToward`/`chebyshevDistance`: `combat::oppositeSide`
+     (mirrors a position through a target -- `CombatGrid.h`/`.cpp`),
+     `combat::isSweepEligible` (`Monster.h`/`.cpp`), `character::
+     canBackstab` (armor + class-group gate, `Equipment.h`/`.cpp`,
+     alongside `canWearArmor`), `character::backstabDamageMultiplier`
+     (`Leveling.h`/`.cpp`, alongside `meleeAttacksThisRound`).
+     `combat::resolvePlayerAttack` gained a `damageMultiplier` parameter
+     (default 1) applied to the raw weapon die roll before Strength/magic
+     bonuses (Table 30's own text: "multiplied... before modifiers... are
+     applied"), and `AttackOutcome`/`game::describeDamage` were updated so
+     the combat log renders it honestly (`[1d8 5 x3 +2 = 17]`) instead of
+     silently implying an over-max die roll. The real design work was
+     `GameLoop::runCombat`'s per-instance first-attacker tracking for
+     backstab: initially planned as a per-round reset (matching a first
+     instinct at "the first character to attack the target"), corrected
+     during implementation to persist for the instance's whole lifetime
+     in the fight instead, tracked by attacker *identity* (not a frozen
+     position) so the opposite-side check always reflects that
+     character's current position. The per-round design was found to be
+     asymmetric and effectively broken: `playerActs()` always runs before
+     `companionActs()` in both initiative branches, so with a per-round
+     reset a Thief player could never backstab off a companion's own
+     same-round engagement -- only companions could ever backstab around
+     the player. Persistent tracking fixes this and matches the manual's
+     text more literally besides (it says nothing about a per-round
+     reset). Both abilities apply symmetrically to the player and to
+     every companion via one shared `backstabBonus`/`adjacentWeakInstances`
+     lambda pair in `playerAttacks`/`companionActs`, so e.g. Bren Alder
+     (Fighter) holding one flank of a monster while Dessa Corrin (Thief)
+     or a Thief player moves to the exact opposite grid side triggers a
+     companion-assisted backstab, in either direction -- a real payoff of
+     Milestone 118's roster having one of each class. Full design
+     writeup: `docs/COMBAT_NOTES.md`'s "Thief backstab and Fighter sweep
+     attacks" section, `docs/CHARACTER_NOTES.md`'s "Leveling / experience"
+     and "Party companions" sections, `docs/ARCHITECTURE.md`'s "Party
+     companions" section. Verified via a throwaway self-test
+     (`oppositeSide` across all 8 offsets plus an involution check;
+     `isSweepEligible` at HD 1/2/4; `canBackstab` across None/Leather/
+     StuddedLeather/ChainMail and a non-Thief class; `backstabDamage
+     Multiplier` across all four level-band boundaries; `resolvePlayer
+     Attack`'s new multiplier parameter with a pinned 1-sided weapon die --
+     26 assertions, all passed, deleted after), a clean `/W4` rebuild
+     (zero new warnings), and the piped smoke test (real saves moved
+     aside and restored byte-for-byte). **Interactive verification
+     needed**, same `_getch()` limitation as every other combat-facing
+     milestone -- see `docs/CURRENT_WORK.md` for the specific scenarios
+     still needing a real playthrough.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -4007,9 +4085,11 @@ session's work.
    change to `GameLoop::runCombat`'s single-`Character` assumption)
    shipped at Milestone 117. Phase 3a (a real multi-companion roster --
    `GameState::companions` is now a `vector`, and a second companion,
-   Dessa Corrin, joins Bren Alder) shipped at Milestone 118.** Still open:
-   player-directed control (a UIC-style toggle), deployment order,
-   backstab, sweep -- plus the smaller gaps Milestone 117 deliberately
+   Dessa Corrin, joins Bren Alder) shipped at Milestone 118. Thief
+   backstab and Fighter sweep attacks -- both party-wide, applying
+   identically to the player and to companions -- shipped at Milestone
+   119.** Still open: player-directed control (a UIC-style toggle) and
+   deployment order -- plus the smaller gaps Milestone 117 deliberately
    deferred (Brooch/Magic Missile/breath weapon/death-burst all still
    player-only, no opportunity attacks from companion movement, no
    "finish off a downed ally"). See `docs/COMBAT_NOTES.md`'s "Extending

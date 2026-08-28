@@ -278,4 +278,11 @@ int meleeAttacksThisRound(ClassId id, int level, int roundNumber) {
     return 1;
 }
 
+int backstabDamageMultiplier(int level) {
+    if (level >= 13) return 5;
+    if (level >= 9) return 4;
+    if (level >= 5) return 3;
+    return 2;
+}
+
 } // namespace character

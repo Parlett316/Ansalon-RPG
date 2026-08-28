@@ -88,6 +88,15 @@ constexpr int kShieldCostStl = 7;
 // rule, not an oversight.
 bool canWearArmor(ClassId classId);
 
+// Milestone 119, thief backstab: DQoK.pdf's own manual, "The thief may not
+// 'back stab' if he has readied armor heavier than leather." True for a
+// Thief-group character (see Leveling.h's ClassGroup::Rogue) wearing
+// ArmorId::None or ArmorId::Leather; false for anything at or above
+// StuddedLeather, and for every non-Thief class. See
+// docs/COMBAT_NOTES.md's "Backstab" section for the full positional rule
+// this armor gate is one part of.
+bool canBackstab(const Character& character);
+
 struct WeaponUpgrade {
     const char* name;
     int damageSides;

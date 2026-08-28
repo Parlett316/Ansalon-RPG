@@ -21,8 +21,14 @@ struct AttackOutcome {
     int targetNumber = 0;       // attackerThac0 - defenderArmorClass -- naturalRoll+toHitBonus must reach this
     int damageDiceCount = 0;
     int damageDiceSides = 0;
-    int damageRoll = 0; // raw dice roll, before bonuses
+    int damageRoll = 0; // raw dice roll, before bonuses -- already includes damageMultiplier below
     int damageBonus = 0; // every point added to damageRoll
+    // Thief backstab (PHB Table 30, p.57): the raw weapon die roll is
+    // multiplied BEFORE Strength/magic bonuses are added -- 1 for every
+    // ordinary attack. See resolvePlayerAttack's damageMultiplier
+    // parameter and game::describeDamage, which renders this only when
+    // != 1 so the log never misrepresents which die was actually rolled.
+    int damageMultiplier = 1;
 };
 
 // PHB p.119/p.121: roll 1d20 + attacker's to-hit adjustment; hits if the
@@ -42,8 +48,13 @@ struct AttackOutcome {
 // saved armorClass/thac0 -- same "local to this one runCombat call, doesn't
 // survive to the save file" precedent Webnet/Brooch of Imog already
 // established (docs/CHARACTER_NOTES.md's "Magic items").
+// damageMultiplier (Milestone 119, thief backstab): multiplies the raw
+// weapon die roll before strDamage/weaponDamageBonus/weaponMagicBonus/
+// damageBonus are added, per PHB Table 30 (p.57): "The weapon's standard
+// damage is multiplied by the value given in Table 30. Then Strength and
+// magical weapon bonuses are added." A plain 1 for every ordinary attack.
 AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
-                                   int thac0Bonus = 0, int damageBonus = 0);
+                                   int thac0Bonus = 0, int damageBonus = 0, int damageMultiplier = 1);
 AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character,
                                     int acBonus = 0, int thac0Penalty = 0, int damagePenalty = 0);
 

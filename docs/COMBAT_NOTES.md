@@ -1007,9 +1007,8 @@ movement speed from carried weight/strength/armor (no encumbrance system
 exists -- every character moves exactly 1 cell/round); speed-based,
 edge-of-map `Flee` (`Flee` keeps its existing "always succeeds
 immediately, no cost" behavior, already a documented deliberate
-simplification predating this milestone); thief backstab (a real,
-sourced, positional, thief-specific mechanic, but this project doesn't
-model backstab/sneak-attack in any form yet).
+simplification predating this milestone). Thief backstab shipped later,
+at Milestone 119 -- see "Thief backstab and Fighter sweep attacks" below.
 
 **Interactive verification is required, same heavier-than-usual flag as
 Milestone 113** -- `_getch()` blocks the actual play loop from being
@@ -1114,6 +1113,120 @@ items, one item, all four available, a Brooch/Staff already used today
 `docs/CURRENT_WORK.md` for the specific scenarios still needing a real
 playthrough.
 
+## Thief backstab and Fighter sweep attacks (Milestone 119)
+
+Both flagged since Milestone 113/114 as real, sourced abilities that
+structurally couldn't exist with a solo PC -- both need a second party
+member on the grid, which the multi-companion roster (Milestones 116-118)
+now provides.
+
+**Sweep** (Fighter-type only, `character::ClassGroup::Warrior`):
+`References/DQoK.pdf`'s own manual (p.9-10 of the printed manual): "Fighter-types
+may also 'sweep' through several weak opponents in one combat round. When
+a character 'sweeps,' he automatically attacks all of the weak
+opponents." The manual gives no numeric definition of "weak" in the
+extracted text (likely a table on the original page 50 that didn't
+survive OCR) -- this project defines it as `combat::isSweepEligible`
+(`Monster::hpDiceCount <= 1`). Not an arbitrary invention: `hpDiceCount`
+is already how this project encodes a monster's real 2e Hit Dice (N HD
+rolls N HP dice), confirmed against `data/monsters.txt` -- Goblin,
+Kobold, Hobgoblin, and Skeleton (real HD 1-1, ~1/2, 1+1, and 1
+respectively) are exactly the four monsters with `HP 1 ...`, the same
+"line troop" tier Milestone 113's own GROUP-feature comments already
+singled out. Since an encounter is always N copies of one `Monster`
+(never a mixed group), eligibility is a single check for the whole fight,
+not per-instance. At the moment a Fighter-type (player or companion)
+would attack, if the monster is sweep-eligible AND 2+ alive instances are
+currently adjacent, sweep replaces the normal attack entirely: no target
+picker, one attack roll against **each** adjacent weak instance (matches
+"automatically attacks all of the weak opponents" literally), no to-hit/
+damage bonus (the manual describes none -- action economy only). With 0-1
+adjacent weak instances, or a non-weak monster, falls through unchanged
+to the existing single-target flow (`pickTarget` +
+`character::meleeAttacksThisRound`'s level-gated multi-attack). Sweep
+replaces that multi-attack progression for the round rather than
+stacking with it -- DQoK's text doesn't describe an interaction, and "one
+swing per weak adjacent enemy" is the literal reading; flagged here as an
+invented scoping call, not sourced.
+
+**Backstab** (Thief-type only, `character::ClassGroup::Rogue`): DQoK.pdf's
+own manual gives its own **positional** version, distinct from the
+classic PHB surprise/unaware-target rule: "A thief 'back stabs' if he
+attacks a target from exactly opposite the first character to attack the
+target. The thief may not 'back stab' if he has readied armor heavier
+than leather. A 'back stab' has a better chance of hitting the defender
+and does additional damage." This project follows DQoK's positional
+version exclusively (the classic PHB version is NOT modeled), consistent
+with this project's established preference for DQoK's own combat-chapter
+wording over the classic PHB text when they differ (e.g. Milestone 113's
+"if the first target goes down, retarget" rule). Three gates, all must
+hold:
+- **Armor**: `character::canBackstab` -- `Character::equippedArmor` is
+  `ArmorId::None` or `ArmorId::Leather` (StuddedLeather AC7 and heavier
+  excluded), and the class group is Rogue.
+- **Positional**: `GameLoop::runCombat` tracks, per monster instance, the
+  *identity* of the first party member (player or a specific companion,
+  by index) to attack it -- **not reset per round**; "the first
+  character to attack the target," full stop, for that instance's whole
+  lifetime in the fight. A later attacker backstabs when their current
+  position equals `combat::oppositeSide(targetPos, firstAttacker's
+  CURRENT position)` -- an identity rather than a frozen position, so the
+  check always reflects where that first attacker actually is right now
+  (they almost always hold position while meleeing, so this only matters
+  for the rare retreat). A first attacker who has since been knocked out
+  provides no flank (no living ally to backstab around). The player
+  always acts before companions each round (`playerActs()` precedes
+  `companionActs()` in both initiative branches), so with a *per-round*
+  reset a player-Thief could never backstab off a companion's own
+  same-round engagement -- persistent, fight-long tracking avoids that
+  asymmetry and lets either direction work: a companion backstabbing
+  around the player's engagement, or a Thief player backstabbing around a
+  companion's (from an earlier round, the common case -- e.g. Bren Alder
+  holding one flank while a Thief moves to the other).
+- **Numeric effect**: +4 to-hit (the existing generic `thac0Bonus`
+  parameter `resolvePlayerAttack` already took for spell buffs) and a
+  damage multiplier from `character::backstabDamageMultiplier` (PHB Table
+  30, p.57 -- DQoK doesn't print its own numbers, so this project reuses
+  the PHB's, same convention already used for magic weapon Steel prices):
+  level 1-4 = x2, 5-8 = x3, 9-12 = x4, 13+ = x5, applied to the raw
+  weapon die roll only, before Strength/magic/other bonuses (Table 30's
+  own text: "multiplied... before modifiers... are applied. Then Strength
+  and magical weapon bonuses are added"). `combat::resolvePlayerAttack`
+  gained a `damageMultiplier` parameter (default 1) for this;
+  `AttackOutcome` gained a matching field so `game::describeDamage`
+  renders it honestly (`[1d8 5 x3 +2 = 17]`) instead of silently implying
+  a 1d8 rolled higher than 8.
+- **Not modeled, flagged**: the classic PHB surprise/unaware-target
+  version (DQoK's positional version is used instead); PHB's "ignores the
+  target's shield and Dexterity AC bonus" nuance (this project's AC is
+  already a single flattened number with no shield/Dex decomposition at
+  the point of attack resolution -- same "positionless" simplification
+  already flagged elsewhere in this file).
+
+New pure helpers, same "extracted for unit-testability" reasoning as
+`isAdjacent`/`stepToward`/`chebyshevDistance`: `combat::oppositeSide`
+(`CombatGrid.h/.cpp`), `combat::isSweepEligible` (`Monster.h/.cpp`),
+`character::canBackstab` (`Equipment.h/.cpp`, alongside `canWearArmor`),
+`character::backstabDamageMultiplier` (`Leveling.h/.cpp`, alongside
+`meleeAttacksThisRound`). Both abilities apply symmetrically to the
+player and to every companion, in `GameLoop::runCombat`'s `playerAttacks`
+and `companionActs` -- one shared `backstabBonus` lambda so the geometry
+is written once rather than duplicated.
+
+Verified via a throwaway self-test (`oppositeSide` across all 8 offsets
+plus an involution check; `isSweepEligible` at HD 1/2/4;
+`canBackstab` across None/Leather/StuddedLeather/ChainMail and a non-Thief
+class; `backstabDamageMultiplier` across all four level-band boundaries;
+`resolvePlayerAttack`'s new `damageMultiplier` parameter with a pinned
+1-sided weapon die -- 26 assertions, all passed, deleted after), a clean
+`/W4` rebuild (zero new warnings), and the piped smoke test (real saves
+moved aside and restored byte-for-byte). **Interactive verification
+needed**, same `_getch()` limitation as every other combat-facing
+milestone -- see `docs/CURRENT_WORK.md` for the specific scenarios still
+needing a real playthrough (a Fighter sweeping a weak group; a Thief
+backstabbing while another party member holds a monster from the
+opposite grid side).
+
 ## Extending this later
 
 - **A party of up to six characters.** The single biggest remaining gap
@@ -1180,12 +1293,15 @@ playthrough.
     one-token `COMPANION 1` form (mapped to id `bren_alder`). See
     `docs/ARCHITECTURE.md`'s "Party companions" section for the full
     design.
+  - **Backstab and sweep (Thief/Fighter-type party abilities that need a
+    second party member) shipped at Milestone 119** -- see "Thief backstab
+    and Fighter sweep attacks" below.
   - **Still open**: player-directed control in combat (a UIC-style toggle
     -- DQoK.pdf's own manual: "You control the actions of PCs. The
     computer controls the actions of monsters, NPCs, and PCs set to
-    computer control with the UIC command"), deployment order, backstab,
-    sweep, plus the smaller Phase 2 gaps listed just above (still true
-    for however many companions exist).
+    computer control with the UIC command"), deployment order, plus the
+    smaller Phase 2 gaps listed just above (still true for however many
+    companions exist).
 - **The rest of the roster's real group sizes**: Milestone 113 (see
   "Monster encounter groups" above) only applied sourced `GROUP` data to
   14 of the 26 monsters -- the dozen left solo despite real No. Appearing

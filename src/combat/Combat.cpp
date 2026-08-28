@@ -7,7 +7,7 @@
 namespace combat {
 
 AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
-                                   int thac0Bonus, int damageBonus) {
+                                   int thac0Bonus, int damageBonus, int damageMultiplier) {
     int strToHit = character::strengthToHitAdjustment(character.scores.strength,
                                                         character.exceptionalStrengthPercentile);
 
@@ -36,7 +36,8 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
                                                               character.exceptionalStrengthPercentile);
         outcome.damageDiceCount = 1;
         outcome.damageDiceSides = character.weaponDamageSides;
-        outcome.damageRoll = character::roll(1, character.weaponDamageSides);
+        outcome.damageMultiplier = damageMultiplier;
+        outcome.damageRoll = character::roll(1, character.weaponDamageSides) * damageMultiplier;
         outcome.damageBonus = character.weaponDamageBonus + strDamage + character.weaponMagicBonus + damageBonus;
         outcome.damage = std::max(1, outcome.damageRoll + outcome.damageBonus);
     }
