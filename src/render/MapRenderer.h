@@ -132,17 +132,36 @@ public:
     // drawCharacterSheet.
     static void drawSpellbookFrame(const character::Character& character, long long currentDay);
 
-    // Renders one combat frame: both combatants' HP/AC, a scrolling combat
-    // log (most recent entries last -- only the tail that fits is shown),
-    // and the available actions. `monsterHp` is tracked by
-    // GameLoop::runCombat, not the Monster struct itself (which is static
-    // content shared by every encounter with that monster type) -- see
-    // docs/COMBAT_NOTES.md. `currentDay` (hoursElapsed/24, same convention
-    // as drawCharacterSheet above) is only used to decide whether the
-    // footer hints "i=use brooch" -- see character::broochAvailableToday.
-    static void drawCombatFrame(const character::Character& character, const combat::Monster& monster,
-                                 int monsterHp, int monsterMaxHp, const std::vector<std::string>& log,
-                                 long long currentDay);
+    // One monster instance's presentation state, built by GameLoop::runCombat
+    // from its own std::vector<MonsterInstance> -- MapRenderer never sees
+    // combat::Monster's other fields (special-ability flags, terrain data,
+    // etc.), same "presentation stays ignorant of the domain type" pattern
+    // JournalEntry/DialogueLine already establish. `name` already carries
+    // the letter suffix ("Goblin A") when the encounter is a group of more
+    // than one -- a solo encounter's `name` is just the plain monster name,
+    // identical to every combat screen before Milestone 113. See
+    // docs/COMBAT_NOTES.md's "Monster encounter groups" section.
+    struct CombatMonsterView {
+        std::string name;
+        int hp = 0;
+        int maxHp = 0;
+        int armorClass = 0;
+        bool alive = true;
+    };
+
+    // Renders one combat frame: the player's HP/AC, every monster
+    // instance's HP/AC (defeated ones marked, still shown so the roster
+    // visibly shrinks rather than vanishing), a scrolling combat log (most
+    // recent entries last -- only the tail that fits is shown), and the
+    // available actions. Monster HP is tracked by GameLoop::runCombat, not
+    // the combat::Monster struct itself (which is static content shared by
+    // every encounter with that monster type) -- see docs/COMBAT_NOTES.md.
+    // `currentDay` (hoursElapsed/24, same convention as drawCharacterSheet
+    // above) is only used to decide whether the footer hints "i=use
+    // brooch" -- see character::broochAvailableToday.
+    static void drawCombatFrame(const character::Character& character,
+                                 const std::vector<CombatMonsterView>& monsters,
+                                 const std::vector<std::string>& log, long long currentDay);
 
     struct DialogueLine {
         std::string speaker;

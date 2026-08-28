@@ -1,6 +1,46 @@
 # Current work
 
-Nothing in flight.
+Nothing in flight -- Milestone 113 is implemented, self-tested, and
+rebuilt clean. The core of its interactive-verification flag (see below)
+is now confirmed by the user's own playthrough: a Kender Thief hit a real
+2-monster group encounter and saw the lettered target picker (A/B) render
+and work correctly. What's still unconfirmed is narrower now -- see the
+trimmed list below.
+
+Milestone 113 (2026-08-28) shipped Phase 1 of a Gold Box-style combat
+pass, at the user's request ("when a random battle begins we get a battle
+screen like the old SSI gold box games"): monster encounter groups --
+multiple monsters of the same type per fight (sourced `GROUP <min> <max>`
+data, re-checking every roster monster's real "No. Appearing" field via
+rendered page images), individually tracked HP, lettered identity, and a
+target picker, with no position/grid/movement (that stays a separate,
+later, deliberately-unstarted phase). Scoping was explicitly checked with
+the user twice via `AskUserQuestion`: once to confirm Phase 1 (groups
+only) over attempting the full tactical grid in one session, and again
+after the No. Appearing research turned up real group data for
+already-dangerous, currently-ungated monsters (Wight, Troll, Thanoi, plus
+the already-gated Ogre/Kapak/Bozak/Sivak/Ettin) -- the user chose to defer
+grouping those twelve rather than risk an untested difficulty spike, so
+only the roster's 14 low/mid-HD "line troop" monsters carry a `GROUP` line
+this pass. Full design writeup, the sourcing table, and every deferred
+item: `docs/COMBAT_NOTES.md`'s "Monster encounter groups" section.
+**Interactive verification, updated 2026-08-28**: confirmed by the user's
+own real playthrough -- a Kender Thief encountered a genuine 2-monster
+group, and the lettered target picker (A/B) rendered and worked
+correctly when attacking. `_getch()` still blocks the rest from being
+driven headlessly, and a Kender Thief can't exercise every path (no
+multi-attack, no spellcasting), so still open: a solo-monster fight
+reading/playing exactly as before (no letters/picker -- should already
+hold since that code path is untouched, but not yet directly observed), a
+Fighter's multi-attack landing all its swings on one chosen target, a
+target dying mid-multi-attack wasting the remaining swings without
+misbehaving, a non-damage spell (Sleep/Hold/Bestow Curse-style) or Webnet
+correctly asking which enemy to target, a multi-kill round (e.g. two
+Goblins killed in one Fighter double-attack) correctly advancing a `SLAY
+goblin` quest objective by more than one, and Baaz Draconians appearing
+in a group of 2-4 (never solo) with per-instance "turns to stone"
+messages. See
+`docs/MILESTONES.md` entry 113.
 
 Milestone 112 (2026-08-28) added three more Monster Manual monsters --
 Lizard Man, Giant Toad, Ettin -- bringing the roster to 26, picked once a

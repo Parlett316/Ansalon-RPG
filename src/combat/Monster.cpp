@@ -19,6 +19,11 @@ constexpr int kBiasWeight = 3;
 
 } // namespace
 
+int rollGroupSize(const Monster& monster) {
+    if (monster.groupMax <= monster.groupMin) return monster.groupMin;
+    return monster.groupMin + character::roll(1, monster.groupMax - monster.groupMin + 1) - 1;
+}
+
 void MonsterCatalog::addMonster(Monster monster) {
     monsters_.push_back(std::move(monster));
 }

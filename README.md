@@ -184,7 +184,12 @@ skeletons, zombies, Baaz/Kapak/Bozak/Sivak/Aurak draconians, or Thanoi
 (Icewall Glacier's walrus-men), all sourced from a real
 2e Monster Manual and, for the
 Krynn-specific draconians and Thanoi, Dragonlance Adventures (no orcs, since Krynn
-has none) — three of the draconians fight back with real, book-sourced
+has none) — fourteen of the lower-danger monsters (goblins, kobolds,
+hobgoblins, wolves, bugbears, gnolls, ghouls, skeletons, zombies, Baaz
+draconians, worgs, black bears, lizard men, giant toads) now turn up in
+real, book-sourced numbers rather than always solo, each shown with its
+own HP and a letter (Goblin A, Goblin B, ...) so you can pick a target
+when more than one's still standing — three of the draconians fight back with real, book-sourced
 abilities beyond a plain weapon swing: Bozaks sometimes cast Magic Missile
 instead of attacking, Auraks sometimes breathe a noxious cloud (save for
 half damage, or take full damage and fight on blinded), and Sivaks burst

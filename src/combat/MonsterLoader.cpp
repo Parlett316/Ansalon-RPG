@@ -124,6 +124,18 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
         } else if (keyword == "MIN_TOWN_DISTANCE") {
             std::istringstream iss(rest);
             if (!(iss >> current.minTownDistance)) fail(path, lineNumber, "malformed MIN_TOWN_DISTANCE");
+        } else if (keyword == "GROUP") {
+            std::istringstream iss(rest);
+            int groupMin = 0;
+            int groupMax = 0;
+            if (!(iss >> groupMin >> groupMax)) {
+                fail(path, lineNumber, "malformed GROUP (expected: GROUP <min> <max>)");
+            }
+            if (groupMin <= 0 || groupMax < groupMin) {
+                fail(path, lineNumber, "malformed GROUP (min must be >= 1 and max >= min)");
+            }
+            current.groupMin = groupMin;
+            current.groupMax = groupMax;
         } else if (keyword == "DESC") {
             current.description = rest;
         } else if (keyword == "END") {

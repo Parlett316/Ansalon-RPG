@@ -713,18 +713,179 @@ before.
 
 ## Rendering
 
-`render::MapRenderer::drawCombatFrame` shows both combatants'
-HP/AC and a scrolling log (last 8 entries — older entries fall off, same
-"most recent last" convention as a chat log; see "Showing the math" above
-for why this was trimmed down from the original 12), followed by the two
-available actions. Monster HP is tracked as a local `int` inside
-`runCombat`, not stored on `combat::Monster` itself — the `Monster` struct
-is static content shared by every encounter with that monster type, the
-same reasoning `Character` doesn't store per-encounter runtime state
-either.
+`render::MapRenderer::drawCombatFrame` shows the player's HP/AC, every
+monster instance's HP/AC (as of Milestone 113, an encounter can have more
+than one -- see "Monster encounter groups" below), and a scrolling log
+(last 8 entries — older entries fall off, same "most recent last"
+convention as a chat log; see "Showing the math" above for why this was
+trimmed down from the original 12), followed by the available actions.
+Monster HP is tracked as a local `std::vector` inside `runCombat`, not
+stored on `combat::Monster` itself — the `Monster` struct is static
+content shared by every encounter with that monster type, the same
+reasoning `Character` doesn't store per-encounter runtime state either.
+
+## Monster encounter groups (Milestone 113)
+
+The first phase of a Gold Box (SSI's Pool of Radiance ... Dark Queen of
+Krynn) -inspired combat-screen pass, scoped down from a full tactical grid
+to something self-contained: multiple monsters of the same type per
+encounter, individually tracked HP, lettered identity, and a target
+picker. **No position/grid/movement exists** -- this project's combat
+stays a strictly-ordered, non-positional exchange (see "Combat is not a
+`GameState.mode`" above); a real tactical grid, if it happens, is separate,
+later, deliberately-unstarted work.
+
+**Group size is sourced, not invented.** Every one of the 26 roster
+monsters' real Monstrous Manual / *Dragonlance Adventures* "No. Appearing"
+field was re-checked via rendered page images (a field this project never
+needed before, since combat was always 1-vs-1) -- see the citations on
+each `GROUP` line in `data/monsters.txt`. The real range is then clamped
+to one small **invented, explicitly flagged** playability cap -- **4** --
+for screen-space/pacing/solo-PC-balance reasons, the same "tuned for
+pacing, not sourced" honesty already used for `encounterChancePercent`/
+`terrainBias`/`MIN_TOWN_DISTANCE`.
+
+**Deliberately applied to only 14 of the 26 monsters this pass.** The
+research turned up real No. Appearing data supporting groups for nearly
+the *entire* roster, including several already-dangerous, currently
+ungated monsters: Wight (2-16, real level-drain + silver/magic-only
+defense), Troll (1-12, huge HP, unmodeled regeneration), Thanoi (1-20),
+plus the already-`MIN_TOWN_DISTANCE`-gated Ogre (2-20), Ettin (the book's
+own text frames a group as a rare 1d4 exception, not the norm), and
+Baaz/Kapak/Bozak/Sivak (all a flat `2d10`, real Dragon Highlord squad/
+garrison numbers). Grouping any of those without also re-tuning their
+existing danger gates would have shipped an untested difficulty spike, so
+-- at the user's explicit direction after this finding was flagged --
+**this pass only groups the roster's low/mid-HD "line troop"/wildlife
+tier**, exactly the set that already carries no `MIN_TOWN_DISTANCE` gate
+today:
+
+| Monster | Real No. Appearing | `GROUP` (clamped) |
+|---|---|---|
+| Goblin | 4-24 (4d6), p.163 | 4 4 |
+| Kobold | 5-20 (5d4), p.214 | 4 4 |
+| Hobgoblin | 2-20 (2d10), p.191 | 2 4 |
+| Timber Wolf | 2-12 (99% of the time), p.362 | 2 4 |
+| Bugbear | 2-8 (2d4), p.32 | 2 4 |
+| Ogre | 2-20 (2d10), p.272 | *(left solo -- see above)* |
+| Gnoll | 2-12 (2d6), p.158 | 2 4 |
+| Ghoul | 2-24 (2d12), p.131 | 2 4 |
+| Skeleton | 3-30 (3d10), p.315 | 3 4 |
+| Zombie | 3-24, p.373 | 3 4 |
+| Baaz Draconian | 2-20 (2d10), DLA p.74 | 2 4 |
+| Kapak/Bozak/Sivak Draconian | 2-20 (2d10) each, DLA p.74-75 | *(left solo)* |
+| Aurak Draconian | 1-2, DLA p.73 | *(left solo -- barely supports >1 anyway)* |
+| Thanoi | 1-20 (1d20), DLA p.78 | *(left solo)* |
+| Owlbear | 1 (2-8 only in its own lair), p.284 | *(left solo -- real data doesn't support a wandering group)* |
+| Wight | 2-16 (2d8), p.360 | *(left solo)* |
+| Troll | 1-12, p.349 | *(left solo)* |
+| Black Bear | 1-3, p.17 | 1 3 (unclamped -- already under the cap) |
+| Worg | 3-12, p.362 | 3 4 |
+| Ice Bear | 1-4 (1d4), DLA p.76 | *(left solo)* |
+| Lizard Man | 8-15 (1d8+7), p.227 | 4 4 |
+| Giant Toad | 1-12, p.345 | 1 4 |
+| Ettin | 1, rarely 1-4, p.135 | *(left solo -- the book itself frames a group as the exception)* |
+| Giant Spider | 1-8, p.326 | *(left solo -- ambush predator flavor, real poison bite)* |
+
+Revisiting the solo-tier list above (with matching `MIN_TOWN_DISTANCE`
+re-tuning for the currently-ungated dangerous ones) is real, scoped future
+work, not an oversight -- see "Extending this later" below.
+
+**Targeting is driven by how many instances are alive right now, not the
+group size rolled at the start.** A solo fight (still the overwhelming
+majority of encounters, since only 14 of 26 monsters carry a `GROUP` line
+at all) always auto-targets its one monster with no letter and no picker
+-- byte-for-byte the same log wording every single-monster fight has had
+since before this milestone. A group fight only shows a `drawPickerFrame`
+target picker (labeled `A) Goblin -- HP 5/5`, etc.) while 2+ instances are
+still alive; fought down to its last survivor, it auto-targets exactly
+like a solo fight. Letters themselves are decided once from the
+*starting* group size, so a fight's labels stay stable ("Goblin A"/
+"Goblin B") even as members die.
+
+**A Fighter's multi-attacks-per-round all land on the one target chosen
+for that round** (`character::meleeAttacksThisRound`, unchanged),
+matching Gold Box's "pick a target once per round" convention. If that
+target dies mid-volley, the remaining swings aren't auto-redirected to a
+new target -- they're simply logged as wasted. Explicit, flagged
+simplification, not a new auto-retarget system.
+
+**Non-damage spell effects that used to implicitly target "the monster"
+now ask which one** (`BlockMonsterAttacks` -- Sleep/Hold/Charm/Confusion/
+Fear; `DebuffMonsterThac0`/`DebuffMonsterDamage` -- Bestow Curse-style
+effects), same "one representative target" simplification this project
+already uses elsewhere (e.g. a multi-attack monster simplified to its
+single most damaging hit). Webnet asks the same way. The Brooch of Imog's
+globe of invulnerability is the one exception -- it wards the *player*,
+not a debuff on a monster, so it still blocks every instance's attack each
+round it's active, no target needed.
+
+**Every per-monster special ability now rolls independently per living
+instance** -- Bozak's Magic Missile chance, Aurak's breath weapon chance,
+the Giant Spider's poison bite -- via the same shared `combat::Monster`
+stat block, just checked once per alive instance in the monsters' turn
+instead of once total. None of the three monsters carrying those flags
+are in the grouped tier this pass, so this is currently exercised as
+"loop of exactly one" in practice, same as before -- but it's already
+correct if a future pass groups any of them.
+
+**A kill's steel/XP/quest-tally is applied the instant that instance's HP
+reaches 0**, not deferred to the end of the round -- so a group fight's
+log reads in the order things actually happened, and a multi-kill fight
+(e.g. killing 2 of 4 Goblins in one round via a Fighter's double attack)
+correctly advances a `SLAY goblin 3` objective by 2 in one go, with no
+quest-system changes needed. The "Press any key to continue" pause only
+fires once, when the *last* instance falls -- individual kills mid-group
+just scroll into the log like any other line, so a 4-goblin fight doesn't
+interrupt for a keypress after every single kill.
+
+**Baaz Draconians always group now (2-4), never solo** -- the only
+already-shipped monster whose *default* behavior actually changes this
+pass, since its real No. Appearing never supported a lone Baaz to begin
+with. Its "turns to stone" death message now names the specific instance
+("Baaz Draconian B falls and crumbles to stone...") rather than the
+generic singular line every earlier Baaz encounter had.
+
+**`GROUP <min> <max>`** (`data/monsters.txt` grammar, `MonsterLoader.cpp`,
+`combat::Monster::groupMin`/`groupMax`, default 1/1 -- untouched for every
+monster without the line): fails fast on `min <= 0` or `max < min`, same
+idiom as every other line in this loader. `combat::rollGroupSize(monster)`
+(`Monster.h`/`.cpp`) is the one place the actual roll happens -- extracted
+as its own function specifically so it's unit-testable, same reasoning as
+`character::meleeAttacksThisRound`.
+
+**Rendering**: `MapRenderer::drawCombatFrame` takes a
+`std::vector<CombatMonsterView>` (name -- already letter-suffixed by the
+caller when relevant, hp, maxHp, armorClass, alive) instead of a single
+`combat::Monster` + HP pair. Every instance is always shown, defeated ones
+marked `(defeated)` at 0 HP rather than disappearing, so the roster
+visibly shrinks over the fight. The footer only adds a `(choose target)`
+hint once 2+ are actually alive.
+
+**Interactive verification is required for this milestone more than
+most** -- `_getch()` means none of the actual play loop (the target
+picker, multiple monsters each attacking per round, a multi-attack
+landing all swings on one target, a target dying mid-volley, per-instance
+special abilities, a multi-kill fight progressing a quest) can be driven
+headlessly. A throwaway self-test covers only what's actually extractable
+and pure: `MonsterLoader`'s `GROUP` parsing (valid data + malformed
+fail-fast cases) and `combat::rollGroupSize`'s bounds. See
+`docs/CURRENT_WORK.md` for the specific scenarios still needing a real
+playthrough.
 
 ## Extending this later
 
+- **The rest of the roster's real group sizes, plus a positional tactical
+  grid**: Milestone 113 (see "Monster encounter groups" above) only
+  applied sourced `GROUP` data to 14 of the 26 monsters -- the dozen left
+  solo despite real No. Appearing data supporting groups (Ogre, Kapak,
+  Bozak, Sivak, Aurak, Ettin, Wight, Troll, Thanoi, Owlbear, Ice Bear,
+  Giant Spider) would need a companion pass re-checking/adding
+  `MIN_TOWN_DISTANCE` gates before grouping is safe to ship for them. A
+  real Gold Box-style positional grid (multiple party members moving
+  tactically, not just a solo PC vs. a lettered roster) is a separate,
+  bigger, deliberately-unstarted engine change -- this project's combat
+  stays strictly turn-ordered and positionless for now.
 - **Spellcasting**: Mage/Cleric now select and cast from a real,
   PHB/DQoK-sourced multi-level spellbook (49 implemented spells across
   Mage's 9 levels and Cleric's 7 — see `docs/CHARACTER_NOTES.md`'s
@@ -756,7 +917,9 @@ either.
   Minion don't fit this project's wandering-encounter model. Can be
   added the same way, one more sourced `MONSTER` block at a time. A new
   monster with real terrain flavor can also carry `TERRAIN_BIAS`/
-  `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above.
+  `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above. A
+  new low/mid-HD monster can also carry a sourced `GROUP <min> <max>` line
+  from the start — see "Monster encounter groups" above.
 - **The rest of Bozak/Sivak/Aurak's abilities** (Milestone 99 shipped the
   parts that ground out in this engine's real combat math -- Bozak's
   signature Magic Missile, Aurak's breath weapon, Sivak's death-burst; see
@@ -764,8 +927,8 @@ either.
   (magic resistance, save bonuses for all three -- would need a
   monster-side resistance-roll/save-bonus mechanic, related to but
   distinct from `rollSavingThrow`) or genuinely doesn't fit this project's
-  positionless, no-monster-persistence, single-player-vs-single-monster
-  combat loop: Sivak's shapeshifting (no per-instance monster identity or
+  positionless, no-monster-persistence combat loop: Sivak's shapeshifting
+  (no per-instance monster identity or
   NPC-disguise gameplay to hang it on), and Aurak's dimension door,
   suggestion/mind control, change self/polymorph self, at-will
   invisibility, full 1st-4th level spell list, and three-stage death

@@ -3522,6 +3522,87 @@ section).
     covers it. See `docs/COMBAT_NOTES.md`'s roster/"Extending this later"
     sections.
 
+113. Monster encounter groups, Phase 1 of a Gold Box (SSI's Pool of
+     Radiance ... Dark Queen of Krynn) -inspired combat-screen pass --
+     scoped down, with the user, from a full tactical grid to a
+     self-contained first phase: multiple monsters of the same type per
+     fight, individually tracked HP, lettered identity (Goblin A/B/C...),
+     and a target picker. No position/grid/movement was added -- this
+     project's combat stays a strictly-ordered, non-positional 1-vs-many
+     exchange; a real tactical grid stays separate, later, deliberately
+     unstarted work. Group size is sourced, not invented: every one of the
+     26 roster monsters' real Monstrous Manual/*Dragonlance Adventures*
+     "No. Appearing" field was re-checked via rendered page images (a
+     field this project never needed before, combat having always been
+     1-vs-1), then clamped to one small invented playability cap of 4. The
+     research found real No. Appearing data supporting groups for nearly
+     the whole roster, including several already-dangerous, currently
+     ungated monsters (Wight, Troll, Thanoi, plus the already-gated Ogre/
+     Kapak/Bozak/Sivak/Ettin) -- flagged back to the user via
+     `AskUserQuestion` before writing any data, since grouping those
+     without also re-tuning their danger gates would have shipped an
+     untested difficulty spike. At the user's explicit direction, this
+     pass only applies `GROUP <min> <max>` to the roster's 14 low/mid-HD
+     "line troop"/wildlife monsters that already carry no
+     `MIN_TOWN_DISTANCE` gate (Goblin, Kobold, Hobgoblin, Timber Wolf,
+     Bugbear, Gnoll, Ghoul, Skeleton, Zombie, Baaz Draconian, Worg, Black
+     Bear, Lizard Man, Giant Toad); the other twelve (Ogre, Kapak, Bozak,
+     Sivak, Aurak, Ettin, Wight, Troll, Thanoi, Owlbear, Ice Bear, Giant
+     Spider) stay solo exactly as before, a documented, deliberate
+     deferral rather than an oversight. New `combat::Monster::groupMin`/
+     `groupMax` (`Monster.h`) and `combat::rollGroupSize` (`Monster.cpp`,
+     extracted as its own function specifically so it's unit-testable,
+     same reasoning as `character::meleeAttacksThisRound`); `MonsterLoader`
+     parses the new `GROUP` line with the same fail-fast idiom as every
+     other line. `GameLoop::runCombat` is restructured around a
+     `std::vector<MonsterInstance>` instead of a single HP int -- target
+     selection is driven by how many instances are *currently* alive, not
+     the group size rolled at the start, so a solo fight (still the
+     overwhelming majority, unaffected) and a group fight fought down to
+     its last survivor both auto-target the same way with no picker,
+     protecting the ~40 already-verified single-monster milestones' worth
+     of exact log wording from regressing. A Fighter's multi-attacks all
+     land on one round's chosen target (wasted, not auto-redirected, if
+     that target dies mid-volley); non-damage spell effects that used to
+     implicitly target "the monster" (Sleep/Hold/Charm/Confusion/Fear,
+     Bestow-Curse-style debuffs, Webnet) now ask which enemy first, one
+     more "representative target" simplification consistent with this
+     project's existing single-die/single-attack simplifications
+     elsewhere; the Brooch of Imog's globe stays a shared ward since it
+     protects the player, not a debuff on a monster. Bozak's Magic
+     Missile/Aurak's breath weapon/the Giant Spider's poison bite all now
+     roll independently per living instance (currently exercised as "loop
+     of one" in practice, since none of those three are in the grouped
+     tier this pass, but already correct if a future pass groups them).
+     Steel/XP/the quest kill-tally are awarded the instant an instance
+     dies rather than deferred to the end of the round, so a multi-kill
+     round correctly advances a `SLAY` objective by more than one in a
+     single fight with zero quest-system changes; the "Press any key"
+     pause only fires once, when the last instance falls. Baaz Draconians
+     are the one already-shipped monster whose default behavior actually
+     changes -- they now always appear in groups of 2-4, never solo, since
+     their real No. Appearing never supported a lone Baaz to begin with.
+     `MapRenderer::drawCombatFrame` takes a `std::vector<CombatMonsterView>`
+     (a small presentation-only adapter struct, same "stays ignorant of
+     the domain type" pattern as `JournalEntry`/`DialogueLine`) instead of
+     a single `combat::Monster` + HP pair; defeated instances stay visible
+     marked `(defeated)` rather than disappearing, and the footer only
+     hints `(choose target)` once 2+ are alive. Verified via a throwaway
+     self-test (`MonsterLoader`'s `GROUP` parsing against both the real
+     26-monster `data/monsters.txt` and malformed fail-fast cases,
+     `rollGroupSize`'s bounds across 2000 trials), a clean `/W4` rebuild,
+     and the piped smoke test (confirming the new `GROUP` lines parse and
+     both of the user's real saves still load unchanged -- no save-format
+     changes). **Interactive verification is required more than usual** --
+     `_getch()` means none of the actual play loop (the target picker,
+     multiple monsters attacking per round, a multi-attack landing all
+     swings on one target, a target dying mid-volley, per-instance special
+     abilities, a multi-kill fight progressing a quest) can be driven
+     headlessly; see `docs/COMBAT_NOTES.md`'s "Monster encounter groups"
+     section for the full sourcing table and design writeup, and
+     `docs/CURRENT_WORK.md` for the specific scenarios still needing a
+     real playthrough.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

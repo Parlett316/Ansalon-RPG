@@ -70,6 +70,16 @@ struct Monster {
     // terrainBias. See docs/COMBAT_NOTES.md.
     int minTownDistance = 0;
 
+    // How many of this monster appear in one encounter -- default 1/1 means
+    // always solo (every monster's behavior before Milestone 113). When
+    // greater than 1, sourced from the monster's real Monstrous Manual/
+    // Dragonlance Adventures "No. Appearing" field, then clamped to this
+    // project's own invented playability cap (see docs/COMBAT_NOTES.md's
+    // "Monster encounter groups" section) -- real range, invented ceiling,
+    // same "sourced number, tuned cap" honesty as MIN_TOWN_DISTANCE.
+    int groupMin = 1;
+    int groupMax = 1;
+
     int steelDiceCount = 0;
     int steelDiceSides = 0;
     int steelFlatBonus = 0;
@@ -80,6 +90,17 @@ struct Monster {
     // docs/COMBAT_NOTES.md.
     int xpValue = 0;
 };
+
+// Rolls how many of `monster` show up this encounter -- a uniform pick in
+// [groupMin, groupMax] via the same character::roll primitive every other
+// dice roll in this project uses (roll(1, N) shifted into range), not a
+// new dice mechanic. Always returns groupMin when groupMin == groupMax
+// (every monster without a GROUP line in data/monsters.txt), so this is a
+// safe no-op call for the vast majority of the roster. Extracted as its
+// own function (rather than left inline in GameLoop::runCombat) so it's
+// directly unit-testable -- see docs/COMBAT_NOTES.md's "Monster encounter
+// groups" section.
+int rollGroupSize(const Monster& monster);
 
 // A loaded roster of monsters, static content like timeline::Timeline --
 // loaded fresh every run by MonsterLoader, never mutated during play.

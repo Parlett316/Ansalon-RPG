@@ -124,6 +124,19 @@ Speech speechFromPoi(const world::PointOfInterest& poi) {
     return speech;
 }
 
+// Pluralizes a monster's display name for the group-summary log lines
+// runCombat prints when an encounter's group is bigger than one (see
+// docs/COMBAT_NOTES.md's "Monster encounter groups" section) -- a plain
+// "+s" suffix is wrong for two of the fourteen grouped monsters, so those
+// get an explicit override rather than shipping "Timber Wolfs"/"Lizard
+// Mans". Per-instance labels ("Timber Wolf A") never need this -- only the
+// arrival/victory/flee summary lines that refer to the whole group at once.
+std::string pluralMonsterName(const std::string& name) {
+    if (name == "Timber Wolf") return "Timber Wolves";
+    if (name == "Lizard Man") return "Lizard Men";
+    return name + "s";
+}
+
 } // namespace
 
 // Small, fixed condition vocabulary for SAY_IF (see docs/TIMELINE_NOTES.md):
@@ -1375,26 +1388,119 @@ void GameLoop::handleEnter() {
 }
 
 void GameLoop::runCombat(const combat::Monster& monster) {
-    int monsterMaxHp = character::roll(monster.hpDiceCount, monster.hpDiceSides) + monster.hpFlatBonus;
-    int monsterHp = monsterMaxHp;
+    // How many of this monster showed up this encounter -- see
+    // combat::rollGroupSize and docs/COMBAT_NOTES.md's "Monster encounter
+    // groups" section. Every monster without a GROUP line in
+    // data/monsters.txt has groupMin == groupMax == 1, so this always
+    // rolls exactly 1 for the vast majority of the roster.
+    int groupSize = combat::rollGroupSize(monster);
+    struct MonsterInstance {
+        int hp;
+        int maxHp;
+    };
+    std::vector<MonsterInstance> instances(static_cast<size_t>(groupSize));
+    for (MonsterInstance& instance : instances) {
+        instance.maxHp = character::roll(monster.hpDiceCount, monster.hpDiceSides) + monster.hpFlatBonus;
+        instance.hp = instance.maxHp;
+    }
+    // Decided once from the STARTING group size, not the live alive count --
+    // so a group fight's labels stay "Goblin A"/"Goblin B" consistently even
+    // as members die, while every solo fight (groupSize == 1, still the
+    // overwhelming majority of encounters) keeps the exact pre-Milestone-113
+    // wording below with no letter at all.
+    const bool useLetters = instances.size() > 1;
+    auto monsterLabel = [&](int idx) -> std::string {
+        if (!useLetters) return monster.name;
+        return monster.name + " " + std::string(1, static_cast<char>('A' + idx));
+    };
+    auto buildViews = [&]() {
+        std::vector<render::MapRenderer::CombatMonsterView> views;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            views.push_back({monsterLabel(static_cast<int>(i)), std::max(0, instances[i].hp), instances[i].maxHp,
+                              monster.armorClass, instances[i].hp > 0});
+        }
+        return views;
+    };
+    auto aliveCount = [&]() {
+        int count = 0;
+        for (const MonsterInstance& instance : instances) {
+            if (instance.hp > 0) ++count;
+        }
+        return count;
+    };
+    // Target selection is driven by how many instances are CURRENTLY alive,
+    // not the group size chosen at the start -- so a solo fight and a group
+    // fight fought down to its last survivor both auto-target the same way,
+    // and the picker only ever appears while 2+ are still standing. Returns
+    // -1 only if allowCancel and the player backs out via Quit (used for
+    // spellcasting, where "cast at someone" can still be reconsidered the
+    // same way choosing which spell already can); attacking never allows
+    // this, since Enter has always committed to attacking.
+    auto pickTarget = [&](const std::string& title, bool allowCancel) -> int {
+        std::vector<int> aliveIndices;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            if (instances[i].hp > 0) aliveIndices.push_back(static_cast<int>(i));
+        }
+        if (aliveIndices.empty()) return -1; // defensive -- shouldn't happen, caller already checked
+        if (aliveIndices.size() == 1) return aliveIndices.front();
+        std::vector<std::string> labels;
+        for (int idx : aliveIndices) {
+            labels.push_back(monsterLabel(idx) + " -- HP " + std::to_string(instances[static_cast<size_t>(idx)].hp) +
+                              "/" + std::to_string(instances[static_cast<size_t>(idx)].maxHp));
+        }
+        int selected = 0;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame(
+                title, labels, selected,
+                allowCancel ? "up/down=select   Enter=choose   q=cancel" : "up/down=select   Enter=choose");
+            render::Key pickKey = render::Console::readKey();
+            if (pickKey == render::Key::North) {
+                selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
+            } else if (pickKey == render::Key::South) {
+                selected = (selected + 1) % static_cast<int>(labels.size());
+            } else if (pickKey == render::Key::Enter) {
+                return aliveIndices[static_cast<size_t>(selected)];
+            } else if (allowCancel && pickKey == render::Key::Quit) {
+                return -1;
+            }
+        }
+    };
+
     std::vector<std::string> log;
-    log.push_back("A " + monster.name + " appears! " + monster.description);
+    if (useLetters) {
+        log.push_back(std::to_string(instances.size()) + " " + pluralMonsterName(monster.name) + " appear! " +
+                       monster.description);
+    } else {
+        log.push_back("A " + monster.name + " appears! " + monster.description);
+    }
     // Combat has its own local blow-by-blow log (above, shown on
     // drawCombatFrame's dedicated screen) -- this just leaves a short
     // continuity trail in the persistent exploration log_ so returning to
     // the overworld afterward isn't silent about what just happened.
-    pushLog("A " + monster.name + " appears!");
+    pushLog(useLetters ? (std::to_string(instances.size()) + " " + pluralMonsterName(monster.name) + " appear!")
+                        : ("A " + monster.name + " appears!"));
 
     // This-fight-only spell buffs/debuffs (Bless, Prayer, Protection from
     // Evil, Strength, Slow, Bestow Curse, ... -- see
     // character/Spellcasting.h's SpellEffect) -- purely local to this one
-    // runCombat call, same as monsterHp/log, never written into the
+    // runCombat call, same as instances/log, never written into the
     // character's real saved armorClass/thac0.
     int playerThac0Bonus = 0;
     int playerDamageBonus = 0;
     int playerAcBonus = 0;
-    int monsterThac0Penalty = 0;
-    int monsterDamagePenalty = 0;
+    // Per-instance versions of the this-fight debuffs above (Bestow Curse's
+    // THAC0/damage penalties) -- a group fight's Debuff spells hit one
+    // chosen enemy, not the whole group at once (see pickTarget above and
+    // docs/COMBAT_NOTES.md's "one representative target" note). Every
+    // monster without a GROUP line only ever has one instance, so this
+    // behaves exactly like the old single int for the common case.
+    std::vector<int> monsterThac0Penalty(instances.size(), 0);
+    std::vector<int> monsterDamagePenalty(instances.size(), 0);
+    // Same per-instance treatment for the "blocks the monster's attack(s)"
+    // family (Webnet, Sleep/Hold/Charm/Confusion/Fear) -- each targets one
+    // chosen enemy rather than the whole group.
+    std::vector<int> blockedAttacksRemaining(instances.size(), 0);
+    std::vector<bool> incapacitatedRestOfFight(instances.size(), false);
     // Frostreaver (see character::kFrostreaverName/kFrostreaverMagicBonus
     // and docs/CHARACTER_NOTES.md's "Magic items"): DLA p.94 says it only
     // holds its "+4" while it's glacier ice, not melted slush -- modeled
@@ -1414,198 +1520,12 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // alternating pattern (PHB Table 15) -- incremented once per
     // for(;;) iteration below, since each iteration is exactly one round.
     int roundNumber = 1;
-    auto playerAttacks = [&]() {
-        int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
-                                                         roundNumber);
-        for (int i = 0; i < attacks && monsterHp > 0; ++i) {
-            combat::AttackOutcome outcome =
-                combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
-            if (outcome.hit) {
-                monsterHp -= outcome.damage;
-                log.push_back("You hit the " + monster.name + " for " + std::to_string(outcome.damage) + ". " +
-                               describeToHit(outcome) + " " + describeDamage(outcome));
-            } else {
-                log.push_back("You miss the " + monster.name + ". " + describeToHit(outcome));
-            }
-        }
-    };
-    // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
-    // once/day, blocks the rest of this fight -- see
-    // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
-    // "Magic items"), and now spell-based crowd control (Sleep, Hold
-    // Person, Charm, Confusion, Fear, ... -- character::SpellEffect::
-    // BlockMonsterAttacks) all share one mechanism: blockedMonsterAttacks
-    // counts down a finite number of blocked attacks,
-    // monsterIncapacitatedRestOfFight covers the "until the fight ends"
-    // spells (character::kBlockRestOfFight). Purely local to this one
-    // runCombat call -- "does an attack land this fight" never needs to
-    // survive to the save file, only the Brooch's daily charge does
-    // (Character::lastBroochUseDay).
-    int blockedMonsterAttacks = 0;
-    bool monsterIncapacitatedRestOfFight = false;
-    bool globeActive = false;
-    auto monsterAttacks = [&]() {
-        if (globeActive) {
-            log.push_back("The globe of invulnerability absorbs the blow!");
-            return;
-        }
-        if (monsterIncapacitatedRestOfFight) {
-            log.push_back("The " + monster.name + " is unable to act!");
-            return;
-        }
-        if (blockedMonsterAttacks > 0) {
-            --blockedMonsterAttacks;
-            log.push_back("The " + monster.name + " can't bring itself to attack!");
-            return;
-        }
-        // Bozak Draconian: casts Magic Missile (Dragonlance Adventures
-        // p.74, "as a 4th-level magic-user") instead of its weapon attack
-        // some rounds -- same PHB p.176 math as the player's own
-        // magic_missile spell (character::castSpell), fixed at "4th-level
-        // caster" per the book's own framing. No attack roll, no saving
-        // throw. See docs/COMBAT_NOTES.md for the invented per-round
-        // chance (the book gives no real frequency).
-        if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
-            int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
-            state_.character.currentHp -= missileDamage;
-            log.push_back("The " + monster.name + " casts Magic Missile! It strikes you for " +
-                           std::to_string(missileDamage) + " -- no saving throw.");
-            return;
-        }
-        // Aurak Draconian: noxious-cloud breath weapon (Dragonlance
-        // Adventures p.73) instead of its weapon attack some rounds --
-        // save vs. breath weapon for half of 20 damage, or full damage and
-        // blinded (a -4 this-fight to-hit penalty; the book names the
-        // condition but not a number, so this value is invented). The
-        // book's real "three times per day" is compressed to "available
-        // this whole fight" -- see docs/COMBAT_NOTES.md.
-        if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
-            if (combat::rollSavingThrow(state_.character, character::SaveCategory::BreathWeapon)) {
-                state_.character.currentHp -= 10;
-                log.push_back("The " + monster.name + " breathes a noxious cloud! You resist -- 10 damage.");
-            } else {
-                state_.character.currentHp -= 20;
-                playerThac0Bonus -= 4;
-                log.push_back("The " + monster.name +
-                               " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
-            }
-            return;
-        }
-        combat::AttackOutcome outcome = combat::resolveMonsterAttack(
-            monster, state_.character, playerAcBonus, monsterThac0Penalty, monsterDamagePenalty);
-        if (outcome.hit) {
-            state_.character.currentHp -= outcome.damage;
-            log.push_back("The " + monster.name + " hits you for " + std::to_string(outcome.damage) + ". " +
-                           describeToHit(outcome) + " " + describeDamage(outcome));
-            // Giant Spider's real Type F poison bite (Monstrous Manual
-            // p.329): a failed save is "immediate death" in the book, but
-            // this project never permadeaths the player (see docs/
-            // COMBAT_NOTES.md) -- setting currentHp to 0 here lets the
-            // existing knockout check right after this lambda runs handle
-            // it exactly like any other lethal hit, no separate logic.
-            if (monster.poisonOnHit) {
-                if (combat::rollSavingThrow(state_.character, character::SaveCategory::ParalyzationPoisonDeath)) {
-                    log.push_back("You resist the poison.");
-                } else {
-                    log.push_back("The poison overwhelms you!");
-                    state_.character.currentHp = 0;
-                }
-            }
-        } else {
-            log.push_back("The " + monster.name + " misses you. " + describeToHit(outcome));
-        }
-    };
-    // Casts `spellId` (already confirmed memorized -- see the Cast key
-    // handling below) as the round's action instead of attacking, and
-    // dispatches on character::SpellEffect rather than the spell's name/id
-    // so a new spell that reuses an existing category needs no change here.
-    auto playerCasts = [&](const std::string& spellId) {
-        character::SpellCastResult result = character::castSpell(state_.character, spellId);
-        if (!result.success) return; // defensive -- shouldn't happen, caller already checked
-        switch (result.effect) {
-            case character::SpellEffect::DamageMonster:
-                monsterHp -= result.amount;
-                log.push_back("Your " + result.spellName + " strikes the " + monster.name + " for " +
-                               std::to_string(result.amount) + ".");
-                break;
-            case character::SpellEffect::HealCaster: {
-                int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
-                state_.character.currentHp += healed;
-                log.push_back("You cast " + result.spellName + " and heal " + std::to_string(healed) +
-                               " hit points.");
-                break;
-            }
-            case character::SpellEffect::BlockMonsterAttacks:
-                if (result.amount == character::kBlockRestOfFight) {
-                    monsterIncapacitatedRestOfFight = true;
-                } else {
-                    blockedMonsterAttacks += result.amount;
-                }
-                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
-                break;
-            case character::SpellEffect::BuffPlayerThac0:
-                playerThac0Bonus += result.amount;
-                log.push_back("You cast " + result.spellName + ".");
-                break;
-            case character::SpellEffect::BuffPlayerDamage:
-                playerDamageBonus += result.amount;
-                log.push_back("You cast " + result.spellName + ".");
-                break;
-            case character::SpellEffect::BuffPlayerAc:
-                playerAcBonus += result.amount;
-                log.push_back("You cast " + result.spellName + ".");
-                break;
-            case character::SpellEffect::DebuffMonsterThac0:
-                monsterThac0Penalty += result.amount;
-                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
-                break;
-            case character::SpellEffect::DebuffMonsterDamage:
-                monsterDamagePenalty += result.amount;
-                log.push_back("You cast " + result.spellName + " on the " + monster.name + "!");
-                break;
-            case character::SpellEffect::BuffPlayerAndDebuffMonsterThac0:
-                playerThac0Bonus += result.amount;
-                monsterThac0Penalty += result.amount;
-                log.push_back("You cast " + result.spellName + ".");
-                break;
-            case character::SpellEffect::InstantDefeat:
-                log.push_back("Your " + result.spellName + " destroys the " + monster.name + " outright!");
-                monsterHp = 0;
-                break;
-        }
-    };
-    // Drinks the first carried Potion of Healing (see
-    // character::firstPotionIndex/drinkPotion) as the round's action
-    // instead of attacking -- same "replaces playerAttacks() in the
-    // initiative-ordered exchange" shape as playerCasts above.
-    auto playerDrinksPotion = [&]() {
-        int potionIndex = character::firstPotionIndex(state_.character);
-        character::PurchaseResult result = character::drinkPotion(state_.character, potionIndex);
-        log.push_back(result.message);
-    };
-    // Same "replaces playerAttacks() for the round" shape as
-    // playerDrinksPotion above. On success, sets the local flag
-    // monsterAttacks() checks -- see character::useWebnet/activateBrooch
-    // for what each function itself does and doesn't own.
-    auto playerUsesWebnet = [&]() {
-        int webnetIndex = character::firstWebnetIndex(state_.character);
-        character::PurchaseResult result = character::useWebnet(state_.character, webnetIndex);
-        log.push_back(result.message);
-        if (result.success) ++blockedMonsterAttacks;
-    };
-    auto playerActivatesBrooch = [&]() {
-        character::PurchaseResult result = character::activateBrooch(state_.character, state_.hoursElapsed / 24);
-        log.push_back(result.message);
-        if (result.success) globeActive = true;
-    };
-    // Same "replaces playerAttacks() for the round" shape as the other
-    // item-use lambdas above -- character::useStaffCure owns the heal math
-    // and the once-per-day gate itself, same division of labor drinkPotion
-    // already has.
-    auto playerUsesStaffCure = [&]() {
-        character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
-        log.push_back(result.message);
-    };
+    // Set true only by handleInstanceDeath below, when a death-burst
+    // (Sivak) finishes the player off after they already landed the
+    // killing blow -- every caller of handleInstanceDeath checks this and
+    // stops, and the main loop returns immediately once it's set, since
+    // knockedOutBy already rendered the "struck down" ending itself.
+    bool fightEndedByBurst = false;
     // Knockout ending -- shared by the ordinary "an attack drops you to 0"
     // check at the bottom of the round loop and the Sivak death-burst
     // below, which can finish the player off even after they already
@@ -1620,22 +1540,307 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             state_.y = refuge->y;
         }
         log.push_back("Press any key to continue.");
-        render::MapRenderer::drawCombatFrame(state_.character, monster, std::max(0, monsterHp), monsterMaxHp, log,
-                                              state_.hoursElapsed / 24);
+        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
         render::Console::readKey();
         pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
     };
+    // Awards steel/XP/the quest kill-tally and shows this monster's death
+    // flavor (Baaz's stone, or the generic fall message) the moment one
+    // instance's hp reaches 0 -- not deferred to after the whole round,
+    // so a group fight's log reads in the order things actually happened.
+    // Returns true if a Sivak-style death-burst just knocked the player
+    // out, ending the fight immediately (see knockedOutBy above); the kill
+    // itself still counts either way, since XP/steel/tally are applied
+    // before the burst roll, same as before Milestone 113.
+    auto handleInstanceDeath = [&](int idx) -> bool {
+        state_.monsterKills[monster.id] += 1;
+        checkQuestReadiness(); // a SLAY objective may have just been satisfied
+        int steel =
+            std::max(0, character::roll(monster.steelDiceCount, monster.steelDiceSides) + monster.steelFlatBonus);
+        state_.character.steelPieces += steel;
+        std::string name = monsterLabel(idx);
+        // Baaz Draconians turn to stone on death -- their single most
+        // iconic trait (Dragonlance Adventures, TSR 2021, p.75) -- worth a
+        // special line rather than the generic victory message.
+        if (monster.id == "baaz") {
+            log.push_back("The " + name + " falls and its body crumbles to stone! You find " +
+                           std::to_string(steel) + " steel among the rubble.");
+        } else {
+            log.push_back("The " + name + " falls! You find " + std::to_string(steel) + " steel.");
+        }
+        if (monster.xpValue > 0) {
+            state_.character.experience += monster.xpValue;
+            log.push_back("You gain " + std::to_string(monster.xpValue) + " experience.");
+            character::applyPendingLevelUps(state_.character, log);
+        }
+        // Sivak Draconian: real death-burst (Dragonlance Adventures p.75)
+        // -- the book's "killed by something larger than itself" condition
+        // has no SIZE stat to check in this project, so it always fires.
+        if (monster.burstsIntoFlameOnDeath) {
+            int burstDamage = character::roll(2, 4);
+            state_.character.currentHp -= burstDamage;
+            log.push_back("As it falls, the " + name + " bursts into flame! You take " +
+                           std::to_string(burstDamage) + " damage.");
+            if (state_.character.currentHp <= 0) {
+                knockedOutBy(monster.name);
+                return true;
+            }
+        }
+        return false;
+    };
+    auto playerAttacks = [&]() {
+        int targetIndex = pickTarget("Attack which enemy?", false);
+        if (targetIndex < 0) return; // defensive -- shouldn't happen, the fight only continues while someone's alive
+        int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
+                                                         roundNumber);
+        for (int i = 0; i < attacks && !fightEndedByBurst; ++i) {
+            if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                // The target already fell earlier in this same volley --
+                // Gold Box convention: remaining swings this round aren't
+                // auto-redirected to a new target, they're simply wasted.
+                // Explicit, flagged simplification, not a new
+                // auto-retarget system -- see docs/COMBAT_NOTES.md.
+                log.push_back("Your remaining attack finds no target left standing.");
+                break;
+            }
+            std::string targetName = monsterLabel(targetIndex);
+            combat::AttackOutcome outcome =
+                combat::resolvePlayerAttack(state_.character, monster, playerThac0Bonus, playerDamageBonus);
+            if (outcome.hit) {
+                instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
+                log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) + ". " +
+                               describeToHit(outcome) + " " + describeDamage(outcome));
+                if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                    if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                }
+            } else {
+                log.push_back("You miss the " + targetName + ". " + describeToHit(outcome));
+            }
+        }
+    };
+    // Webnet (consumed, blocks one attack), Brooch of Imog (reusable
+    // once/day, blocks the rest of this fight -- see
+    // character::useWebnet/activateBrooch and docs/CHARACTER_NOTES.md's
+    // "Magic items"), and spell-based crowd control (Sleep, Hold Person,
+    // Charm, Confusion, Fear, ... -- character::SpellEffect::
+    // BlockMonsterAttacks) all share one mechanism: blockedAttacksRemaining
+    // (declared above, alongside its per-instance sibling
+    // incapacitatedRestOfFight) counts down a finite number of blocked
+    // attacks per targeted instance; incapacitatedRestOfFight[i] covers the
+    // "until the fight ends" spells (character::kBlockRestOfFight). The
+    // Brooch's globe, unlike those two, wards the PLAYER rather than
+    // debuffing one monster, so it stays a single shared bool blocking
+    // every instance's attack -- purely local to this one runCombat call,
+    // same as the log/instances above, never written into the character's
+    // real saved fields (only the Brooch's daily charge itself,
+    // Character::lastBroochUseDay, persists).
+    bool globeActive = false;
+    // One monster instance's turn -- called for every currently-alive
+    // instance in fixed A->B->C order (see docs/COMBAT_NOTES.md). Stops
+    // immediately if the player is dropped to 0 HP partway through, so a
+    // downed player never takes further "hits" from monsters still queued
+    // that round.
+    auto monstersAct = [&]() {
+        for (size_t i = 0; i < instances.size() && state_.character.currentHp > 0; ++i) {
+            if (instances[i].hp <= 0) continue;
+            std::string name = monsterLabel(static_cast<int>(i));
+            if (globeActive) {
+                log.push_back("The globe of invulnerability absorbs the blow from the " + name + "!");
+                continue;
+            }
+            if (incapacitatedRestOfFight[i]) {
+                log.push_back("The " + name + " is unable to act!");
+                continue;
+            }
+            if (blockedAttacksRemaining[i] > 0) {
+                --blockedAttacksRemaining[i];
+                log.push_back("The " + name + " can't bring itself to attack!");
+                continue;
+            }
+            // Bozak Draconian: casts Magic Missile (Dragonlance Adventures
+            // p.74, "as a 4th-level magic-user") instead of its weapon
+            // attack some rounds -- same PHB p.176 math as the player's own
+            // magic_missile spell (character::castSpell), fixed at
+            // "4th-level caster" per the book's own framing. No attack
+            // roll, no saving throw. Rolled independently per instance, so
+            // a future multi-Bozak fight would have each one roll its own
+            // chance -- see docs/COMBAT_NOTES.md for the invented per-round
+            // chance (the book gives no real frequency).
+            if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
+                int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
+                state_.character.currentHp -= missileDamage;
+                log.push_back("The " + name + " casts Magic Missile! It strikes you for " +
+                               std::to_string(missileDamage) + " -- no saving throw.");
+                continue;
+            }
+            // Aurak Draconian: noxious-cloud breath weapon (Dragonlance
+            // Adventures p.73) instead of its weapon attack some rounds --
+            // save vs. breath weapon for half of 20 damage, or full damage
+            // and blinded (a -4 this-fight to-hit penalty; the book names
+            // the condition but not a number, so this value is invented).
+            // The book's real "three times per day" is compressed to
+            // "available this whole fight" -- see docs/COMBAT_NOTES.md.
+            if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
+                if (combat::rollSavingThrow(state_.character, character::SaveCategory::BreathWeapon)) {
+                    state_.character.currentHp -= 10;
+                    log.push_back("The " + name + " breathes a noxious cloud! You resist -- 10 damage.");
+                } else {
+                    state_.character.currentHp -= 20;
+                    playerThac0Bonus -= 4;
+                    log.push_back("The " + name +
+                                   " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
+                }
+                continue;
+            }
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, state_.character, playerAcBonus,
+                                                                           monsterThac0Penalty[i],
+                                                                           monsterDamagePenalty[i]);
+            if (outcome.hit) {
+                state_.character.currentHp -= outcome.damage;
+                log.push_back("The " + name + " hits you for " + std::to_string(outcome.damage) + ". " +
+                               describeToHit(outcome) + " " + describeDamage(outcome));
+                // Giant Spider's real Type F poison bite (Monstrous Manual
+                // p.329): a failed save is "immediate death" in the book,
+                // but this project never permadeaths the player (see
+                // docs/COMBAT_NOTES.md) -- setting currentHp to 0 here lets
+                // the existing knockout check after monstersAct returns
+                // handle it exactly like any other lethal hit.
+                if (monster.poisonOnHit) {
+                    if (combat::rollSavingThrow(state_.character, character::SaveCategory::ParalyzationPoisonDeath)) {
+                        log.push_back("You resist the poison.");
+                    } else {
+                        log.push_back("The poison overwhelms you!");
+                        state_.character.currentHp = 0;
+                    }
+                }
+            } else {
+                log.push_back("The " + name + " misses you. " + describeToHit(outcome));
+            }
+        }
+    };
+    // Casts `spellId` (already confirmed memorized -- see the Cast key
+    // handling below) as the round's action instead of attacking, and
+    // dispatches on character::SpellEffect rather than the spell's name/id
+    // so a new spell that reuses an existing category needs no change here.
+    // Effects that touch a monster at all (damage, block, debuff, instant
+    // defeat) ask which one via pickTarget first, same "one representative
+    // target" simplification playerAttacks uses -- effects that touch only
+    // the caster (heal, self-buffs) never open a picker.
+    auto playerCasts = [&](const std::string& spellId) {
+        character::SpellCastResult result = character::castSpell(state_.character, spellId);
+        if (!result.success) return; // defensive -- shouldn't happen, caller already checked
+        bool needsTarget = result.effect == character::SpellEffect::DamageMonster ||
+                            result.effect == character::SpellEffect::BlockMonsterAttacks ||
+                            result.effect == character::SpellEffect::DebuffMonsterThac0 ||
+                            result.effect == character::SpellEffect::DebuffMonsterDamage ||
+                            result.effect == character::SpellEffect::BuffPlayerAndDebuffMonsterThac0 ||
+                            result.effect == character::SpellEffect::InstantDefeat;
+        int targetIndex = needsTarget ? pickTarget("Cast at which enemy?", false) : -1;
+        std::string targetName = targetIndex >= 0 ? monsterLabel(targetIndex) : monster.name;
+        switch (result.effect) {
+            case character::SpellEffect::DamageMonster:
+                instances[static_cast<size_t>(targetIndex)].hp -= result.amount;
+                log.push_back("Your " + result.spellName + " strikes the " + targetName + " for " +
+                               std::to_string(result.amount) + ".");
+                if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                    if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                }
+                break;
+            case character::SpellEffect::HealCaster: {
+                int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
+                state_.character.currentHp += healed;
+                log.push_back("You cast " + result.spellName + " and heal " + std::to_string(healed) +
+                               " hit points.");
+                break;
+            }
+            case character::SpellEffect::BlockMonsterAttacks:
+                if (result.amount == character::kBlockRestOfFight) {
+                    incapacitatedRestOfFight[static_cast<size_t>(targetIndex)] = true;
+                } else {
+                    blockedAttacksRemaining[static_cast<size_t>(targetIndex)] += result.amount;
+                }
+                log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::BuffPlayerThac0:
+                playerThac0Bonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerDamage:
+                playerDamageBonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerAc:
+                playerAcBonus += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::DebuffMonsterThac0:
+                monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::DebuffMonsterDamage:
+                monsterDamagePenalty[static_cast<size_t>(targetIndex)] += result.amount;
+                log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::BuffPlayerAndDebuffMonsterThac0:
+                playerThac0Bonus += result.amount;
+                monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::InstantDefeat:
+                log.push_back("Your " + result.spellName + " destroys the " + targetName + " outright!");
+                instances[static_cast<size_t>(targetIndex)].hp = 0;
+                if (handleInstanceDeath(targetIndex)) fightEndedByBurst = true;
+                break;
+        }
+    };
+    // Drinks the first carried Potion of Healing (see
+    // character::firstPotionIndex/drinkPotion) as the round's action
+    // instead of attacking -- same "replaces playerAttacks() in the
+    // initiative-ordered exchange" shape as playerCasts above.
+    auto playerDrinksPotion = [&]() {
+        int potionIndex = character::firstPotionIndex(state_.character);
+        character::PurchaseResult result = character::drinkPotion(state_.character, potionIndex);
+        log.push_back(result.message);
+    };
+    // Same "replaces playerAttacks() for the round" shape as
+    // playerDrinksPotion above. On success, asks which enemy gets tangled
+    // (same pickTarget mechanism as a Block spell) and increments its own
+    // blockedAttacksRemaining entry -- see character::useWebnet for what
+    // the function itself does and doesn't own.
+    auto playerUsesWebnet = [&]() {
+        int webnetIndex = character::firstWebnetIndex(state_.character);
+        character::PurchaseResult result = character::useWebnet(state_.character, webnetIndex);
+        log.push_back(result.message);
+        if (result.success) {
+            int targetIndex = pickTarget("Tangle which enemy?", false);
+            if (targetIndex >= 0) ++blockedAttacksRemaining[static_cast<size_t>(targetIndex)];
+        }
+    };
+    auto playerActivatesBrooch = [&]() {
+        character::PurchaseResult result = character::activateBrooch(state_.character, state_.hoursElapsed / 24);
+        log.push_back(result.message);
+        if (result.success) globeActive = true;
+    };
+    // Same "replaces playerAttacks() for the round" shape as the other
+    // item-use lambdas above -- character::useStaffCure owns the heal math
+    // and the once-per-day gate itself, same division of labor drinkPotion
+    // already has.
+    auto playerUsesStaffCure = [&]() {
+        character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
+        log.push_back(result.message);
+    };
 
     for (;;) {
-        render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
+        render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
         render::Key key = render::Console::readKey();
 
         if (key == render::Key::Flee) {
             log.push_back("You break off and retreat.");
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, monsterHp, monsterMaxHp, log, state_.hoursElapsed / 24);
+            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
             render::Console::readKey();
-            pushLog("You fled from the " + monster.name + ".");
+            pushLog(useLetters ? ("You fled from the " + pluralMonsterName(monster.name) + ".")
+                                : ("You fled from the " + monster.name + "."));
             return;
         }
 
@@ -1732,57 +1937,28 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                        : std::function<void()>(playerAttacks);
         if (combat::playerActsFirst()) {
             playerActs();
-            if (monsterHp > 0) monsterAttacks();
+            if (fightEndedByBurst) return;
+            if (aliveCount() > 0) monstersAct();
         } else {
-            monsterAttacks();
+            monstersAct();
             if (state_.character.currentHp > 0) playerActs();
         }
+        if (fightEndedByBurst) return; // a death-burst already rendered its own ending -- see knockedOutBy above
         ++roundNumber;
 
-        if (monsterHp <= 0) {
-            // Lifetime kill tally, incremented regardless of any quest -- a
-            // SLAY objective is a query over this, the same way VISIT/TALK
-            // query visitedLocations/metCharacters. See docs/QUEST_NOTES.md.
-            state_.monsterKills[monster.id] += 1;
-            checkQuestReadiness(); // a SLAY objective may have just been satisfied
-            int steel = std::max(0, character::roll(monster.steelDiceCount, monster.steelDiceSides) +
-                                         monster.steelFlatBonus);
-            state_.character.steelPieces += steel;
-            // Baaz Draconians turn to stone on death -- their single most
-            // iconic trait (Dragonlance Adventures, TSR 2021, p.75) -- worth
-            // a special line rather than the generic victory message.
-            if (monster.id == "baaz") {
-                log.push_back("The Baaz Draconian falls and its body crumbles to stone! You find " +
-                               std::to_string(steel) + " steel among the rubble.");
-            } else {
-                log.push_back("The " + monster.name + " falls! You find " + std::to_string(steel) + " steel.");
-            }
-            if (monster.xpValue > 0) {
-                state_.character.experience += monster.xpValue;
-                log.push_back("You gain " + std::to_string(monster.xpValue) + " experience.");
-                character::applyPendingLevelUps(state_.character, log);
-            }
-            // Sivak Draconian: real death-burst (Dragonlance Adventures
-            // p.75) -- the book's "killed by something larger than itself"
-            // condition has no SIZE stat to check in this project, so it
-            // always fires, dealing real retaliatory damage rather than a
-            // flavor-only victory message like the other draconians' death
-            // traits. The kill still counts (XP/steel/tally already
-            // applied above) even if the burst then knocks you out.
-            if (monster.burstsIntoFlameOnDeath) {
-                int burstDamage = character::roll(2, 4);
-                state_.character.currentHp -= burstDamage;
-                log.push_back("As it falls, the Sivak Draconian bursts into flame! You take " +
-                               std::to_string(burstDamage) + " damage.");
-                if (state_.character.currentHp <= 0) {
-                    knockedOutBy(monster.name);
-                    return;
-                }
-            }
+        if (aliveCount() == 0) {
+            // Every reward (steel/XP/the quest kill-tally) was already
+            // applied per-instance by handleInstanceDeath as each one fell
+            // -- this is just the fight's closing line and pause, same
+            // "Press any key to continue" beat every earlier milestone's
+            // single-monster victory already had.
+            log.push_back(useLetters ? ("The " + pluralMonsterName(monster.name) + " are defeated!")
+                                      : ("You defeated the " + monster.name + "."));
             log.push_back("Press any key to continue.");
-            render::MapRenderer::drawCombatFrame(state_.character, monster, 0, monsterMaxHp, log, state_.hoursElapsed / 24);
+            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24);
             render::Console::readKey();
-            pushLog("You defeated the " + monster.name + ".");
+            pushLog(useLetters ? ("You defeated the " + pluralMonsterName(monster.name) + ".")
+                                : ("You defeated the " + monster.name + "."));
             return;
         }
         if (state_.character.currentHp <= 0) {

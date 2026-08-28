@@ -63,6 +63,20 @@
 #                          gameplay tuning to keep high-danger monsters away
 #                          from starting towns, not sourced. See
 #                          docs/COMBAT_NOTES.md.
+# GROUP <min> <max>        optional; how many of this monster appear in one
+#                          encounter (default, and every monster without this
+#                          line: always exactly 1). Sourced from the real
+#                          Monstrous Manual/Dragonlance Adventures "No.
+#                          Appearing" field, then clamped to this project's
+#                          own invented playability cap of 4 -- see
+#                          docs/COMBAT_NOTES.md's "Monster encounter groups"
+#                          section (Milestone 113). Deliberately only applied
+#                          to the roster's low/mid-HD "line troop" tier this
+#                          pass -- every already-dangerous or MIN_TOWN_DISTANCE
+#                          -gated monster stays solo despite real No.
+#                          Appearing data supporting groups for most of them
+#                          too (see COMBAT_NOTES.md for the full findings and
+#                          why this was deferred rather than applied).
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 #
@@ -99,6 +113,9 @@ THAC0 20
 DAMAGE 1 6 0
 STEEL 1 6 0
 XP 15
+# Real No. Appearing is 4-24 (4d6, Monster Manual p.163) -- clamped to this
+# project's playability cap, so goblins always turn up in a full band of 4.
+GROUP 4 4
 TERRAIN_BIAS ^ %
 DESC A skulking, yellow-eyed goblin lunges from the brush, crude spear already leveled.
 END
@@ -111,6 +128,9 @@ THAC0 20
 DAMAGE 1 4 0
 STEEL 1 4 0
 XP 7
+# Real No. Appearing is 5-20 (5d4, Monster Manual p.214) -- clamped to this
+# project's playability cap, so kobolds always turn up in a full band of 4.
+GROUP 4 4
 TERRAIN_BIAS ^ %
 DESC A scaly, dog-faced kobold darts out from behind a rock, yipping for reinforcements that may or may not come.
 END
@@ -123,6 +143,9 @@ THAC0 19
 DAMAGE 1 8 0
 STEEL 2 4 0
 XP 35
+# Real No. Appearing is 2-20 (2d10, Monster Manual p.191) -- clamped to this
+# project's playability cap.
+GROUP 2 4
 DESC A burly hobgoblin in scavenged armor squares up, sizing you the way a butcher sizes a carcass.
 END
 
@@ -134,6 +157,9 @@ THAC0 18
 DAMAGE 1 4 1
 STEEL 0 0 0
 XP 120
+# Real No. Appearing is 2-12, with only a 1% chance of a lone wolf (Monster
+# Manual p.362) -- clamped to this project's playability cap.
+GROUP 2 4
 TERRAIN_BIAS % .
 DESC A lean gray wolf circles once, hackles raised, before it charges.
 END
@@ -162,6 +188,12 @@ STEEL 2 6 0
 # to a flat value near the average roll (2d8 averages ~9) rather than
 # adding per-hp-XP complexity to the Monster struct for one creature.
 XP 90
+# Real # Appearing is 2d10 (2-20, Dragonlance Adventures p.74) -- Baaz are
+# the Dragon Highlords' common ground troops, encountered as squads. Real
+# range clamped to this project's playability cap. Unlike the Kapak/Bozak/
+# Sivak/Aurak below, Baaz carry no MIN_TOWN_DISTANCE gate, so grouping stays
+# in line with its existing low-danger-tier treatment.
+GROUP 2 4
 DESC A scaled, armored figure blocks the path -- a draconian, blade drawn, wings half-spread. Killing it will turn its body to stone.
 END
 
@@ -173,6 +205,9 @@ THAC0 17
 DAMAGE 2 4 0
 STEEL 2 6 0
 XP 120
+# Real No. Appearing is 2-8 (2d4, Monster Manual p.32) -- clamped to this
+# project's playability cap.
+GROUP 2 4
 TERRAIN_BIAS ^ A
 DESC A hulking, hairy shape unfolds from the shadows of the treeline, grinning with a bear-trap mouth.
 END
@@ -220,6 +255,9 @@ THAC0 19
 DAMAGE 2 4 0
 STEEL 2 4 0
 XP 35
+# Real No. Appearing is 2-12 (2d6, Monster Manual p.158) -- clamped to this
+# project's playability cap.
+GROUP 2 4
 TERRAIN_BIAS % ^ *
 EXCLUDE_TERRAIN _
 DESC A hyena-headed gnoll shoulders through the brush, jaws slack with a wet, laughing snarl.
@@ -238,6 +276,9 @@ STEEL 1 8 0
 # exists for anyone yet).
 DAMAGE 1 6 0
 XP 175
+# Real No. Appearing is 2-24 (2d12, Monster Manual p.131) -- clamped to this
+# project's playability cap.
+GROUP 2 4
 DESC A ghoul rises from a shallow grave, corpse-pale and grinning, hands hooked into claws.
 END
 
@@ -253,6 +294,9 @@ XP 65
 # immune to sleep/charm/hold/cold/fear -- no such per-monster damage-type
 # or immunity mechanic exists in this project (same restraint as Baaz's
 # unmodeled magic resistance), so it's flavor text in DESC only.
+# Real No. Appearing (base Skeleton column) is 3-30 (3d10, Monster Manual
+# p.315) -- clamped to this project's playability cap.
+GROUP 3 4
 DESC Loose bones knit together with a dry rattle, and a skeleton hauls itself upright, blade already raised.
 END
 
@@ -266,6 +310,9 @@ STEEL 0 0 0
 XP 65
 # Real Zombies are immune to sleep/charm/hold/death-magic/poison/cold --
 # same flavor-only treatment as the Skeleton's immunities above.
+# Real No. Appearing (Common column) is 3-24 (Monster Manual p.373) --
+# clamped to this project's playability cap.
+GROUP 3 4
 DESC A bloated corpse shambles forward, arms outstretched, its jerky steps and low moan the only warning you get.
 END
 
@@ -506,6 +553,9 @@ XP 175
 # Real Climate/Terrain is "Temperate land" (broad) -- weighted toward
 # forest/hills as an invented flavor bias, same "informed by, not
 # transcribed from" treatment as Bugbear's/Owlbear's own bias lines.
+# Real No. Appearing (Black column) is 1-3 (Monster Manual p.17) -- already
+# within this project's playability cap, so used as-is, unclamped.
+GROUP 1 3
 TERRAIN_BIAS % ^
 DESC A black bear rears up with a rumbling growl, claws already raised, in no mood to be crowded off the trail.
 END
@@ -521,6 +571,9 @@ XP 120
 # Real Climate/Terrain is "Any forest" -- an offshoot of dire wolf stock
 # that "often serve as mounts of goblins" (Monster Manual p.362), a direct
 # thematic tie to the Goblin/Hobgoblin already in this roster.
+# Real No. Appearing is 3-12 (Monster Manual p.362) -- clamped to this
+# project's playability cap.
+GROUP 3 4
 TERRAIN_BIAS %
 DESC A big, wolfish shape breaks from the treeline with an unnervingly calculating gleam -- too clever, too cruel, to be any common wolf.
 END
@@ -570,6 +623,10 @@ STEEL 2 4 0
 XP 65
 # Real Climate/Terrain is "Tropical, subtropical and temperate swamp" --
 # this project has no separate swamp code, so bog is the honest mapping.
+# Real No. Appearing is 8-15 (1d8+7, Monster Manual p.227, a tribal
+# patrol-sized band) -- clamped to this project's playability cap, so
+# lizard men always turn up in a full band of 4.
+GROUP 4 4
 TERRAIN_BIAS *
 DESC A green-scaled lizard man rises hissing from the reeds, spear notched with old kills, ready to add one more.
 END
@@ -587,6 +644,9 @@ XP 120
 # book's own text calls out "near water" habitat -- bog bias is informed
 # by, not transcribed from, that line, same treatment as the Bugbear's/
 # Owlbear's own bias lines.
+# Real No. Appearing is 1-12 (Monster Manual p.345, a colony creature) --
+# clamped to this project's playability cap.
+GROUP 1 4
 TERRAIN_BIAS *
 DESC A toad the size of a hound squats in the muck, throat pulsing, before it lunges with a wet snap of its jaws.
 END

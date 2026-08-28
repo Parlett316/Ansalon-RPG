@@ -644,9 +644,9 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
     std::cout << out.str();
 }
 
-void MapRenderer::drawCombatFrame(const character::Character& character, const combat::Monster& monster,
-                                   int monsterHp, int monsterMaxHp, const std::vector<std::string>& log,
-                                   long long currentDay) {
+void MapRenderer::drawCombatFrame(const character::Character& character,
+                                   const std::vector<CombatMonsterView>& monsters,
+                                   const std::vector<std::string>& log, long long currentDay) {
     std::vector<BoxLine> lines;
 
     std::ostringstream playerLine;
@@ -654,10 +654,14 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
                << character.armorClass << "   Weapon: " << character.weaponName;
     lines.push_back({playerLine.str(), kPlayerCombatColor});
 
-    std::ostringstream monsterLine;
-    monsterLine << monster.name << " -- HP " << std::max(0, monsterHp) << "/" << monsterMaxHp << "   AC "
-                << monster.armorClass;
-    lines.push_back({monsterLine.str(), kMonsterCombatColor});
+    int aliveMonsters = 0;
+    for (const CombatMonsterView& m : monsters) {
+        std::ostringstream monsterLine;
+        monsterLine << m.name << " -- HP " << std::max(0, m.hp) << "/" << m.maxHp << "   AC " << m.armorClass;
+        if (!m.alive) monsterLine << " (defeated)";
+        else ++aliveMonsters;
+        lines.push_back({monsterLine.str(), kMonsterCombatColor});
+    }
     lines.push_back({"", nullptr});
 
     // Only the tail fits comfortably in the viewport -- older lines scroll
@@ -693,6 +697,10 @@ void MapRenderer::drawCombatFrame(const character::Character& character, const c
         footer << "   i=use brooch";
     }
     footer << "   f=flee";
+    // A target picker only appears once there's actually more than one
+    // enemy left standing to choose between -- a solo fight (the common
+    // case, unchanged since before Milestone 113) never shows this hint.
+    if (aliveMonsters > 1) footer << "   (choose target)";
     lines.push_back({footer.str(), nullptr});
 
     std::ostringstream out;
