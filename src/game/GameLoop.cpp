@@ -1436,6 +1436,15 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
     }
 
+    // Declared here (rather than down where it's first populated, below)
+    // so pickTarget -- which needs to pass it to drawCombatFrame as of
+    // Milestone 115's in-frame targeting -- can see it: a lambda body only
+    // sees names already declared earlier in the source, same ordering
+    // constraint runCombat's other lambdas already have to satisfy (see
+    // docs/ARCHITECTURE.md). Left undeclared here, `log` inside pickTarget
+    // would silently resolve to <cmath>'s std::log overload set instead of
+    // this vector and fail to compile.
+    std::vector<std::string> log;
     auto monsterLabel = [&](int idx) -> std::string {
         if (!useLetters) return monster.name;
         return monster.name + " " + std::string(1, static_cast<char>('A' + idx));
@@ -1476,21 +1485,29 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         }
         if (candidates.empty()) return -1;
         if (candidates.size() == 1) return candidates.front();
-        std::vector<std::string> labels;
-        for (int idx : candidates) {
-            labels.push_back(monsterLabel(idx) + " -- HP " + std::to_string(instances[static_cast<size_t>(idx)].hp) +
-                              "/" + std::to_string(instances[static_cast<size_t>(idx)].maxHp));
-        }
+        // Milestone 115: the grid itself is the picker (see
+        // docs/COMBAT_NOTES.md's "In-frame combat actions" section, and
+        // render::MapRenderer::CombatPrompt's own doc comment) -- this
+        // redraws the ordinary drawCombatFrame with the candidate under
+        // `selected` bracketed on the grid and marked in the HP roster,
+        // instead of clearing the screen for a separate drawPickerFrame
+        // list, so the map/roster/log stay visible the whole time. up/down
+        // still just cycle `candidates` in the same fixed order as before;
+        // only the rendering changed.
         int selected = 0;
         for (;;) {
-            render::MapRenderer::drawPickerFrame(
-                title, labels, selected,
-                allowCancel ? "up/down=select   Enter=choose   q=cancel" : "up/down=select   Enter=choose");
+            render::MapRenderer::CombatPrompt prompt;
+            prompt.title = title;
+            prompt.selected = selected;
+            prompt.gridCursorIndex = candidates[static_cast<size_t>(selected)];
+            prompt.footer = allowCancel ? "up/down=select   Enter=choose   q=cancel" : "up/down=select   Enter=choose";
+            render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24,
+                                                  hereTerrain, playerPos, prompt);
             render::Key pickKey = render::Console::readKey();
             if (pickKey == render::Key::North) {
-                selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
+                selected = (selected - 1 + static_cast<int>(candidates.size())) % static_cast<int>(candidates.size());
             } else if (pickKey == render::Key::South) {
-                selected = (selected + 1) % static_cast<int>(labels.size());
+                selected = (selected + 1) % static_cast<int>(candidates.size());
             } else if (pickKey == render::Key::Enter) {
                 return candidates[static_cast<size_t>(selected)];
             } else if (allowCancel && pickKey == render::Key::Quit) {
@@ -1503,7 +1520,6 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // grid" section on why those stay unaffected by adjacency.
     auto anyAlive = [](int) { return true; };
 
-    std::vector<std::string> log;
     if (useLetters) {
         log.push_back(std::to_string(instances.size()) + " " + pluralMonsterName(monster.name) + " appear! " +
                        monster.description);
@@ -2055,9 +2071,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 }
                 int selected = 0;
                 bool cancelled = false;
+                // Milestone 115: in-frame chooser (see docs/COMBAT_NOTES.md's
+                // "In-frame combat actions" section) -- same shape as
+                // pickTarget's own drawCombatFrame loop above, just with
+                // `options` set (spell selection has no grid representation
+                // of its own) instead of a gridCursorIndex.
                 for (;;) {
-                    render::MapRenderer::drawPickerFrame("Cast which spell?", labels, selected,
-                                                          "up/down=select   Enter=cast   q=cancel");
+                    render::MapRenderer::CombatPrompt prompt;
+                    prompt.title = "Cast which spell?";
+                    prompt.options = labels;
+                    prompt.selected = selected;
+                    prompt.footer = "up/down=select   Enter=cast   q=cancel";
+                    render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log,
+                                                          state_.hoursElapsed / 24, hereTerrain, playerPos, prompt);
                     render::Key pickKey = render::Console::readKey();
                     if (pickKey == render::Key::North) {
                         selected = (selected - 1 + static_cast<int>(labels.size())) % static_cast<int>(labels.size());
@@ -2078,22 +2104,55 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             // Reinterpreted locally as "use a consumable" -- same "local
             // key reinterpretation instead of a new Key value" trick
             // handleShop already uses for this exact key (buy/sell toggle
-            // there). Potion takes priority (unchanged behavior), then
-            // Webnet, then Brooch of Imog, then the Staff of Striking/
-            // Curing's cure function -- same "first one found, nothing to
-            // actually pick between" simplification already established
-            // for potions themselves.
-            if (character::firstPotionIndex(state_.character) >= 0) {
-                drinking = true;
-            } else if (character::firstWebnetIndex(state_.character) >= 0) {
-                usingWebnet = true;
-            } else if (character::broochAvailableToday(state_.character, state_.hoursElapsed / 24)) {
-                activatingBrooch = true;
-            } else if (character::staffCureAvailableToday(state_.character, state_.hoursElapsed / 24)) {
-                usingStaffCure = true;
-            } else {
+            // there). Milestone 115: a real in-frame USE menu over every
+            // usable item (character::availableCombatItems) instead of the
+            // old fixed-priority pick-the-first-one behavior, which meant a
+            // character carrying both a Potion and a Webnet could never
+            // reach the Webnet at all. Auto-selects when exactly one item
+            // is usable, same "no picker needed for one candidate" rule
+            // pickTarget already follows.
+            std::vector<character::CombatItem> usableItems =
+                character::availableCombatItems(state_.character, state_.hoursElapsed / 24);
+            character::CombatItemKind chosenItemKind = character::CombatItemKind::Potion;
+            if (usableItems.empty()) {
                 log.push_back("You have nothing to use.");
                 continue;
+            } else if (usableItems.size() == 1) {
+                chosenItemKind = usableItems.front().kind;
+            } else {
+                std::vector<std::string> itemLabels;
+                for (const character::CombatItem& item : usableItems) itemLabels.push_back(item.label);
+                int selected = 0;
+                bool cancelled = false;
+                for (;;) {
+                    render::MapRenderer::CombatPrompt prompt;
+                    prompt.title = "Use which item?";
+                    prompt.options = itemLabels;
+                    prompt.selected = selected;
+                    prompt.footer = "up/down=select   Enter=use   q=cancel";
+                    render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log,
+                                                          state_.hoursElapsed / 24, hereTerrain, playerPos, prompt);
+                    render::Key pickKey = render::Console::readKey();
+                    if (pickKey == render::Key::North) {
+                        selected = (selected - 1 + static_cast<int>(itemLabels.size())) %
+                                   static_cast<int>(itemLabels.size());
+                    } else if (pickKey == render::Key::South) {
+                        selected = (selected + 1) % static_cast<int>(itemLabels.size());
+                    } else if (pickKey == render::Key::Enter) {
+                        chosenItemKind = usableItems[static_cast<size_t>(selected)].kind;
+                        break;
+                    } else if (pickKey == render::Key::Quit) {
+                        cancelled = true;
+                        break;
+                    }
+                }
+                if (cancelled) continue;
+            }
+            switch (chosenItemKind) {
+                case character::CombatItemKind::Potion: drinking = true; break;
+                case character::CombatItemKind::Webnet: usingWebnet = true; break;
+                case character::CombatItemKind::Brooch: activatingBrooch = true; break;
+                case character::CombatItemKind::StaffCure: usingStaffCure = true; break;
             }
         } else if (key != render::Key::Enter) {
             continue;

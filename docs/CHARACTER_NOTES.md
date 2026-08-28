@@ -1208,15 +1208,19 @@ already reuses rather than a duplicate type) —
   carried potion; the inventory screen now shows an `HP: current/max`
   line so the effect is visible immediately (previously this screen
   showed no HP at all).
-- Mid-combat, press `i` (`GameLoop::runCombat`) to drink the first potion
-  carried (`character::firstPotionIndex`) as the round's action instead
-  of attacking — the exact same "local key reinterpretation instead of a
-  new `Key` value" trick `handleShop` already uses for `'i'` (there it
-  toggles buy/sell; in combat it drinks). No potion carried logs "You
-  have no potions." and doesn't consume the round, same forgiving pattern
-  `Cast` already follows for "no spell available." `drawCombatFrame`'s
-  footer only shows `i=drink potion` when one is actually carried, same
-  "only hint what's usable" precedent `m=cast` already follows for
+- Mid-combat, press `i` (`GameLoop::runCombat`) to use an item as the
+  round's action instead of attacking — the exact same "local key
+  reinterpretation instead of a new `Key` value" trick `handleShop`
+  already uses for `'i'` (there it toggles buy/sell; in combat it uses).
+  With a Potion the only usable item this auto-selects it directly, same
+  as the original Milestone 42 UX; see the Webnet section below for how
+  this behaves once more than one item is usable
+  (`character::availableCombatItems`, Milestone 115). No potion (or
+  anything else) carried logs "You have nothing to use." and doesn't
+  consume the round, same forgiving pattern `Cast` already follows for
+  "no spell available." `drawCombatFrame`'s command row only names a
+  `USE:` item when one is actually usable, same "only hint what's
+  usable" precedent `m=cast`/`CAST` already follows for
   non-casters.
 
 Every carried potion is identical, so there's nothing to actually pick
@@ -1310,8 +1314,14 @@ be cast... it instantly grows to a 10-foot-diameter net of entrapment."
 Consumed on use (`character::useWebnet`, stackable like the Potion —
 buying a second is allowed on purpose); negates the monster's *next*
 attack. Used via the same `'i'`-in-combat local-key-reinterpretation
-`GameLoop::runCombat` already uses for drinking a potion, now a priority
-chain: potion first (unchanged), then Webnet, then Brooch of Imog.
+`GameLoop::runCombat` already uses for drinking a potion. **As originally
+shipped this was a fixed priority chain (potion first, then Webnet, then
+Brooch of Imog) that silently stopped at the first match — a character
+carrying both a Potion and a Webnet could never actually reach the Webnet
+through `'i'`. Milestone 115 replaced it with a real in-frame chooser
+over everything usable (`character::availableCombatItems`), auto-picking
+only when exactly one item qualifies — see `docs/COMBAT_NOTES.md`'s
+"In-frame combat actions" section.**
 
 *Brooch of Imog*: "can be used once per day to create a *minor globe of
 invulnerability*. The globe lasts for 10 rounds." Unlike the Webnet, this
@@ -1391,8 +1401,9 @@ Brooch of Imog's own day-gate: `Character::lastStaffCureDay`
 simplification Webnet/Brooch already have (not exposed via the general
 inventory screen — the item may or may not be in the browsable list
 depending on whether it's currently equipped) — used via the same
-`'i'`-in-combat priority chain, now four deep: potion, then Webnet, then
-Brooch, then the staff's cure.
+`'i'`-in-combat handling as the Potion/Webnet/Brooch above (see the note
+there: Milestone 115 replaced the original four-deep fixed priority chain
+with a real chooser over everything usable).
 
 `SaveGame.cpp` touches: one new optional `STAFFCUREDAY` line, same
 backward-compatible shape as `RESTDAY`/`BROOCHDAY` (defaults to -1 if

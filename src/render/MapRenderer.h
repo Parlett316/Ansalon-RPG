@@ -169,6 +169,33 @@ public:
         char glyph = '?';
     };
 
+    // Drives drawCombatFrame's in-frame choosers (Milestone 115, see
+    // docs/COMBAT_NOTES.md's "In-frame combat actions" section) -- built
+    // fresh by GameLoop::runCombat each redraw, never stored. Three
+    // states, distinguished by `title`/`options`:
+    //   - `title` empty: no chooser is open. The footer becomes the
+    //     command row (ATTACK/MOVE/CAST/USE/FLEE) instead of a picker
+    //     hint, and `gridCursorIndex` is ignored.
+    //   - `title` set, `options` empty: target picking. The grid itself
+    //     is the picker -- `gridCursorIndex` (an index into the
+    //     `monsters` vector passed to drawCombatFrame) draws that
+    //     instance's cell as "[X]" instead of " X ", and its HP-roster
+    //     line gets the usual "> " cursor prefix. Enter/up/down are
+    //     handled by the caller (GameLoop::runCombat's pickTarget), same
+    //     as before -- this struct only carries what to draw.
+    //   - `title` set, `options` non-empty: an in-frame list chooser
+    //     (spell or item selection), which has no grid representation --
+    //     `options` render as their own cursor list under the grid, same
+    //     visual shape drawPickerFrame used before this milestone,
+    //     `selected` marks the cursor row.
+    struct CombatPrompt {
+        std::string title;
+        std::vector<std::string> options;
+        int selected = 0;
+        int gridCursorIndex = -1;
+        std::string footer;
+    };
+
     // Renders one combat frame: a small tactical grid (Milestone 114 --
     // `floorTerrain`'s glyph/color fills every empty cell, so a forest
     // encounter's grid reads differently from a plains one, matching
@@ -183,12 +210,16 @@ public:
     // itself (which is static content shared by every encounter with that
     // monster type) -- see docs/COMBAT_NOTES.md. `currentDay`
     // (hoursElapsed/24, same convention as drawCharacterSheet above) is
-    // only used to decide whether the footer hints "i=use brooch" -- see
-    // character::broochAvailableToday.
+    // used both to decide the command row's "USE: ..." hint
+    // (character::availableCombatItems) and, as of Milestone 115, is what
+    // an idle `prompt` (default-constructed CombatPrompt) renders instead
+    // of the old fixed footer hints -- see CombatPrompt above for the
+    // chooser states GameLoop::runCombat can request instead.
     static void drawCombatFrame(const character::Character& character,
                                  const std::vector<CombatMonsterView>& monsters,
                                  const std::vector<std::string>& log, long long currentDay,
-                                 const world::TerrainInfo& floorTerrain, combat::GridPos playerPos);
+                                 const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
+                                 const CombatPrompt& prompt = {});
 
     struct DialogueLine {
         std::string speaker;

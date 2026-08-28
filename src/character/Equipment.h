@@ -417,6 +417,35 @@ bool staffCureAvailableToday(const Character& character, long long today);
 // already false.
 PurchaseResult useStaffCure(Character& character, long long today);
 
+// Which of the four "press i in combat" consumables/items this entry is --
+// see availableCombatItems below. Order here is the same fixed priority
+// GameLoop::runCombat's old single-choice 'i' handling used to hard-code
+// (potion, then Webnet, then Brooch, then Staff), preserved as the natural
+// list order rather than re-litigated.
+enum class CombatItemKind { Potion, Webnet, Brooch, StaffCure };
+
+// One in-frame USE-menu entry (Milestone 115) -- `label` is already the
+// full display string (e.g. "Potion of Healing", "Webnet", "Brooch of
+// Imog", "Staff of Striking (cure)"), so game::GameLoop::runCombat and
+// render::MapRenderer both just print it, no further name lookup needed.
+struct CombatItem {
+    CombatItemKind kind;
+    std::string label;
+};
+
+// Every consumable/item usable as this round's action right now, in fixed
+// order (Potion, Webnet, Brooch, Staff) -- built fresh each call from
+// firstPotionIndex/firstWebnetIndex/broochAvailableToday/
+// staffCureAvailableToday above, the same "no new state, just combine
+// what's already tracked" shape ShopCatalog uses for its own listings.
+// Replaces the old fixed-priority-pick-the-first-one 'i' behavior, which
+// meant a character carrying both a Potion and a Webnet could never reach
+// the Webnet at all -- both GameLoop::runCombat (to build the chooser) and
+// MapRenderer::drawCombatFrame (to name the command row's one-line hint)
+// call this, so the two can never drift out of sync the way the old
+// hand-duplicated priority chain could.
+std::vector<CombatItem> availableCombatItems(const Character& character, long long today);
+
 // Frostreaver (Dragonlance Adventures p.94, visually confirmed via a
 // rendered page image) -- see docs/CHARACTER_NOTES.md's "Magic items"
 // section. A quest reward (data/quests.txt's frostreaver_salvage,

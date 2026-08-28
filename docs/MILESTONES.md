@@ -3661,6 +3661,58 @@ section).
      full sourcing and design writeup, and `docs/CURRENT_WORK.md` for the
      specific scenarios still needing a real playthrough.
 
+115. In-frame combat actions, Phase 3 of the Gold Box-style combat pass --
+     fixing the user's own complaint that "the picking who to attack takes
+     you away from the screen." Every sub-choice inside a fight (which
+     enemy to attack, which spell to cast) used to pop a full-screen
+     `render::MapRenderer::drawPickerFrame`, clearing the terminal and
+     replacing the grid/HP roster/log with a bare list at exactly the
+     moment the player needed them. `References/DQoK.pdf`'s own manual
+     confirms this is a real deviation, not just a taste call -- it
+     targets on the battle map itself ("Use the CENTER command to
+     determine who will be in the area of effect... if the spell is
+     targeted in the center of the screen"; Hold Person: "use the EXIT
+     command to target fewer"). Scope was checked against a ranked gap
+     analysis of everything left separating this project from a real Gold
+     Box game (multi-square movement, segmented initiative, a party of up
+     to six, area-of-effect spells, mixed-monster encounters, sweep
+     attacks, real Flee) -- the user picked in-frame targeting plus a real
+     action menu as this milestone's scope, and a party of up to six as
+     the backlog item to record (see `docs/COMBAT_NOTES.md`'s "Extending
+     this later"). New `render::MapRenderer::CombatPrompt` drives
+     `drawCombatFrame`'s three states: idle (a real command row -- `ATTACK
+     (Enter)   MOVE (wasd)   CAST (m)   USE: <item> (i)   FLEE (f)`,
+     naming only what's legal right now), target picking (the grid itself
+     is the picker -- the cursored instance's cell renders `[X]` instead
+     of ` X `, cells widened from 1 to 3 columns to fit the bracket, and
+     its HP-roster line gets a `> ` prefix), and an in-frame option list
+     (spell/item selection, which has no grid cell to point at). New
+     `character::availableCombatItems` (`Equipment.h`/`.cpp`) replaces the
+     old fixed-priority `'i'`-key handling (Potion, then Webnet, then
+     Brooch, then Staff, stopping at the first match) with the full list
+     of everything usable this round -- a real, previously-live gap this
+     closes along the way: a character carrying both a Potion and a
+     Webnet could never reach the Webnet through `'i'` before this
+     milestone. Auto-selects with no chooser when exactly one item
+     qualifies, same "no picker for one candidate" rule `pickTarget`
+     already followed. Deliberately not adopted, honestly flagged: a
+     free-roaming cursor over empty grid squares (DQoK.pdf's real
+     behavior, deferred until area-of-effect spells actually need one),
+     DELAY/QUIC/multi-target CENTER-EXIT as named commands (all
+     presuppose segmented initiative or a party, neither being taken on),
+     and a cursor-navigable command row (the row is display-only --
+     `Console::readKey` already maps a fixed key set). No save-format
+     changes. Verified via a throwaway self-test
+     (`character::availableCombatItems` across no items, one item, all
+     four available, a Brooch/Staff already used today excluded, and a
+     Brooch used yesterday available again), a clean `/W4` rebuild, and
+     the piped smoke test (both of the user's real saves confirmed intact
+     around the run). **Interactive verification required**, same
+     `_getch()` limitation as every other combat-facing milestone -- see
+     `docs/COMBAT_NOTES.md`'s "In-frame combat actions" section for the
+     full design writeup and `docs/CURRENT_WORK.md` for the specific
+     scenarios still needing a real playthrough.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -3728,3 +3780,14 @@ session's work.
    actual capture is now staged at a new Dargaard Keep location, through
    Flint and Tasslehoff's own witnessed account. See `docs/MILESTONES.md`
    entry 98.
+6. **A party of up to six characters**, recorded at Milestone 115 as the
+   single biggest remaining gap between this project and a real Gold Box
+   game -- `References/DQoK.pdf`'s entire combat chapter assumes it:
+   deployment order, front-line/back-line positioning, per-character
+   turns, NPC control, unconscious-but-not-dead party members left on the
+   field. Also what unblocks thief backstab, Fighter "sweep" attacks, and
+   the multi-target EXIT/QUIC commands -- all real, sourced mechanics that
+   structurally can't exist with a solo PC. Not proposed lightly: this
+   would touch the save format, character creation, and every combat (and
+   probably several non-combat) screen. See `docs/COMBAT_NOTES.md`'s
+   "Extending this later" section.

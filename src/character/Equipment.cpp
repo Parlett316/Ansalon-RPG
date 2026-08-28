@@ -639,6 +639,21 @@ PurchaseResult useStaffCure(Character& character, long long today) {
     return {true, "You call on the staff's curing power and recover " + std::to_string(healed) + " hit points."};
 }
 
+// Fixed order (Potion, Webnet, Brooch, Staff) -- see the CombatItemKind
+// comment in Equipment.h for why this is the same order the old
+// fixed-priority 'i' handling used, just no longer stopping at the first
+// match.
+std::vector<CombatItem> availableCombatItems(const Character& character, long long today) {
+    std::vector<CombatItem> items;
+    if (firstPotionIndex(character) >= 0) items.push_back({CombatItemKind::Potion, "Potion of Healing"});
+    if (firstWebnetIndex(character) >= 0) items.push_back({CombatItemKind::Webnet, "Webnet"});
+    if (broochAvailableToday(character, today)) items.push_back({CombatItemKind::Brooch, "Brooch of Imog"});
+    if (staffCureAvailableToday(character, today)) {
+        items.push_back({CombatItemKind::StaffCure, kStaffOfStrikingCuringName});
+    }
+    return items;
+}
+
 int findQuestItemIndex(const Character& character, const std::string& questItemId) {
     for (size_t i = 0; i < character.inventory.size(); ++i) {
         const InventoryItem& item = character.inventory[i];

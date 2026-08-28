@@ -195,7 +195,11 @@ actual SSI Gold Box Dark Queen of Krynn manual: melee attacks need you
 adjacent to your target, a Tinker's Light Crossbow can shoot anyone on
 the board until an enemy closes in (then it's refused outright), monsters
 close the distance when they're not next to you, and pulling back from an
-adjacent enemy risks a free opportunity attack — three of the draconians fight back with real, book-sourced
+adjacent enemy risks a free opportunity attack. Choosing a target now
+happens right on that grid instead of a separate screen — the enemy under
+the cursor is bracketed (`[A]`) and marked in the HP list — and combat
+shows a real command row of what's legal that round (`ATTACK`, `MOVE`,
+`CAST`, `USE`, `FLEE`) instead of bare hotkey hints; three of the draconians fight back with real, book-sourced
 abilities beyond a plain weapon swing: Bozaks sometimes cast Magic Missile
 instead of attacking, Auraks sometimes breathe a noxious cloud (save for
 half damage, or take full damage and fight on blinded), and Sivaks burst
@@ -211,7 +215,10 @@ across Mage's 9 levels and Cleric's 7, sourced from an official TSR/SSI
 Dragonlance computer game manual and cross-checked against the actual PHB
 (damage, healing, blocking a monster's attacks, or a this-fight to-hit/AC
 buff or debuff, depending on the spell), with exactly one spell left it
-casts directly, with more than one a picker asks which); losing just
+casts directly, with more than one an in-frame chooser asks which
+(same for `i`'s Potion/Webnet/Brooch of Imog/Staff of Curing when more
+than one is usable — the grid, HP list, and log all stay on screen for
+every choice); losing just
 knocks you out and sends you back to Solace, it isn't permadeath — see
 `docs/COMBAT_NOTES.md`. Press `r` to rest, once per in-game day: it heals
 1 hit point (the DMG's real natural-healing rate) and, for a Mage or

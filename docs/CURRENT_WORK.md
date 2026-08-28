@@ -1,9 +1,40 @@
 # Current work
 
-Nothing in flight -- Milestone 114 is implemented, self-tested, and
-rebuilt clean, but carries the same heavier-than-usual interactive-
-verification flag Milestone 113 did (see below), since none of the
-actual play loop can be driven headlessly.
+Nothing in flight -- Milestone 115 is implemented, self-tested, and
+rebuilt clean, but carries the same interactive-verification flag every
+combat-facing milestone has, since none of the actual play loop can be
+driven headlessly.
+
+Milestone 115 (2026-08-28) shipped Phase 3 of the Gold Box-style combat
+pass, fixing the user's own complaint: "the picking who to attack takes
+you away from the screen." Every sub-choice inside a fight used to pop a
+full-screen `drawPickerFrame`, clearing the terminal and hiding the grid/
+HP roster/log at exactly the moment the player needed them -- confirmed a
+real deviation from `References/DQoK.pdf`'s own manual, which targets on
+the battle map itself (CENTER/EXIT commands), not via a separate list
+screen. Scope was checked against a ranked gap analysis of everything
+left separating this project from a real Gold Box game; the user picked
+**in-frame targeting plus a real action menu** for this milestone, and **a
+party of up to six characters** as the backlog item to record (now
+`docs/MILESTONES.md`'s NEXT UP item 6). New `render::MapRenderer::
+CombatPrompt` drives `drawCombatFrame`'s three states (idle command row,
+grid-based target picking with a `[X]` bracket cursor and roster `> `
+prefix, in-frame option list for spell/item choosers). New
+`character::availableCombatItems` replaces the old fixed-priority `'i'`
+handling, closing a real live gap along the way (a character carrying
+both a Potion and a Webnet could never reach the Webnet before this).
+Full design writeup and sourcing: `docs/COMBAT_NOTES.md`'s "In-frame
+combat actions" section.
+**Interactive verification needed** (`_getch()` blocks all of it) -- a
+real playthrough should confirm: a group fight shows the `[A]`/`[B]`
+bracket cursor moving on the grid while the log/HP roster stay visible
+the whole time; a solo fight still auto-targets with no picker; a caster
+with two-or-more memorized spells sees the in-frame chooser (not a
+screen-clearing one); a character carrying both a Potion and a Webnet is
+offered both under `i`; the idle command row shows only legal commands
+(no `CAST` for a non-caster, no `USE:` hint with nothing carried); and
+cancelling out of the spell/item choosers returns to the fight without
+costing a round. See `docs/MILESTONES.md` entry 115.
 
 Milestone 114 (2026-08-28) shipped Phase 2 of the Gold Box-style combat
 pass: a real tactical grid with player/monster positions and movement,

@@ -572,17 +572,20 @@ close to a `TOWN` location (e.g. the High Clerist's Tower is ~16 tiles
 from Palanthas) get the same civilian safety-bubble effect as everywhere
 else near a town; this is an accepted simplification, not a bug.
 
-## Player actions: Attack, Cast, Drink a Potion, and Flee
+## Player actions: Attack, Move, Cast, Use, and Flee
 
 `render::Key::Flee` (`'f'`/`'F'`) ends the encounter immediately with a
 retreat message, no cost or risk modeled (no PHB-style "opportunity attack
-while fleeing" — a deliberate simplification). `Enter` (reused from its
-existing "step in/interact" meaning elsewhere) resolves one full round as
-a weapon attack.
+while fleeing" — a deliberate simplification, distinct from the real,
+sourced opportunity attack Milestone 114 *did* add for ordinary
+retreating movement — see "Positional combat grid" below). `Enter`
+(reused from its existing "step in/interact" meaning elsewhere) resolves
+one full round as a weapon attack; `w`/`a`/`s`/`d` move instead (Milestone
+114).
 
 **`render::Key::Cast` (`'m'`/`'M'`)**, alongside the leveling-system
 spellcasting work (`character::Spellcasting`, see
-`docs/CHARACTER_NOTES.md`, now a real multi-level spellbook, not one fixed
+`docs/CHARACTER_NOTES.md`, a real multi-level spellbook, not one fixed
 spell): a Mage or Cleric can spend their round casting instead of
 swinging their weapon. Pressing it validates `character::canCastSpells`
 and `hasMemorizedSpellsAvailable` first — on failure (wrong class, no
@@ -590,21 +593,22 @@ spells memorized today, or a racially-blocked Mage whose slot count is
 always 0) it logs a message and does **not** consume the round, same
 forgiving UX as any other out-of-context key press. With exactly one
 distinct memorized spell left today it casts directly (the original
-one-spell UX, unchanged); with more than one, a `drawPickerFrame` picker
-("Cast which spell?") asks which before spending the round. On success,
-`GameLoop::runCombat` swaps a `playerCasts(spellId)` lambda in for
-`playerAttacks()` inside the exact same `playerActsFirst()`-ordered
-exchange, dispatching on `character::SpellEffect` (damage, heal, block the
-monster's attacks, a this-fight THAC0/AC/damage buff or debuff, or an
-outright instant defeat — see `docs/CHARACTER_NOTES.md`'s spell census for
-which spell does which) — the monster still gets its own attack afterward
-per the usual initiative ordering except when blocked. This-fight
-buffs/debuffs thread through as new optional parameters on
-`resolvePlayerAttack`/`resolveMonsterAttack` (`thac0Bonus`/`damageBonus`
-for the player, `acBonus`/`thac0Penalty`/`damagePenalty` for the monster),
-held as local variables in `runCombat` and never written into the
-character's real saved `armorClass`/`thac0`. Thief, Fighter, and Tinker
-never see the `m=cast` option at all (`drawCombatFrame` only shows it for
+one-spell UX, unchanged); with more than one, an in-frame chooser ("Cast
+which spell?" — see "In-frame combat actions" below) asks which before
+spending the round. On success, `GameLoop::runCombat` swaps a
+`playerCasts(spellId)` lambda in for `playerAttacks()` inside the exact
+same `playerActsFirst()`-ordered exchange, dispatching on
+`character::SpellEffect` (damage, heal, block the monster's attacks, a
+this-fight THAC0/AC/damage buff or debuff, or an outright instant defeat —
+see `docs/CHARACTER_NOTES.md`'s spell census for which spell does which)
+— the monster still gets its own attack afterward per the usual
+initiative ordering except when blocked. This-fight buffs/debuffs thread
+through as new optional parameters on `resolvePlayerAttack`/
+`resolveMonsterAttack` (`thac0Bonus`/`damageBonus` for the player,
+`acBonus`/`thac0Penalty`/`damagePenalty` for the monster), held as local
+variables in `runCombat` and never written into the character's real
+saved `armorClass`/`thac0`. Thief, Fighter, and Tinker never see `CAST` in
+the command row at all (`drawCombatFrame` only shows it for
 `canCastSpells` classes with something memorized).
 
 The same `playerThac0Bonus`/`playerDamageBonus` locals also carry
@@ -618,20 +622,26 @@ Mechanically identical to a standing buff spell that happens to already be
 picked specifically to avoid a new `resolvePlayerAttack` parameter or any
 change to `combat::AttackOutcome`/`Combat.h`.
 
-**`render::Key::Inventory` (`'i'`), reinterpreted locally as "drink a
-potion" (Milestone 42)**, new alongside the Potion of Healing item (see
-`docs/CHARACTER_NOTES.md`'s "Potions"): same "swap a lambda in for
-`playerAttacks()`" shape as `Cast` above, drinking
-`character::firstPotionIndex`'s potion instead of casting a spell. No
-potion carried logs a message and doesn't consume the round, same
-forgiving pattern as an unavailable `Cast`. This is the same "local key
-reinterpretation instead of a new `Key` value" trick `handleShop` already
-uses for this exact key (there it toggles the buy/sell view) — outside
-combat `'i'` still opens the real inventory screen
-(`GameLoop::handleInventory`); only inside `runCombat`'s own nested loop
-does it mean "drink." `drawCombatFrame`'s footer only shows
-`i=drink potion` when one is actually carried, same "only hint what's
-usable" treatment `m=cast` already gets for non-casters.
+**`render::Key::Inventory` (`'i'`), reinterpreted locally as "use an
+item"**: a real chooser over every carried/owned consumable usable this
+round (Potion of Healing, Webnet, Brooch of Imog, Staff of Striking's cure
+function — see `docs/CHARACTER_NOTES.md`'s "Magic items"), built by
+`character::availableCombatItems`. Auto-selects with no chooser when
+exactly one is usable (the common early-game case, still identical to the
+original Milestone 42 "drink the one potion" UX); with more than one, an
+in-frame chooser ("Use which item?" — see "In-frame combat actions"
+below) asks which before spending the round. Nothing usable logs a
+message and doesn't consume the round, same forgiving pattern as an
+unavailable `Cast`. This is the same "local key reinterpretation instead
+of a new `Key` value" trick `handleShop` already uses for this exact key
+(there it toggles the buy/sell view) — outside combat `'i'` still opens
+the real inventory screen (`GameLoop::handleInventory`); only inside
+`runCombat`'s own nested loop does it mean "use." Before Milestone 115
+this was instead a hand-coded fixed priority (Potion, then Webnet, then
+Brooch, then Staff) that silently stopped at the first match — a
+character carrying both a Potion and a Webnet could never actually reach
+the Webnet through `'i'` at all; `availableCombatItems` lists everything
+usable instead, in that same order.
 
 ## Victory: steel, then XP, then leveling
 
@@ -796,19 +806,24 @@ group size rolled at the start.** A solo fight (still the overwhelming
 majority of encounters, since only 14 of 26 monsters carry a `GROUP` line
 at all) always auto-targets its one monster with no letter and no picker
 -- byte-for-byte the same log wording every single-monster fight has had
-since before this milestone. A group fight only shows a `drawPickerFrame`
-target picker (labeled `A) Goblin -- HP 5/5`, etc.) while 2+ instances are
-still alive; fought down to its last survivor, it auto-targets exactly
-like a solo fight. Letters themselves are decided once from the
-*starting* group size, so a fight's labels stay stable ("Goblin A"/
-"Goblin B") even as members die.
+since before this milestone. A group fight only shows a target picker
+while 2+ instances are still alive; fought down to its last survivor, it
+auto-targets exactly like a solo fight. Letters themselves are decided
+once from the *starting* group size, so a fight's labels stay stable
+("Goblin A"/"Goblin B") even as members die. **As originally shipped this
+picker was a separate `drawPickerFrame` screen; Milestone 114 (see below)
+added real positions to target, and Milestone 115 moved targeting onto
+the combat grid itself -- see "In-frame combat actions" further down.**
 
 **A Fighter's multi-attacks-per-round all land on the one target chosen
-for that round** (`character::meleeAttacksThisRound`, unchanged),
-matching Gold Box's "pick a target once per round" convention. If that
-target dies mid-volley, the remaining swings aren't auto-redirected to a
-new target -- they're simply logged as wasted. Explicit, flagged
-simplification, not a new auto-retarget system.
+for that round** (`character::meleeAttacksThisRound`), matching Gold
+Box's "pick a target once per round" convention -- **as originally
+shipped**. DQoK.pdf's own manual, re-read while planning Milestone 114,
+gives the real rule instead: "If the first target goes down with the
+first attack, you can aim the remaining attack at another target" --
+fixed in that same milestone (`playerAttacks` now re-picks a target if
+the current one dies mid-volley, only giving up if nothing eligible is
+left). See "Positional combat grid (Milestone 114)" below.
 
 **Non-damage spell effects that used to implicitly target "the monster"
 now ask which one** (`BlockMonsterAttacks` -- Sleep/Hold/Charm/Confusion/
@@ -1004,8 +1019,116 @@ self/distance-2, and `combat::stepToward`'s bounds-respecting,
 collision-avoiding, greedy approach. See `docs/CURRENT_WORK.md` for the
 specific scenarios still needing a real playthrough.
 
+## In-frame combat actions (Milestone 115)
+
+Milestones 113-114 built a real tactical grid, but every sub-choice
+inside a fight -- which enemy to attack, which spell to cast -- still
+popped a full-screen `render::MapRenderer::drawPickerFrame`, which clears
+the terminal and replaces the whole combat frame with a bare list. The
+grid, the HP roster, and the log all vanished at exactly the moment the
+player needed them to decide -- the user's own complaint ("the picking
+who to attack takes you away from the screen"). This is a real deviation
+from the source, not just a taste call: `References/DQoK.pdf`'s own
+manual targets *on the battle map itself*. Fireball: "Use the CENTER
+command to determine who will be in the area of effect... if the spell is
+targeted in the center of the screen." Hold Person: "you may aim a hold
+person spell at up to 3 targets (use the EXIT command to target fewer)."
+Both describe a cursor moved over the visible map, never a separate list
+screen -- and the manual's own command vocabulary (CAST, USE, DELAY,
+DETECT, CENTER, EXIT) is a menu of named commands shown *during* the
+fight, not bare hotkeys with a hint line.
+
+**`render::MapRenderer::CombatPrompt`** (`MapRenderer.h`) is the new
+plumbing: built fresh by `GameLoop::runCombat` each redraw, never stored,
+and passed as `drawCombatFrame`'s new (defaulted) trailing parameter.
+Three states, distinguished by its own `title`/`options` fields (see its
+doc comment for the full contract):
+- **`title` empty (the default)**: no chooser is open. The footer renders
+  a real command row instead of the old fixed hint text -- `ATTACK
+  (Enter)   MOVE (wasd)   CAST (m)   USE: <item> (i)   FLEE (f)` -- naming
+  only what's actually legal right now (`CAST` only for a caster with
+  something memorized, via the same `hasMemorizedSpellsAvailable` check
+  the old `m=cast` hint used; the `USE:` hint names whichever item
+  `character::availableCombatItems` would open first, so it can never
+  drift out of sync with what `'i'` actually does the way the old
+  hand-duplicated potion/webnet/brooch priority chain in both
+  `drawCombatFrame` and `GameLoop::runCombat` could).
+- **`title` set, `options` empty**: target picking. The grid **is** the
+  picker now -- `gridCursorIndex` (an index into the `monsters` vector)
+  draws that instance's cell as `[X]` instead of ` X ` (cells widened from
+  1 to 3 columns to fit the bracket -- 11 * 3 = 33 columns, still well
+  under `kProseWrapWidth`), and its HP-roster line gets a `> ` cursor
+  prefix, same convention `drawPickerFrame`/`drawShopFrame` already use
+  elsewhere. `GameLoop::runCombat`'s `pickTarget` lambda is unchanged in
+  every way except which function it calls to render each keystroke --
+  same candidate list, same up/down cycling, same Enter/Quit handling.
+- **`title` set, `options` non-empty**: an in-frame list chooser (spell or
+  item selection, neither of which has a grid cell to point at) --
+  `options` render as their own cursor list under the grid, same visual
+  shape `drawPickerFrame` used before this milestone. Used by the "Cast
+  which spell?" chooser (unchanged logic, just redirected off
+  `drawPickerFrame`) and the new "Use which item?" chooser below.
+
+**`character::availableCombatItems(character, today)`** (`Equipment.h`/
+`.cpp`) replaces the old fixed-priority `'i'`-key handling in
+`GameLoop::runCombat` (Potion, then Webnet, then Brooch, then Staff,
+stopping at the first match) with the full list of everything actually
+usable this round, in that same order -- built from the four existing
+`firstPotionIndex`/`firstWebnetIndex`/`broochAvailableToday`/
+`staffCureAvailableToday` checks, so it can't drift from what those
+already track. This closes a real, previously-live gap, not just a
+presentation one: a character carrying both a Potion and a Webnet could
+never reach the Webnet through `'i'` before this milestone, since the
+Potion always matched first and the old code never looked further.
+`GameLoop::runCombat` auto-selects with no chooser when exactly one item
+qualifies (the common early-game case, unchanged UX), and opens the
+in-frame "Use which item?" chooser only when there's an actual choice --
+same "no picker needed for one candidate" rule `pickTarget` already
+follows.
+
+**Deliberately not adopted, flagged rather than silently dropped** (real
+DQoK.pdf mechanics, out of scope this pass):
+- **A free-roaming cursor over empty grid squares.** The real game's
+  cursor walks squares, not just enemies; this instead cycles between
+  eligible targets with up/down, same as before. Justified because no
+  fight in this roster exceeds 4 enemies and no spell here targets empty
+  ground -- but it becomes genuinely insufficient the moment
+  area-of-effect spells are added (Fireball's blast, Lightning Bolt's
+  8-square line reflecting off walls), which is exactly when a real
+  square-cursor should be built instead of patched onto this one.
+- **DELAY, QUIC (computer control), and multi-target CENTER/EXIT as named
+  commands.** Real manual commands, out of scope: DELAY belongs with
+  segmented initiative (not being taken on -- see "Positional combat
+  grid" above); QUIC and multi-target EXIT both presuppose a party, which
+  this project doesn't have (see "Extending this later" below).
+- **A selectable command row.** The row displays each command and its
+  key; it is not itself cursor-navigable. `Console::readKey` already maps
+  a fixed key set, and a second way to issue the same commands would add
+  nothing.
+
+**Interactive verification is required**, same `_getch()` limitation as
+every other combat-facing milestone. A throwaway self-test covered the
+one pure, extractable piece: `character::availableCombatItems` across no
+items, one item, all four available, a Brooch/Staff already used today
+(excluded), and a Brooch used yesterday (available again). See
+`docs/CURRENT_WORK.md` for the specific scenarios still needing a real
+playthrough.
+
 ## Extending this later
 
+- **A party of up to six characters.** The single biggest remaining gap
+  between this project and a real Gold Box game -- DQoK.pdf's entire
+  combat chapter assumes it: deployment order, front-line/back-line
+  positioning ("always keep magic-users and missile weapons safe behind
+  the front line"), per-character turns, NPC control (the `UIC` command),
+  and unconscious-but-not-dead party members left on the field. It's also
+  what unblocks several other real, sourced mechanics that structurally
+  can't exist with a solo PC: thief backstab (needs a second attacker
+  standing opposite the target), Fighter "sweep" attacks against multiple
+  weak opponents, and the QUIC/multi-target EXIT commands flagged above.
+  Recorded here honestly as a real candidate, not proposed lightly --
+  this would touch the save format, character creation, and every combat
+  (and probably several non-combat) screen.
 - **The rest of the roster's real group sizes**: Milestone 113 (see
   "Monster encounter groups" above) only applied sourced `GROUP` data to
   14 of the 26 monsters -- the dozen left solo despite real No. Appearing

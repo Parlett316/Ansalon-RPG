@@ -647,7 +647,8 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
 void MapRenderer::drawCombatFrame(const character::Character& character,
                                    const std::vector<CombatMonsterView>& monsters,
                                    const std::vector<std::string>& log, long long currentDay,
-                                   const world::TerrainInfo& floorTerrain, combat::GridPos playerPos) {
+                                   const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
+                                   const CombatPrompt& prompt) {
     std::vector<BoxLine> lines;
 
     // Tactical grid (Milestone 114). Plain text, no per-cell ANSI -- this
@@ -658,23 +659,34 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     // color -- see docs/COMBAT_NOTES.md's "Positional combat grid" section
     // for why (DQoK.pdf's own manual describes the combat map as "a
     // detailed view of the terrain the party was in").
+    //
+    // Milestone 115: each cell is 3 columns wide (" X " / floor, "[X]" for
+    // whichever monster prompt.gridCursorIndex names) instead of 1 --
+    // that's the in-frame target picker (see CombatPrompt's own comment in
+    // MapRenderer.h and docs/COMBAT_NOTES.md's "In-frame combat actions"
+    // section): the grid itself is the picker now, so the cursored
+    // instance needs to visibly stand out from the rest. 11 cells * 3
+    // columns = 33, still well under kProseWrapWidth.
     for (int gy = 0; gy < kCombatGridHeight; ++gy) {
         std::string row;
-        row.reserve(static_cast<size_t>(kCombatGridWidth) * 2);
+        row.reserve(static_cast<size_t>(kCombatGridWidth) * 3);
         for (int gx = 0; gx < kCombatGridWidth; ++gx) {
-            char glyph = floorTerrain.glyph;
-            if (playerPos.x == gx && playerPos.y == gy) {
-                glyph = '@';
-            } else {
-                for (const CombatMonsterView& m : monsters) {
-                    if (m.alive && m.pos.x == gx && m.pos.y == gy) {
-                        glyph = m.glyph;
-                        break;
-                    }
+            int monsterIdx = -1;
+            for (size_t i = 0; i < monsters.size(); ++i) {
+                if (monsters[i].alive && monsters[i].pos.x == gx && monsters[i].pos.y == gy) {
+                    monsterIdx = static_cast<int>(i);
+                    break;
                 }
             }
-            row.push_back(glyph);
-            if (gx + 1 < kCombatGridWidth) row.push_back(' ');
+            if (monsterIdx >= 0) {
+                char glyph = monsters[static_cast<size_t>(monsterIdx)].glyph;
+                row += monsterIdx == prompt.gridCursorIndex ? std::string("[") + glyph + "]"
+                                                             : std::string(" ") + glyph + " ";
+            } else if (playerPos.x == gx && playerPos.y == gy) {
+                row += " @ ";
+            } else {
+                row += std::string(" ") + floorTerrain.glyph + " ";
+            }
         }
         lines.push_back({row, nullptr});
     }
@@ -685,12 +697,18 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                << character.armorClass << "   Weapon: " << character.weaponName;
     lines.push_back({playerLine.str(), kPlayerCombatColor});
 
-    int aliveMonsters = 0;
-    for (const CombatMonsterView& m : monsters) {
+    // Roster lines only grow the "> "/"  " cursor prefix while
+    // prompt.gridCursorIndex actually names one of them (target picking) --
+    // left off entirely the rest of the time so the ordinary round display
+    // (and the spell/item choosers below, which cursor their own separate
+    // option list instead) look exactly as they did before Milestone 115.
+    bool showRosterCursor = prompt.gridCursorIndex >= 0;
+    for (size_t i = 0; i < monsters.size(); ++i) {
+        const CombatMonsterView& m = monsters[i];
         std::ostringstream monsterLine;
+        if (showRosterCursor) monsterLine << (static_cast<int>(i) == prompt.gridCursorIndex ? "> " : "  ");
         monsterLine << m.name << " -- HP " << std::max(0, m.hp) << "/" << m.maxHp << "   AC " << m.armorClass;
         if (!m.alive) monsterLine << " (defeated)";
-        else ++aliveMonsters;
         lines.push_back({monsterLine.str(), kMonsterCombatColor});
     }
     lines.push_back({"", nullptr});
@@ -705,34 +723,44 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     constexpr size_t kMaxLogLines = 8;
     size_t start = log.size() > kMaxLogLines ? log.size() - kMaxLogLines : 0;
     for (size_t i = start; i < log.size(); ++i) lines.push_back({log[i], nullptr});
-
     lines.push_back({"", nullptr});
-    std::ostringstream footer;
-    footer << "w/a/s/d=move   Enter=attack";
-    // Only hinted when a spell is actually memorized and unspent today --
-    // same "only show it when it's usable" precedent the potion/webnet/
-    // brooch hints below already follow.
-    if (character::hasMemorizedSpellsAvailable(character, currentDay)) {
-        footer << "   m=cast";
+
+    // Milestone 115: an open chooser (prompt.title set -- spell/item
+    // selection, which has no grid representation of its own, or target
+    // picking, where prompt.options is left empty since the grid/roster
+    // above already show the choices) replaces the old fixed footer hints
+    // entirely; an idle frame (prompt.title empty, the default) renders a
+    // real command row instead, in the manual's own command-name spirit
+    // (CAST/USE) rather than bare "m="/"i=" hints -- see
+    // docs/COMBAT_NOTES.md's "In-frame combat actions" section.
+    if (!prompt.title.empty()) {
+        lines.push_back({prompt.title, kSectionLabelColor});
+        for (size_t i = 0; i < prompt.options.size(); ++i) {
+            bool isSelected = static_cast<int>(i) == prompt.selected;
+            std::ostringstream optionLine;
+            optionLine << (isSelected ? "> " : "  ") << prompt.options[i];
+            lines.push_back({optionLine.str(), isSelected ? kSelectedItemColor : nullptr});
+        }
+        lines.push_back({"", nullptr});
+        lines.push_back({prompt.footer, nullptr});
+    } else {
+        std::ostringstream footer;
+        footer << "ATTACK (Enter)   MOVE (wasd)";
+        // Only hinted when a spell is actually memorized and unspent today --
+        // same "only show it when it's usable" precedent USE below follows.
+        if (character::hasMemorizedSpellsAvailable(character, currentDay)) {
+            footer << "   CAST (m)";
+        }
+        // Names whichever consumable/item pressing 'i' will actually open --
+        // character::availableCombatItems is the same list GameLoop::
+        // runCombat's own Inventory-key handling builds, so this can never
+        // drift out of sync with what 'i' really does the way the old
+        // hand-duplicated priority chain could.
+        std::vector<character::CombatItem> items = character::availableCombatItems(character, currentDay);
+        if (!items.empty()) footer << "   USE: " << items.front().label << " (i)";
+        footer << "   FLEE (f)";
+        lines.push_back({footer.str(), nullptr});
     }
-    // Only hinted when there's actually something for 'i' to do -- same
-    // "only show it when it's usable" precedent m=cast already follows for
-    // non-casters. Potion takes priority, then Webnet, then Brooch of
-    // Imog -- same fixed priority GameLoop::runCombat's own key handling
-    // uses, so the hint always matches what pressing 'i' will actually do.
-    if (character::firstPotionIndex(character) >= 0) {
-        footer << "   i=drink potion";
-    } else if (character::firstWebnetIndex(character) >= 0) {
-        footer << "   i=use webnet";
-    } else if (character::broochAvailableToday(character, currentDay)) {
-        footer << "   i=use brooch";
-    }
-    footer << "   f=flee";
-    // A target picker only appears once there's actually more than one
-    // enemy left standing to choose between -- a solo fight (the common
-    // case, unchanged since before Milestone 113) never shows this hint.
-    if (aliveMonsters > 1) footer << "   (choose target)";
-    lines.push_back({footer.str(), nullptr});
 
     std::ostringstream out;
     out << "\x1b[2J\x1b[H";
