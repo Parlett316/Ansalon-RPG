@@ -124,7 +124,19 @@ Kender racial ability *ranges* (min/max caps) and class level limits from
 the same source are enforced too — see "Ability score ranges and class
 level limits" below.
 
-## Scope: what this milestone does and doesn't model
+**Kender cannot be Evil** (a later, user-requested content pass): the same
+DLA p.53 "Kender Game Statistics" box states plainly, right after the
+monk-ineligibility note, "No evil kender are known to exist." This is the
+one and only race-based alignment restriction this project enforces (see
+the "Scope" section below) — `character::meetsAlignmentRestriction`
+(`Race.h`/`.cpp`) returns false only for Kender + one of the three Evil
+alignments (`Alignment::LawfulEvil`/`NeutralEvil`/`ChaoticEvil`), true for
+every other race/alignment combination. Hard-enforced the same
+reject-and-reprompt way as the Mage block above and the ability-range/
+class-cap checks below, not the older soft-flag UX — `CharacterCreator`'s
+alignment prompt annotates each Evil option "(kender cannot be evil)" for
+a Kender and re-prompts on an attempted pick, the same shape as the race/
+class prompts' own ineligibility handling.
 
 No leveling system exists yet (combat now does — see
 `docs/COMBAT_NOTES.md`), which is what makes several 2e mechanics safe to
@@ -141,8 +153,11 @@ skip for now rather than build unused:
 - ~~**No demihuman level limits.** Irrelevant until leveling exists.~~ Shipped
   once leveling did — see "Ability score ranges and class level limits"
   below.
-- **No alignment restrictions.** The player picks freely from all 9
-  alignments regardless of race/class.
+- ~~**No alignment restrictions.** The player picks freely from all 9
+  alignments regardless of race/class.~~ One real, sourced exception now
+  exists: Kender cannot be Evil (DLA p.53 — see "Kender in place of
+  Half-Orc and Halfling" below). Every other race/class combination is
+  still unrestricted.
 - **No spellbook or spell selection at character creation.** A Mage or
   Cleric character just knows their class at level 1; the real spell
   loadout picker happens later, at the character's first Rest (see
@@ -855,19 +870,40 @@ rendered PHB pages (this scan's OCR badly garbles table columns, so text
 search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
 
 - **Armor tiers**: Leather (AC 8, 5stl), Studded Leather (AC 7, 20stl),
-  Chain Mail (AC 5, 75stl), Splint Mail (AC 4, 80stl), Plate Mail (AC 3,
-  600stl) — Table 46 (Armor Class Ratings, p.99) for the AC values, Table
-  47 (Armor, p.92) for cost (the PHB's own gold-piece numbers, applied
-  here as Steel Pieces, Krynn's real currency — see "Gold -> Steel"
-  below). Splint Mail is offered instead of Banded/Bronze Plate Mail for
-  the same AC 4 tier because it's the cheapest real item at that
-  protection level (80stl vs 200stl/400stl). Studded Leather and Plate
-  Mail (the equipment-expansion milestone) round out the curve with a
-  budget mid-tier and a premium tier priced for a character with banked
-  quest/kill rewards rather than starting steel — Field Plate/Full Plate
-  (AC 2/1/0) are still not offered, priced at 2,000-10,000stl, far beyond
-  even a well-quested character's steel, and Solamnic Armor (below)
-  already fills the AC 0 niche for a Sword Knight.
+  Hide Armor (AC 6, 15stl), Chain Mail (AC 5, 75stl), Splint Mail (AC 4,
+  80stl), Plate Mail (AC 3, 600stl), Field Plate (AC 2, 1200stl) — Table 46
+  (Armor Class Ratings, p.99) for the AC values, Table 47 (Armor, p.92) for
+  cost (the PHB's own gold-piece numbers, applied here as Steel Pieces,
+  Krynn's real currency — see "Gold -> Steel" below). Splint Mail is
+  offered instead of Banded/Bronze Plate Mail for the same AC 4 tier
+  because it's the cheapest real item at that protection level (80stl vs
+  200stl/400stl). Studded Leather and Plate Mail (the equipment-expansion
+  milestone) round out the curve with a budget mid-tier and a premium tier
+  priced for a character with banked quest/kill rewards rather than
+  starting steel.
+  - **Hide Armor** (a later content pass, "more weapons and armor")
+    closes a real gap this project used to skip entirely — Studded Leather
+    (AC 7) used to jump straight to Chain Mail (AC 5), missing the AC 6
+    tier Table 46 lists (Studded Leather+shield, Brigandine, Scale Mail,
+    or Hide Armor). Hide is the cheapest real item at AC 6 (15gp vs
+    Brigandine/Scale Mail's 120gp each) — same "pick the cheapest real
+    item at this AC" rule Splint Mail already established above. It is
+    genuinely cheaper than Studded Leather despite better AC, confirmed on
+    a rendered page image (not a transcription error) — the PHB's real
+    numbers just work out that way.
+  - **Field Plate** (AC 2) was added in the same pass, reversing this
+    document's own earlier "too expensive" scope cut — Full Plate (AC 1/0)
+    is still not offered, since it would just duplicate Field Plate/
+    Solamnic Armor's niche one slot up, and Solamnic Armor (below) already
+    fills the AC 0 spot for a Sword Knight. **Its 1200stl price is a
+    deliberate deviation from the real Table 47 number (2,000gp)** — done
+    at the user's explicit request to fit the existing curve (Plate Mail's
+    own 600stl was already framed as "priced for banked quest/kill
+    rewards"; another raw 3.3x jump for one more AC point would put it out
+    of reach even for a well-quested character). 1200stl (2x Plate Mail)
+    keeps it a genuine late-game splurge instead. Flagged here exactly the
+    way Hoopak's price below is flagged, for the same reason: an invented
+    number where the real one exists but doesn't serve this game's economy.
 - **Shield**: -1 AC, 7stl (Table 47's "Medium" shield entry). Table 46
   confirms a shield always improves AC by exactly 1 over the same armor
   without one, so this is modeled as a flat subtraction, not a separate
@@ -892,10 +928,15 @@ search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
   (1d6) — the PHB prices it "--" (a cut length of wood, no real cost), so
   its 2stl shop price is a small invented number, flagged in
   `character/Equipment.cpp` the same way `kWebnetCostStl` is; Tinker's
-  Wrench upgrades to a Light Crossbow (1d4+1, 35stl, reusing the Light
+  Wrench upgrades to a Light Crossbow (1d4, 35stl, reusing the Light
   Quarrel's damage since this engine doesn't track ammunition separately
   from the weapon) — a mechanical weapon fitting the class's gadgeteer
-  identity rather than a sword-and-board reskin.
+  identity rather than a sword-and-board reskin. **Correction** (found
+  while researching the Hoopak below): this was originally listed as
+  1d4+1, but the real PHB Table 44 Light Quarrel line is 1d4 with no
+  bonus — 1d4+1 is actually the Heavy Quarrel's damage, re-confirmed via a
+  rendered page image.
+
 - **`Character::armorClass` is always kept in sync**, not derived on the
   fly: `Equipment::recomputeArmorClass` runs at character creation
   (equivalent to the old `10 - Dex adjustment` formula, since
@@ -921,6 +962,65 @@ search alone wasn't trusted for exact numbers — see `docs/GOTCHAS.md`):
   mistake. Same minimalism as one weapon/spell/dialogue-line precedent
   elsewhere in this project.
 
+### Hoopak (Kender-only weapon)
+
+A later content pass ("more weapons and armor... hoopak for Kender!").
+Unlike every weapon above (one upgrade per `ClassId`), the Hoopak is
+**race-gated**, not class-gated: any Kender, regardless of class, gets
+one — and can still buy their own class's weapon upgrade too, since the
+two aren't mutually exclusive (see below).
+
+Neither the PHB nor *Dragonlance Adventures* gives the hoopak any game
+stats — both only mention it in passing (DLA p.53's "his hoopak or other
+weapon," in the Kender Pocket Grab Table's exemption list; PG1 *Players
+Guide to the Dragonlance Campaign* p.70/71 describes it at length in
+flavor terms — a 5' ironwood sling-staff, spiked at one end, forked and
+gut-laced at the other, "thrown as a spear... struck as a staff... shot or
+slung with stones" — but no numbers). Real stats came from `References/
+DQoK.pdf` (Dark Queen of Krynn, the official TSR/SSI Dragonlance computer
+game manual — already this project's precedent source for the
+Spellcasting census above), whose Weapons Table (printed p.51, PDF page
+28, visually confirmed via a rendered page image, the OCR text layer being
+badly garbled for this table like every other one in this project) gives
+the hoopak two distinct profiles, both footnoted "Only usable by kender
+characters":
+
+| Mode | Damage vs. man-sized | Damage vs. larger |
+|---|---|---|
+| Hoopak (Melee) | 3-8 (1d6+2) | 3-6 (1d4+2) |
+| Hoopak (Missile) | 2-5 (1d4+1) | 2-7 (1d6+1) |
+
+This engine has no ranged/melee distinction for any weapon (see the
+Tinker's Light Crossbow above, already used identically to a melee
+weapon), so only one profile can be modeled — the higher-damage **Melee**
+line was chosen, the same "pick the number that matters, flag what's
+lost" simplification as Meteor Swarm's uniform damage in the Spellcasting
+census above. **Cost (50stl) is an invented, flagged number** — DQoK's
+manual has no in-game currency to reuse (unlike the Potion/magic weapons,
+which reuse real DMG gp values), so it's calibrated instead to the
+Fighter's Two-Handed Sword, this project's closest real peer by average
+damage (1d6+2 and 1d10 both average 5.5).
+
+**A Kender character starts equipped with a Hoopak** (added at the user's
+direct follow-up request, right after the shop-purchasable version
+shipped): `CharacterCreator::run` sets `Character::weaponName`/
+`weaponDamageSides`/`weaponDamageBonus` to the Hoopak's stats instead of
+`ClassInfo::weaponName` whenever `character.race == RaceId::Kender`,
+regardless of chosen class (Fighter/Cleric/Thief — Mage is already
+race-blocked for Kender, see "Kender in place of Half-Orc and Halfling"
+above). This doesn't remove or replace anything about the class's own
+`WeaponUpgrade` — a Kender Fighter can still buy a Two-Handed Sword later,
+same as before; only the level-1 starting weapon field changes. The
+shop's own "already owned" check (`ownsWeapon`, matched by name against
+`Character::weaponName`) correctly greys out buying a second Hoopak for a
+freshly created Kender, with no special-casing needed — a Kender who
+later sells or swaps theirs away can still buy a replacement.
+
+Still sold at General/Armory/Bazaar (wherever a class weapon upgrade is
+already sold — see "Six shops, six catalogs" below) for the rare case a
+Kender needs one, always listed but greyed out for a non-Kender, same
+"show it, don't hide it" precedent as Webnet/Brooch being Mage-gated.
+
 ### Selling gear back
 
 As of Milestone 28, the shop screen has a second view: pressing `i` while
@@ -942,8 +1042,10 @@ here exactly the way `docs/COMBAT_NOTES.md`'s "damage floored at 1" note
 flags its own unsourced-but-conventional number.
 
 Only items that actually match something in the shop catalog are
-sellable: any carried `ArmorId`, the shield, or a class's purchased
-`WeaponUpgrade`. A class's **starting weapon** (Longsword, Mace,
+sellable: any carried `ArmorId`, the shield, a class's purchased
+`WeaponUpgrade`, or a purchased Hoopak (matched by name, not by class,
+since it's race- not class-gated — see "Hoopak" above). A class's
+**starting weapon** (Longsword, Mace,
 Shortsword, Dagger, the Tinker's wrench) — which can land back in
 inventory after buying and equipping an upgrade — was never itself sold
 in any shop and has no established price, so it's marked unsellable
@@ -955,8 +1057,8 @@ that was never actually for sale.
 Milestone-100-era shops all sold from the exact same `availableShopItems`
 catalog — "there's no per-location wares" was a documented scope cut.
 Closed at the user's explicit request: `character::ShopItem` now carries
-a `ShopItemKind` (`ArmorTier`/`Shield`/`WeaponUpgrade`/`MagicWeapon`/
-`Potion`/`Webnet`/`Brooch`), and `availableShopItems`/`purchaseItem` take
+a `ShopItemKind` (`ArmorTier`/`Shield`/`WeaponUpgrade`/`KenderWeapon`/
+`MagicWeapon`/`Potion`/`Webnet`/`Brooch`), and `availableShopItems`/`purchaseItem` take
 a `character::ShopCatalog` that filters which of those kinds a given shop
 offers (`Equipment.cpp`'s file-local `catalogDef` table). This also
 replaced `purchaseItem`'s old fragile position-based offset math
@@ -971,18 +1073,22 @@ already-written flavor text rather than arbitrary assignment:
 
 | Catalog | Shop | Contents |
 |---|---|---|
-| `general` | Solace's General Store (`G`) | unchanged baseline: all 5 armor tiers, shield, class weapon upgrade, magic weapon, potion, webnet/brooch |
-| `armory` | Solace's Flint's Smithy (`S`, new) | all 5 armor tiers, shield, class weapon upgrade, magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
-| `market` | Haven's Market Stalls (`K`) | Leather + Studded Leather armor, shield, potion only — a pedestrian goods market, budget tier only |
+| `general` | Solace's General Store (`G`) | unchanged baseline: all 7 armor tiers, shield, class weapon upgrade, Hoopak (Kender only), magic weapon, potion, webnet/brooch |
+| `armory` | Solace's Flint's Smithy (`S`, new) | all 7 armor tiers, shield, class weapon upgrade, Hoopak (Kender only), magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
+| `market` | Haven's Market Stalls (`K`) | Leather + Studded Leather + Hide Armor, shield, potion only — a pedestrian goods market, budget tier only |
 | `salvage` | Tarsis's Old Sailor (`S`) | potion, magic weapon only — extends the existing "scavenged pre-Cataclysm relic" framing (see "Potions" below) to a salvaged enchanted weapon too; no mundane armor/weapon/shield, a ruined port isn't an armorer |
-| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Studded Leather + Chain Mail armor, shield, class weapon upgrade, potion — a real bazaar, but no Plate Mail or enchanted goods |
-| `harbor` | Palanthas's Harbor (`H`, new) | all 5 armor tiers, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade) |
+| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Studded Leather + Hide Armor + Chain Mail armor, shield, class weapon upgrade, Hoopak (Kender only), potion — a real bazaar, but no Plate Mail/Field Plate or enchanted goods |
+| `harbor` | Palanthas's Harbor (`H`, new) | all 7 armor tiers, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade, so no Hoopak either) |
 
 (Studded Leather and Plate Mail, added by the equipment-expansion
-milestone, follow each catalog's already-established character rather
-than appearing everywhere: General/Armory/Harbor carry the full 5-tier
-range; Market/Bazaar gain the budget Studded Leather but not the premium
-Plate Mail; Salvage stays armorless, unchanged.)
+milestone, and Hide Armor/Field Plate, added by a later content pass, all
+follow each catalog's already-established character rather than appearing
+everywhere: General/Armory/Harbor carry the full 7-tier range; Market/
+Bazaar gain the budget Studded Leather and (now) Hide Armor, but not the
+premium Plate Mail/Field Plate; Salvage stays armorless, unchanged. The
+Hoopak rides along wherever a class weapon upgrade is already sold —
+General/Armory/Bazaar — since it's gated by the same `weaponUpgrade`
+catalog flag rather than a new one of its own.)
 
 **Webnet/Brooch of Imog are now General-Store-exclusive** — a real
 behavior change from Milestone 56, which sold them at every shop. Called

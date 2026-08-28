@@ -21,13 +21,21 @@ struct Character;
 // Armor, p.92: Splint 80stl vs Banded 200stl vs Bronze Plate 400stl for
 // identical protection -- prices are the PHB's own gold-piece numbers,
 // applied here as Steel Pieces, Krynn's real currency, see
-// docs/CHARACTER_NOTES.md's "Gold -> Steel" note). Field Plate/Full Plate
-// (AC2/AC1/AC0) are still not offered -- priced at 2,000-10,000stl, far
-// beyond even a well-quested character's steel, and Solamnic Armor (see
-// below) already fills the AC0 niche for a Sword Knight. SolamnicArmor
-// itself is NOT one of these buyable tiers -- it's a quest reward
-// (docs/QUEST_NOTES.md's solamnic_armor), never sold, deliberately absent
-// from kBuyableArmor below.
+// docs/CHARACTER_NOTES.md's "Gold -> Steel" note). Full Plate (AC1/AC0)
+// is still not offered -- even at a recalibrated price it would just
+// duplicate Field Plate/Solamnic Armor's niche one slot up, and Solamnic
+// Armor (see below) already fills the AC0 spot for a Sword Knight.
+// SolamnicArmor itself is NOT one of these buyable tiers -- it's a quest
+// reward (docs/QUEST_NOTES.md's solamnic_armor), never sold, deliberately
+// absent from kBuyableArmor below.
+//
+// HideArmor and FieldPlate (ordinals 7-8) were appended here rather than
+// inserted in AC order, for the exact reason docs/GOTCHAS.md's raw-
+// enum-int save fragility note warns about -- StuddedLeather/PlateMail
+// were already appended after SolamnicArmor rather than in AC order when
+// they were added, for the same reason (see docs/CHARACTER_NOTES.md and
+// SaveGame.cpp's ARMOR bound check, now 9). Display order (kBuyableArmor
+// below) is independent of enum ordinal, same as today.
 enum class ArmorId {
     None,
     Leather,
@@ -36,6 +44,8 @@ enum class ArmorId {
     SolamnicArmor,
     StuddedLeather,
     PlateMail,
+    HideArmor,
+    FieldPlate,
 };
 
 struct ArmorInfo {
@@ -47,12 +57,20 @@ struct ArmorInfo {
 
 const ArmorInfo& armorInfo(ArmorId id);
 
-constexpr std::array<ArmorId, 5> kBuyableArmor = {
+// Real AC order (independent of the enum's own ordinal -- see ArmorId
+// above): Hide Armor slots in at AC6, a real gap between Studded Leather
+// (AC7) and Chain Mail (AC5) this project used to skip entirely -- see
+// docs/CHARACTER_NOTES.md. Field Plate is the new top tier above Plate
+// Mail; see MagicWeapon's sibling comment below and docs/CHARACTER_NOTES.md
+// for why its price deviates from the real PHB number.
+constexpr std::array<ArmorId, 7> kBuyableArmor = {
     ArmorId::Leather,
     ArmorId::StuddedLeather,
+    ArmorId::HideArmor,
     ArmorId::ChainMail,
     ArmorId::SplintMail,
     ArmorId::PlateMail,
+    ArmorId::FieldPlate,
 };
 
 // Table 47 (p.92): a Medium shield is 7stl. Table 46 confirms a shield always
@@ -81,7 +99,7 @@ struct WeaponUpgrade {
 // Mage gets a Quarterstaff (1d6) -- the PHB prices it as "--" (a cut
 // length of wood, no real cost), so its shop price is a small invented
 // number, flagged in Equipment.cpp the same way kWebnetCostStl is. Tinker
-// gets a Light Crossbow (1d4+1, reusing the Light Quarrel's damage since
+// gets a Light Crossbow (1d4, reusing the Light Quarrel's damage since
 // this engine doesn't track ammunition separately from the weapon
 // itself) -- a mechanical weapon fitting the class's gadgeteer identity
 // rather than a sword-and-board reskin. Never nullptr for any class as of
@@ -114,6 +132,34 @@ struct MagicWeapon {
 };
 
 const MagicWeapon& magicWeaponFor(ClassId classId);
+
+// The Hoopak (sling-staff) -- a real Kender-only weapon, unlike
+// weaponUpgradeFor above (one per ClassId): this one is race-gated (any
+// class, Kender only), and buyable *in addition to* a Kender's own class
+// upgrade, not instead of it -- see docs/CHARACTER_NOTES.md's "Equipment"
+// section. Neither the PHB nor Dragonlance Adventures gives the hoopak
+// any game stats at all (both only mention it in passing, e.g. DLA p.53's
+// "his hoopak or other weapon") -- real numbers come from References/
+// DQoK.pdf (Dark Queen of Krynn, the official TSR/SSI Dragonlance computer
+// game manual already used for this project's spell census -- see
+// "Spellcasting" in docs/CHARACTER_NOTES.md), whose Weapons Table (printed
+// p.51, visually confirmed via a rendered page image) gives the hoopak two
+// distinct profiles -- "Hoopak (Melee)" 3-8 damage vs. man-sized (1d6+2)
+// and "Hoopak (Missile)" 2-5 (1d4+1) -- both footnoted "Only usable by
+// kender characters." This engine has no ranged/melee distinction for any
+// weapon (see the Tinker's Light Crossbow above), so only the
+// higher-damage Melee profile is modeled, the same "pick the number that
+// matters, flag what's lost" simplification as Meteor Swarm's uniform
+// damage (docs/CHARACTER_NOTES.md's Spellcasting census). DQoK's manual
+// has no in-game currency to reuse (unlike the Potion/magic weapons
+// above, which reuse real DMG gp values), so costStl is an invented,
+// flagged number -- calibrated to the Fighter's Two-Handed Sword, this
+// project's closest real peer by average damage (1d6+2 and 1d10 both
+// average 5.5).
+inline constexpr const char* kHoopakName = "Hoopak";
+constexpr int kHoopakDamageSides = 6;
+constexpr int kHoopakDamageBonus = 2;
+constexpr int kHoopakCostStl = 50;
 
 // A carried, not-currently-equipped item -- see Character::inventory below.
 // Only the fields relevant to `kind` are meaningful; the others stay at
@@ -174,6 +220,7 @@ enum class ShopItemKind {
     ArmorTier,
     Shield,
     WeaponUpgrade,
+    KenderWeapon,
     MagicWeapon,
     Potion,
     Webnet,

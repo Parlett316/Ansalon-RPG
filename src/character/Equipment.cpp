@@ -16,8 +16,14 @@ namespace {
 // p.93-94, visually confirmed: "Solamnic armor is equal to AC 0 (plate +1
 // and shield +1)" -- a quest reward (see docs/QUEST_NOTES.md's
 // solamnic_armor), cost 0 since it's never sold or sellable (see
-// resaleValueStl below).
-constexpr std::array<ArmorInfo, 7> kArmorTable = {{
+// resaleValueStl below). HideArmor's 15stl is the real, unmodified Table
+// 47 price -- genuinely cheaper than Studded Leather (20stl) despite
+// better AC, a real book quirk confirmed on the rendered page, not a
+// transcription error (see docs/CHARACTER_NOTES.md). FieldPlate's AC 2 is
+// the real Table 46 value, but its 1200stl is a deliberate, flagged
+// deviation from the real Table 47 price (2,000gp) -- see
+// docs/CHARACTER_NOTES.md's "Equipment" section for why.
+constexpr std::array<ArmorInfo, 9> kArmorTable = {{
     {ArmorId::None, "No Armor", 10, 0},
     {ArmorId::Leather, "Leather Armor", 8, 5},
     {ArmorId::StuddedLeather, "Studded Leather", 7, 20},
@@ -25,6 +31,8 @@ constexpr std::array<ArmorInfo, 7> kArmorTable = {{
     {ArmorId::SplintMail, "Splint Mail", 4, 80},
     {ArmorId::PlateMail, "Plate Mail", 3, 600},
     {ArmorId::SolamnicArmor, "Solamnic Armor", 0, 0},
+    {ArmorId::HideArmor, "Hide Armor", 6, 15},
+    {ArmorId::FieldPlate, "Field Plate", 2, 1200},
 }};
 
 // Table 44 (Weapons, p.94), visually confirmed: Two-Handed Sword 1d10/50stl
@@ -40,10 +48,13 @@ const WeaponUpgrade kThiefUpgrade{"Long Sword", 8, 0, 15};
 // prices it "--" (a cut length of wood), so 2stl here is an invented,
 // flagged nominal price, not a sourced number. Light Crossbow (Table 44,
 // p.94): the crossbow itself carries no damage in the PHB -- its Light
-// Quarrel ammunition does (1d4+1, Table 44) -- reused directly here since
-// this engine doesn't model ammunition separately from the weapon.
+// Quarrel ammunition does (1d4, no bonus, Table 44) -- reused directly
+// here since this engine doesn't model ammunition separately from the
+// weapon. **Correction**: this used to be listed as 1d4+1 -- that's
+// actually the Heavy Quarrel's damage; re-confirmed via a rendered page
+// image while researching the Hoopak/Hide Armor addition below.
 const WeaponUpgrade kMageUpgrade{"Quarterstaff", 6, 0, 2};
-const WeaponUpgrade kTinkerUpgrade{"Light Crossbow", 4, 1, 35};
+const WeaponUpgrade kTinkerUpgrade{"Light Crossbow", 4, 0, 35};
 
 // "+1" enchanted weapons -- see Equipment.h's MagicWeapon for sourcing
 // (DMG Table 109, p.140: Sword +1 = 400stl, Other Weapon +1 = 500stl).
@@ -57,10 +68,10 @@ const MagicWeapon kTinkerMagicWeapon{"Ensorcelled Wrench", 4, 0, 1, 500};
 
 // Which slots each ShopCatalog offers -- see docs/CHARACTER_NOTES.md's
 // "Six shops, six catalogs" for the reasoning behind each one. armorTiers
-// is aligned with kBuyableArmor (Leather, Studded Leather, Chain Mail,
-// Splint Mail, Plate Mail).
+// is aligned with kBuyableArmor (Leather, Studded Leather, Hide Armor,
+// Chain Mail, Splint Mail, Plate Mail, Field Plate).
 struct ShopCatalogDef {
-    std::array<bool, 5> armorTiers;
+    std::array<bool, 7> armorTiers;
     bool shield;
     bool weaponUpgrade;
     bool magicWeapon;
@@ -70,25 +81,28 @@ struct ShopCatalogDef {
 
 const ShopCatalogDef& catalogDef(ShopCatalog catalog) {
     // Solace's General Store -- the original, unchanged baseline.
-    static const ShopCatalogDef kGeneral{{true, true, true, true, true}, true, true, true, true, true};
+    static const ShopCatalogDef kGeneral{{true, true, true, true, true, true, true}, true, true, true, true, true};
     // Flint's Smithy (Solace) -- an armorer: everything wearable/wieldable,
     // nothing consumable or arcane.
-    static const ShopCatalogDef kArmory{{true, true, true, true, true}, true, true, true, false, false};
+    static const ShopCatalogDef kArmory{{true, true, true, true, true, true, true}, true, true, true, false, false};
     // Haven's Market Stalls -- a pedestrian goods market, not a smith --
-    // gained Studded Leather as a modest step up from bare Leather, but
-    // not Plate Mail, still out of a market stall's league.
-    static const ShopCatalogDef kMarketGoods{{true, true, false, false, false}, true, false, false, true, false};
+    // gained Studded Leather and (now) Hide Armor as modest, cheap steps up
+    // from bare Leather, but not Chain Mail/Plate/Field Plate, still out of
+    // a market stall's league.
+    static const ShopCatalogDef kMarketGoods{{true, true, true, false, false, false, false}, true, false, false, true, false};
     // Tarsis's Old Sailor -- a ruined port trading in scavenged relics, not
     // mundane armor/weapons.
-    static const ShopCatalogDef kSalvage{{false, false, false, false, false}, false, false, true, true, false};
+    static const ShopCatalogDef kSalvage{{false, false, false, false, false, false, false}, false, false, true, true, false};
     // Kalaman's Market Square -- a real bazaar, but no enchanted goods --
-    // gained Studded Leather alongside its existing Leather/Chain Mail,
-    // but Plate Mail stays out of a bazaar's reach.
-    static const ShopCatalogDef kBazaar{{true, true, true, false, false}, true, true, false, true, false};
+    // gained Studded Leather and (now) Hide Armor alongside its existing
+    // Leather/Chain Mail, but Plate Mail/Field Plate stay out of a bazaar's
+    // reach.
+    static const ShopCatalogDef kBazaar{{true, true, true, true, false, false, false}, true, true, false, true, false};
     // Palanthas's Harbor -- the one surviving great port, trades in
     // finished goods rather than smithing its own weapon upgrades -- now
-    // carries the full armor range, budget to premium.
-    static const ShopCatalogDef kHarborTrade{{true, true, true, true, true}, true, false, true, true, false};
+    // carries the full armor range, budget to premium, including Field
+    // Plate.
+    static const ShopCatalogDef kHarborTrade{{true, true, true, true, true, true, true}, true, false, true, true, false};
     switch (catalog) {
         case ShopCatalog::General: return kGeneral;
         case ShopCatalog::Armory: return kArmory;
@@ -306,6 +320,22 @@ std::vector<ShopItem> availableShopItems(const Character& character, ShopCatalog
             weapon.buyable = !weapon.alreadyOwned;
             items.push_back(std::move(weapon));
         }
+
+        // The Hoopak -- race-gated (Kender only), not class-gated, and
+        // additive: a Kender can buy this alongside their own class
+        // upgrade above (buying only adds to inventory; equipping is a
+        // separate action, see equipInventoryItem). Always listed, greyed
+        // out for non-Kender, same "show it, don't hide it" precedent as
+        // Webnet/Brooch below being Mage-gated. See Equipment.h's
+        // kHoopakName doc comment for sourcing.
+        ShopItem hoopak;
+        hoopak.kind = ShopItemKind::KenderWeapon;
+        hoopak.label = std::string(kHoopakName) + " (1d" + std::to_string(kHoopakDamageSides) + "+" +
+                        std::to_string(kHoopakDamageBonus) + ")";
+        hoopak.costStl = kHoopakCostStl;
+        hoopak.alreadyOwned = ownsWeapon(character, kHoopakName);
+        hoopak.buyable = character.race == RaceId::Kender && !hoopak.alreadyOwned;
+        items.push_back(std::move(hoopak));
     }
 
     // The class's "+1" enchanted weapon -- see Equipment.h's MagicWeapon.
@@ -379,7 +409,12 @@ PurchaseResult purchaseItem(Character& character, int index, ShopCatalog catalog
         return {false, "You already have that."};
     }
     if (!item.buyable) {
-        return {false, "Wizards cannot wear armor or a shield."};
+        // Generic on purpose -- buyable is false for several unrelated
+        // reasons (a Mage/Tinker rejected from armor/shield, a non-Mage
+        // rejected from Webnet/Brooch, a non-Kender rejected from the
+        // Hoopak), and a single hardcoded reason would be wrong for most
+        // of them.
+        return {false, "You can't use that."};
     }
     if (character.steelPieces < item.costStl) {
         return {false, "You don't have enough steel for that."};
@@ -412,6 +447,10 @@ PurchaseResult purchaseItem(Character& character, int index, ShopCatalog catalog
                                                           magic.damageSides, magic.damageBonus, magic.magicBonus});
             break;
         }
+        case ShopItemKind::KenderWeapon:
+            character.inventory.push_back(InventoryItem{ItemKind::Weapon, ArmorId::None, kHoopakName,
+                                                          kHoopakDamageSides, kHoopakDamageBonus});
+            break;
         case ShopItemKind::Potion:
             character.inventory.push_back(InventoryItem{ItemKind::Potion, ArmorId::None, "", 0, 0});
             isPotion = true;
@@ -462,6 +501,10 @@ int resaleValueStl(const Character& character, const InventoryItem& item, bool& 
             if (item.weaponName == magic.name) {
                 sellable = true;
                 return magic.costStl / 2;
+            }
+            if (item.weaponName == kHoopakName) {
+                sellable = true;
+                return kHoopakCostStl / 2;
             }
             sellable = false;
             return 0;

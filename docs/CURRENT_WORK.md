@@ -2,6 +2,43 @@
 
 Nothing in flight.
 
+Milestone 111 (2026-08-27) added the Hoopak (a real, race-gated Kender-only
+weapon sourced from DQoK.pdf's Weapons Table, since neither the PHB nor
+Dragonlance Adventures stats it) plus two new armor tiers, Hide Armor
+(AC6, a real gap-filler) and Field Plate (AC2, re-priced to 1200stl rather
+than the book's 2,000gp at the user's request). Also fixed an incidental
+sourcing bug found along the way: the Tinker's Light Crossbow was wrongly
+1d4+1 (that's the Heavy Quarrel's damage; Light Quarrel is 1d4, no bonus).
+Verified via a 35-assertion throwaway self-test (deleted), a clean `/W4`
+rebuild, the piped smoke test, and a direct check that both of the user's
+real saves still load byte-for-byte unchanged.
+
+**Follow-up, same session**: at the user's request, Kender now *start*
+equipped with a Hoopak (`CharacterCreator::run`), instead of only being
+able to buy one -- a three-line conditional swapping in the Hoopak's
+stats instead of the class's normal starting weapon whenever
+`character.race == RaceId::Kender`. Verified via a clean rebuild and the
+piped smoke test; no self-test needed (too small, reuses already-proven
+constants).
+
+**Second follow-up, same session**: at the user's request ("Kenders
+cannot be evil alignment"), re-checked DLA p.53 (the same page already
+sourcing Kender's ability ranges/class limits) and confirmed it directly:
+"No evil kender are known to exist." New `character::meetsAlignmentRestriction`
+(`Race.h`/`.cpp`) hard-blocks Kender from all three Evil alignments in
+`CharacterCreator`'s alignment prompt, same reject-and-reprompt shape as
+the race/class prompts. First race-based alignment restriction this
+project has ever enforced -- `docs/CHARACTER_NOTES.md`'s "Scope" section
+updated accordingly. Verified via a 54-assertion throwaway self-test
+(deleted), a clean rebuild, the piped smoke test, and confirming the
+user's real saves still load unchanged (no save-format change).
+**Interactive verification still needed** (running list) -- buying Hide
+Armor/Field Plate at a shop that carries them, a real Kender character
+confirming their sheet shows "Weapon: Hoopak" at creation, and confirming
+the alignment screen blocks/annotates all three Evil options for a
+Kender. See `docs/MILESTONES.md` entry 111 and `docs/CHARACTER_NOTES.md`'s
+"Equipment" and "Kender in place of Half-Orc and Halfling" sections.
+
 Milestone 110 (2026-08-27) removed Halfling as a playable race at the
 user's request -- Krynn has no separate Halfling people in Dragonlance
 canon, Kender already fill that niche. `RaceId::Halfling` and all its

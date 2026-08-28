@@ -24,10 +24,11 @@ prompt a Dragonlance subrace, with the resulting ability adjustments shown
 before/after, and both the race and class screens reject a choice your
 rolled scores don't qualify for (demihuman races/classes also cap out at
 a real, race-specific level once you're playing) — a class screen, and an
-alignment screen (qualifying Fighters can join the Knights of Solamnia,
-and Gnomes are always Tinkers), your scores carried along and visible at
-every step, before dropping you into the world with a real character
-behind the `@`.
+alignment screen (Kender can't pick an Evil alignment — Dragonlance
+Adventures states plainly that none are known to exist; qualifying
+Fighters can join the Knights of Solamnia, and Gnomes are always Tinkers),
+your scores carried along and visible at every step, before dropping you
+into the world with a real character behind the `@`.
 Progress autosaves continuously. The overworld/zone screen is a wide, frameless, side-by-side
 view — no box border, just `=`/`-` rule dividers — a one-line header
 (name/class, an ASCII HP bar, in-game day/hour) above, the walkable map on
@@ -217,14 +218,21 @@ exist across five towns, each with its own distinct catalog rather than
 one shared list: Solace's General Store (the flagship, everything below)
 and Flint's Smithy (armor/weapons only, locked until you deliver ore for
 the `ore_for_the_forge` quest), Haven's Market Stalls (Leather/Studded
-Leather armor and a potion), Tarsis's Old Sailor (a potion and a
+Leather/Hide armor and a potion), Tarsis's Old Sailor (a potion and a
 salvaged enchanted weapon), Kalaman's Market Square (Leather/Studded
-Leather/Chain armor, a weapon upgrade, a potion), and Palanthas's Harbor
-(all five armor tiers, an enchanted weapon, a potion). Where armor's on
-offer you can buy real Leather/Studded Leather/Chain Mail/Splint
-Mail/Plate Mail (Mages and Tinkers can't wear armor at all, per the
-PHB's own rule) and a weapon upgrade — every class has one now, down to
-a Mage's Quarterstaff and a Tinker's Light Crossbow — or press `i` inside the shop to
+Leather/Hide/Chain armor, a weapon upgrade, a Hoopak for Kender, a
+potion), and Palanthas's Harbor (all seven armor tiers, an enchanted
+weapon, a potion). Where armor's on offer you can buy real Leather/
+Studded Leather/Hide Armor/Chain Mail/Splint Mail/Plate Mail/Field Plate
+(Mages and Tinkers can't wear armor at all, per the PHB's own rule) and a
+weapon upgrade — every class has one now, down to a Mage's Quarterstaff
+and a Tinker's Light Crossbow. A Kender character starts equipped with a
+Hoopak instead of their class's usual starting weapon — a real sling-staff
+sourced from the Dark Queen of Krynn computer game manual (neither core
+rulebook stats it) — and can still buy their class's own weapon upgrade
+later, since the two aren't mutually exclusive; the shops above also sell
+a Hoopak outright, for the rare case a Kender needs a replacement.
+Press `i` inside the shop to
 switch to selling gear back for half its price. Purchases land in a real
 carried inventory rather than being worn automatically — press `i`
 outside a shop to see what you're carrying and equip it, which actually

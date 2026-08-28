@@ -279,4 +279,10 @@ bool effectiveCanBeMage(RaceId race, SubraceId subrace) {
     return classLevelCap(race, subrace, ClassId::Mage) > 0;
 }
 
+bool meetsAlignmentRestriction(RaceId race, Alignment alignment) {
+    if (race != RaceId::Kender) return true;
+    return alignment != Alignment::LawfulEvil && alignment != Alignment::NeutralEvil &&
+           alignment != Alignment::ChaoticEvil;
+}
+
 } // namespace character

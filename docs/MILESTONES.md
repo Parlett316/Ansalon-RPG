@@ -3364,6 +3364,109 @@ section).
     smoke test cover the rest. No further interactive verification flagged
     beyond what Milestone 109 already carries.
 
+111. Hoopak for Kender, plus two new armor tiers -- a user-requested
+    "more weapons and armor" content pass. Research first (rendered page
+    images, since this scan's OCR badly garbles table columns) found the
+    PHB and Dragonlance Adventures both give the hoopak zero game stats,
+    only flavor mentions -- real numbers came from `References/DQoK.pdf`
+    (Dark Queen of Krynn, the official computer-game manual already used
+    for this project's Spellcasting census), whose Weapons Table (printed
+    p.51) gives a Melee (3-8, i.e. 1d6+2) and Missile (2-5, 1d4+1) profile,
+    both footnoted "Only usable by kender characters." Only the higher
+    Melee number is modeled (this engine has no ranged/melee distinction
+    for any weapon). Unlike every existing `weaponUpgradeFor` entry
+    (one per `ClassId`), the Hoopak is **race-gated**
+    (`character.race == RaceId::Kender`) via a new `ShopItemKind::
+    KenderWeapon`, additive rather than a replacement -- a Kender keeps
+    their own class upgrade too. Cost (50stl) is invented, calibrated to
+    the Fighter's Two-Handed Sword (same 5.5 average damage). Separately,
+    the same research pass found a real armor-tier gap this project had
+    skipped entirely: **Hide Armor** (AC 6, 15stl, PHB Table 46/47) sits
+    between Studded Leather (AC 7) and Chain Mail (AC 5) -- and is
+    genuinely cheaper than Studded Leather despite better AC, a real book
+    quirk, not a research error. At the user's follow-up request, **Field
+    Plate** (AC 2) was also added, reversing this project's earlier
+    documented "too expensive" scope cut, but re-priced to 1200stl rather
+    than the real 2,000gp -- a deliberate, flagged deviation from the
+    "transcribe the sourced number" rule, done because the user asked for
+    it directly, to keep it a reachable late-game item rather than the
+    book's raw price. `ArmorId` gains `HideArmor`/`FieldPlate`, appended
+    after `PlateMail` (ordinals 7-8) rather than inserted in AC order --
+    same append-only-safe precedent Milestone 102 established for Studded
+    Leather/Plate Mail -- and `SaveGame.cpp`'s two `ArmorId` bound checks
+    move 7->9. Each shop's `ShopCatalogDef` picks up both new armor tiers
+    and the Hoopak per its already-established character (General/Armory/
+    Harbor get both new armor tiers; Market/Bazaar gain Hide Armor but not
+    Field Plate; Salvage stays armorless; the Hoopak rides along wherever
+    a class weapon upgrade is already sold -- General/Armory/Bazaar).
+    Incidental correctness fix found while re-confirming Table 44 for the
+    Hoopak: the Tinker's Light Crossbow was wrongly statted at 1d4+1 --
+    that's actually the Heavy Quarrel's damage; the real Light Quarrel
+    line (which this engine's ammunition-free crossbow reuses) is 1d4 with
+    no bonus. Also fixed `purchaseItem`'s rejection message, hardcoded to
+    "Wizards cannot wear armor or a shield." for any `buyable == false`
+    item (already slightly wrong for a non-Mage rejected from Webnet/
+    Brooch, clearly wrong for a non-Kender rejected from the Hoopak) --
+    now a generic "You can't use that." Verified via a throwaway self-test
+    (35 assertions: new armor tiers' AC/cost/resale, per-catalog armor
+    filtering, the Hoopak's race-gate and resale, the corrected Tinker
+    damage, and the corrected rejection message), a clean `/W4` rebuild
+    (zero new warnings), the piped smoke test, and a direct check that
+    both of the user's real saves (`save.txt`, `build/Debug/save1.txt`,
+    the Kender Thief "Mason" from Milestone 110) load byte-for-byte
+    unchanged and still show correctly in the slot menu. See
+    `docs/CHARACTER_NOTES.md`'s "Equipment" section (armor tier bullet and
+    new "Hoopak" subsection) and "Six shops, six catalogs".
+
+    **Follow-up, same session**: at the user's direct request ("Kender
+    characters should start with a hoopak"), `CharacterCreator::run` now
+    assigns the Hoopak's stats as `Character::weaponName`/
+    `weaponDamageSides`/`weaponDamageBonus` instead of `ClassInfo`'s
+    normal starting weapon whenever `character.race == RaceId::Kender`,
+    regardless of class -- a small, targeted branch (Mage is already
+    race-blocked for Kender, so only Fighter/Cleric/Thief are reachable
+    here). Doesn't touch the class's own `WeaponUpgrade` path at all -- a
+    Kender Fighter can still buy a Two-Handed Sword later, same as before.
+    The shop's existing `ownsWeapon` name-match check automatically greys
+    out buying a duplicate starting Hoopak with no special-casing needed.
+    Verified via a clean `/W4` rebuild (zero new warnings) and the piped
+    smoke test; no throwaway self-test added, since the change is a
+    three-line conditional assigning already-proven constants (the
+    previous self-test already confirmed `kHoopakName`/
+    `kHoopakDamageSides`/`kHoopakDamageBonus`), the same "too small to
+    need one" judgment call as Milestone 103's own similar
+    conditional-branch-in-CharacterCreator change. **Interactive
+    verification still needed** (now covering all of Milestone 111) --
+    buying Hide Armor/Field Plate at a shop that carries them, and a real
+    Kender character confirming their character sheet shows "Weapon:
+    Hoopak" at creation.
+
+    **Second follow-up, same session**: at the user's direct request
+    ("Kenders cannot be evil alignment"), re-checked the exact DLA p.53
+    "Kender Game Statistics" box already sourcing Kender's ability ranges/
+    class limits/Mage block, and found it states plainly: "No evil kender
+    are known to exist." New `character::meetsAlignmentRestriction(RaceId,
+    Alignment)` (`Race.h`/`.cpp`, `Race.h` now includes `Alignment.h` --
+    an intra-`character/` dependency already established by
+    `Knighthood.h`, which combines the same two headers) returns false
+    only for Kender + a Lawful/Neutral/Chaotic Evil pick. Hard-enforced in
+    `CharacterCreator::run`'s alignment prompt with the same
+    annotate-and-reject-and-reprompt shape the race/class prompts already
+    use, not the project's older soft-flag style -- closing the "No
+    alignment restrictions" line in `docs/CHARACTER_NOTES.md`'s "Scope"
+    section, now struck through with this one real exception noted. This
+    is the first race-based alignment restriction this project has ever
+    enforced. Verified via a throwaway self-test (54 assertions: all 9
+    alignments checked against Kender and against every other race), a
+    clean `/W4` rebuild (zero new warnings), the piped smoke test, and a
+    direct check that the user's real saves still load unchanged (no
+    save-format change at all -- this only gates a character-creation-time
+    choice, the same way ability-range/class-cap checks already do).
+    **Interactive verification still needed** (added to the same running
+    list) -- creating a Kender and confirming the alignment screen
+    annotates and blocks all three Evil options, while every other race
+    still offers all 9 freely.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

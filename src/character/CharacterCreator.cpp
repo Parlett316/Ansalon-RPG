@@ -390,11 +390,28 @@ Character CharacterCreator::run() {
     printStepHeader(4, "ALIGNMENT");
     printScoresRecap(scores);
 
-    std::cout << "Choose an alignment:\n";
-    for (int i = 0; i < 9; ++i) {
-        std::cout << "  " << (i + 1) << ". " << alignmentName(static_cast<Alignment>(i)) << "\n";
+    // Hard-blocks Evil for Kender (Dragonlance Adventures p.53: "No evil
+    // kender are known to exist") -- same reject-and-reprompt pattern as
+    // the race/class prompts above. Every other race/class combination
+    // still picks freely from all 9, so this loop can't dead-end anyone.
+    for (;;) {
+        std::cout << "Choose an alignment:\n";
+        for (int i = 0; i < 9; ++i) {
+            Alignment a = static_cast<Alignment>(i);
+            std::cout << "  " << (i + 1) << ". " << alignmentName(a);
+            if (!meetsAlignmentRestriction(character.race, a)) {
+                std::cout << "  (kender cannot be evil)";
+            }
+            std::cout << "\n";
+        }
+        Alignment candidate = static_cast<Alignment>(promptChoice("> ", 1, 9) - 1);
+        if (!meetsAlignmentRestriction(character.race, candidate)) {
+            std::cout << "\nKender cannot be of evil alignment. Choose a different alignment.\n\n";
+            continue;
+        }
+        character.alignment = candidate;
+        break;
     }
-    character.alignment = static_cast<Alignment>(promptChoice("> ", 1, 9) - 1);
 
     // Knights of Solamnia: every Knight starts in the Order of the Crown
     // (Sword/Rose require leveling this project doesn't have yet -- see
@@ -412,9 +429,22 @@ Character CharacterCreator::run() {
     bool isWarrior = character.charClass == ClassId::Fighter;
     character.maxHp = std::max(1, chosenClass.hitDieSides + hpAdjustmentForConstitution(scores.constitution, isWarrior));
     character.currentHp = character.maxHp;
-    character.weaponName = chosenClass.weaponName;
-    character.weaponDamageSides = chosenClass.weaponDamageSides;
-    character.weaponDamageBonus = 0;
+    // Kender start with a Hoopak instead of their class's normal starting
+    // weapon -- a real, race-appropriate weapon (see Equipment.h's
+    // kHoopakName doc comment for sourcing), not a fabricated flavor
+    // choice, and consistent with DQoK's own "Only usable by kender
+    // characters" restriction. This doesn't block a Kender from later
+    // buying their class's own WeaponUpgrade instead -- both are just
+    // named weapons, purchaseItem doesn't care what's currently equipped.
+    if (character.race == RaceId::Kender) {
+        character.weaponName = kHoopakName;
+        character.weaponDamageSides = kHoopakDamageSides;
+        character.weaponDamageBonus = kHoopakDamageBonus;
+    } else {
+        character.weaponName = chosenClass.weaponName;
+        character.weaponDamageSides = chosenClass.weaponDamageSides;
+        character.weaponDamageBonus = 0;
+    }
     recomputeArmorClass(character); // equippedArmor is still None here, so this is just the Dex adjustment
     character.thac0 = 20; // true to 2e: every class starts at THAC0 20, diverging only as levels are gained
 

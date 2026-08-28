@@ -1,6 +1,7 @@
 #pragma once
 
 #include "character/Ability.h"
+#include "character/Alignment.h"
 #include "character/CharClass.h"
 
 #include <array>
@@ -184,5 +185,16 @@ int classLevelCap(RaceId race, SubraceId subrace, ClassId classId);
 // subrace's Mage eligibility if a subrace is selected, else race's own --
 // a thin wrapper over classLevelCap(race, subrace, ClassId::Mage) > 0.
 bool effectiveCanBeMage(RaceId race, SubraceId subrace);
+
+// Dragonlance Adventures p.53 ("Kender Game Statistics" box, the same page
+// already sourcing Kender's ability ranges/class limits above): "they...
+// cannot become monks because, regardless of alignment, they lack
+// self-discipline. No evil kender are known to exist." The only race-based
+// alignment restriction this project enforces -- every other race/class
+// combination still picks freely from all 9 alignments (see
+// docs/CHARACTER_NOTES.md's "Scope"). Hard-enforced in CharacterCreator
+// the same reject-and-reprompt way as meetsAbilityRange/classLevelCap
+// above, not the older "flagged, not blocked" style.
+bool meetsAlignmentRestriction(RaceId race, Alignment alignment);
 
 } // namespace character
