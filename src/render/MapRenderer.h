@@ -206,8 +206,11 @@ public:
     // encounter's grid reads differently from a plains one, matching
     // DQoK.pdf's own manual describing the combat map as "a detailed view
     // of the terrain the party was in"; `playerPos` and each alive
-    // monster's `CombatMonsterView::pos` place the `@`/lettered glyphs),
-    // then the player's HP/AC, every monster instance's HP/AC (defeated
+    // monster's `CombatMonsterView::pos` place the `@`/lettered glyphs, and
+    // `companion` -- Milestone 117 -- its own glyph when non-null and
+    // alive), then the player's HP/AC, the companion's HP/AC when present
+    // ("(knocked out)" once its HP reaches 0, same convention as a
+    // defeated monster below), every monster instance's HP/AC (defeated
     // ones marked, still shown so the roster visibly shrinks rather than
     // vanishing), a scrolling combat log (most recent entries last -- only
     // the tail that fits is shown), and the available actions. Monster HP
@@ -219,12 +222,17 @@ public:
     // (character::availableCombatItems) and, as of Milestone 115, is what
     // an idle `prompt` (default-constructed CombatPrompt) renders instead
     // of the old fixed footer hints -- see CombatPrompt above for the
-    // chooser states GameLoop::runCombat can request instead.
+    // chooser states GameLoop::runCombat can request instead. `companion`
+    // reuses CombatMonsterView purely as a presentation-state carrier (not
+    // because the companion IS a monster) -- non-null only when
+    // GameLoop::runCombat's own companionViewPtr() lambda determines
+    // GameState::hasCompanion is set; never a target for the player's own
+    // pickTarget, which only ever indexes into `monsters`.
     static void drawCombatFrame(const character::Character& character,
                                  const std::vector<CombatMonsterView>& monsters,
                                  const std::vector<std::string>& log, long long currentDay,
                                  const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
-                                 const CombatPrompt& prompt = {});
+                                 const CombatPrompt& prompt = {}, const CombatMonsterView* companion = nullptr);
 
     struct DialogueLine {
         std::string speaker;

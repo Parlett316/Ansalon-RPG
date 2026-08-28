@@ -3765,6 +3765,71 @@ section).
      sheet/HUD both show the companion, and saving/reloading to confirm the
      companion persists with identical stats. See `docs/CURRENT_WORK.md`.
 
+117. Party combat, Phase 2 of the party system -- the companion actually
+     fights. Continuing `NEXT UP` item 6 after Milestone 116's Phase 1.
+     Before starting, the user was asked (`AskUserQuestion`) whether the
+     companion should be able to take damage this phase or only deal it;
+     chose **full mutual combat** over a smaller "free companion" (deals
+     damage, can't be hit) slice -- a companion immune to harm would be a
+     hollow half-measure, not a real ally. The companion (still Bren Alder,
+     the one fixed level-1 Human Fighter from Milestone 116) now occupies
+     its own cell on the Milestone 114 tactical grid, starting adjacent to
+     the player; it acts automatically right after the player's own action
+     each round -- AI-controlled, never opens a picker or asks the player
+     anything (player-directed control stays Phase 3) -- attacking an
+     adjacent alive monster instance, or stepping toward the nearest one
+     via `combat::stepToward` and a new pure helper, `combat::
+     chebyshevDistance` (`CombatGrid.h`/`.cpp`). Monsters now pick between
+     the player and the companion as their melee target each turn: attack
+     whichever they're adjacent to, coin-flip (`character::roll(1,2)`) if
+     adjacent to both, or close on whichever is nearer if adjacent to
+     neither -- the first real touch to `GameLoop::runCombat`'s
+     single-`Character` assumption that Milestone 116's own design doc
+     flagged as the reason Phase 1 stayed combat-free. Made possible with
+     zero changes to `combat/Combat.h`/`.cpp`: `resolvePlayerAttack`/
+     `resolveMonsterAttack`/`rollSavingThrow` already took a generic
+     `const character::Character&`, so the companion's attacks/defenses
+     reuse them exactly as Milestone 116's design doc predicted ("the
+     companion is a real Character, not a parallel struct"). Companion HP
+     is real and persists now: `GameState::companion.currentHp` is mutated
+     during combat exactly like the player's own, and `SaveGame`'s
+     `COMPANION` line grew a second, optional field to carry it -- a
+     pre-Milestone-117 one-token `COMPANION 1` line still loads, correctly
+     defaulting to full health (combat never touched the companion before
+     this milestone). A knocked-out companion (HP <= 0) stops acting and
+     being targeted for the rest of that fight, logged once, but does NOT
+     end the fight -- only the player's own knockout does that. `Rest`/
+     `BedRest` heal the companion the same way they already heal the
+     player. `render::MapRenderer::drawCombatFrame` gained a companion
+     glyph on the grid, an HP/AC line (a new `kCompanionCombatColor`,
+     bright green, distinct from the player's white and the monsters' red),
+     and a "(knocked out)" marker, reusing the existing `CombatMonsterView`
+     struct as a presentation carrier rather than adding a parallel type.
+     **Deliberately deferred, honestly flagged (not oversights)**: the
+     Brooch of Imog's globe wards the player only, never the companion;
+     Bozak's Magic Missile and Aurak's breath weapon stay hardcoded
+     player-only special attacks (teaching them to pick between two targets
+     is real extra scope, the same family as the already-deferred "no
+     square-cursor for AoE" gap); Sivak's death-burst still only damages
+     the player regardless of who lands the killing blow (a pre-existing
+     simplification, not extended here); companion movement never
+     provokes or takes opportunity attacks; there's no "finish off a downed
+     ally" mechanic. Full design writeup: `docs/ARCHITECTURE.md`'s "Party
+     companions" section, `docs/CHARACTER_NOTES.md`'s "Party companion"
+     section, and `docs/COMBAT_NOTES.md`'s "Extending this later" section.
+     Verified via a throwaway self-test (`combat::chebyshevDistance` across
+     several coordinate pairs; a `SaveGame` round-trip proving a damaged
+     companion's HP survives save/load exactly and that an old one-token
+     `COMPANION 1` line still loads at full health -- both deleted after),
+     a clean `/W4` rebuild, the piped smoke test (all three real saves
+     moved aside to reach character creation cleanly, then restored
+     byte-for-byte), and a direct check that the real `save1.txt` --
+     already carrying a Milestone-116-vintage one-token `COMPANION 1` line
+     -- still loads correctly through the real executable. **Interactive
+     verification needed**, same `_getch()` limitation as every other
+     combat-facing milestone -- see `docs/CURRENT_WORK.md` for the specific
+     scenarios still needing a real playthrough.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -3842,9 +3907,12 @@ session's work.
    structurally can't exist with a solo PC. Not proposed lightly: this
    would touch the save format, character creation, and every combat (and
    probably several non-combat) screen. **Phase 1 (one recruitable
-   companion, no combat) shipped at Milestone 116.** Still open: Phase 2
-   (the companion actually fights, AI-controlled -- the first real change
-   to `GameLoop::runCombat`'s single-`Character` assumption) and Phase 3
-   (a real multi-companion roster, player-directed control, deployment
-   order, backstab, sweep, `UIC`). See `docs/COMBAT_NOTES.md`'s "Extending
-   this later" section.
+   companion, no combat) shipped at Milestone 116. Phase 2 (the companion
+   actually fights, AI-controlled, full mutual combat -- the first real
+   change to `GameLoop::runCombat`'s single-`Character` assumption)
+   shipped at Milestone 117.** Still open: Phase 3 (a real multi-companion
+   roster, player-directed control, deployment order, backstab, sweep,
+   `UIC`) -- plus the smaller gaps Milestone 117 deliberately deferred
+   (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
+   no opportunity attacks from companion movement, no "finish off a downed
+   ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.

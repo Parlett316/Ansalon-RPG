@@ -6,6 +6,7 @@
 #include "character/Race.h"
 #include "character/WizardOrder.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -187,16 +188,18 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     for (const auto& [id, count] : state.monsterKills) {
         file << "KILL " << id << " " << count << "\n";
     }
-    // Milestone 116 Phase 1's one recruitable companion -- only the fact of
-    // recruitment is saved, not any of the companion's own fields, since
-    // character::buildCompanion() is pure/deterministic and reconstructs an
-    // identical Character on load. Omitted entirely (rather than writing
-    // "COMPANION 0") when !hasCompanion, same "absence means false"
+    // Milestone 116 Phase 1 saved only the fact of recruitment, since
+    // character::buildCompanion() is pure/deterministic and reconstructed an
+    // identical Character on load. Milestone 117 lets combat actually change
+    // the companion's HP, so a second field now carries currentHp -- every
+    // other field (race/class/scores/steel/...) still comes from
+    // buildCompanion() unchanged. Omitted entirely (rather than writing
+    // "COMPANION 0 0") when !hasCompanion, same "absence means false"
     // convention as MET/VOYAGED above -- a pre-Milestone-116 save has no
     // COMPANION line and loads with hasCompanion staying false. Must stay
     // here, before ZONE/ZONESTACK, same reasoning as QUEST/KILL above.
     if (state.hasCompanion) {
-        file << "COMPANION 1\n";
+        file << "COMPANION 1 " << state.companion.currentHp << "\n";
     }
     if (state.mode == Mode::Zone) {
         file << "ZONE " << state.currentZoneId << "\n";
@@ -536,16 +539,25 @@ GameState SaveGame::load(const std::string& path) {
         } else if (keyword == "COMPANION") {
             // Optional, same backward-compat reasoning as QUEST/KILL above --
             // a pre-Milestone-116 save simply has no COMPANION line, and
-            // hasCompanion staying false is the correct value for it. The
-            // companion's own fields are never read back: character::
+            // hasCompanion staying false is the correct value for it. Every
+            // field except currentHp is never read back: character::
             // buildCompanion() is pure/deterministic, so reconstructing it
-            // here always matches what was saved. See docs/GOTCHAS.md.
+            // here always matches what was saved. currentHp itself is a
+            // second, optional token -- present from Milestone 117 onward
+            // (combat can now actually change it); a Milestone-116-vintage
+            // save has only "COMPANION 1" with no HP, and defaults to full
+            // health, correct since combat never touched the companion
+            // before this milestone. See docs/GOTCHAS.md.
             int value = -1;
             if (!(iss >> value) || value != 1) {
-                fail(path, lineNumber, "malformed COMPANION (expected: COMPANION 1)");
+                fail(path, lineNumber, "malformed COMPANION (expected: COMPANION 1 [currentHp])");
             }
             state.hasCompanion = true;
             state.companion = character::buildCompanion();
+            int currentHp = -1;
+            if (iss >> currentHp) {
+                state.companion.currentHp = std::clamp(currentHp, 0, state.companion.maxHp);
+            }
         } else if (keyword == "ZONE") {
             state.currentZoneId = rest;
             haveZoneLine = true;

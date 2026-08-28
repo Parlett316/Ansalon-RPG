@@ -275,6 +275,9 @@ constexpr const char* kNpcNameColor = "\x1b[93m";       // bright yellow, matche
 constexpr const char* kSelectedItemColor = "\x1b[97m";  // bright white, matches the player's own '@' glyph
 constexpr const char* kPlayerCombatColor = "\x1b[97m";  // bright white, same "this is you" convention
 constexpr const char* kMonsterCombatColor = "\x1b[91m"; // bright red -- the threat
+// Bright green (Milestone 117) -- deliberately distinct from both the
+// player's white and the monsters' red, an "ally" color of its own.
+constexpr const char* kCompanionCombatColor = "\x1b[92m";
 // Bright cyan, same value buildStatusPanel already uses inline for
 // "MODE:" -- named here (Milestone 81) for reuse as the generic "fixed
 // section/category label" meaning across the organic screens below
@@ -683,7 +686,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                                    const std::vector<CombatMonsterView>& monsters,
                                    const std::vector<std::string>& log, long long currentDay,
                                    const world::TerrainInfo& floorTerrain, combat::GridPos playerPos,
-                                   const CombatPrompt& prompt) {
+                                   const CombatPrompt& prompt, const CombatMonsterView* companion) {
     std::vector<BoxLine> lines;
 
     // Tactical grid (Milestone 114). Plain text, no per-cell ANSI -- this
@@ -719,6 +722,13 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                                                              : std::string(" ") + glyph + " ";
             } else if (playerPos.x == gx && playerPos.y == gy) {
                 row += " @ ";
+            } else if (companion != nullptr && companion->alive && companion->pos.x == gx &&
+                       companion->pos.y == gy) {
+                // Milestone 117 -- the companion's own cell, never a
+                // pickTarget candidate (gridCursorIndex only ever names an
+                // index into `monsters`), so it never gets the "[X]" bracket
+                // treatment, just its plain glyph like the player's own '@'.
+                row += std::string(" ") + companion->glyph + " ";
             } else {
                 row += std::string(" ") + floorTerrain.glyph + " ";
             }
@@ -731,6 +741,21 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     playerLine << character.name << " -- HP " << character.currentHp << "/" << character.maxHp << "   AC "
                << character.armorClass << "   Weapon: " << character.weaponName;
     lines.push_back({playerLine.str(), kPlayerCombatColor});
+
+    // Milestone 117: the companion's own HP/AC line, right after the
+    // player's -- never gets the roster's "> " target-picker cursor (it's
+    // not a pickTarget candidate), same "informational only" treatment as
+    // the player's own line above. "(knocked out)" once HP reaches 0,
+    // same wording convention as a defeated monster's "(defeated)" below,
+    // but distinct -- a knocked-out companion isn't dead, just out of the
+    // rest of this fight (see docs/COMBAT_NOTES.md).
+    if (companion != nullptr) {
+        std::ostringstream companionLine;
+        companionLine << companion->name << " -- HP " << std::max(0, companion->hp) << "/" << companion->maxHp
+                       << "   AC " << companion->armorClass;
+        if (!companion->alive) companionLine << " (knocked out)";
+        lines.push_back({companionLine.str(), kCompanionCombatColor});
+    }
 
     // Roster lines only grow the "> "/"  " cursor prefix while
     // prompt.gridCursorIndex actually names one of them (target picking) --

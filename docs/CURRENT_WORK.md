@@ -1,9 +1,67 @@
 # Current work
 
-Nothing in flight -- Milestone 116 Phase 1 is implemented, self-tested, and
+Nothing in flight -- Milestone 117 Phase 2 is implemented, self-tested, and
 rebuilt clean, but carries the same interactive-verification flag every
 `GameLoop`-facing milestone has, since none of the actual play loop can be
 driven headlessly.
+
+Milestone 117 (2026-08-28) shipped Phase 2 of the party system: the
+companion now actually fights. Picked from a two-way `AskUserQuestion`
+scope check at the top of the session -- "full mutual combat" (the
+companion can deal AND take damage) over a smaller "free companion" slice
+that would have kept the companion un-hittable -- because a companion that
+can never be hurt reads as a hollow half-measure, not a real Gold Box ally.
+The companion (Bren Alder, still the one fixed level-1 Human Fighter from
+Milestone 116) now occupies its own cell on the tactical combat grid,
+starting adjacent to the player; it acts automatically right after the
+player's own action each round (AI-controlled, no player-directed control
+yet -- that's Phase 3), attacking an adjacent alive monster instance or
+stepping toward the nearest one via `combat::stepToward`/the new
+`combat::chebyshevDistance` helper. Monsters now pick between the player
+and the companion as their melee target (attack whichever they're adjacent
+to, coin-flip if adjacent to both, path toward whichever is closer
+otherwise) -- the first real touch to `GameLoop::runCombat`'s
+single-`Character` assumption, made possible entirely by reusing existing
+generic functions (`combat::resolvePlayerAttack`/`resolveMonsterAttack`/
+`rollSavingThrow` already took `const character::Character&`, so
+`Combat.h`/`.cpp` needed zero changes). Companion HP is now real and
+persists: `GameState::companion.currentHp` is mutated during combat exactly
+like the player's, and the save format's `COMPANION` line grew a second,
+optional field to carry it (a pre-Milestone-117 one-token `COMPANION 1`
+line still loads, defaulting to full health). A knocked-out companion
+(HP <= 0) stops acting/being targeted for the rest of that fight but does
+NOT end the fight -- only the player's own knockout does that. `Rest`/
+`BedRest` now heal the companion the same way they already heal the player.
+Deliberately deferred, honestly flagged (not oversights): the Brooch of
+Imog's globe wards the player only; Bozak's Magic Missile and Aurak's
+breath weapon stay player-only special attacks (never pick the companion as
+a target); Sivak's death-burst still only damages the player regardless of
+who lands the kill; companion movement never provokes/takes opportunity
+attacks; there's no "finish off a downed ally" mechanic. Full design
+writeup: `docs/ARCHITECTURE.md`'s "Party companions" section,
+`docs/CHARACTER_NOTES.md`'s "Party companion" section, and
+`docs/COMBAT_NOTES.md`'s "Extending this later" section. Verified via a
+throwaway self-test (`combat::chebyshevDistance` across several coordinate
+pairs, plus a `SaveGame` round-trip proving a damaged companion's HP
+survives save/load exactly and that an old one-token `COMPANION 1` line
+still loads at full health -- both deleted after), a clean `/W4` rebuild,
+the piped smoke test (moved all three real saves aside to reach character
+creation cleanly, then restored them byte-for-byte), and a direct check
+that the real `save1.txt` -- which already carried a Milestone-116-vintage
+one-token `COMPANION 1` line -- still loads correctly through the real
+executable (slot listing shows "Mike, level 1 Human Fighter (Day 0)" with
+no error).
+**Interactive verification needed** (`_getch()` blocks all of it) -- a real
+playthrough should confirm: the companion appears on the combat grid next
+to the player and attacks automatically each round; a monster sometimes
+targets the companion instead of the player (both when adjacent to only
+one and via the coin-flip when adjacent to both); the companion's HP shown
+on the combat frame/HUD/character sheet actually drops when hit; a
+knocked-out companion shows "(knocked out)" and stops participating without
+ending the fight; the Brooch's globe protects the player but NOT the
+companion; Rest and BedRest both heal a damaged companion; and saving mid-
+fight (or right after) then reloading preserves the companion's exact
+current HP. See `docs/MILESTONES.md` entry 117.
 
 Milestone 116 (2026-08-28) shipped Phase 1 of a party system: one
 recruitable companion, no combat integration. Picked at the user's request

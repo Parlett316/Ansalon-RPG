@@ -1134,13 +1134,36 @@ playthrough.
     Fighter), joined via a new `RECRUIT` zone-grammar line, shown on the
     character sheet and HUD, and persisted via a single save-format bool
     -- see `docs/ARCHITECTURE.md`'s "Party companions" and
-    `docs/CHARACTER_NOTES.md`'s "Party companion" section. Combat is
-    completely untouched: `runCombat` doesn't read the companion at all.
-  - **Still open**: Phase 2 (the companion actually fights alongside the
-    player, AI-controlled -- the first real touch to `runCombat`'s
-    single-`Character` assumption) and Phase 3 (a real multi-companion
-    roster, player-directed control in combat, deployment order,
-    backstab, sweep, `UIC`).
+    `docs/CHARACTER_NOTES.md`'s "Party companion" section. Combat was
+    completely untouched: `runCombat` didn't read the companion at all.
+  - **Phase 2 (Milestone 117) shipped full mutual combat**, chosen over a
+    smaller "free companion" (deals damage, can't be hit) slice via an
+    `AskUserQuestion` scope check -- a companion immune to harm would be a
+    hollow half-measure. The companion now occupies its own cell on the
+    tactical grid, auto-attacks or paths toward the nearest alive instance
+    each round (AI-controlled, no player-directed control yet), and
+    monsters pick between the player and companion as their melee target
+    (adjacent-to-both is a coin-flip; adjacent-to-neither paths toward
+    whichever is nearer via the new `combat::chebyshevDistance`). Real HP
+    now persists (`GameState::companion.currentHp`, a second field on the
+    save format's `COMPANION` line, backward-compatible with the
+    Milestone-116 one-token form). A knocked-out companion (HP <= 0) stops
+    participating for the rest of that fight but doesn't end it; `Rest`/
+    `BedRest` heal the companion the same way they heal the player. Needed
+    zero changes to `combat::resolvePlayerAttack`/`resolveMonsterAttack`/
+    `rollSavingThrow` -- all three already took a generic `const
+    character::Character&`, exactly the payoff Phase 1's design doc
+    predicted. Deliberately still deferred, honestly flagged: the Brooch of
+    Imog's globe wards the player only; Bozak's Magic Missile and Aurak's
+    breath weapon stay hardcoded player-only attacks (never pick the
+    companion, same family as the "no square-cursor for AoE" gap below);
+    Sivak's death-burst still only damages the player regardless of who
+    lands the kill; companion movement never provokes/takes opportunity
+    attacks; there's no "finish off a downed ally" mechanic. See
+    `docs/ARCHITECTURE.md`'s "Party companions" section for the full design.
+  - **Still open**: Phase 3 (a real multi-companion roster, player-directed
+    control in combat, deployment order, backstab, sweep, `UIC`), plus the
+    smaller Phase 2 gaps listed just above.
 - **The rest of the roster's real group sizes**: Milestone 113 (see
   "Monster encounter groups" above) only applied sourced `GROUP` data to
   14 of the 26 monsters -- the dozen left solo despite real No. Appearing

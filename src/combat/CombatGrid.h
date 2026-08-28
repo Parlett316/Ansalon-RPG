@@ -27,4 +27,12 @@ bool isAdjacent(GridPos a, GridPos b);
 // unit-testable, same reasoning as combat::rollGroupSize.
 GridPos stepToward(GridPos from, GridPos to, int width, int height, const std::vector<GridPos>& blocked);
 
+// max(|dx|, |dy|) -- the same "how many steps to close this gap" metric
+// isAdjacent already uses at range 1, generalized to any distance.
+// Milestone 117 uses this to let a monster AI pick whichever of two
+// possible targets (player vs. companion) is nearer when it's adjacent to
+// neither -- extracted as its own pure function for the same
+// unit-testability reasoning as stepToward above.
+int chebyshevDistance(GridPos a, GridPos b);
+
 } // namespace combat

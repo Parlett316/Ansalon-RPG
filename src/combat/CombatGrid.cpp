@@ -40,4 +40,8 @@ GridPos stepToward(GridPos from, GridPos to, int width, int height, const std::v
     return from; // fully blocked, or already at the target's own cell
 }
 
+int chebyshevDistance(GridPos a, GridPos b) {
+    return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
+}
+
 } // namespace combat

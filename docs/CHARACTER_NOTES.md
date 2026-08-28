@@ -1486,7 +1486,7 @@ there is deliberately no "drop" action. `SaveGame.cpp` touches: a new
 `QUESTITEM <item-id> <display-name...>` inventory-entry keyword,
 alongside `ARMOR`/`SHIELD`/`POTION`/`MAGICWEAPON`/`WEBNET`/`BROOCH`.
 
-## Party companion (Milestone 116 Phase 1)
+## Party companion (Milestone 116 Phase 1, combat added at Milestone 117)
 
 The first step toward a real party (see `docs/COMBAT_NOTES.md`'s "Extending
 this later" and `docs/ARCHITECTURE.md`'s "Party companions" section for the
@@ -1506,20 +1506,36 @@ for quest givers.
 Recruited via a new `RECRUIT <char>` zone-grammar line at `data/zones/
 solace.txt`'s `K "Bren Alder"` — see `docs/ZONE_NOTES.md`'s "Recruiting a
 companion". Once joined, shown on the character sheet (`MapRenderer::
-drawCharacterSheet`'s new terse "Companion:" block — identity and HP/AC/
-THAC0 only, since nothing else about them can change yet) and the
-overworld/zone HUD (a "Companion: name HP x/y" status-panel line). Persists
-across save/load via a single `GameState::hasCompanion` bool (`SaveGame`'s
-`COMPANION 1` line) — the companion's own fields are never serialized, since
-`buildCompanion()` reconstructs them identically every time.
+drawCharacterSheet`'s terse "Companion:" block — identity and HP/AC/THAC0
+only) and the overworld/zone HUD (a "Companion: name HP x/y" status-panel
+line), both reading live off `GameState::companion` so a fight's damage
+shows up immediately. Persists across save/load via `GameState::
+hasCompanion` plus, as of Milestone 117, a real `currentHp` field on
+`SaveGame`'s `COMPANION` line (`COMPANION 1 <currentHp>`) — every other
+field still comes from `buildCompanion()` on load, since only HP can
+change. A pre-Milestone-117 save has the old one-token `COMPANION 1` line
+and loads correctly, defaulting to full health.
 
-**Deliberately not attempted this phase**: the companion cannot fight
-(`GameLoop::runCombat` doesn't read `GameState::hasCompanion`/`companion` at
-all), cannot shop, cannot gain levels or spend steel, cannot be dismissed
-once recruited, and has no independent position/glyph on the overworld or
-zone grid. All of these are real, sourced gaps this project's own
-`References/DQoK.pdf` describes for a full party — recorded honestly as
-future phases, not oversights. See `docs/COMBAT_NOTES.md`'s "Extending this
+**Milestone 117: the companion actually fights, AI-controlled.** In combat
+it occupies its own cell on the tactical grid (Milestone 114), starting
+adjacent to the player, and acts automatically each round — attacking an
+adjacent monster or closing distance on the nearest one — with no player
+input of its own (a target picker/action menu for the companion is Phase 3
+territory). Monsters may attack the companion instead of the player
+(whichever they're adjacent to; a coin-flip if adjacent to both). A
+knocked-out companion (HP <= 0) stops fighting for the rest of that
+encounter but doesn't end it, and heals back up the same way the player
+does: `Rest` (1 hp) or `BedRest` (full heal). See `docs/COMBAT_NOTES.md`'s
+"Extending this later" for the full Phase 2 writeup and what it
+deliberately still leaves player-only (the Brooch of Imog's globe, Bozak's
+Magic Missile, Aurak's breath weapon, Sivak's death-burst) or unmodeled
+(opportunity attacks from companion movement, finishing off a downed ally).
+
+**Still not attempted**: the companion cannot shop, cannot gain levels or
+spend steel, cannot be dismissed once recruited, has no independent
+position/glyph outside combat, and never acts on the player's own command
+(Phase 3 territory — a real multi-companion roster, deployment order,
+backstab, sweep, `UIC`). See `docs/COMBAT_NOTES.md`'s "Extending this
 later".
 
 ## Where a character lives

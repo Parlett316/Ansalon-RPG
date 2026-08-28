@@ -343,20 +343,28 @@ you hit something surprising — that's the whole point of it existing.
   ones) the moment the stack is non-empty. Any future new save keyword
   needs the same check: does it land before
   `ZONESTACK`, or does it break the count?
-- **`COMPANION` (Milestone 116 Phase 1) persists a bool, not a character.**
-  Unlike every other per-character field, `GameState::companion`'s own stats
-  are never written to the save file -- `character::buildCompanion()` is
-  pure/deterministic (fixed ability scores/steel, never `character::roll`),
-  so `SaveGame::load` just calls it again to reconstruct an identical
-  companion whenever `COMPANION 1` is present. Optional, same "absence means
-  false" convention as `MET`/`VOYAGED`/`QUEST`/`KILL` -- a pre-Milestone-116
-  save has no `COMPANION` line and `hasCompanion` correctly stays false. If
-  a later phase ever lets combat change the companion's HP (or otherwise
-  makes them mutable), this deterministic-reconstruction shortcut stops
-  being valid and `COMPANION` will need to grow into real serialized fields,
-  same evolution `RACE`/`CLASS`/`ALIGNMENT` already went through. Must stay
-  before `ZONESTACK`, same ordering rule as every other optional keyword
-  above.
+- **`COMPANION` persists a flag plus one real field (`currentHp`), every
+  other field still reconstructed.** Milestone 116 Phase 1 originally wrote
+  just `COMPANION 1`, since `character::buildCompanion()` is pure/
+  deterministic (fixed ability scores/steel, never `character::roll`) and
+  `SaveGame::load` could just call it again to reconstruct an identical
+  companion. Milestone 117 let combat actually change the companion's HP,
+  so the line grew a second, optional token: `COMPANION 1 <currentHp>`.
+  `load()` reads the `1` flag exactly as before (still `fail()`s if it
+  isn't `1`), then *tries* to read a second int; if present, it overwrites
+  `buildCompanion()`'s default `currentHp` (clamped to `[0, maxHp]`); if
+  absent -- a pre-Milestone-117 save with the old one-token line -- it
+  silently keeps the full-health default, which is correct, since combat
+  never touched the companion before Milestone 117. Every field other than
+  `currentHp` (race/class/scores/steel/...) is still never serialized --
+  `buildCompanion()` remains the source of truth for all of them. The whole
+  line is still optional, same "absence means false" convention as `MET`/
+  `VOYAGED`/`QUEST`/`KILL` -- a pre-Milestone-116 save has no `COMPANION`
+  line at all and `hasCompanion` correctly stays false. Any future field
+  that becomes mutable (e.g. if the companion ever gains levels) would need
+  the same treatment: a new optional trailing token, defaulted sensibly
+  when absent, never breaking an older save. Must stay before `ZONESTACK`,
+  same ordering rule as every other optional keyword above.
 - **A quest's `TALK <met-id>` objective isn't validated against real
   character/NPC ids at load time.** `quest::QuestLoader` can't see
   `data/timeline.txt` or `data/zones/*.txt` (same one-way dependency
