@@ -649,6 +649,15 @@ void GameLoop::tryMoveOverworld(int dx, int dy) {
         int townDistance = bestDistSq < 0 ? 0
                                            : static_cast<int>(std::llround(std::sqrt(static_cast<double>(bestDistSq))));
         runCombat(monsters_.randomMonster(terrain.code, townDistance));
+        // Mirror-image of the flush at the top of runCombat: a key mashed
+        // during combat (Enter to attack, say) can still be queued the
+        // instant the fight ends via any of its several return paths, and
+        // would otherwise be silently replayed as the first overworld
+        // input afterward -- e.g. stepping into a zone entrance nobody
+        // meant to enter. One flush here covers every runCombat exit path
+        // uniformly, since this is runCombat's only call site. See
+        // docs/GOTCHAS.md.
+        render::Console::flushInput();
     }
 }
 
@@ -1451,6 +1460,16 @@ void GameLoop::handleEnter() {
 }
 
 void GameLoop::runCombat(const combat::Monster& monster) {
+    // A direction key mashed while still travelling the overworld can still
+    // be sitting in the OS input buffer the instant a random encounter
+    // interrupts that movement -- surfaced during Milestone 119's
+    // interactive playtesting, where a queued step got silently replayed as
+    // combat's first round (a MOVE, not the intended ATTACK), quietly
+    // wrecking the backstab/sweep positioning under test. Flushed here so
+    // combat's very first readKey() always waits for a keypress meant for
+    // combat, not a leftover from the overworld. See docs/GOTCHAS.md.
+    render::Console::flushInput();
+
     // How many of this monster showed up this encounter -- see
     // combat::rollGroupSize and docs/COMBAT_NOTES.md's "Monster encounter
     // groups" section. Every monster without a GROUP line in
@@ -2375,6 +2394,33 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         playerPos = destination;
         log.push_back("You move " + dirLabel + ".");
     };
+
+    // Milestone 119 playtesting surfaced a case the flushInput() at the top
+    // of this function can't fully cover: if the player is still holding
+    // (or rapidly re-pressing) a movement key from overworld travel the
+    // instant this encounter fires, Windows key-repeat can queue a FRESH
+    // keystroke after that flush already ran -- and the loop below's first
+    // readKey() would treat it as a live combat action (a MOVE, not the
+    // intended ATTACK) before the player has even seen the "X appears!"
+    // announcement above. A dedicated dismissal beat -- similar to the
+    // "Press any key to continue." + drawCombatFrame + readKey() idiom
+    // already used for Flee/victory/knockout below, but requiring Enter
+    // specifically rather than any key -- forces the player to release
+    // whatever direction key they were holding before anything is treated
+    // as a real action: wasd/arrows are exactly the keys most likely to
+    // still be auto-repeating right now, so accepting "any key" here would
+    // let a held movement key dismiss this screen without the player's
+    // finger ever leaving it, defeating the whole point. Non-Enter keys
+    // are discarded in a loop rather than accepted; flushInput() afterward
+    // mops up any trailing repeat that arrived while they were reading.
+    // See docs/GOTCHAS.md.
+    log.push_back("Press Enter to continue.");
+    render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,
+                                          playerPos, {}, companionViews());
+    while (render::Console::readKey() != render::Key::Enter) {
+        // Discard and keep waiting -- see the comment above.
+    }
+    render::Console::flushInput();
 
     for (;;) {
         render::MapRenderer::drawCombatFrame(state_.character, buildViews(), log, state_.hoursElapsed / 24, hereTerrain,

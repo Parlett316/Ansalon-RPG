@@ -91,6 +91,16 @@ public:
     // free-text question (see docs/GOTCHAS.md).
     static std::string readLine(std::size_t maxLength);
 
+    // Discards any keypresses already waiting in the OS input buffer, so a
+    // key pressed for one input mode (e.g. a direction key mashed while
+    // still travelling the overworld) can never be silently replayed as the
+    // first input of a mode transition where the same key means something
+    // very different (e.g. combat, where a direction key is a full round
+    // action) -- see docs/GOTCHAS.md. No-op on non-Windows, where no real
+    // raw-keypress implementation exists yet (same honesty precedent as
+    // readKey/executableDirectory above).
+    static void flushInput();
+
     // Directory containing the running executable (no trailing slash), used
     // to locate data/ and save.txt next to a distributed build instead of a
     // baked-in source-tree path -- see docs/GOTCHAS.md. Empty string if it

@@ -204,4 +204,17 @@ std::string Console::readLine(std::size_t maxLength) {
 #endif
 }
 
+void Console::flushInput() {
+#ifdef _WIN32
+    // _kbhit() reports whether a keypress is waiting without consuming it;
+    // draining with _getch() until it's false empties the buffer. Same
+    // conio.h primitives as readKey/readLine, not a console-handle API, so
+    // this needs no new Windows dependency. No-op on non-Windows -- see the
+    // header doc comment.
+    while (_kbhit()) {
+        _getch();
+    }
+#endif
+}
+
 } // namespace render

@@ -58,6 +58,51 @@ you hit something surprising — that's the whole point of it existing.
   `Console::readKey` still has to eat the second byte of *any* extended
   key it sees, mapped or not, or the classic bug above resurfaces. See
   the comment in `Console::readKey`.
+- **A keypress can outlive the input mode it was meant for -- and draining
+  the OS input buffer only catches the stale-queued case, not a fresh one
+  arriving a beat later.** `_getch()` only ever consumes one keypress per
+  call; if the player presses keys faster than the game redraws (very
+  possible during overworld travel, where a single step is fast), the
+  extras queue up in the OS input buffer. If one of those steps is also the
+  move that rolls a random encounter, `GameLoop::runCombat`'s very first
+  `Console::readKey()` call immediately returns the queued step -- except
+  in combat a direction key isn't a step, it's a full round action, so it
+  gets silently replayed as the fight's first move. Surfaced during
+  Milestone 119's interactive playtesting, and especially damaging for
+  backstab/sweep since Milestone 114 those depend on exact grid position.
+  `Console::flushInput()` (`_kbhit()`/`_getch()` drain, same conio.h
+  primitives as readKey/readLine) was the first fix attempted: called once
+  at the top of `runCombat` (drops a leftover overworld key before
+  combat's first `readKey()`) and once right after its call in
+  `tryMoveOverworld` (drops a leftover combat key -- Enter to attack, say
+  -- before the overworld's next `readKey()`), covering every one of
+  `runCombat`'s several return paths uniformly since that's its only call
+  site. **This alone did not fully fix it**: still holding (or rapidly
+  re-pressing) a movement key at the exact instant an encounter fires means
+  Windows key-repeat can queue a brand-new keystroke *after* the flush
+  already ran, milliseconds before the loop's first `readKey()` -- there is
+  nothing left in the buffer to drain at flush time, because the offending
+  keystroke hasn't happened yet. The real fix layered on top: a dedicated
+  dismissal beat right before the live combat loop begins -- the "X
+  appears!" announcement plus a "Press Enter to continue." screen, followed
+  by one more `flushInput()` to mop up any trailing repeat that arrived
+  while the player was reading. **This dismissal loops on `Key::Enter`
+  specifically, unlike the "any key" idiom Flee/victory/knockout use** --
+  accepting any key here would let a still-held, still-auto-repeating wasd/
+  arrow key dismiss the screen without the player's finger ever leaving it,
+  which defeats the whole point (nothing would force a break in their input
+  cadence, so the very next `readKey()` could catch another repeat of the
+  same key). Requiring Enter -- already ATTACK's own binding -- forces them
+  to consciously press a *different* key, guaranteeing the movement key's
+  repeat has stopped by the time the real combat loop starts. `flushInput()`
+  is still worth keeping for the stale-buffer half of the problem; it just
+  isn't sufficient by itself for the key-repeat half, and neither is an
+  "any key" dismissal. No-op on non-Windows, same honesty precedent as
+  `readKey`'s own non-Windows fallback above. If a future screen transition
+  shows the same symptom (a keypress from screen A silently acting on
+  screen B) and the incoming keys can include something that auto-repeats,
+  reach for an Enter-gated dismissal loop like this one, not an "any key"
+  prompt or a flush alone.
 - **Every obvious single-letter key mnemonic is already taken.** As of
   Milestone 63, on-screen movement bindings are `wasd`-only (no `hjkl`,
   no `yubn` diagonals — dropped for a simpler, more discoverable scheme;
