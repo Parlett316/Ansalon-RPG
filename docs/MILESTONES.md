@@ -4003,6 +4003,56 @@ recovery description.
      milestone -- see `docs/CURRENT_WORK.md` for the specific scenarios
      still needing a real playthrough.
 
+120. Battle-map restyle -- a small, purely cosmetic pass, requested
+     directly by the user ("make the battle map nicer looking, I don't
+     like the x's around to start") rather than picked from `NEXT UP`.
+     The "x's" turned out to be the tiled terrain glyph filling the
+     combat grid's empty floor: Milestone 114 drew every empty cell as
+     the real tile's `world::TerrainInfo::glyph`, so a forest encounter
+     (11% encounter chance, one of the highest on the map) rendered 77
+     `%` characters across the board, which reads as a field of x's and
+     drowns out the `@`/companion/monster-letter glyphs that are the only
+     cells a player actually reads during a round. The user picked the
+     fix from three mocked-up options: uniform `.` floor + a bordered
+     grid + the terrain named on its own label line, over "blank floor"
+     (cleanest, but you can no longer count squares when planning a move,
+     which matters given movement is a full round action) and "keep the
+     terrain glyphs, just frame and center them" (fixes the layout but
+     not the noise). Implemented entirely inside
+     `MapRenderer::drawCombatFrame`: a `kSectionLabelColor` "Battlefield:
+     forest" line built from `TerrainInfo::name`, a `+---...---+` /
+     `|`-sided border around the 7 grid rows, and `kCombatFloorGlyph`
+     (`.`) in place of `floorTerrain.glyph` in the empty-cell branch. No
+     signature change (`floorTerrain` is still the same parameter, now
+     read for `.name` instead of `.glyph`), no gameplay effect, no save-
+     format effect, and the Milestone 115 `[X]` target-picker bracket is
+     untouched and still legible in the edge columns where it now abuts
+     the border directly. The manual's sourced concept is preserved --
+     DQoK.pdf's "a detailed view of the terrain that the party was in" is
+     now *stated* rather than tiled. Full writeup: `docs/COMBAT_NOTES.md`'s
+     "Positional combat grid" section, "Presentation restyle" bullet.
+     Verified with a throwaway render harness
+     (`src/render/CombatFrameSelfTest.cpp` plus a temporary
+     `combat_frame_self_test` CMake target -- drawCombatFrame needs no
+     keyboard input, so unlike the rest of combat it *can* be exercised
+     headlessly) printing three real frames: a group fight with two
+     companions and one defeated instance, the same frame with the target
+     picker open on instance B, and a solo grassland fight with no
+     companions. All three rendered correctly; harness and CMake target
+     deleted afterward, per the throwaway pattern. Then a clean `/W4`
+     rebuild (zero warnings) and the piped character-creation smoke test.
+     **Incident, recorded honestly:** the "clean rebuild" step was done by
+     `Remove-Item -Recurse -Force` on `build\`, which destroyed the
+     contents of `build\Debug` -- including the runtime save slots
+     (`save1.txt`/`save2.txt`/`save3.txt`) that live next to the exe.
+     `build\` is gitignored, `Remove-Item` bypasses the Recycle Bin, and
+     no shadow copies existed, so this was unrecoverable. The only
+     surviving save anywhere in the tree is `C:\Testing\save.txt`, the
+     stale pre-Milestone-89 single-slot file, untouched. See
+     `docs/GOTCHAS.md` -- a clean rebuild must delete only build
+     artifacts, never the whole directory, precisely because the save
+     slots share it.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

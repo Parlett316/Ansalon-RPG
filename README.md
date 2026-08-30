@@ -205,7 +205,8 @@ draconians, worgs, black bears, lizard men, giant toads) now turn up in
 real, book-sourced numbers rather than always solo, each shown with its
 own HP and a letter (Goblin A, Goblin B, ...) so you can pick a target
 when more than one's still standing. Fights now play out on a real
-terrain-flavored tactical grid (`w`/`a`/`s`/`d` to move) sourced from an
+bordered tactical grid (`w`/`a`/`s`/`d` to move), captioned with the
+terrain you're fighting on, sourced from an
 actual SSI Gold Box Dark Queen of Krynn manual: melee attacks need you
 adjacent to your target, a Tinker's Light Crossbow can shoot anyone on
 the board until an enemy closes in (then it's refused outright), monsters

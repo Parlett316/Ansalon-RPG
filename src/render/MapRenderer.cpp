@@ -705,11 +705,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     // Tactical grid (Milestone 114). Plain text, no per-cell ANSI -- this
     // "organic" screen family's BoxLine only supports one color for an
     // entire line (see writeBoxed/colorLine above), the same restraint
-    // Milestone 32 already established for every non-map screen. The real
-    // terrain's glyph still fills the empty floor for flavor, just not its
-    // color -- see docs/COMBAT_NOTES.md's "Positional combat grid" section
-    // for why (DQoK.pdf's own manual describes the combat map as "a
-    // detailed view of the terrain the party was in").
+    // Milestone 32 already established for every non-map screen.
     //
     // Milestone 115: each cell is 3 columns wide (" X " / floor, "[X]" for
     // whichever monster prompt.gridCursorIndex names) instead of 1 --
@@ -718,9 +714,25 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     // section): the grid itself is the picker now, so the cursored
     // instance needs to visibly stand out from the rest. 11 cells * 3
     // columns = 33, still well under kProseWrapWidth.
+    //
+    // Milestone 120: the empty floor is a uniform '.' and the terrain it
+    // stands for is named once on its own label line, rather than tiling
+    // the real tile's world::TerrainInfo glyph across all 77 cells -- a
+    // forest fight used to fill the board with '%', which drowned out the
+    // '@'/letter glyphs that actually matter. The grid also gets its own
+    // ASCII border so the battlefield reads as a bounded map instead of
+    // floating text inside the much wider combat box.
+    std::ostringstream battlefieldLine;
+    battlefieldLine << "Battlefield: " << floorTerrain.name;
+    lines.push_back({battlefieldLine.str(), kSectionLabelColor});
+    lines.push_back({"", nullptr});
+
+    constexpr char kCombatFloorGlyph = '.';
+    const std::string gridBorder = "+" + std::string(static_cast<size_t>(kCombatGridWidth) * 3, '-') + "+";
+    lines.push_back({gridBorder, nullptr});
     for (int gy = 0; gy < kCombatGridHeight; ++gy) {
-        std::string row;
-        row.reserve(static_cast<size_t>(kCombatGridWidth) * 3);
+        std::string row = "|";
+        row.reserve(static_cast<size_t>(kCombatGridWidth) * 3 + 2);
         for (int gx = 0; gx < kCombatGridWidth; ++gx) {
             int monsterIdx = -1;
             for (size_t i = 0; i < monsters.size(); ++i) {
@@ -747,11 +759,13 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
                 // treatment, just its plain glyph like the player's own '@'.
                 row += std::string(" ") + here->glyph + " ";
             } else {
-                row += std::string(" ") + floorTerrain.glyph + " ";
+                row += std::string(" ") + kCombatFloorGlyph + " ";
             }
         }
+        row += "|";
         lines.push_back({row, nullptr});
     }
+    lines.push_back({gridBorder, nullptr});
     lines.push_back({"", nullptr});
 
     std::ostringstream playerLine;

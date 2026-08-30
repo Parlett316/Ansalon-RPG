@@ -201,14 +201,15 @@ public:
         std::string footer;
     };
 
-    // Renders one combat frame: a small tactical grid (Milestone 114 --
-    // `floorTerrain`'s glyph/color fills every empty cell, so a forest
-    // encounter's grid reads differently from a plains one, matching
-    // DQoK.pdf's own manual describing the combat map as "a detailed view
-    // of the terrain the party was in"; `playerPos` and each alive
-    // monster's `CombatMonsterView::pos` place the `@`/lettered glyphs, and
-    // each alive entry in `companions` -- Milestone 117/118 -- its own
-    // glyph), then the player's HP/AC, one HP/AC line per companion
+    // Renders one combat frame: a small bordered tactical grid (Milestone
+    // 114 -- empty cells are a uniform '.' and `floorTerrain`'s `name` is
+    // printed once as a "Battlefield: forest" label above the grid rather
+    // than its glyph being tiled across every cell (Milestone 120), still
+    // matching DQoK.pdf's own manual describing the combat map as "a
+    // detailed view of the terrain the party was in"; `playerPos` and each
+    // alive monster's `CombatMonsterView::pos` place the `@`/lettered
+    // glyphs, and each alive entry in `companions` -- Milestone 117/118 --
+    // its own glyph), then the player's HP/AC, one HP/AC line per companion
     // ("(knocked out)" once its HP reaches 0, same convention as a
     // defeated monster below), every monster instance's HP/AC (defeated
     // ones marked, still shown so the roster visibly shrinks rather than

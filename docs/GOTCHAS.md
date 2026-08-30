@@ -277,6 +277,17 @@ you hit something surprising — that's the whole point of it existing.
   found with no `save1.txt` already present (see `docs/ARCHITECTURE.md`);
   `save.txt` itself stays gitignored too, in case a stray one lingers from
   before the migration.
+- **NEVER "clean rebuild" by deleting `build\` wholesale.** The save slots
+  live *inside* `build\Debug` (see the bullet above), `build\` is
+  gitignored, and `Remove-Item -Recurse -Force` bypasses the Recycle Bin —
+  so `rm -rf build` destroys the player's characters with no recovery path
+  unless a shadow copy happens to exist. This actually happened at
+  Milestone 120 and cost the user their save slots. A clean rebuild means
+  `cmake --build build --config Debug --clean-first`, or deleting only the
+  CMake artifacts — never the directory the running exe keeps its state
+  in. If a full wipe is genuinely needed, copy `build\Debug\save*.txt`
+  somewhere outside `build\` first and copy them back afterward, the same
+  move-aside/restore discipline the piped smoke test already requires.
 - **A bad slot no longer aborts the whole program.** Before Milestone 89, a
   single corrupt/stale `save.txt` (e.g. referencing a since-removed
   `ZONE`) made the game unplayable until the file was deleted by hand.

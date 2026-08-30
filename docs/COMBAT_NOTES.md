@@ -910,15 +910,39 @@ core 2e AD&D combat itself is abstract "melee range," not squares.
   that closing distance takes a couple of real rounds. The manual's own
   words: "Battle takes place on a tactical combat map that is a detailed
   view of the terrain that the party was in when the combat began...set
-  up with an invisible square grid." The empty floor's glyph comes from
-  the real tile's `world::TerrainInfo` (`world::terrainFor(grid_.
-  terrainCodeAt(state_.x, state_.y))`, the same lookup Frostreaver's
-  glacier check already makes) -- a forest encounter's grid reads
-  differently from a plains one. **Color is not carried over**: this
+  up with an invisible square grid." The real tile's `world::TerrainInfo`
+  (`world::terrainFor(grid_.terrainCodeAt(state_.x, state_.y))`, the same
+  lookup Frostreaver's glacier check already makes) still decides what
+  terrain the fight is happening on. **Color is not carried over**: this
   project's "organic" screen family (`writeBoxed`/`BoxLine`, see
   `docs/ARCHITECTURE.md`'s Milestone 32 note) only supports one color per
-  whole line, not per cell, so the grid renders in plain text -- the real
-  terrain's *glyph* still gives genuine flavor, just not its color.
+  whole line, not per cell, so the grid renders in plain text.
+- **Presentation restyle (Milestone 120, invented).** Originally the
+  terrain's *glyph* was tiled across every empty cell, so a forest fight
+  filled the board with 77 `%` characters and a bog fight with `"`. That
+  was flavorful in principle but noisy in practice -- it drowned out the
+  `@`/companion/monster letter glyphs that are the only things a player
+  actually reads during a round, and forest is one of the highest-
+  encounter-chance terrains (11%), so it came up constantly. Three
+  changes, all confined to `MapRenderer::drawCombatFrame`, no gameplay
+  effect whatsoever:
+  1. Empty cells are a uniform `.` (`kCombatFloorGlyph`) regardless of
+     terrain.
+  2. The terrain is named once instead, on a `kSectionLabelColor` (bright
+     cyan) "Battlefield: forest" label line above the grid, built from
+     `TerrainInfo::name` -- so the manual's "detailed view of the terrain
+     the party was in" is still honored, just stated rather than tiled.
+     Every passable terrain's `name` reads correctly after "Battlefield: "
+     (combat only ever triggers from `tryMoveOverworld`, so the
+     impassable ocean/Blood Sea names never appear here).
+  3. The grid gained its own ASCII border (`+---...---+` top and bottom,
+     `|` on each row) so the battlefield reads as a bounded map rather
+     than floating text inside the much wider combat box. Rows are
+     11 cells * 3 columns + 2 border columns = 35, still far under
+     `kProseWrapWidth` (76), so nothing wraps.
+  The `[X]` target-picker bracket (Milestone 115) is unchanged and still
+  legible against the new border, including in the edge columns where it
+  abuts the `|` directly.
 - **Starting layout** (invented): the player begins near the bottom
   center; monster instances spread evenly across a row near the top,
   centered and spaced two cells apart. Purely local state
