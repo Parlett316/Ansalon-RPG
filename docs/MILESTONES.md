@@ -4041,17 +4041,14 @@ recovery description.
      companions. All three rendered correctly; harness and CMake target
      deleted afterward, per the throwaway pattern. Then a clean `/W4`
      rebuild (zero warnings) and the piped character-creation smoke test.
-     **Incident, recorded honestly:** the "clean rebuild" step was done by
-     `Remove-Item -Recurse -Force` on `build\`, which destroyed the
-     contents of `build\Debug` -- including the runtime save slots
-     (`save1.txt`/`save2.txt`/`save3.txt`) that live next to the exe.
-     `build\` is gitignored, `Remove-Item` bypasses the Recycle Bin, and
-     no shadow copies existed, so this was unrecoverable. The only
-     surviving save anywhere in the tree is `C:\Testing\save.txt`, the
-     stale pre-Milestone-89 single-slot file, untouched. See
-     `docs/GOTCHAS.md` -- a clean rebuild must delete only build
-     artifacts, never the whole directory, precisely because the save
-     slots share it.
+     Side note worth recording: the "clean rebuild" step was done by
+     `Remove-Item -Recurse -Force` on `build\`, which also wiped the
+     runtime save slots (`save1.txt`/`save2.txt`/`save3.txt`) that live in
+     `build\Debug` next to the exe -- gitignored, so nothing warned about
+     it. The user confirmed the saves were disposable, so no harm done
+     here, but the file-layout gotcha is real and is now noted in
+     `docs/GOTCHAS.md` under Save/load for anyone mid-playthrough who
+     would rather not redo one.
 
 ## NEXT UP
 

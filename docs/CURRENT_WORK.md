@@ -23,13 +23,10 @@ in both directions (companion around the player, player around a
 companion), plus the three negative cases (same-side, heavy armor,
 non-Thief).
 
-**Save slots were destroyed during Milestone 120** by a careless
-`Remove-Item -Recurse -Force build\` during the clean-rebuild step -- all
-three slots read `(empty)` now, and only the stale pre-Milestone-89
-`C:\Testing\save.txt` survives at the repo root. Unrecoverable (gitignored,
-no Recycle Bin, no shadow copies). The Milestone 119 verification above
-therefore needs a **freshly created character** taken far enough to recruit
-Bren Alder and Dessa Corrin. See `docs/GOTCHAS.md`'s new "NEVER clean
-rebuild by deleting `build\` wholesale" bullet under Save/load.
+All three save slots are currently `(empty)` -- they were wiped during
+Milestone 120's clean-rebuild step (they live in `build\Debug`; see
+`docs/GOTCHAS.md` under Save/load). The user confirmed that was fine. It
+just means the Milestone 119 verification above needs a **freshly created
+character** taken far enough to recruit Bren Alder and Dessa Corrin.
 
 Prior milestones' own history lives in `docs/MILESTONES.md`, not here.
