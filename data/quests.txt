@@ -261,13 +261,15 @@ END
 
 QUEST wayreth_summons
 NAME The Summons of the Conclave
-OFFER The stranger has been standing in this exact spot for as long as you can remember passing through, and you realize, with a small chill, that you have never once seen their face clearly. "You've felt it," they say, not a question. "Something has taken notice of you. It will not come looking twice if you waste its patience." Their hood tilts, almost kindly. "Prove the wanting is real first. Palanthas keeps what's left of the old records -- go and see what the Great Library still remembers of the paths to us. Then we'll speak of the rest."
-ACCEPT You don't ask how they knew. Some questions answer themselves the moment you'd have to ask them aloud.
-PROGRESS The stranger is there again, exactly where strangers like this one always seem to be. "The Library, when you're ready. Not before."
-COMPLETE The stranger is waiting for you before you've finished crossing the square, as if the distance between Palanthas and here meant nothing at all to them. "Then you're ready." They don't move, and yet the ordinary sounds of Solace fall away all at once, the vallenwoods and the firelight and the creak of rope bridges replaced by nothing you could describe as a place, only as a waiting.
+OFFER The stranger has been standing in this exact spot for as long as you can remember passing through, and you realize, with a small chill, that you have never once seen their face clearly. "You've felt it," they say, not a question. "Something has taken notice of you. It will not come looking twice if you waste its patience." Their hood tilts, almost kindly. "Prove the wanting is real first. Palanthas keeps what's left of the old records -- go and see what the Great Library still remembers of the paths to us. What comes after, you won't see coming, and it won't ask whether you're ready. Few who wear a Robe came by it easily."
+ACCEPT You don't ask how they knew. Some questions answer themselves the moment you'd have to ask them aloud. Whatever's coming, it will come on its own schedule, not yours.
+PROGRESS The stranger is there again, exactly where strangers like this one always seem to be. "The Library, if you haven't gone. Whatever found you afterward, if you haven't faced it down yet. Neither one waits on the other."
+COMPLETE The stranger is waiting for you before you've finished crossing the square, as if the distance between Palanthas and here -- and whatever met you on the road back -- meant nothing at all to them. "Then you're ready." They don't move, and yet the ordinary sounds of Solace fall away all at once, the vallenwoods and the firelight and the creak of rope bridges replaced by nothing you could describe as a place, only as a waiting.
 GIVER the Robed Stranger in Solace
 REQUIRE wayreth_eligible
 VISIT palanthas Seek out what the Great Library at Palanthas still remembers of the old paths
-REWARD_XP 150
+SLAY wight 1 Meet the Conclave's chosen trial in single combat and come home standing
+REWARD_STEEL 75
+REWARD_XP 250
 REWARD_WAYRETH_ROBE
 END

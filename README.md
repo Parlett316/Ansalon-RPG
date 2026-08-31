@@ -58,14 +58,16 @@ the reference map image, walked tile-by-tile in real time; named locations
 (Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
 Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
 Isle, Crossing, Southern Ergoth, Port Balifor, Flotsam, Dargaard Keep,
-...) sit on that
+Port O'Call, ...) sit on that
 grid, most connected by
 roads baked into the terrain — Ice Wall, Sancrist Isle, and Southern
 Ergoth are the exceptions, three sea-locked stops reachable only by
 arranging passage on a ship, first out of Tarsis, then onward from Ice
 Wall (see below); Crossing, a ferry
-waypoint on the strait north of Solace, has no road either but needs no
-ship, since the water there is shallow enough to simply walk —
+waypoint on the strait north of Solace, has no road either, and its water
+is shallow enough to wade — though most travelers pay the Ferry Keeper
+instead, a real round-trip boat ride across to Port O'Call on the far
+shore —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
 elven capital, inside Qualinesti. Standing at a location can also reveal
@@ -178,7 +180,11 @@ planned), a Silvanesti Sentry on Southern Ergoth offers passage on to
 Sancrist proper, and an Embarkation Officer there offers passage on to
 Palanthas, each leg a ship's voyage of a few days rather than a
 tile-by-tile walk across open water — you can say no and ask them about it
-first, and the offer stands until you board. Solace and Haven each have a
+first, and the offer stands until you board (and, unlike a one-way
+passage arranged for you, comes back again even after you've sailed it
+once). Flotsam's own Harbor has a similar offer from a different, plainer
+trader — not the doomed ship the Heroes' own history sailed on, but an
+ordinary run north to Kalaman around the cape. Solace and Haven each have a
 would-be companion of their own: talk to Bren Alder in Solace or Dessa
 Corrin in Haven and they'll ask to join you (or you can put them off for
 later) — the start of a real party, and you can recruit both, in either
@@ -334,12 +340,14 @@ planting something come spring — a Farmer's Cart in Haven has more than
 its own fields will use this season, if you're willing to carry a sack
 the distance; and back in Solace, an unremarkable hooded figure at the
 corner of the square has nothing to say to most travelers at all, but a
-Mage who's reached 3rd level and gone looking for what Palanthas's Great
-Library still remembers of the old paths finds them waiting with a
-different offer entirely -- the Tower of Wayreth itself moves through its
-forest at its own pleasure and can't be walked to on any map, so this is
-the only way there — see `docs/QUEST_NOTES.md` for the full design, what
-ships, and how more get authored.
+Mage who's reached 3rd level finds them waiting with a different offer
+entirely — the Tower of Wayreth itself moves through its forest at its
+own pleasure and can't be walked to on any map, so this is the only way
+there. What Palanthas's Great Library still remembers of the old paths
+is only the opening move; the Conclave's own trial, met alone and in
+earnest combat, still has to be lived through before any Robe is earned
+— see `docs/QUEST_NOTES.md` for the full design, what ships, and how
+more get authored.
 
 If you're picking this project up fresh (human or AI), read
 `docs/ARCHITECTURE.md` (why the code is shaped the way it is),

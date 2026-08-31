@@ -509,6 +509,145 @@ in, and confirming the Robe/outcome text matches the character's alignment
 flagged for every quest milestone so far, and no Mage save currently
 exists to test with.
 
+**Redone the same session it shipped elsewhere in this doc's history --
+see below**: the original shape above was a single `VISIT palanthas`
+objective, no combat, nothing standing between accepting the quest and
+turning it in but a walk. Called out directly by the user as reading like
+"a standard fetch quest," which it was, despite the framing.
+`.research/dla_full.txt` (OCR of *Dragonlance Adventures* pp.34-35, "The
+Test of High Sorcery" -- column-garbled but legible around line 2094) was
+already the citation behind this quest's design but hadn't actually been
+used in full; it lists five real guidelines for what a Test should
+contain: "at least three tests of the wizard's knowledge of magic," "the
+casting of all of the spells known to the initiate," "at least three
+tests that cannot be solved by magic alone," "at least one combat against
+a character known to the initiate as an ally," and "at least one solo
+combat against an opponent who is two levels higher than the initiate" --
+plus the framing line "no one who comes is guaranteed of returning
+alive." Milestone 103's three alignment-branched outcome passages
+(`GameLoop.cpp`'s `REWARD_WAYRETH_ROBE` switch, unchanged by this pass)
+already gesture narratively at repeated trials and an ally-combat beat
+("falls apart... more than once," "every trial the Conclave sets you,"
+"the illusion finally puts someone you'd call a friend between you...").
+The solo-combat guideline was the one with zero representation, mechanical
+or narrative, so it's the one this redo closes -- not by inventing a
+multi-stage/branching quest engine (this file has repeatedly and
+deliberately deferred a stage-index system; see "Still no arbitrary stage
+index" above), but by adding a second objective to the existing bag, the
+same "mix objective kinds in one quest" pattern `named_in_fact` (VISIT +
+SLAY baaz) and `measure_of_roses` (VISIT + SLAY ogre) already established.
+
+The new objective is `SLAY wight 1` (`data/monsters.txt`) -- unused by any
+quest before this, no `TERRAIN_BIAS` so it can turn up anywhere at least
+25 tiles from a town (matching "the trial finds you" over "go stand in a
+specific biome," the same lore this quest's own offer text already leans
+on -- Raistlin's shipped dialogue that the Tower "finds you rather than
+the reverse"), and at 1,400 XP markedly tougher than every other SLAY
+target in the roster except Troll/Ettin -- deliberately the hardest solo
+fight offered so far, matching the source's own framing that this fight
+is not routine (softened in practice by this project's standing "knocked
+out, not killed" combat rule, so no real permadeath risk, same as every
+other SLAY quest). Its `DESC` ("a grave-cold shape... a hunger older than
+its own death") reads as uncanny rather than mundane, so the quest's own
+text frames it explicitly as the Test's own illusion/manifestation, not a
+literal undead sentry guarding Wayreth -- avoids inventing unsourced lore,
+and matches the existing outcome passages' own repeated "illusion"
+language. `OFFER`/`PROGRESS`/`COMPLETE` text was lightly rewritten (not
+replaced) to foreshadow and then acknowledge the fight; `ACCEPT`,
+`REQUIRE wayreth_eligible`, the `VISIT palanthas` objective, and
+`REWARD_WAYRETH_ROBE` are all unchanged. Reward raised from XP-only (150)
+to `REWARD_STEEL 75`/`REWARD_XP 250` -- roughly matching/exceeding
+`measure_of_roses`'s 100/250 tier since the Wight outweighs that quest's
+Ogre, while keeping steel more modest than a pure combat quest would earn
+since the Robe itself is still the real reward, the same "item/title is
+the reward" precedent `solamnic_armor`/`staff_of_striking_curing`/
+`frostreaver_salvage` already established.
+
+Zero `.cpp`/`.h` changes, zero new `REQUIRE`/`REWARD` flags, zero
+save-format changes for this `SLAY` pass specifically -- pure content.
+`save3.txt` (Serath) already has this quest at `QuestStatus::Complete`
+under the old one-objective shape -- that status is terminal and never
+re-evaluated, so her save is unaffected, but she also can't be used to
+test anything new here (the stranger has nothing further to say to a
+`Complete` quest).
+
+**Redone a second time, same session, after further pushback**: the
+`SLAY wight 1` fight above closes one DLA guideline (the solo combat)
+but the user correctly pointed out the deeper issue -- winning a fight
+via ordinary combat RNG isn't what the book is actually testing, and
+"what happens if the player falls" needed a real answer that wasn't
+"knocked out, try again." Re-researched properly this time, since the
+first pass leaned on `.research/dla_full.txt`'s column-garbled OCR
+alone: `.research/dla_layout.txt` (~line 2094) and the fuller prose in
+*Players Guide to the Dragonlance Campaign* (`References/pg.txt:5417-
+5447`) both say the Test explicitly does **not** grade on declared
+alignment -- "The wizards are less interested in the applicant's
+alignment... than whether he will use the power of magic in a
+responsible manner" (PG) -- yet each Robe's own "Minimum Requirements"
+in DLA is a parallel-structured check on conduct *during* the Test:
+passed "without having committed an act contrary to the laws of"
+good/neutrality/evil, respectively. Both books also state flatly, twice
+between them, that "failure means death" -- real, but incompatible with
+this project's unbroken "knocked out, not killed" invariant
+(`docs/COMBAT_NOTES.md`), so permadeath was never on the table; the
+resolution had to reinterpret "failure" as something else.
+
+The fix: `GameLoop::offerOrTurnInQuest`'s `q->rewardWayrethRobe` block
+(`GameLoop.cpp`) now stages a real scene instead of reading a stat. Once
+the Wight falls, it doesn't dissipate -- it reshapes into "a face you'd
+trust with your back turned" (a new `drawDialogueFrame`), then a real
+`drawPickerFrame` choice (three in-fiction options, no mechanical
+labels, matching this project's diegetic-UI convention everywhere else)
+decides the outcome, not `character.alignment`. This also folds in the
+one other DLA guideline still unaddressed -- "at least one combat
+against a character known to the initiate as an ally" -- into the same
+scene, rather than needing a second mechanic. Whichever option the
+player picks maps to a new small `game::EthicChoice` enum
+(`Good`/`Neutral`/`Evil`, declared in `GameLoop.h` next to
+`conditionMatches`, same "free function, directly unit-testable"
+treatment) and a new free function, `game::withEthic`, that preserves
+the character's Lawful/Neutral/Chaotic axis and replaces only the
+Good/Neutral/Evil axis -- exact index arithmetic over `character::
+Alignment`'s own declaration order (`index % 3` is the law/chaos
+component, `index / 3` is the ethic group), no lookup table needed.
+
+**Per the user's explicit decision** (asked directly, since it's a real
+fork with a broad blast radius): the chosen ethic updates
+`state_.character.alignment` itself, not just the Robe -- the first time
+alignment mutates anywhere in this codebase after character creation.
+Every other `good`/`evil` `REQUIRE` (`game::conditionMatches`) already
+reads `c.alignment` live, so this ripples forward into every other
+alignment-gated quest and NPC line for free, no extra wiring needed --
+same "objectives are live queries over existing state" principle this
+file leans on everywhere else. A `pushLog` line ("Your alignment
+shifts...") only fires when the choice actually changes the stored
+value, so picking the option that already matches the character's
+alignment stays quiet (the outcome passage itself already carries that
+narrative weight). The three White/Red/Black outcome passages
+(`GameLoop.cpp`) are lightly re-threaded, not rewritten -- almost all of
+Milestone 103's original wording survives; they're adjusted only to read
+as direct continuations of the one reshaped-illusion scene instead of a
+vague, independent "every trial" vignette each.
+
+No changes to `data/quests.txt`, `wayreth_eligible`, the Robed Stranger
+POI, `character::robeForAlignment`, or the save format (`ALIGNMENT`/
+`ROBE` were already-persisted fields; this just adds a second runtime
+mutation site for one of them). Verified via a clean `/W4` rebuild (zero
+new warnings) and the piped smoke test; `withEthic`'s arithmetic was
+checked by hand across all nine `Alignment` values crossed with all
+three `EthicChoice` values rather than a dedicated compiled self-test --
+`conditionMatches` and its neighbors in `GameLoop.cpp` have never been
+isolated into a self-test target in this project's history either,
+since `GameLoop.cpp`'s own dependency graph (world/combat/quest/render,
+all of it) makes a truly minimal throwaway target impractical; past
+milestones verify this class of logic by rebuild + direct read-through +
+interactive play instead, same treatment here. The picker, the setup
+scene, and the alignment-shift log line have **no piped-testable
+surface at all** -- quest turn-in is well past character creation, where
+`_getch()` stops being pipeable -- so seeing any of this still needs a
+fresh level-3+ Mage and the user's own keyboard, the same limitation
+flagged for every quest milestone so far, more acutely than usual here.
+
 ### `reason_worth_giving`, at the Plains of Dust
 
 The Milestone 105 sweep's "the well is nearly dry" finding turned out to

@@ -223,6 +223,18 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     return false;
 }
 
+// See GameLoop.h's declaration comment. Alignment's declaration order
+// (LawfulGood..ChaoticGood, LawfulNeutral..ChaoticNeutral,
+// LawfulEvil..ChaoticEvil) makes this exact: index % 3 is the law/chaos
+// component, index / 3 is the good/neutral/evil group -- EthicChoice's
+// own declaration order (Good, Neutral, Evil) matches that group order,
+// so no separate lookup table is needed.
+character::Alignment withEthic(character::Alignment current, EthicChoice choice) {
+    int lawChaos = static_cast<int>(current) % 3;
+    int ethicGroup = static_cast<int>(choice);
+    return static_cast<character::Alignment>(ethicGroup * 3 + lawChaos);
+}
+
 // Lowercases and splits on anything that isn't a letter/digit/hyphen/
 // apostrophe -- deliberately simple keyword tokenization, not NLP, matching
 // this project's plain, fail-fast data-driven style. Hyphens/apostrophes
@@ -1260,36 +1272,92 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
         // these three passages as an automatic level-3 event; see
         // docs/CHARACTER_NOTES.md's "Wizards of High Sorcery" for why they
         // moved). COMPLETE's own text (shown just above, before this
-        // block runs) can't branch by alignment, so this flag is what
-        // actually assigns the Robe and narrates the outcome.
+        // block runs) can't branch by choice, so this flag is what
+        // actually stages the real Test and narrates the outcome.
+        //
+        // Dragonlance Adventures pp.34-35 and the Players Guide pp.79-80
+        // both say the Test grades conduct during the Test, not a
+        // preset alignment ("less interested in the applicant's
+        // alignment... than whether he will use the power of magic in a
+        // responsible manner") -- yet each Robe's own "Minimum
+        // Requirements" is a check on having passed "without having
+        // committed an act contrary to the laws of" good/neutrality/evil.
+        // So the Robe (and, per direct user decision, the character's
+        // alignment itself) now follows a real in-the-moment choice
+        // instead of a stat read at character creation. This scene also
+        // folds in the one DLA guideline still otherwise unaddressed --
+        // "at least one combat against a character known to the initiate
+        // as an ally" -- by having the Wight the player just fought
+        // reshape into a trusted face rather than simply vanishing.
+        render::MapRenderer::drawDialogueFrame(
+            {{speakerName,
+              "The grave-cold thing you put down a moment ago doesn't dissipate the way a beaten "
+              "illusion should. It holds, one heartbeat too long, and reshapes -- not into the "
+              "stranger, not into anything Wayreth would claim as its own, but into a face you'd "
+              "trust with your back turned. It doesn't attack. It doesn't need to. It just stands "
+              "between you and the rest of your life, waiting to see what you do about that."}});
+        render::Console::readKey();
+
+        const std::vector<std::string> ethicLabels = {
+            "Let it stand, and find another way.",
+            "Take only the narrowest path through.",
+            "Cut it down, and take what's yours.",
+        };
+        int selected = 0;
+        EthicChoice choice = EthicChoice::Good;
+        for (;;) {
+            render::MapRenderer::drawPickerFrame(q->name, ethicLabels, selected, "up/down=select   Enter=choose");
+            render::Key key = render::Console::readKey();
+            if (key == render::Key::North) {
+                selected = (selected - 1 + static_cast<int>(ethicLabels.size())) % static_cast<int>(ethicLabels.size());
+            } else if (key == render::Key::South) {
+                selected = (selected + 1) % static_cast<int>(ethicLabels.size());
+            } else if (key == render::Key::Enter) {
+                // ethicLabels' order matches EthicChoice's declaration
+                // order (Good, Neutral, Evil) -- see withEthic.
+                choice = static_cast<EthicChoice>(selected);
+                break;
+            }
+            // render::Key::Quit is deliberately ignored here -- there's no
+            // meaningful "cancel" once the Conclave is asking.
+        }
+
+        character::Alignment newAlignment = withEthic(state_.character.alignment, choice);
+        if (newAlignment != state_.character.alignment) {
+            state_.character.alignment = newAlignment;
+            pushLog(
+                "Your alignment shifts: the Test measured what you did, not what you meant to be. "
+                "You are now considered " + std::string(character::alignmentName(newAlignment)) + ".");
+        }
         state_.character.robeColor = character::robeForAlignment(state_.character.alignment);
         switch (state_.character.robeColor) {
             case character::RobeColor::White:
                 pushLog(
-                    "An illusion wearing a face you trust falls apart at your feet more than once, "
-                    "if only you would spend it for power instead of saving it -- and every reflex "
-                    "you fight down to refuse that trade turns out to matter more than the spells "
-                    "you cast. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    "You could spend this -- the shape, the moment, whatever's left of the working "
+                    "underneath it -- for real power, and some clean part of you wants to. You "
+                    "don't. The illusion falls apart at your feet, the way it should have from the "
+                    "start, and every reflex you fought down to refuse that trade turns out to "
+                    "matter more than the spells you cast to get here. You emerge a " +
+                    std::string(character::robeColorName(state_.character.robeColor)) +
                     ", sworn to " + character::robeMoonName(state_.character.robeColor) +
                     ", having learned exactly what the good in you is worth when no one but the "
                     "Conclave is watching. The Conclave sees you home.");
                 break;
             case character::RobeColor::Red:
                 pushLog(
-                    "Every trial the Conclave sets you resolves into the same shape -- a mercy "
-                    "that would cost you the working, a cruelty that would buy it outright -- and "
-                    "salvation, when it comes, is the discipline to take neither and hold the line "
-                    "between them instead. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    "Every trial the Conclave set you tonight resolved into the same shape "
+                    "underneath -- a mercy that would cost you the working, a cruelty that would "
+                    "buy it outright -- and this one is no different. You take neither. You emerge "
+                    "a " + std::string(character::robeColorName(state_.character.robeColor)) +
                     ", sworn to " + character::robeMoonName(state_.character.robeColor) +
                     ", already fluent in a kind of balance most people spend a lifetime failing to "
                     "learn. The Conclave sees you home.");
                 break;
             case character::RobeColor::Black:
                 pushLog(
-                    "When the illusion finally puts someone you'd call a friend between you and "
-                    "the only way through, you don't hesitate nearly as long as you expected to -- "
-                    "and the Conclave marks that, not the spell that follows, as the moment you "
-                    "actually passed. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    "The illusion puts someone you'd call a friend between you and the only way "
+                    "through, and you don't hesitate nearly as long as you expected to. You emerge "
+                    "a " + std::string(character::robeColorName(state_.character.robeColor)) +
                     ", sworn to " + character::robeMoonName(state_.character.robeColor) +
                     ", carrying home a certainty about yourself you didn't have when you left. "
                     "The Conclave sees you home.");

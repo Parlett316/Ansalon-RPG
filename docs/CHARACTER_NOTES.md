@@ -566,6 +566,34 @@ one of the three Milestone 103 passages above — relocated verbatim into
 text is fixed and can't branch by alignment the way this needed to. See
 `docs/QUEST_NOTES.md`'s "Shipped quests" for the quest's own writeup.
 
+**Redone later** (same section of `docs/QUEST_NOTES.md`), twice, in the
+same session. First pass added a real `SLAY wight 1` objective alongside
+`VISIT palanthas` -- the original single-`VISIT` shape had zero
+mechanical or narrative representation of DLA's own "at least one solo
+combat against an opponent who is two levels higher than the initiate"
+Test guideline.
+
+Second pass replaced the `REWARD_WAYRETH_ROBE` switch's own alignment
+lookup entirely. Both DLA and the Players Guide (`References/pg.txt:
+5417-5447`) say the Test explicitly does not grade a preset alignment --
+each Robe's own admission requirement is a check on conduct *during* the
+Test instead ("passed... without having committed an act contrary to
+the laws of" good/neutrality/evil). `state_.character.robeColor =
+character::robeForAlignment(state_.character.alignment)` had this
+backwards -- it read a stat frozen at character creation and never asked
+what the character actually did. Now the Wight, once defeated, reshapes
+into a trusted-ally illusion and poses a real `drawPickerFrame` choice;
+the chosen ethic (`game::EthicChoice`, `GameLoop.h`) both selects the
+Robe/outcome passage *and* -- per direct user decision -- overwrites
+`state_.character.alignment` itself, preserving the Lawful/Neutral/
+Chaotic axis via a new `game::withEthic` free function. First alignment
+mutation anywhere in this codebase after character creation; every other
+`good`/`evil` `REQUIRE` reads it live, so the change ripples forward
+automatically. `character::robeForAlignment`/`WizardOrder.h/.cpp` are
+untouched -- only what feeds them changed. Full writeup, including the
+sourcing and the "why not permadeath" reasoning: `docs/QUEST_NOTES.md`'s
+"Shipped quests".
+
 ## Leveling / experience
 
 `character::applyPendingLevelUps` (`Leveling.h/.cpp`) is called from

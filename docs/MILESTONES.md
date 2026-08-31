@@ -4220,6 +4220,131 @@ now fully verified, nothing further outstanding.
      writeup: `docs/ZONE_NOTES.md`'s "Boats" section, `docs/MAP_NOTES.md`'s
      new "Port O'Call" section.
 
+123. `wayreth_summons` redone -- user's direct complaint: the Test of High
+     Sorcery, this project's biggest Mage-only milestone, was mechanically
+     just one `VISIT palanthas` objective. "It can't just be a standard
+     fetch quest."
+
+     Re-checked `.research/dla_full.txt` (OCR of *Dragonlance Adventures*
+     pp.34-35, "The Test of High Sorcery" -- already this quest's own
+     citation, but not fully used): the book lists five real guidelines
+     for what a Test should contain, including "at least one solo combat
+     against an opponent who is two levels higher than the initiate" and
+     the framing line "no one who comes is guaranteed of returning alive."
+     Milestone 103's three outcome passages (`GameLoop.cpp`'s
+     `REWARD_WAYRETH_ROBE` switch, left as-is by this first pass, revised
+     by the second pass below) already narrate two of the other
+     guidelines (repeated trials, a combat-against-an-ally beat). The
+     solo-combat guideline was the one with zero representation,
+     mechanical or narrative -- the gap this first pass closes.
+
+     Added a second objective, `SLAY wight 1`, to the existing
+     `data/quests.txt` block -- the same "mix objective kinds in one
+     quest" pattern `named_in_fact` (VISIT + SLAY baaz) and
+     `measure_of_roses` (VISIT + SLAY ogre) already established, not a new
+     quest-engine stage system (a real per-trial sequence was considered
+     and rejected -- `docs/QUEST_NOTES.md` has repeatedly and deliberately
+     deferred a stage-index system, and one extra objective already closes
+     the gap). `wight` (`data/monsters.txt`) was unused by any quest
+     before this, carries no `TERRAIN_BIAS` (fits "the trial finds you"
+     over "go stand in a specific biome," the same lore this quest's own
+     offer text already leans on), and at 1,400 XP is markedly tougher
+     than every other SLAY target in the roster except Troll/Ettin --
+     deliberately the hardest solo fight offered so far, matching the
+     source's "no one who comes is guaranteed of returning alive" framing
+     (softened in practice by this project's standing "knocked out, not
+     killed" combat rule). `OFFER`/`PROGRESS`/`COMPLETE` text was lightly
+     rewritten to foreshadow and then acknowledge the fight, framing the
+     Wight explicitly as the Test's own illusion/manifestation rather than
+     a literal undead sentry guarding Wayreth, matching the existing
+     outcome passages' own repeated "illusion" language. Reward raised
+     from XP-only (150) to `REWARD_STEEL 75`/`REWARD_XP 250`, roughly
+     matching/exceeding `measure_of_roses`'s 100/250 tier. `ACCEPT`'s core
+     text, `REQUIRE wayreth_eligible`, `VISIT palanthas`, and
+     `REWARD_WAYRETH_ROBE` are all unchanged. Also lightly touched
+     `README.md`'s one-sentence mention of this quest so it doesn't
+     undersell it.
+
+     That first pass was pure content: zero `.cpp`/`.h` changes, zero new
+     `REQUIRE`/`REWARD` flags, zero save-format changes. Verified via a
+     clean `/W4` rebuild and the piped smoke test, which loads
+     `QuestCatalog` at real program startup, proving `QuestLoader`
+     accepts the new `SLAY` line and edited text cleanly.
+
+     **Redone again, same session, after further pushback.** The user
+     pointed out the deeper problem directly: winning the Wight fight via
+     ordinary combat RNG isn't what the book is actually testing, and
+     asked what should happen if the player "falls" -- it shouldn't be a
+     dice roll, and (their own proposed fix) a character's Robe should be
+     able to shift color based on an actual choice, "and vice versa."
+     Re-researched properly this time, since the first pass leaned on
+     `.research/dla_full.txt`'s column-garbled OCR alone:
+     `.research/dla_layout.txt` (~line 2094) plus the fuller prose in
+     *Players Guide to the Dragonlance Campaign* (`References/pg.txt:
+     5417-5447`) both say the Test explicitly does **not** grade a
+     declared alignment -- "less interested in the applicant's
+     alignment... than whether he will use the power of magic in a
+     responsible manner" (PG) -- yet each Robe's own "Minimum
+     Requirements" in DLA is a check on conduct *during* the Test:
+     passed "without having committed an act contrary to the laws of"
+     good/neutrality/evil, respectively. So the original per-guideline
+     summary above undersold it: Milestone 103's passages narrated
+     repeated trials and an ally-combat beat, but the Robe itself still
+     came from `character::robeForAlignment(state_.character.alignment)`
+     -- a stat frozen at character creation, never what the character
+     actually did. Both books also state, twice between them, that
+     "failure means death" -- real, but incompatible with this project's
+     unbroken "knocked out, not killed" invariant, so permadeath was
+     never on the table; "failure" needed a different meaning here.
+
+     Extended `GameLoop::offerOrTurnInQuest`'s `q->rewardWayrethRobe`
+     block (`GameLoop.cpp`) rather than inventing a generic mechanic --
+     same "named, specific, compile-time flag" shape this reward has
+     always used. Once the Wight falls, it reshapes into "a face you'd
+     trust with your back turned" (a new `drawDialogueFrame` scene,
+     folding in DLA's still-otherwise-unaddressed "combat against a
+     known ally" guideline for free) and poses a real three-option
+     `drawPickerFrame` choice -- the same primitive Accept/Decline and
+     the topic menus already use, in-fiction options only, no mechanical
+     labels. The choice maps to a new `game::EthicChoice` enum
+     (`GameLoop.h`, next to `conditionMatches`) and a new free function,
+     `game::withEthic`, that swaps only the Good/Neutral/Evil axis of
+     `character::Alignment` while preserving Lawful/Neutral/Chaotic --
+     exact index arithmetic over the enum's own declaration order, no
+     lookup table. **Per the user's explicit decision** (asked directly
+     via a real fork): the choice overwrites `state_.character.alignment`
+     itself, not just the Robe -- the first alignment mutation anywhere
+     in this codebase after character creation. Every other `good`/`evil`
+     `REQUIRE` already reads `c.alignment` live, so every other
+     alignment-gated quest and NPC line picks this up automatically, the
+     same "objectives are live queries over existing state" principle
+     this project leans on everywhere else. The three outcome passages
+     were lightly re-threaded (not rewritten -- nearly all of Milestone
+     103's original wording survives) to read as one continuous scene
+     instead of three independent vignettes.
+
+     No changes to `data/quests.txt`, `wayreth_eligible`, the Robed
+     Stranger POI, `character::robeForAlignment`, or the save format
+     (`ALIGNMENT`/`ROBE` were already-persisted; this adds a second
+     runtime mutation site for one of them). Verified via a clean `/W4`
+     rebuild (zero new warnings) and the piped smoke test; `withEthic`'s
+     arithmetic was checked by hand across all nine `Alignment` values
+     rather than a dedicated self-test target -- `conditionMatches` and
+     its `GameLoop.cpp` neighbors have never been isolated into one in
+     this project's history, since that file's own dependency graph
+     (world/combat/quest/render, all of it) makes a truly minimal
+     throwaway target impractical; this class of logic gets verified by
+     rebuild + direct read-through + interactive play instead, same as
+     always. `save3.txt` (Serath) already has this quest `Complete`
+     under the old shape either way and can't retest any of this. The
+     picker, the setup scene, and the alignment-shift log line have no
+     piped-testable surface at all (quest turn-in is well past character
+     creation, where `_getch()` stops being pipeable) -- seeing any of it
+     needs a fresh level-3+ Mage and the user's own keyboard, more
+     acutely than the usual quest-milestone caveat. Full writeup:
+     `docs/QUEST_NOTES.md`'s "Shipped quests" (extended in place) and
+     `docs/CHARACTER_NOTES.md`'s "The Wayreth quest".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

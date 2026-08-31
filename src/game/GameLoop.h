@@ -41,6 +41,20 @@ struct Speech {
 // constructing a whole GameLoop.
 bool conditionMatches(const std::string& condition, const character::Character& character);
 
+// The wayreth_summons turn-in's real Test -- which "law" (good/neutral/
+// evil) the player's choice keeps, per Dragonlance Adventures pp.34-35's
+// own per-Robe "Minimum Requirements" (each Robe requires passing the
+// Test "without having committed an act contrary to the laws of"
+// good/neutrality/evil respectively -- a check on conduct during the
+// Test, not the character's preset alignment). See docs/QUEST_NOTES.md.
+enum class EthicChoice { Good, Neutral, Evil };
+
+// Preserves the Lawful/Neutral/Chaotic axis of `current`, replaces only
+// the Good/Neutral/Evil axis with `choice`. A free function (not a
+// GameLoop member), same direct-unit-testability reason as
+// conditionMatches above.
+character::Alignment withEthic(character::Alignment current, EthicChoice choice);
+
 // Lowercases `raw`, strips anything that isn't a letter/digit/hyphen/
 // apostrophe, and splits on the remaining whitespace -- the free-typed
 // "ask about..." input's tokenization. A free function (not a GameLoop
