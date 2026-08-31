@@ -785,21 +785,73 @@ today:
 | Baaz Draconian | 2-20 (2d10), DLA p.74 | 2 4 |
 | Kapak/Bozak/Sivak Draconian | 2-20 (2d10) each, DLA p.74-75 | *(left solo)* |
 | Aurak Draconian | 1-2, DLA p.73 | *(left solo -- barely supports >1 anyway)* |
-| Thanoi | 1-20 (1d20), DLA p.78 | *(left solo)* |
-| Owlbear | 1 (2-8 only in its own lair), p.284 | *(left solo -- real data doesn't support a wandering group)* |
+| Thanoi | 1-20 (1d20), DLA p.78 | 1 4 *(Milestone 125)* |
+| Owlbear | 1 (2-8 only in its own lair), p.284 | *(left solo permanently -- real data doesn't support a wandering group)* |
 | Wight | 2-16 (2d8), p.360 | *(left solo)* |
 | Troll | 1-12, p.349 | *(left solo)* |
 | Black Bear | 1-3, p.17 | 1 3 (unclamped -- already under the cap) |
 | Worg | 3-12, p.362 | 3 4 |
-| Ice Bear | 1-4 (1d4), DLA p.76 | *(left solo)* |
+| Ice Bear | 1-4 (1d4), DLA p.76 | 1 4 (unclamped) *(Milestone 125)* |
 | Lizard Man | 8-15 (1d8+7), p.227 | 4 4 |
 | Giant Toad | 1-12, p.345 | 1 4 |
-| Ettin | 1, rarely 1-4, p.135 | *(left solo -- the book itself frames a group as the exception)* |
-| Giant Spider | 1-8, p.326 | *(left solo -- ambush predator flavor, real poison bite)* |
+| Ettin | 1, rarely 1-4, p.135 | *(left solo permanently -- the book itself frames a group as the exception)* |
+| Giant Spider | 1-8, p.326 | 1 4 *(Milestone 125)* |
 
-Revisiting the solo-tier list above (with matching `MIN_TOWN_DISTANCE`
-re-tuning for the currently-ungated dangerous ones) is real, scoped future
-work, not an oversight -- see "Extending this later" below.
+Revisiting the remaining solo tier above (Ogre/Kapak/Bozak/Sivak/Aurak/
+Wight/Troll, all `MIN_TOWN_DISTANCE`-gated, with matching gate re-tuning)
+is real, scoped future work, not an oversight -- see "Extending this
+later" below. Owlbear and Ettin are a different, permanent case: their own
+real No. Appearing data prints a solitary number for a wandering
+encounter, so there's no sourced group to add for either regardless of
+future re-tuning.
+
+## Monster encounter groups, continued (Milestone 125)
+
+Closed part of the gap the table above tracks. Re-verified all 12
+still-solo monsters' real No. Appearing directly against rendered
+rulebook page images (Monster Manual pp.135, 272, 284, 326, 349, 360;
+*Dragonlance Adventures* pp.73-76, 78) rather than trusting Milestone
+113's citations at face value -- every figure matched, including two
+worth calling out on their own terms rather than just re-confirming a
+number: **Owlbear**'s real entry prints "1 (2-8)" and **Ettin**'s prints
+"1 or 1-4" -- in both cases the *wandering* encounter (this project's only
+encounter type; there's no lair concept) is a real, sourced 1, with the
+larger figure explicitly a lair-only (Owlbear) or rare-gathered-band
+exception (Ettin) in the book's own prose. Grouping either would misread
+the source, so both move from "deferred" to **permanently solo** in the
+table above.
+
+That left 10 genuinely groupable monsters, but 7 of them (Ogre, Kapak,
+Bozak, Sivak, Aurak, Wight, Troll) are `MIN_TOWN_DISTANCE`-gated
+specifically for being too dangerous solo -- grouping them without also
+re-tuning those gates risks the same untested difficulty spike Milestone
+113 already flagged and declined to ship (up to 4 Auraks, say). Asked the
+user directly this session: leave that 7-monster tier solo for now, and
+only ship the 3 monsters that carry no distance/danger gate at all --
+Thanoi, Ice Bear, and Giant Spider (see the table above for their new
+`GROUP` lines).
+
+**Honest caveat, not smoothed over**: "no distance gate" isn't the same
+as "low danger" for two of these three. Thanoi (HD4, comparable to Ogre)
+and Ice Bear (HD6+2, XP 707, comparable to the Sivak tier) only lack
+`MIN_TOWN_DISTANCE` because their `ONLY_TERRAIN` glacier lock already
+keeps them off a starting town's doorstep by a different mechanism --
+grouping them does reopen a sliver of the same stacking-danger concern
+the 7-monster tier above was just held back for, just gated by terrain
+instead of raw tile distance. Giant Spider's own Milestone 113 exclusion
+was a separate concern entirely: stacking its real, modeled poison bite
+(a saving throw per hit) up to 4-deep. All three shipped anyway this
+pass, per the user's explicit direction after this was flagged -- a
+real, acknowledged trade-off, not an oversight.
+
+No C++ changes -- pure `data/monsters.txt` additions through the
+already-exercised `GROUP` grammar (proven by the 14 Milestone 113 users).
+Verified via a clean `/W4` rebuild (zero new warnings) and the piped
+save-slot smoke test, which loads `MonsterCatalog` before the save-slot
+menu renders. Seeing an actual Thanoi/Ice Bear/Giant Spider band in a live
+fight has no piped-testable path (`_getch()` blocks that, same as every
+other combat-facing milestone) -- confirming it in practice still needs
+the user's own keyboard.
 
 **Targeting is driven by how many instances are alive right now, not the
 group size rolled at the start.** A solo fight (still the overwhelming
@@ -1326,13 +1378,17 @@ opposite grid side).
     computer control with the UIC command"), deployment order, plus the
     smaller Phase 2 gaps listed just above (still true for however many
     companions exist).
-- **The rest of the roster's real group sizes**: Milestone 113 (see
-  "Monster encounter groups" above) only applied sourced `GROUP` data to
-  14 of the 26 monsters -- the dozen left solo despite real No. Appearing
-  data supporting groups (Ogre, Kapak, Bozak, Sivak, Aurak, Ettin, Wight,
-  Troll, Thanoi, Owlbear, Ice Bear, Giant Spider) would need a companion
-  pass re-checking/adding `MIN_TOWN_DISTANCE` gates before grouping is
-  safe to ship for them.
+- **The rest of the roster's real group sizes**: Milestone 125 (see
+  "Monster encounter groups, continued" above) closed part of the gap
+  Milestone 113 left open, grouping Thanoi/Ice Bear/Giant Spider and
+  ruling Owlbear/Ettin permanently solo (their own real No. Appearing is
+  itself a wandering-encounter 1). Still open: Ogre, Kapak, Bozak, Sivak,
+  Aurak, Wight, and Troll -- all seven already `MIN_TOWN_DISTANCE`-gated,
+  all with real No. Appearing data supporting groups, deliberately left
+  solo again at the user's direction rather than shipping an untested
+  difficulty spike. Would need a gate re-tuning pass (raising the
+  distance thresholds, or an invented lower group cap for this
+  elite/dangerous tier) before grouping is safe to ship for them.
 - **Spellcasting**: Mage/Cleric now select and cast from a real,
   PHB/DQoK-sourced multi-level spellbook (49 implemented spells across
   Mage's 9 levels and Cleric's 7 — see `docs/CHARACTER_NOTES.md`'s

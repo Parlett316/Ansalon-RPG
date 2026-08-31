@@ -71,12 +71,22 @@
 #                          own invented playability cap of 4 -- see
 #                          docs/COMBAT_NOTES.md's "Monster encounter groups"
 #                          section (Milestone 113). Deliberately only applied
-#                          to the roster's low/mid-HD "line troop" tier this
-#                          pass -- every already-dangerous or MIN_TOWN_DISTANCE
-#                          -gated monster stays solo despite real No.
-#                          Appearing data supporting groups for most of them
-#                          too (see COMBAT_NOTES.md for the full findings and
-#                          why this was deferred rather than applied).
+#                          to the roster's low/mid-HD "line troop" tier that
+#                          pass -- every MIN_TOWN_DISTANCE-gated monster (Ogre/
+#                          Kapak/Bozak/Sivak/Aurak/Wight/Troll) stays solo
+#                          despite real No. Appearing data supporting groups
+#                          for them too, deliberately deferred again at
+#                          Milestone 125 rather than shipping an untested
+#                          difficulty spike without also re-tuning those
+#                          gates. Milestone 125 additionally grouped Thanoi/
+#                          Ice Bear/Giant Spider (real data supports it and
+#                          none carry a MIN_TOWN_DISTANCE gate). Owlbear and
+#                          Ettin stay solo permanently, not just deferred --
+#                          their own real No. Appearing prints a solitary
+#                          number for a wandering encounter, with a larger
+#                          figure only for a lair (Owlbear) or a rare,
+#                          explicitly-exceptional gathered band (Ettin). See
+#                          COMBAT_NOTES.md for the full findings.
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 #
@@ -173,6 +183,13 @@ DAMAGE 1 8 0
 STEEL 1 8 0
 XP 420
 POISON
+# Real No. Appearing (Giant column, matching this project's 3+3 HD/THAC0
+# 17/XP 420 stat line exactly) is 1-8 (Monster Manual p.326) -- clamped to
+# this project's playability cap. Left solo at Milestone 113 over concern
+# that stacking its real, modeled poison bite (a saving throw per hit) up
+# to 4-deep would be too punishing without further tuning -- shipped
+# anyway at Milestone 125, at the user's explicit direction.
+GROUP 1 4
 TERRAIN_BIAS % *
 DESC A spider the size of a hound drops from the canopy on a line of silk, mandibles clicking.
 END
@@ -456,6 +473,12 @@ STEEL 2 8 0
 # average roll (4d8 averages 18), same treatment as the draconians' XP
 # above.
 XP 157
+# Real No. Appearing is 1-20 (1d20, Dragonlance Adventures p.78) -- clamped
+# to this project's playability cap. Left solo at Milestone 113 alongside
+# the other danger-tier monsters despite carrying no MIN_TOWN_DISTANCE gate
+# of its own (ONLY_TERRAIN glacier below already keeps it away from towns)
+# -- shipped at Milestone 125, at the user's explicit direction.
+GROUP 1 4
 # The walrus-men of Icewall Glacier -- already referenced as flavor-only
 # dialogue at Ice Wall since Milestone 36, now a real roster entry.
 # Originally shipped with TERRAIN_BIAS toward glacier (3x weight there,
@@ -599,6 +622,14 @@ STEEL 0 0 0
 # average roll (6d8+2 averages 29), same treatment as the Draconians' XP:
 # 475 + 8(29) = 707.
 XP 707
+# Real No. Appearing is 1-4 (1d4, Dragonlance Adventures p.76) -- already
+# within this project's playability cap, so used as-is, unclamped, same
+# treatment as the Black Bear's own GROUP line. Left solo at Milestone 113
+# alongside the other danger-tier monsters despite carrying no
+# MIN_TOWN_DISTANCE gate of its own (ONLY_TERRAIN glacier below already
+# keeps it away from towns) -- shipped at Milestone 125, at the user's
+# explicit direction.
+GROUP 1 4
 # No Climate/Terrain field is printed for the Ice Bear (same gap as the
 # Thanoi) -- ONLY_TERRAIN glacier is an invented restriction, not a
 # sourced field, justified by the prose ("track prey over snow and ice...

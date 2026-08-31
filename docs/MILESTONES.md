@@ -4407,6 +4407,58 @@ now fully verified, nothing further outstanding.
      POIs you can buy from" and `docs/CHARACTER_NOTES.md`'s "Shops and
      catalogs" (renamed from "Six shops, six catalogs").
 
+125. Finished part of Milestone 113's own leftover work: sourced `GROUP`
+     data for 3 of the 12 monsters it left solo. Re-verified all 12
+     candidates' real Monstrous Manual/Dragonlance Adventures "No.
+     Appearing" field directly against rendered rulebook page images
+     (Monster Manual pp.135, 272, 284, 326, 349, 360; Dragonlance
+     Adventures pp.73-76, 78) rather than trusting Milestone 113's own
+     citations at face value -- every figure matched, but two turned up a
+     finding worth acting on rather than just re-confirming a number:
+     Owlbear's real entry prints "1 (2-8)" and Ettin's prints "1 or 1-4"
+     -- in both cases the *wandering* encounter (the only kind this
+     project models; there's no lair concept) is a real, sourced 1, with
+     the larger figure explicitly a lair-only or rare-gathered-band
+     exception in the book's own prose. Grouping either would misread the
+     source, so both move from "deferred" to permanently solo, a real
+     finding not just a re-statement of Milestone 113's own deferral.
+
+     That left 10 genuinely groupable monsters, but 7 (Ogre, Kapak,
+     Bozak, Sivak, Aurak, Wight, Troll) are `MIN_TOWN_DISTANCE`-gated
+     specifically for being too dangerous solo -- grouping them without
+     re-tuning those gates risks the same untested difficulty spike
+     Milestone 113 already declined to ship. **Asked the user directly**:
+     keep that 7-monster tier solo for now, and ship only the 3 monsters
+     that carry no distance/danger gate at all -- Thanoi, Ice Bear, and
+     Giant Spider, each getting a new sourced `GROUP 1 4` line in
+     `data/monsters.txt` (Thanoi real 1-20 clamped, Ice Bear real 1-4
+     already under the cap and used unclamped like Black Bear's own line,
+     Giant Spider real 1-8 clamped).
+
+     Flagged rather than smoothed over: "no distance gate" isn't the same
+     as "low danger" for two of these three. Thanoi (HD4, Ogre-comparable)
+     and Ice Bear (HD6+2, XP707, Sivak-tier-comparable) only lack
+     `MIN_TOWN_DISTANCE` because their `ONLY_TERRAIN` glacier lock already
+     keeps them off a starting town's doorstep by a different mechanism --
+     grouping them reopens a sliver of the same stacking-danger concern
+     the 7-monster tier was just held back for, gated by terrain instead
+     of tile distance. Giant Spider's own Milestone 113 exclusion was a
+     separate concern: stacking its real, modeled poison bite (a saving
+     throw per hit) up to 4-deep. All three shipped anyway this pass, at
+     the user's explicit direction after this was flagged.
+
+     Pure `data/monsters.txt` changes -- no C++ changes at all, since the
+     `GROUP` grammar and its clamping logic already existed and was
+     already exercised by 14 other monsters. Clean `/W4` rebuild (zero new
+     warnings). Verified via the piped save-slot smoke test, which loads
+     `MonsterCatalog` before the save-slot menu renders -- reaching that
+     menu confirms the three edited blocks still parse cleanly. No
+     piped-testable path to a live combat encounter exists regardless
+     (`_getch()` blocks that) -- seeing an actual Thanoi/Ice Bear/Giant
+     Spider band in a real fight still needs the user's own keyboard.
+     Full writeup: `docs/COMBAT_NOTES.md`'s "Monster encounter groups,
+     continued (Milestone 125)".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
