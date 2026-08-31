@@ -160,6 +160,9 @@ void QuestLoader::loadFromFile(const std::string& path, QuestCatalog& outCatalog
         } else if (keyword == "REWARD_FROSTREAVER") {
             if (!rest.empty()) fail(path, lineNumber, "REWARD_FROSTREAVER takes no argument");
             current.rewardFrostreaver = true;
+        } else if (keyword == "REWARD_WAYRETH_ROBE") {
+            if (!rest.empty()) fail(path, lineNumber, "REWARD_WAYRETH_ROBE takes no argument");
+            current.rewardWayrethRobe = true;
         } else if (keyword == "END") {
             if (current.name.empty()) fail(path, lineNumber, "quest is missing its NAME");
             if (current.offerText.empty()) fail(path, lineNumber, "quest is missing its OFFER text");

@@ -1,32 +1,35 @@
 # Current work
 
-Nothing in flight -- Milestone 120 (battle-map restyle: uniform `.` floor,
-bordered grid, "Battlefield: <terrain>" label instead of the tiled terrain
-glyph) is implemented, verified with a throwaway render harness across
-three real frames, rebuilt clean (`/W4`, zero new warnings), and confirmed
-by the piped character-creation smoke test.
+**Milestone 121 (the Wayreth quest) is implemented but not yet
+interactively verified.** The user asked for "the Towers of High Sorcery"
+to be added; research found the Palanthas Tower already shipped
+(Milestone 44) and the Tower of Wayreth was the real gap, with a real
+sourcing constraint (this project's own already-shipped Raistlin dialogue
+says the Tower has no fixed location and "finds you rather than the
+reverse"). Resolved per the user's own decision: unfindable except for a
+Mage character, and even then reachable only through a new quest,
+`wayreth_summons` (offered by a new "Robed Stranger" POI in Solace, gated
+`REQUIRE wayreth_eligible` -- Mage, level 3+). Full design in
+`docs/MILESTONES.md` entry 121, `docs/CHARACTER_NOTES.md`'s "The Wayreth
+quest", and `docs/QUEST_NOTES.md`'s "Shipped quests".
 
-Unlike every other combat-facing milestone, this one needed no interactive
-`_getch()` verification: `MapRenderer::drawCombatFrame` takes no keyboard
-input, so the throwaway harness could render and print real frames
-headlessly (group fight with two companions and a defeated instance; the
-same frame with the target picker open; a solo grassland fight). Harness
-and its temporary CMake target were deleted afterward.
+Done so far: all code/data changes, a clean `/W4` rebuild (zero new
+warnings), and the piped character-creation smoke test (confirms the new
+`data/quests.txt` block and `data/zones/solace.txt` POI/binding parse
+cleanly).
 
-**Outstanding from Milestone 119** (unchanged, still open): backstab and
-sweep have never been exercised in a real fight. See `docs/MILESTONES.md`
-entry 119 for the scenarios -- a Fighter adjacent to 2+ weak monsters
-(Goblin/Kobold/Hobgoblin/Skeleton) in a GROUP encounter should sweep all
-of them; a Thief in Leather-or-lighter attacking from exactly opposite the
-first attacker should show `+4` to-hit and an `x2`-`x5` damage multiplier,
-in both directions (companion around the player, player around a
-companion), plus the three negative cases (same-side, heavy armor,
-non-Thief).
-
-All three save slots are currently `(empty)` -- they were wiped during
-Milestone 120's clean-rebuild step (they live in `build\Debug`; see
-`docs/GOTCHAS.md` under Save/load). The user confirmed that was fine. It
-just means the Milestone 119 verification above needs a **freshly created
-character** taken far enough to recruit Bren Alder and Dessa Corrin.
+**Still needed**: interactive verification, same `_getch()` limitation as
+every quest/combat milestone. Specifically: confirm the Robed Stranger
+says nothing quest-related to a non-Mage or a Mage below level 3; confirm
+the quest offers at level 3; confirm `VISIT palanthas` gates completion
+correctly; confirm the Robe/outcome text matches the character's
+alignment on turn-in and shows correctly on the character sheet
+afterward. **No Mage save currently exists** -- `save1.txt` is Mason
+(Half-Elf Thief) and `save2.txt` is Mike (Human Fighter), both level 1,
+both with companions (Bren Alder + Dessa Corrin, and Dessa Corrin
+respectively) -- so this needs either a fresh Mage character leveled to
+3rd, or one of the two existing characters played further (neither is a
+Mage, so a fresh character is the only path to testing this specific
+milestone).
 
 Prior milestones' own history lives in `docs/MILESTONES.md`, not here.

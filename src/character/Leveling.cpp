@@ -3,7 +3,6 @@
 #include "character/Dice.h"
 #include "character/Knighthood.h"
 #include "character/Race.h"
-#include "character/WizardOrder.h"
 
 #include <algorithm>
 #include <array>
@@ -227,43 +226,13 @@ int applyPendingLevelUps(Character& character, std::vector<std::string>& message
             character.knightOrder == KnightOrder::Sword) {
             messages.push_back("Word reaches you that the Order of the Rose has taken notice of your deeds.");
         }
+        // No longer an automatic event -- as of the Wayreth quest (see
+        // docs/CHARACTER_NOTES.md's "Wizards of High Sorcery"), the actual
+        // Test and RobeColor assignment happen on turning in
+        // wayreth_summons (GameLoop.cpp's REWARD_WAYRETH_ROBE handling),
+        // not here. character.robeColor stays RobeColor::None until then.
         if (nextLevel == 3 && character.charClass == ClassId::Mage) {
-            character.robeColor = robeForAlignment(character.alignment);
-            switch (character.robeColor) {
-                case RobeColor::White:
-                    messages.push_back(
-                        "You journey to the Tower of Wayreth and undergo the Test of High Sorcery. "
-                        "An illusion wearing a face you trust falls apart at your feet more than once, "
-                        "if only you would spend it for power instead of saving it -- and every reflex "
-                        "you fight down to refuse that trade turns out to matter more than the spells "
-                        "you cast. You emerge a " + std::string(robeColorName(character.robeColor)) +
-                        ", sworn to " + robeMoonName(character.robeColor) +
-                        ", having learned exactly what the good in you is worth when no one but the "
-                        "Conclave is watching.");
-                    break;
-                case RobeColor::Red:
-                    messages.push_back(
-                        "You journey to the Tower of Wayreth and undergo the Test of High Sorcery. "
-                        "Every trial the Conclave sets you resolves into the same shape -- a mercy "
-                        "that would cost you the working, a cruelty that would buy it outright -- and "
-                        "salvation, when it comes, is the discipline to take neither and hold the line "
-                        "between them instead. You emerge a " + std::string(robeColorName(character.robeColor)) +
-                        ", sworn to " + robeMoonName(character.robeColor) +
-                        ", already fluent in a kind of balance most people spend a lifetime failing to learn.");
-                    break;
-                case RobeColor::Black:
-                    messages.push_back(
-                        "You journey to the Tower of Wayreth and undergo the Test of High Sorcery. "
-                        "When the illusion finally puts someone you'd call a friend between you and "
-                        "the only way through, you don't hesitate nearly as long as you expected to -- "
-                        "and the Conclave marks that, not the spell that follows, as the moment you "
-                        "actually passed. You emerge a " + std::string(robeColorName(character.robeColor)) +
-                        ", sworn to " + robeMoonName(character.robeColor) +
-                        ", carrying home a certainty about yourself you didn't have when you left.");
-                    break;
-                case RobeColor::None:
-                    break; // unreachable -- robeForAlignment never returns None
-            }
+            messages.push_back("You feel, faintly, that something has taken notice of you.");
         }
 
         ++levelsGained;

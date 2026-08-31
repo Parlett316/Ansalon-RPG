@@ -298,15 +298,15 @@ ordinary axe, same as the book's own "melts above freezing" weakness
 implies. Enough experience means
 real leveling — more hit points, a better THAC0, better saving throws, all
 sourced from the PHB's level-by-level tables (a Knight of the Crown gets a
-nod toward the Order of the Sword at 3rd level, and a Mage actually
-undergoes the Test of High Sorcery and is Robed by alignment) — see
-`docs/CHARACTER_NOTES.md`. The world finally has things to actually do:
-press `g` at any time to check your quest journal, and talk to a
-quest-giver to be offered one, track its progress, and turn it in for a
-reward — the moment every objective's actually done, the game says so
-itself ("...is ready to turn in -- return to..."), so you never have to
-guess or walk back speculatively. Twelve ship so far — Solace's Notice
-Board offers a bounty to clear three timber wolves off the south road;
+nod toward the Order of the Sword at 3rd level, and a Mage feels, faintly,
+that something has taken notice of them) — see `docs/CHARACTER_NOTES.md`.
+The world finally has things to actually do: press `g` at any time to
+check your quest journal, and talk to a quest-giver to be offered one,
+track its progress, and turn it in for a reward — the moment every
+objective's actually done, the game says so itself ("...is ready to turn
+in -- return to..."), so you never have to guess or walk back
+speculatively. Seventeen ship so far — Solace's Notice Board offers a
+bounty to clear three timber wolves off the south road;
 Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
 Tower, and Kalaman's City Watchman each have their own reason to send you
 somewhere or against something; the Silvanesti Warder will only speak of
@@ -332,7 +332,13 @@ castle's gate; and a displaced farmer sheltering in Thorbardin, driven
 from Pax Tharkas, would trade real seed grain for a real shot at
 planting something come spring — a Farmer's Cart in Haven has more than
 its own fields will use this season, if you're willing to carry a sack
-the distance — see `docs/QUEST_NOTES.md` for the full design, what
+the distance; and back in Solace, an unremarkable hooded figure at the
+corner of the square has nothing to say to most travelers at all, but a
+Mage who's reached 3rd level and gone looking for what Palanthas's Great
+Library still remembers of the old paths finds them waiting with a
+different offer entirely -- the Tower of Wayreth itself moves through its
+forest at its own pleasure and can't be walked to on any map, so this is
+the only way there — see `docs/QUEST_NOTES.md` for the full design, what
 ships, and how more get authored.
 
 If you're picking this project up fresh (human or AI), read

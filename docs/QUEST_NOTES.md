@@ -97,6 +97,19 @@ REWARD_KNIGHT_ROSE                 optional, bare flag (no argument) --
                                   carries it. Same "named, specific,
                                   compile-time flag" shape as
                                   REWARD_KNIGHT_SWORD above.
+REWARD_WAYRETH_ROBE                optional, bare flag (no argument) --
+                                  assigns character::RobeColor by
+                                  alignment and narrates the Test of High
+                                  Sorcery outcome on turn-in (see
+                                  "wayreth_summons, in Solace" below).
+                                  Exactly one quest (wayreth_summons)
+                                  carries it. Same "named, specific,
+                                  compile-time flag" shape as
+                                  REWARD_KNIGHT_SWORD above -- the one
+                                  reward flag whose real payoff can't live
+                                  in COMPLETE, since COMPLETE is fixed
+                                  text and this needed to branch by
+                                  alignment.
 END
 ```
 
@@ -429,6 +442,72 @@ freestanding multi-stage quest is still deferred until something actually
 needs one.
 
 ## Shipped quests
+
+### `wayreth_summons`, in Solace — the Test of High Sorcery
+
+Requested directly by the user: "the Towers of High Sorcery need to be
+added." The Tower of Palanthas was already in the game (Milestone 44,
+`data/zones/palanthas.txt` `POI T`, sealed and non-enterable). The Tower
+of Wayreth was the real gap, and it comes with a genuine sourcing
+constraint: this project's own already-shipped Raistlin dialogue
+(`data/timeline.txt`, Milestone 72) says the Tower "does not stay where it
+was the day before... finds you rather than the reverse" —
+`References/TSR 2143 PG1 Players Guide to the Dragonlance Campaign.pdf`
+confirms this as real sourced lore (an NPC there says outright "Not even I
+could find the Tower of Wayreth"). Put to the user directly: how to
+reconcile "add it" with "it can't be found." Their answer -- unfindable
+for everyone except a Mage, and even then reachable only through a quest
+-- is what this quest implements.
+
+Deliberately **no new `LOCATION`/zone file**. A persistent walkable
+Wayreth zone would need overworld coordinates, which either breaks
+"unfindable" (reachable on foot, by anyone) or risks a real softlock
+(unlike the SEA_LOCKED islands, each of which has its own return-boat POI,
+Wayreth has no physical place to put a return trip's arrival point).
+Instead the whole visit is a scripted round trip bundled entirely into
+this one quest's Accept→Complete flow -- narratively, not mechanically, a
+voyage.
+
+Offered by a new POI, "A Robed Stranger" (`data/zones/solace.txt`, `POI
+R`), gated by a new compound condition `wayreth_eligible`
+(`game::conditionMatches`, `GameLoop.cpp`) -- `charClass == Mage && level
+>= 3`, the same shape as `sword_eligible`. An unmet `REQUIRE` means the
+Stranger has nothing to say about the quest at all, so no other class, and
+no Mage below level 3, ever sees a hint Wayreth exists; their base
+`TALK`/`TALK_AGAIN` text is deliberately mundane. One objective, `VISIT
+palanthas`, reuses already-shipped content for free rather than inventing
+a fetch/kill hook that wouldn't suit a mystical summons: the Great
+Library's existing `SAY_IF L mage` Test-of-High-Sorcery flavor, and
+`.research/dwn_full.txt` (~line 3648)'s own detail that the Towers'
+surviving spellbooks were given to "the great library at Palanthas" -- a
+real, sourced reason a mage would go there first.
+
+A new reward flag, `REWARD_WAYRETH_ROBE` (bare, same "named, specific,
+compile-time flag" shape as `REWARD_KNIGHT_SWORD`), does the real work on
+turn-in: assigns `character::RobeColor` by alignment and narrates one of
+three White/Red/Black outcome passages. Those three passages aren't new
+prose -- they're Milestone 103's own text, **relocated verbatim** from
+`character::applyPendingLevelUps` (`Leveling.cpp`) into `GameLoop::
+offerOrTurnInQuest`, because a quest's `COMPLETE` field is fixed text and
+can't branch by alignment the way this needed to. `Leveling.cpp`'s level-3
+Mage branch now only foreshadows ("You feel, faintly, that something has
+taken notice of you") instead of resolving the Test outright;
+`character.robeColor` stays `RobeColor::None` (already its default, and
+already hidden from the character sheet in that state, `MapRenderer.cpp`)
+until this quest actually completes -- consistent with the source
+material, since not every mage takes the Test the moment they're able to.
+See `docs/CHARACTER_NOTES.md`'s "The Wayreth quest" for the full writeup.
+
+Verified via the piped smoke test (confirms `data/quests.txt`'s new block
+and `data/zones/solace.txt`'s new `POI R`/`QUEST R wayreth_summons`
+binding all parse cleanly, and `main.cpp`'s cross-validation accepts it) and
+a clean `/W4` rebuild (zero new warnings). Interactive verification --
+reaching level 3 as a Mage, confirming the Stranger stays silent below
+that threshold, accepting the quest, satisfying `VISIT palanthas`, turning
+in, and confirming the Robe/outcome text matches the character's alignment
+-- still needs the user's own keyboard, the same `_getch()` limitation
+flagged for every quest milestone so far, and no Mage save currently
+exists to test with.
 
 ### `reason_worth_giving`, at the Plains of Dust
 

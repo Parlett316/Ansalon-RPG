@@ -659,6 +659,14 @@ str_13`, a raw ability-score check rather than race/class/knight-rank —
 see `docs/QUEST_NOTES.md`'s "Shipped quests" and `docs/CHARACTER_NOTES.md`'s
 "Magic items".
 
+The Wayreth quest added a ninth, `data/zones/solace.txt`'s new POI `R`
+("A Robed Stranger"), offering `wayreth_summons` — gated by a new
+`REQUIRE wayreth_eligible` (Mage, level 3+). Like `frostreaver_salvage`,
+its turn-in grants something other than steel/XP/a rank
+(`REWARD_WAYRETH_ROBE`); unlike every prior `QUEST`, its destination isn't
+a real map location at all — see `docs/QUEST_NOTES.md`'s "Shipped
+quests" and `docs/CHARACTER_NOTES.md`'s "The Wayreth quest".
+
 ## Aftermath dialogue: POIs that react once the Heroes have moved on
 
 `TALK_AFTER <char> <dialogue...>` marks a POI's reaction to the Heroes of the
@@ -847,6 +855,16 @@ the forge running — written evergreen, deliberately never claiming to
 or already dead by Godshome, depending on the game day — see
 `docs/TIMELINE_NOTES.md`). `QUEST S ore_for_the_forge` — see
 `docs/QUEST_NOTES.md`'s "Shipped: ore_for_the_forge".
+
+The Wayreth quest added a ninth POI, `R` ("A Robed Stranger") — a new,
+deliberately unnamed figure, ordinary/cryptic flavor `TALK`/`TALK_AGAIN`
+for everyone, offering `QUEST R wayreth_summons` only once `REQUIRE
+wayreth_eligible` is met (Mage, level 3+). Its base dialogue never
+mentions Wayreth by name, so a character who never qualifies never learns
+this NPC is anything but background color — see `docs/QUEST_NOTES.md`'s
+"wayreth_summons, in Solace" for the full quest writeup and
+`docs/CHARACTER_NOTES.md`'s "The Wayreth quest" for why this exists at
+all instead of a normal map location.
 
 ## The Inn of the Last Home specifically
 

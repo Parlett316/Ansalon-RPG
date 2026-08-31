@@ -4003,6 +4003,14 @@ recovery description.
      milestone -- see `docs/CURRENT_WORK.md` for the specific scenarios
      still needing a real playthrough.
 
+**Follow-up**: that interactive playthrough surfaced a real bug first
+(a queued/held movement key silently replaying as combat's first action,
+wrecking backstab/sweep's exact-grid-position requirement -- fixed via
+`Console::flushInput()` plus an Enter-gated dismissal screen, see
+`docs/GOTCHAS.md`'s Input section). With that fixed, the user confirmed
+backstab and sweep both work correctly in real fights. Milestone 119 is
+now fully verified, nothing further outstanding.
+
 120. Battle-map restyle -- a small, purely cosmetic pass, requested
      directly by the user ("make the battle map nicer looking, I don't
      like the x's around to start") rather than picked from `NEXT UP`.
@@ -4049,6 +4057,70 @@ recovery description.
      here, but the file-layout gotcha is real and is now noted in
      `docs/GOTCHAS.md` under Save/load for anyone mid-playthrough who
      would rather not redo one.
+
+121. The Wayreth quest -- requested directly by the user: "the Towers of
+     High Sorcery need to be added." Research turned up that the Tower of
+     Palanthas was already in the game (Milestone 44, `data/zones/
+     palanthas.txt` `POI T` -- sealed, no interior). The Tower of Wayreth
+     was the real gap, and it comes with a genuine sourcing constraint:
+     this project's own already-shipped Raistlin dialogue (`data/
+     timeline.txt`, Milestone 72) says the Tower "does not stay where it
+     was the day before... finds you rather than the reverse" --
+     `References/TSR 2143 PG1 Players Guide to the Dragonlance Campaign.pdf`
+     confirms this as real sourced lore (an NPC there says outright "Not
+     even I could find the Tower of Wayreth"), not invented flavor. Put to
+     the user directly: how to reconcile "add it" with "it can't be
+     found." Their answer -- unfindable for everyone except a Mage, and
+     even then reachable only through a quest, never a walk-up map
+     location -- is what this milestone implements.
+
+     Deliberately **no new `LOCATION`/zone file**. A persistent walkable
+     Wayreth zone would need overworld coordinates, which either breaks
+     "unfindable" (reachable on foot, by anyone) or risks a real softlock
+     (unlike the SEA_LOCKED islands, each of which has its own return-boat
+     POI, Wayreth has no physical place to put a return trip's arrival
+     point). Instead the whole visit is a scripted round trip bundled
+     entirely into one new quest's Accept->Complete flow.
+
+     `wayreth_summons` (`data/quests.txt`) is offered by a new POI, "A
+     Robed Stranger" (`data/zones/solace.txt` `POI R`), gated by a new
+     compound condition `wayreth_eligible` (`game::conditionMatches`,
+     `GameLoop.cpp`) -- `charClass == Mage && level >= 3`, the same shape
+     as `sword_eligible`. An unmet `REQUIRE` means the Stranger has
+     nothing to say about the quest at all, so no other class, and no
+     Mage below level 3, ever sees a hint Wayreth exists; their base
+     `TALK`/`TALK_AGAIN` text is deliberately mundane. One objective,
+     `VISIT palanthas`, reuses already-shipped content for free: the Great
+     Library's existing `SAY_IF L mage` Test-of-High-Sorcery flavor, and
+     `.research/dwn_full.txt` (~line 3648)'s own detail that the Towers'
+     surviving spellbooks were given to "the great library at Palanthas."
+
+     A new reward flag, `REWARD_WAYRETH_ROBE` (`quest::Quest.h`,
+     `QuestLoader.cpp`, same "named, specific, compile-time flag" shape as
+     `REWARD_KNIGHT_SWORD`), does the real work on turn-in
+     (`GameLoop::offerOrTurnInQuest`): assigns `character::RobeColor` by
+     alignment and narrates one of three White/Red/Black outcome
+     passages. Those three passages aren't new prose -- they're Milestone
+     103's own text, **relocated verbatim** from `character::
+     applyPendingLevelUps` (`Leveling.cpp`), because a quest's `COMPLETE`
+     field is fixed text and can't branch by alignment the way this
+     needed to. `Leveling.cpp`'s level-3 Mage branch now only foreshadows
+     ("You feel, faintly, that something has taken notice of you") instead
+     of resolving the Test outright; `character.robeColor` stays
+     `RobeColor::None` (already its default, already hidden from the
+     character sheet in that state) until this quest actually completes --
+     consistent with the source material, since not every mage takes the
+     Test the moment they're able to. Full writeup: `docs/CHARACTER_NOTES.md`'s
+     "The Wayreth quest", `docs/QUEST_NOTES.md`'s "Shipped quests", and
+     `docs/ZONE_NOTES.md`'s Solace section.
+
+     Verified via the piped smoke test (confirms the new quest block and
+     zone POI/binding all parse cleanly, and `main.cpp`'s cross-validation
+     accepts it) and a clean `/W4` rebuild (zero new warnings).
+     **Interactive verification needed**, same `_getch()` limitation as
+     every other quest/combat-facing milestone -- and no Mage save
+     currently exists to test with, so this also needs a fresh Mage
+     character leveled to 3rd.
 
 ## NEXT UP
 
@@ -4135,9 +4207,13 @@ session's work.
    Dessa Corrin, joins Bren Alder) shipped at Milestone 118. Thief
    backstab and Fighter sweep attacks -- both party-wide, applying
    identically to the player and to companions -- shipped at Milestone
-   119.** Still open: player-directed control (a UIC-style toggle) and
-   deployment order -- plus the smaller gaps Milestone 117 deliberately
-   deferred (Brooch/Magic Missile/breath weapon/death-burst all still
-   player-only, no opportunity attacks from companion movement, no
-   "finish off a downed ally"). See `docs/COMBAT_NOTES.md`'s "Extending
-   this later" section.
+   119, interactively confirmed working after this session's input-replay
+   bugfix (see entry 119's follow-up above).** Player-directed control (a
+   UIC-style toggle) and deployment order are **deliberately deferred for
+   the foreseeable future**, by user decision (2026-08-30) -- not being
+   pursued further absent a concrete reason to revisit, same posture as
+   item 2's Draconian mechanics above. Companions stay AI-controlled only.
+   The smaller gaps Milestone 117 deliberately deferred remain open too
+   (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
+   no opportunity attacks from companion movement, no "finish off a downed
+   ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.

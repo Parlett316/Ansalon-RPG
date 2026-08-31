@@ -123,6 +123,15 @@ struct Quest {
     // -- same "named, specific, compile-time flag" shape as
     // rewardStaffOfStrikingCuring above.
     bool rewardFrostreaver = false;
+    // True if turning this quest in resolves the Test of High Sorcery --
+    // assigns character::RobeColor by alignment and narrates one of three
+    // White/Red/Black outcome passages (game::GameLoop::offerOrTurnInQuest)
+    // -- same "named, specific, compile-time flag" shape as
+    // rewardKnightSword above. Exactly one quest (wayreth_summons) carries
+    // it. Unlike every other reward flag, COMPLETE alone can't narrate this
+    // one (it can't branch by alignment), so this flag is what actually
+    // drives the payoff text -- see docs/QUEST_NOTES.md.
+    bool rewardWayrethRobe = false;
 };
 
 // A loaded roster of quests, static content like timeline::Timeline and

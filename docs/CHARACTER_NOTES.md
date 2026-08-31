@@ -486,8 +486,13 @@ paired with flavor text on the final summary and character sheet — "an
 unaffiliated student of the arcane, a Robe and Order await at higher
 levels" — rather than any mechanical robe system.
 
-**Now that leveling exists** (see below): Robe assignment by alignment at
-the Test of High Sorcery is implemented as a level-3 flavor moment.
+**Now that leveling exists** (see below): reaching level 3 as a Mage no
+longer *automatically* resolves the Test — as of the Wayreth quest below,
+it only foreshadows it (`character::applyPendingLevelUps`, `Leveling.cpp`,
+pushes "You feel, faintly, that something has taken notice of you" and
+nothing else; `character.robeColor` stays `RobeColor::None`). Robe
+assignment by alignment at the actual Test of High Sorcery now happens on
+turning in the `wayreth_summons` quest (see "The Wayreth quest" below).
 Spellcasting itself now covers many spells (see "Spellcasting" below), but
 Robe-based spell-sphere restrictions and moon-phase
 (Solinari/Lunitari/Nuitari) saving-throw/spellcasting bonuses remain a
@@ -497,27 +502,69 @@ PHB or Dragonlance Adventures (the book itself states a wizard "is
 unaffected by phases of the moons" below 3rd level anyway, so the moon-
 phase half was never a level-1 concern either).
 
-**Milestone 103**: the Test itself gained three distinct outcome passages
-(`character::applyPendingLevelUps`, `Leveling.cpp`, switched on the
-already-computed `RobeColor`) in place of one generic templated line.
-Sourced from rendered page images of DLA pp.33–37 (this section's text is
-column-garbled in `pdftotext`, unreadable without rendering) — "The Test of
-High Sorcery"/"Wizards of the White/Red/Black Robes." The book gives no
-single canonical Test to transcribe (each initiate's is individually
-designed around their own weaknesses, and failure means death); instead it
-lists design guidelines a DM builds a Test from — at least three trials
-unsolvable by magic alone, a combat against a known ally, a solo combat
-against a stronger-than-usual opponent. Each of the three new passages
-freshly dramatizes one of those named elements rather than inventing
-unrelated flavor: White reframes "unsolvable by magic" as refusing to
-spend a trusted illusion for personal power; Red dramatizes the robe's own
-defining "balance" identity (p.36, "the widest range of spells available")
-as every trial resolving into a mercy-vs-cruelty choice and refusing both;
-Black reframes the "combat against an ally" guideline as choosing yourself
-over a friend, with the Conclave marking *that* choice, not the spell, as
-the pass condition. `robeColorName`/`robeMoonName` (`WizardOrder.cpp`) are
-still reused for the "you emerge a ___, sworn to ___" clause rather than
-hardcoding robe/moon names into each passage.
+**Milestone 103** (superseded by the Wayreth quest below, but the outcome
+text it wrote is still exactly what plays out): the Test gained three
+distinct outcome passages, switched on the already-computed `RobeColor`,
+in place of one generic templated line. Sourced from rendered page images
+of DLA pp.33–37 (this section's text is column-garbled in `pdftotext`,
+unreadable without rendering) — "The Test of High Sorcery"/"Wizards of the
+White/Red/Black Robes." The book gives no single canonical Test to
+transcribe (each initiate's is individually designed around their own
+weaknesses, and failure means death); instead it lists design guidelines a
+DM builds a Test from — at least three trials unsolvable by magic alone, a
+combat against a known ally, a solo combat against a stronger-than-usual
+opponent. Each of the three passages freshly dramatizes one of those named
+elements rather than inventing unrelated flavor: White reframes
+"unsolvable by magic" as refusing to spend a trusted illusion for personal
+power; Red dramatizes the robe's own defining "balance" identity (p.36,
+"the widest range of spells available") as every trial resolving into a
+mercy-vs-cruelty choice and refusing both; Black reframes the "combat
+against an ally" guideline as choosing yourself over a friend, with the
+Conclave marking *that* choice, not the spell, as the pass condition.
+`robeColorName`/`robeMoonName` (`WizardOrder.cpp`) are still reused for
+the "you emerge a ___, sworn to ___" clause rather than hardcoding
+robe/moon names into each passage.
+
+### The Wayreth quest — unfindable except through it
+
+Requested directly by the user: "the Towers of High Sorcery need to be
+added." Research turned up that the Tower of Palanthas was already in the
+game (`data/zones/palanthas.txt` `POI T`, Milestone 44 — sealed, no
+interior, sourced from *Dragons of Winter Night*'s account of its curse).
+The Tower of Wayreth was the real gap, and it comes with a real sourcing
+constraint: this project's own already-shipped Raistlin dialogue
+(`data/timeline.txt`, Milestone 72) states the Tower "does not stay where
+it was the day before... finds you rather than the reverse" —
+`References/TSR 2143 PG1 Players Guide to the Dragonlance Campaign.pdf`
+confirms this as real sourced lore (one NPC says outright "Not even I
+could find the Tower of Wayreth"), not invented flavor. The user's own
+resolution: unfindable for everyone except a Mage character, and even for
+a Mage, reachable only through a quest — never a walk-up map location.
+
+Implemented as `wayreth_summons` (`data/quests.txt`), a scripted
+round-trip bundled entirely into one quest's Accept→Complete flow —
+deliberately **no new `LOCATION`/zone file**. A persistent walkable
+Wayreth zone would need overworld coordinates, which either breaks
+"unfindable" (if reachable on foot) or risks a real softlock (if not,
+since — unlike the SEA_LOCKED islands, which each have a return-boat POI
+— Wayreth has no physical place to put a return trip's arrival point).
+Offered by a new POI, "A Robed Stranger" (`data/zones/solace.txt`, `POI
+R`), gated by a new compound condition `wayreth_eligible`
+(`game::conditionMatches`, `GameLoop.cpp` — Mage class and level ≥ 3,
+same shape as `sword_eligible`) — an unmet `REQUIRE` means the Stranger
+has nothing to say about the quest at all, so no other class or a Mage
+below level 3 ever sees a hint this exists; their base `TALK`/`TALK_AGAIN`
+text stays deliberately mundane. Its one objective, `VISIT palanthas`,
+reuses already-shipped content for free: the Great Library's `SAY_IF L
+mage` Test flavor, and `.research/dwn_full.txt`'s own detail that the
+Towers' surviving spellbooks were given to "the great library at
+Palanthas." A new reward flag, `REWARD_WAYRETH_ROBE` (`quest::Quest.h`,
+`QuestLoader.cpp`, same "named, specific, compile-time flag" shape as
+`REWARD_KNIGHT_SWORD`), is what actually assigns `RobeColor` and narrates
+one of the three Milestone 103 passages above — relocated verbatim into
+`GameLoop::offerOrTurnInQuest`, not rewritten, since a quest's `COMPLETE`
+text is fixed and can't branch by alignment the way this needed to. See
+`docs/QUEST_NOTES.md`'s "Shipped quests" for the quest's own writeup.
 
 ## Leveling / experience
 

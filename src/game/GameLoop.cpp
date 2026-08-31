@@ -211,6 +211,15 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     // Adventures p.94's own printed minimum to wield a Frostreaver, so the
     // quest is never offered to a character who couldn't use the reward.
     if (condition == "str_13") return c.scores.strength >= character::kFrostreaverMinStrength;
+    // Compound eligibility for wayreth_summons (docs/QUEST_NOTES.md), same
+    // shape as sword_eligible above: true once a Mage has reached level 3,
+    // the level this project ties the Test of High Sorcery to (see
+    // docs/CHARACTER_NOTES.md's "Wizards of High Sorcery"). Deliberately
+    // not offered to any other class or to a Mage below level 3 -- the
+    // Robed Stranger has nothing to say about it to them at all.
+    if (condition == "wayreth_eligible") {
+        return c.charClass == character::ClassId::Mage && c.level >= 3;
+    }
     return false;
 }
 
@@ -1225,6 +1234,50 @@ void GameLoop::offerOrTurnInQuest(const std::string& questId, const std::string&
             character::ItemKind::Weapon, character::ArmorId::None, character::kFrostreaverName,
             character::kFrostreaverDamageSides, 0, 0});
         pushLog("You are granted a Frostreaver. Press 'i' to equip it.");
+    }
+    if (q->rewardWayrethRobe) {
+        // The actual Test of High Sorcery -- relocated here from
+        // character::applyPendingLevelUps (Milestone 103 originally wrote
+        // these three passages as an automatic level-3 event; see
+        // docs/CHARACTER_NOTES.md's "Wizards of High Sorcery" for why they
+        // moved). COMPLETE's own text (shown just above, before this
+        // block runs) can't branch by alignment, so this flag is what
+        // actually assigns the Robe and narrates the outcome.
+        state_.character.robeColor = character::robeForAlignment(state_.character.alignment);
+        switch (state_.character.robeColor) {
+            case character::RobeColor::White:
+                pushLog(
+                    "An illusion wearing a face you trust falls apart at your feet more than once, "
+                    "if only you would spend it for power instead of saving it -- and every reflex "
+                    "you fight down to refuse that trade turns out to matter more than the spells "
+                    "you cast. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    ", sworn to " + character::robeMoonName(state_.character.robeColor) +
+                    ", having learned exactly what the good in you is worth when no one but the "
+                    "Conclave is watching. The Conclave sees you home.");
+                break;
+            case character::RobeColor::Red:
+                pushLog(
+                    "Every trial the Conclave sets you resolves into the same shape -- a mercy "
+                    "that would cost you the working, a cruelty that would buy it outright -- and "
+                    "salvation, when it comes, is the discipline to take neither and hold the line "
+                    "between them instead. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    ", sworn to " + character::robeMoonName(state_.character.robeColor) +
+                    ", already fluent in a kind of balance most people spend a lifetime failing to "
+                    "learn. The Conclave sees you home.");
+                break;
+            case character::RobeColor::Black:
+                pushLog(
+                    "When the illusion finally puts someone you'd call a friend between you and "
+                    "the only way through, you don't hesitate nearly as long as you expected to -- "
+                    "and the Conclave marks that, not the spell that follows, as the moment you "
+                    "actually passed. You emerge a " + std::string(character::robeColorName(state_.character.robeColor)) +
+                    ", sworn to " + character::robeMoonName(state_.character.robeColor) +
+                    ", carrying home a certainty about yourself you didn't have when you left. "
+                    "The Conclave sees you home.");
+                break;
+            case character::RobeColor::None:
+                break; // unreachable -- robeForAlignment never returns None
+        }
     }
 }
 
