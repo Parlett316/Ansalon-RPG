@@ -16,7 +16,7 @@ GRID
 #......................................#
 #......................................#
 #............................R.........#
-#......................................#
+#..............S.......................#
 #......................................#
 #......................................#
 #......................................#
@@ -36,4 +36,7 @@ SUBJECT_UNKNOWN W William shrugs, still grinning. "Couldn't tell you. Ask me abo
 POI H "The Harbor" A handful of fishing boats and one or two idle merchant hulls ride at anchor, watched over by draconian guards who seem more bored than vigilant. Nothing here looks fit, or willing, to carry a stranger anywhere the Highlords wouldn't approve of.
 POI R "A Draconian Patrol" Two dragonmen walk a slow, unhurried circuit of the waterfront, spears resting on their shoulders more like habit than readiness. They don't so much guard the town as remind it who's allowed to leave.
 TIMELINE_ANCHOR W
+SHOP W magic
+POI S "A Smuggler's Stall" A stall tucked into the lee of a warehouse, well clear of the draconian patrol's usual circuit -- blades and mismatched armor laid out on a blanket, gone the moment boots sound too close.
+SHOP S armory
 END

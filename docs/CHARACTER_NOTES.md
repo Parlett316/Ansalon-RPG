@@ -1142,7 +1142,7 @@ in any shop and has no established price, so it's marked unsellable
 ("cannot sell") rather than assigned an invented number for something
 that was never actually for sale.
 
-### Six shops, six catalogs
+### Shops and catalogs
 
 Milestone-100-era shops all sold from the exact same `availableShopItems`
 catalog — "there's no per-location wares" was a documented scope cut.
@@ -1158,17 +1158,40 @@ the filtering needed anyway.
 
 **Which catalog is invented gameplay tuning, not sourced content** — same
 honesty as `docs/COMBAT_NOTES.md`'s `encounterChancePercent`/
-`kBiasWeight`. Six catalogs, one per shop, chosen from each POI's own
-already-written flavor text rather than arbitrary assignment:
+`kBiasWeight`. Seven catalogs as of the every-town-shops milestone, most
+tied to one specific shop, chosen from each POI's own already-written
+flavor text rather than arbitrary assignment:
 
-| Catalog | Shop | Contents |
+| Catalog | Shop(s) | Contents |
 |---|---|---|
 | `general` | Solace's General Store (`G`) | unchanged baseline: all 7 armor tiers, shield, class weapon upgrade, Hoopak (Kender only), magic weapon, potion, webnet/brooch |
-| `armory` | Solace's Flint's Smithy (`S`, new) | all 7 armor tiers, shield, class weapon upgrade, Hoopak (Kender only), magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
+| `armory` | Solace's Flint's Smithy (`S`); Haven's Farrier's Forge (`S`); Tarsis's Scrap-Iron Forge (`F`); Palanthas's Garrison Armorer (`A`); Port O'Call's Netmender's Forge (`S`); Crossing's Quay (`Q`); Port Balifor's Smuggler's Stall (`S`); Flotsam's Back Alley (`A`) | all 7 armor tiers, shield, class weapon upgrade, Hoopak (Kender only), magic weapon — no potion/webnet/brooch (a smith, not an alchemist) |
 | `market` | Haven's Market Stalls (`K`) | Leather + Studded Leather + Hide Armor, shield, potion only — a pedestrian goods market, budget tier only |
 | `salvage` | Tarsis's Old Sailor (`S`) | potion, magic weapon only — extends the existing "scavenged pre-Cataclysm relic" framing (see "Potions" below) to a salvaged enchanted weapon too; no mundane armor/weapon/shield, a ruined port isn't an armorer |
-| `bazaar` | Kalaman's Market Square (`M`, new) | Leather + Studded Leather + Hide Armor + Chain Mail armor, shield, class weapon upgrade, Hoopak (Kender only), potion — a real bazaar, but no Plate Mail/Field Plate or enchanted goods |
-| `harbor` | Palanthas's Harbor (`H`, new) | all 7 armor tiers, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade, so no Hoopak either) |
+| `bazaar` | Kalaman's Market Square (`M`) | Leather + Studded Leather + Hide Armor + Chain Mail armor, shield, class weapon upgrade, Hoopak (Kender only), potion — a real bazaar, but no Plate Mail/Field Plate or enchanted goods |
+| `harbor` | Palanthas's Harbor (`H`) | all 7 armor tiers, shield, magic weapon, potion — the one surviving great port trades in finished goods, not mundane smithing (no weapon upgrade, so no Hoopak either) |
+| `magic` | Haven's Relic Peddler's Cart (`P`); Kalaman's Curiosities Cart (`P`); Port O'Call's Beachcomber's Stall (`B`); Crossing's Waiting Merchant (`M`); Port Balifor's Pig & Whistle (`W`); Flotsam's Saltbreeze Inn (`S`) | no mundane armor/weapon/shield at all — magic weapon, potion, webnet, brooch. The dedicated arcane-goods shop added by the every-town-shops milestone (see below) |
+
+**Every `TOWN`-flagged location now carries both a weapons/armor shop and
+a magic shop** (the `armory`/`magic` catalogs above, or an existing
+broader catalog that already covers the role — General covers both at
+Solace, Salvage already covers magic at Tarsis, Bazaar already covers
+weapons/armor at Kalaman, Harbor already covers both, loosely, at
+Palanthas). Solace deliberately got no new POI for this: its General
+Store already sells the full armor/weapon range *and* every
+magic/consumable item, so it already satisfies both roles from one
+unlocked counter.
+
+**Crossing, Port Balifor, and Flotsam were previously documented as
+deliberately shopless** — see the paragraph below, still accurate as
+history, but no longer current: at the user's explicit request that
+*every* town get both shop types, all three now do, reframed in-fiction
+as black-market/smuggler commerce rather than open storefronts (a
+chandler's stall doubling as an armorer at Crossing's Quay, a
+smuggler's stall dodging the draconian patrol at Port Balifor, a
+back-alley fence and a quietly-dealing inn at Flotsam) — a better fit
+for their established occupied/smuggling character than a contradiction
+of it.
 
 (Studded Leather and Plate Mail, added by the equipment-expansion
 milestone, and Hide Armor/Field Plate, added by a later content pass, all
@@ -1180,10 +1203,11 @@ Hoopak rides along wherever a class weapon upgrade is already sold —
 General/Armory/Bazaar — since it's gated by the same `weaponUpgrade`
 catalog flag rather than a new one of its own.)
 
-**Webnet/Brooch of Imog are now General-Store-exclusive** — a real
-behavior change from Milestone 56, which sold them at every shop. Called
-out explicitly rather than silently: a Mage who wants either now has to
-be in Solace.
+**Webnet/Brooch of Imog were General-Store-exclusive** from the
+per-location-wares milestone until the every-town-shops milestone added
+the `magic` catalog, which carries them too (still buyable-only-by-Mage,
+same as General) — a Mage now has a `magic` shop somewhere other than
+Solace to buy either from, not just the General Store.
 
 **Flint's Smithy is gated behind a quest** (`SHOP_LOCKED`, see
 `docs/ZONE_NOTES.md`): it won't open at all until `ore_for_the_forge` is
@@ -1203,12 +1227,30 @@ flavor-appropriate, unclaimed POIs, reusing already-written tiles rather
 than inventing new merchant characters with no grounding.
 
 Three other `TOWN`-flagged locations (Crossing, Port Balifor, Flotsam)
-were deliberately left without a shop: Crossing is a two-POI ferry
-waypoint, not a town square; Port Balifor's harbor is explicitly
-draconian-guarded, not a free market; Flotsam is a smugglers'/pirates'
-haven whose captains "ask no questions," not a storefront. Same
-"restraint over completeness" discipline as Plains of Dust/Tarsis having
-no timeline content.
+were deliberately left without a shop through the per-location-wares
+milestone: Crossing is a two-POI ferry waypoint, not a town square; Port
+Balifor's harbor is explicitly draconian-guarded, not a free market;
+Flotsam is a smugglers'/pirates' haven whose captains "ask no questions,"
+not a storefront. Same "restraint over completeness" discipline as
+Plains of Dust/Tarsis having no timeline content.
+
+**Reversed at the every-town-shops milestone**, at the user's explicit
+request that every town have both shop types. Rather than contradicting
+the reasoning above, each town's shop(s) lean into it: Crossing's
+existing, previously-flavor-only Quay (`Q`) picked up `SHOP Q armory` —
+a ferry-dock chandler restocking travelers' gear needs no new
+storefront, just a merchant among the tackle already described there.
+Port Balifor's existing Pig & Whistle (`W`, already `TIMELINE_ANCHOR`)
+picked up `SHOP W magic` — a tavern where a red-robed illusionist once
+put on nightly shows is a natural place for small enchanted trinkets to
+change hands quietly, and a new `S "A Smuggler's Stall"` sells mundane
+gear specifically framed as dodging the draconian patrol, not as an
+open market. Flotsam needed no new POIs at all: its existing Back Alley
+(`A`, "something ugly happened here") became `SHOP A armory`, and its
+existing Saltbreeze Inn (`S`, "the ordinary rules of the town quietly
+stop applying") became `SHOP S magic` — both already-written POIs whose
+flavor text was, in hindsight, already describing exactly the kind of
+under-the-table commerce a shop needed to justify.
 
 ### Carried inventory and equip/unequip (Milestone 21)
 

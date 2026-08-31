@@ -1,32 +1,27 @@
 # Current work
 
-Nothing in flight. Milestone 121 (the Wayreth quest), its Milestone 122
-follow-up (Port O'Call, the Crossing/Flotsam ferry additions, the
-repeatable-`BOAT` bugfix), and Milestone 123 (redoing `wayreth_summons`
-twice in one session, per the user's "can't just be a standard fetch
-quest" and then "what if the player falls it shouldn't just be... the
-roll of a dice") are all implemented and documented -- see
-`docs/MILESTONES.md` entries 121-123 for the full history.
+Nothing in flight. Milestone 124 (a weapons/armor shop and a magic shop
+in every town) is implemented and documented -- see `docs/MILESTONES.md`
+entry 124 for the full history.
 
-Milestone 123's final shape: `SLAY wight 1` alongside `VISIT palanthas`
-(pure data), plus a real `drawPickerFrame` choice at turn-in
-(`GameLoop::offerOrTurnInQuest`'s `rewardWayrethRobe` block) that decides
-the Robe **and now overwrites the character's actual alignment**
-(`game::withEthic`, `GameLoop.cpp`/`.h`) instead of reading a stat frozen
-at character creation. Verified via a clean `/W4` rebuild and the piped
-smoke test (confirms nothing else broke; `QuestLoader`/`main.cpp`
-cross-validation still accept everything). **Not yet interactively
-verified** -- there's no piped-testable surface for the picker/setup
-scene/alignment-shift log line at all (turn-in is well past character
-creation, where `_getch()` stops being pipeable), and `save3.txt`
-(Serath) already completed the old version of this quest and can't
-retest it. Needs a fresh level-3+ Mage and the user's own keyboard;
-trying at least two of the three picker options across playthroughs
-would exercise both the "alignment changes" and "alignment already
-matches, stays quiet" branches of the new log line.
+New `magic` catalog (`character::ShopCatalog::Magic`); 13 shop POIs now
+exist across all 9 `TOWN`-flagged locations (up from 6 across 5), closing
+the weapons/armor + magic coverage gap town by town -- reusing catalogs
+that already qualified, adding new POIs only where needed, and reusing
+already-written flavor-only POIs at Crossing/Port Balifor/Flotsam (all
+three previously documented as *deliberately* shopless -- reversed at the
+user's explicit request, reframed as black-market/smuggler commerce
+rather than open storefronts).
 
-All three save slots (Mason, Mike, Serath) were occupied this session,
-so the piped smoke test itself couldn't run past the save-slot menu --
-verification relied on the program reaching that menu at all, which only
-happens after every data loader (including `QuestLoader`) parses
-successfully.
+Verified via a clean `/W4` rebuild (zero new warnings) and the piped
+save-slot smoke test, which loads every zone file (including the 9
+hand-edited `GRID` blocks) before the save-slot menu renders -- reaching
+that menu confirms all of them parsed cleanly. **Not yet interactively
+verified**: all three save slots (Mason, Mike, Regan) were occupied this
+session, so the piped test couldn't reach character creation, and none of
+this has a piped-testable path to a live shop screen (`_getch()` blocks
+that) regardless. Trying at least a couple of the new/reused shops (e.g.
+Haven's new Farrier's Forge/Relic Peddler's Cart, and Flotsam's now-shop
+Back Alley/Saltbreeze Inn, since those needed no new POIs and are the
+easiest to get definitively wrong) with the user's own keyboard would
+confirm the catalog filtering and item lists look right in practice.

@@ -35,6 +35,7 @@ character::ShopCatalog shopCatalogFor(const std::string& name) {
     if (name == "salvage") return character::ShopCatalog::Salvage;
     if (name == "bazaar") return character::ShopCatalog::Bazaar;
     if (name == "harbor") return character::ShopCatalog::HarborTrade;
+    if (name == "magic") return character::ShopCatalog::Magic;
     return character::ShopCatalog::General;
 }
 

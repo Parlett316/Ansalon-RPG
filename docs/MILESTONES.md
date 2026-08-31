@@ -4345,6 +4345,68 @@ now fully verified, nothing further outstanding.
      `docs/QUEST_NOTES.md`'s "Shipped quests" (extended in place) and
      `docs/CHARACTER_NOTES.md`'s "The Wayreth quest".
 
+124. A weapons/armor shop and a magic shop in every town -- requested
+     directly by the user. Before this, shop coverage was uneven: five of
+     nine `TOWN`-flagged locations had a shop at all, and none of the six
+     existing catalogs (`general`/`armory`/`market`/`salvage`/`bazaar`/
+     `harbor`) ran a dedicated arcane-goods storefront -- magic weapons
+     were bundled into whichever mundane catalog happened to include one.
+
+     Added a seventh catalog, `character::ShopCatalog::Magic`
+     (`Equipment.h`/`.cpp`'s `kMagicGoods` -- no armor/shield/weapon-upgrade
+     slots at all, but every consumable/enchanted one: magic weapon,
+     potion, Webnet, Brooch of Imog), plus `"magic"` to `ZoneLoader`'s
+     `kValidCatalogs` and `GameLoop::shopCatalogFor`'s string->enum
+     mapping -- the exact same three-file pattern every earlier catalog
+     added. Real behavior change, called out rather than hidden: Webnet/
+     Brooch stop being Solace-General-Store-exclusive, since every new
+     `magic` shop carries them too (still buyable-only-by-Mage).
+
+     Then closed the coverage gap town by town, reusing catalogs that
+     already qualified (Solace's `general` already covers both roles at
+     once -- no new POI there at all; Tarsis's `salvage` already covers
+     magic; Kalaman's `bazaar` already covers weapons/armor) and adding
+     only what was missing elsewhere: new `armory`-catalog POIs (Haven's
+     Farrier's Forge, Tarsis's Scrap-Iron Forge, Palanthas's Garrison
+     Armorer, Port O'Call's Netmender's Forge, Port Balifor's Smuggler's
+     Stall) and new `magic`-catalog POIs (Haven's Relic Peddler's Cart,
+     Kalaman's Curiosities Cart, Port O'Call's Beachcomber's Stall,
+     Crossing's Waiting Merchant), all following the established
+     "`SHOP` needs no `TALK` line" precedent (Palanthas's Harbor,
+     Kalaman's Market Square) -- description only, no new dialogue tree.
+
+     **Confirmed with the user directly**: this includes Crossing, Port
+     Balifor, and Flotsam, all three previously documented
+     (`docs/CHARACTER_NOTES.md`) as *deliberately* shopless (a two-POI
+     ferry waypoint; a draconian-guarded harbor; smugglers who "ask no
+     questions"). Rather than overturning that reasoning, each town's new
+     shop(s) lean into it as black-market/smuggler commerce: Crossing's
+     already-existing Quay POI picked up `SHOP Q armory` (a ferry-dock
+     chandler, no new POI needed); Port Balifor's already-existing Pig &
+     Whistle picked up `SHOP W magic` (the tavern that once hosted a
+     red-robed illusionist's nightly show is a natural spot for small
+     enchanted trinkets to change hands); Flotsam needed zero new content
+     at all -- its existing Back Alley ("something ugly happened here")
+     became `SHOP A armory` and its existing Saltbreeze Inn ("the
+     ordinary rules of the town quietly stop applying") became `SHOP S
+     magic`, both POIs whose flavor text was already describing exactly
+     this kind of under-the-table trade.
+
+     Net result: 13 shop POIs across all 9 towns (up from 6 across 5),
+     every town covering both roles. Pure data + one small, mechanical
+     enum/switch addition -- no new engine mechanism, same shape every
+     earlier catalog used. Clean `/W4` rebuild (zero new warnings).
+     Verified via the piped save-slot smoke test, which loads
+     `ZoneCatalog::loadForWorld` (and therefore all nine hand-edited
+     `GRID` blocks) before the save-slot menu even renders -- reaching
+     that menu confirms every row-width and POI-reference check passed.
+     All three save slots were occupied this session, so the test
+     couldn't run past that menu into character creation; live
+     shop-browsing/buying at the new and reused POIs still needs the
+     user's own keyboard. Full writeup: `docs/ZONE_NOTES.md`'s "Shops:
+     POIs you can buy from" and `docs/CHARACTER_NOTES.md`'s "Shops and
+     catalogs" (renamed from "Six shops, six catalogs").
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

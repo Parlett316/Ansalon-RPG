@@ -104,6 +104,12 @@ const ShopCatalogDef& catalogDef(ShopCatalog catalog) {
     // carries the full armor range, budget to premium, including Field
     // Plate.
     static const ShopCatalogDef kHarborTrade{{true, true, true, true, true, true, true}, true, false, true, true, false};
+    // The dedicated arcane-goods shop -- no mundane armor/weapon/shield at
+    // all, but carries every consumable/enchanted slot General does
+    // (magic weapon, potion, Webnet, Brooch of Imog). See
+    // docs/CHARACTER_NOTES.md for why Webnet/Brooch are no longer
+    // General-Store-exclusive as of this catalog's addition.
+    static const ShopCatalogDef kMagicGoods{{false, false, false, false, false, false, false}, false, false, true, true, true};
     switch (catalog) {
         case ShopCatalog::General: return kGeneral;
         case ShopCatalog::Armory: return kArmory;
@@ -111,6 +117,7 @@ const ShopCatalogDef& catalogDef(ShopCatalog catalog) {
         case ShopCatalog::Salvage: return kSalvage;
         case ShopCatalog::Bazaar: return kBazaar;
         case ShopCatalog::HarborTrade: return kHarborTrade;
+        case ShopCatalog::Magic: return kMagicGoods;
     }
     return kGeneral; // unreachable given ShopCatalog only has the values above
 }

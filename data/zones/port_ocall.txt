@@ -15,10 +15,10 @@ GRID
 #.............................#
 #....D........................#
 #.............................#
-#.............................#
+#..........S..................#
 #.............................#
 #...................Q.........#
-#.............................#
+#......................B......#
 #.............................#
 #############...###############
 ENDGRID
@@ -27,4 +27,8 @@ POI Q "The Coast Road" A rutted track climbs away from the last house toward the
 TALK D "Made it across in one piece, then." He taps the slate without looking up. "Ferry runs back to Crossing whenever she's loaded -- no charge for the trip down, if that's where you're headed next."
 TALK_AGAIN D "Tide's fine for the crossing, if you're heading back," he says, still logging.
 BOAT D crossing 3
+POI S "The Netmender's Forge" A forge that used to mend nothing but hooks and gaffs now turns out plain blades and boiled-leather jacks for anyone walking the Tower road north. The smith still smells more of fish than of coal.
+SHOP S armory
+POI B "A Beachcomber's Stall" A driftwood table heaped with what the strait washes up -- most of it worthless, but the old woman minding it swears a few pieces still carry a working charm, salvaged off ships that never made land.
+SHOP B magic
 END

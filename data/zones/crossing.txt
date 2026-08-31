@@ -14,7 +14,7 @@ GRID
 #.............................#
 #....K........................#
 #.............................#
-#.............................#
+#......................M......#
 #.............................#
 #...................Q.........#
 #.............................#
@@ -30,4 +30,7 @@ TOPIC K "The War" "We see it in the traffic more than anything. Used to be fishi
 SUBJECT K north keep,restglen The keeps up and down this coast keep their own roads -- Restglen west, North Keep and Staughton east. None of them run through here, and none of them run to each other without a long walk around the water. Crossing's the only place that doesn't make you choose a direction first.
 SUBJECT_UNKNOWN K "Can't help you there. I know boats and I know this stretch of coast -- past that, you'd want someone who travels more than I do."
 BOAT K port_ocall 3
+SHOP Q armory
+POI M "A Waiting Merchant" A merchant idles on an overturned crate, wares spread on a square of oilcloth while he waits on the next ferry -- charms and oddities picked up on a dozen crossings, sold to anyone bored enough to look.
+SHOP M magic
 END

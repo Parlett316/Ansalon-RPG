@@ -268,6 +268,7 @@ enum class ShopCatalog {
     Salvage,
     Bazaar,
     HarborTrade,
+    Magic,
 };
 
 std::vector<ShopItem> availableShopItems(const Character& character, ShopCatalog catalog = ShopCatalog::General);

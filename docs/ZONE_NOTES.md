@@ -389,24 +389,39 @@ so this reads correctly no matter which POI it's attached to.
 
 **`catalog`** (optional, defaults to `general` if omitted) picks which
 subset of `character::Equipment`'s items this shop offers -- one of
-`general`, `armory`, `market`, `salvage`, `bazaar`, or `harbor`. An
-unrecognized name fails fast at load time. `world::ZoneLoader` only
+`general`, `armory`, `market`, `salvage`, `bazaar`, `harbor`, or `magic`.
+An unrecognized name fails fast at load time. `world::ZoneLoader` only
 validates the name and stores it as a plain string on `PointOfInterest`
 (`world::` stays decoupled from `character::`, see
 `docs/ARCHITECTURE.md`); `game::GameLoop::handleShop` translates it into
 `character::ShopCatalog` right before calling into `character::Equipment`.
-See `docs/CHARACTER_NOTES.md`'s "Six shops, six catalogs" for what each
+See `docs/CHARACTER_NOTES.md`'s "Shops and catalogs" for what each
 catalog actually contains and why.
 
-As of the per-location-wares milestone, six POIs carry `SHOP`:
-`data/zones/solace.txt`'s `G "General Store"` (`general`, the original)
-and `S "Flint's Smithy"` (`armory`, also `SHOP_LOCKED` -- see below),
-`data/zones/haven.txt`'s `K "Market Stalls"` (`market`, which was already
-the zone's `TIMELINE_ANCHOR` -- `SHOP` and `TIMELINE_ANCHOR` are
-independent flags on the same POI, no conflict), `data/zones/tarsis.txt`'s
-`S "An Old Sailor"` (`salvage`), `data/zones/kalaman.txt`'s
-`M "Market Square"` (`bazaar`, also that zone's `TIMELINE_ANCHOR`), and
-`data/zones/palanthas.txt`'s `H "The Harbor"` (`harbor`).
+As of the every-town-shops milestone, all nine `TOWN`-flagged locations
+carry at least one weapons/armor shop (`armory`, or a broader catalog
+that already includes full armor+weapon coverage) and one magic shop
+(`magic`, or a broader catalog that already covers it): `data/zones/
+solace.txt`'s `G "General Store"` (`general`, the original, covers both
+roles at once) and `S "Flint's Smithy"` (`armory`, also `SHOP_LOCKED` --
+see below); `data/zones/haven.txt`'s `K "Market Stalls"` (`market`),
+`S "The Farrier's Forge"` (`armory`), and `P "A Relic Peddler's Cart"`
+(`magic`); `data/zones/tarsis.txt`'s `S "An Old Sailor"` (`salvage`) and
+`F "A Scrap-Iron Forge"` (`armory`); `data/zones/kalaman.txt`'s
+`M "Market Square"` (`bazaar`, also that zone's `TIMELINE_ANCHOR`) and
+`P "A Curiosities Cart"` (`magic`); `data/zones/palanthas.txt`'s
+`H "The Harbor"` (`harbor`) and `A "The Garrison Armorer"` (`armory`);
+`data/zones/port_ocall.txt`'s `S "The Netmender's Forge"` (`armory`) and
+`B "A Beachcomber's Stall"` (`magic`); `data/zones/crossing.txt`'s
+`Q "The Quay"` (`armory`, an already-existing flavor-only POI) and
+`M "A Waiting Merchant"` (`magic`); `data/zones/port_balifor.txt`'s
+`W "The Pig & Whistle"` (`magic`, an already-existing POI) and
+`S "A Smuggler's Stall"` (`armory`); and `data/zones/flotsam.txt`'s
+`A "A Back Alley"` (`armory`) and `S "The Saltbreeze Inn"` (`magic`),
+both already-existing POIs needing no new grid tiles at all. See
+`docs/CHARACTER_NOTES.md`'s "Shops and catalogs" for why Crossing/Port
+Balifor/Flotsam now have shops despite being documented there as
+deliberately shopless.
 
 ## SHOP_LOCKED: a shop that opens only after a quest completes
 

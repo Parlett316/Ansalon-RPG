@@ -253,16 +253,32 @@ fully heal overnight instead, the same 8 hours as ordinary rest — see
 `docs/CHARACTER_NOTES.md`'s "Rest and spell memorization" section. Winning
 fights earns Steel Pieces (Krynn's own
 post-Cataclysm currency, not gold) and experience, and that steel now has
-somewhere to go — press `p` at a shop to buy real gear. Six shops now
-exist across five towns, each with its own distinct catalog rather than
-one shared list: Solace's General Store (the flagship, everything below)
-and Flint's Smithy (armor/weapons only, locked until you deliver ore for
-the `ore_for_the_forge` quest), Haven's Market Stalls (Leather/Studded
-Leather/Hide armor and a potion), Tarsis's Old Sailor (a potion and a
-salvaged enchanted weapon), Kalaman's Market Square (Leather/Studded
-Leather/Hide/Chain armor, a weapon upgrade, a Hoopak for Kender, a
-potion), and Palanthas's Harbor (all seven armor tiers, an enchanted
-weapon, a potion). Where armor's on offer you can buy real Leather/
+somewhere to go — press `p` at a shop to buy real gear. Every town now
+has both a weapons/armor shop and a magic shop (thirteen shop POIs
+across all nine towns in total), each with its own distinct catalog
+rather than one shared list: Solace's General Store (the flagship,
+everything below, doubling as both roles at once) and Flint's Smithy
+(armor/weapons only, locked until you deliver ore for the
+`ore_for_the_forge` quest), Haven's Market Stalls (Leather/Studded
+Leather/Hide armor and a potion), its new Farrier's Forge (full
+armor/weapons) and Relic Peddler's Cart (magic goods), Tarsis's Old
+Sailor (a potion and a salvaged enchanted weapon) and its new
+Scrap-Iron Forge (full armor/weapons), Kalaman's Market Square
+(Leather/Studded Leather/Hide/Chain armor, a weapon upgrade, a Hoopak
+for Kender, a potion) and its new Curiosities Cart (magic goods),
+Palanthas's Harbor (all seven armor tiers, an enchanted weapon, a
+potion) and its new Garrison Armorer (weapons/armor, including the
+weapon upgrade the Harbor doesn't sell), Port O'Call's new Netmender's
+Forge (weapons/armor) and Beachcomber's Stall (magic goods), Crossing's
+Quay (weapons/armor) and new Waiting Merchant (magic goods), Port
+Balifor's Pig & Whistle (magic goods) and new Smuggler's Stall
+(weapons/armor), and Flotsam's Back Alley (weapons/armor) and Saltbreeze
+Inn (magic goods). The last three reuse already-written POIs in towns
+previously left shopless on purpose — a ferry waypoint, a
+draconian-guarded harbor, a smugglers' haven — reframed as
+black-market/smuggler commerce rather than open storefronts, which fits
+each town's character better than a contradiction of it. Where armor's
+on offer you can buy real Leather/
 Studded Leather/Hide Armor/Chain Mail/Splint Mail/Plate Mail/Field Plate
 (Mages and Tinkers can't wear armor at all, per the PHB's own rule) and a
 weapon upgrade — every class has one now, down to a Mage's Quarterstaff
@@ -289,11 +305,11 @@ shops also carry a "+1" enchanted weapon, one per class (an Ensorcelled
 version of your class's own upgrade weapon) —
 sourced from the DMG's magic-item tables and Dragonlance Adventures' own
 "Magical Items of Krynn" chapter, and the first thing in the game to add
-a real to-hit bonus beyond Strength. At Solace's General Store only, a
-Mage can also buy a Webnet (negates a foe's next attack) or a Brooch of
-Imog (blocks every attack for the rest of a fight, once per day) — both
-used the same way as drinking a potion mid-combat — see
-`docs/CHARACTER_NOTES.md`'s "Magic items" section. A Cleric who earns it
+a real to-hit bonus beyond Strength. At Solace's General Store, or any of
+the new magic shops, a Mage can also buy a Webnet (negates a foe's next
+attack) or a Brooch of Imog (blocks every attack for the rest of a fight,
+once per day) — both used the same way as drinking a potion mid-combat —
+see `docs/CHARACTER_NOTES.md`'s "Magic items" section. A Cleric who earns it
 can wield the Staff of Striking/Curing instead: a permanent +3 weapon that
 also calls on a once-per-day self-heal, mid-combat, the same way. A
 Strength-13+ character who earns one from Ice Wall Castle's Young Knight
@@ -450,8 +466,8 @@ needed:
   about something else..." appears on that menu (any of the 8 Heroes, or
   any talkable zone-native NPC), picking it lets you type any subject
   instead — Enter submits, Esc cancels back to the menu.
-- `p` — browse/buy at a shop POI (six now, across five towns, each with
-  its own catalog — see "Status" above) — up/down selects an item, Enter
+- `p` — browse/buy at a shop POI (thirteen now, across all nine towns,
+  each with its own catalog — see "Status" above) — up/down selects an item, Enter
   buys it, `i` switches to selling gear from your inventory back for half
   its price, `q`/Esc leaves the shop. Purchases go to your carried
   inventory, not straight onto your body.

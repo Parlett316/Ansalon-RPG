@@ -19,7 +19,7 @@ GRID
 #.....T.............K..................#
 #......................................#
 #.....O................................#
-#......................................#
+#........................A.............#
 #......................................#
 ########################################
 ENDGRID
@@ -51,4 +51,6 @@ SUBJECT L aesthetics,order,library His pen does not pause. "My Aesthetics keep t
 SUBJECT L mage,wizard,raistlin Astinus's expression, such as it is, does not change. "A young man came to these steps once, dying by his own ambition, and I let him be carried inside against every rule my order keeps. I have not decided whether that was mercy or curiosity. I am supposed to be history's most reliable witness, and on that particular night, I find my own account suspect."
 SUBJECT_UNKNOWN L Astinus's pen does not slow. "I record what happens. I do not speculate on what might. Ask again when it has."
 TIMELINE_ANCHOR L
+POI A "The Garrison Armorer" A Knight's armorer working three shifts to keep the garrison outfitted, hammer never quite still. He'll fit a traveler same as a soldier, so long as the coin's good and the questions are short.
+SHOP A armory
 END

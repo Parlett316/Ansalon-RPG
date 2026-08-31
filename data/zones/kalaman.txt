@@ -17,7 +17,7 @@ GRID
 #............................M.........#
 #......................................#
 #..........G...........................#
-#......................................#
+#...................P..................#
 #......................................#
 #......................................#
 #......................................#
@@ -40,4 +40,6 @@ SUBJECT_UNKNOWN G The watchman shrugs, eyes still on the crowd. "Wouldn't know. 
 QUEST G bazaar_road_raiders
 TIMELINE_ANCHOR M
 SHOP M bazaar
+POI P "A Curiosities Cart" A cart of small, unlabeled wonders -- a war widow's trade, picked up piece by piece from refugees who needed steel more than keepsakes. She won't say which pieces are real magic and which are just old brass, and charges the same for both.
+SHOP P magic
 END

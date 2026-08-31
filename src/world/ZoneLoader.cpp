@@ -264,8 +264,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 }
                 std::string catalog = "general";
                 if (iss >> catalogToken) {
-                    static const std::array<std::string, 6> kValidCatalogs = {
-                        "general", "armory", "market", "salvage", "bazaar", "harbor"};
+                    static const std::array<std::string, 7> kValidCatalogs = {
+                        "general", "armory", "market", "salvage", "bazaar", "harbor", "magic"};
                     bool validCatalog = false;
                     for (const auto& catalogName : kValidCatalogs) {
                         if (catalogToken == catalogName) {
