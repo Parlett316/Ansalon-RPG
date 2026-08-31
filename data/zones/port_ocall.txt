@@ -1,0 +1,30 @@
+# data/zones/port_ocall.txt -- hand-authored walkable interior: a small
+# fishing town on the Strait of Schallsea's northern shore, the real
+# landing point directly across the water from Crossing (see
+# docs/MAP_NOTES.md's "Port O'Call" section). Map-only, like Crossing
+# itself -- none of the three tracked novels go here, so no PRESENCE/
+# TIMELINE_ANCHOR. The filename stem ("port_ocall") is the zone id and
+# MUST match the LOCATION id in data/locations.txt for the Enter key to
+# find it. Grammar: docs/ZONE_NOTES.md
+NAME Port O'Call
+ENTRY 14 11
+GRID
+###############################
+#.............................#
+#.............................#
+#.............................#
+#....D........................#
+#.............................#
+#.............................#
+#.............................#
+#...................Q.........#
+#.............................#
+#.............................#
+#############...###############
+ENDGRID
+POI D "The Dockmaster" A broad-shouldered man in a heavy oilskin logs each boat's catch against a slate board, barely glancing up as the ferry ties off behind you.
+POI Q "The Coast Road" A rutted track climbs away from the last house toward the foothills, worn smooth by generations of cart traffic. A weathered post marks the way: Palanthas, north.
+TALK D "Made it across in one piece, then." He taps the slate without looking up. "Ferry runs back to Crossing whenever she's loaded -- no charge for the trip down, if that's where you're headed next."
+TALK_AGAIN D "Tide's fine for the crossing, if you're heading back," he says, still logging.
+BOAT D crossing 3
+END

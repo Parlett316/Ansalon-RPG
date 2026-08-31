@@ -112,6 +112,16 @@ POS 194 95
 DESC A fortress built into the only pass through the Vingaard Mountains, guarding the road to Palanthas beyond. No one but a High Clerist may enter the Tower proper -- and there has been no High Clerist since the Cataclysm -- so the garrison holds only the walls around it.
 END
 
+LOCATION port_ocall
+NAME Port O'Call
+REGION Solamnia
+TERRAIN coastal-fishing-town
+GLYPH R
+TOWN
+POS 202 180
+DESC A modest fishing town on the Strait of Schallsea's northern shore, net-hung piers and low stone houses climbing the headland toward the foothills. The Tower road picks up just past the last house, running north into Solamnia proper.
+END
+
 LOCATION ice_wall
 NAME Ice Wall Castle
 REGION Icereach

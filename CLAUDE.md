@@ -50,6 +50,17 @@ Full player-facing feature list: `README.md`.
   than inventing to fill a gap. This project has done this repeatedly
   (e.g. Plains of Dust and Tarsis have no timeline content because the
   reference novel never goes there).
+  **This bar is for the tracked canon Companions' documented
+  timeline/dialogue specifically — not for the player's own overworld
+  geography.** A `LOCATION` can be added purely because it's real on
+  `References/dragonlancemap2.png` and useful for the player character's
+  own free movement (Crossing, Port O'Call — real port/ferry towns, on
+  the map, with no on-page presence in any tracked novel, added anyway
+  because the *player's* character isn't bound to the Companions'
+  specific documented path). Still needs the same placement rigor
+  (pixel-measured against the reference map, terrain-checked, cited in
+  `docs/MAP_NOTES.md`) — the relaxed bar is about *sourcing to a novel*,
+  not about *skipping verification*.
 - **No premature abstraction**: don't add subsystems, config layers, or
   generic engines before a milestone actually needs them. See
   `docs/ARCHITECTURE.md`'s "What's deliberately NOT abstracted yet".

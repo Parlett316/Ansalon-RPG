@@ -731,6 +731,54 @@ file. Its zone (`data/zones/crossing.txt`) carries no `PRESENCE`/
 this place, only the map does, same treatment Thorbardin's zone already
 got for its generic NPC.
 
+## Port O'Call (Milestone 121 follow-up)
+
+Closes out one of the three other labels Crossing's own placement above
+already cross-checked against but never gave a real `LOCATION`. Added
+when Crossing's Ferry Keeper's `BOAT` grant (`docs/ZONE_NOTES.md`'s
+"Boats" section) needed a real destination directly across the strait —
+the original choice, `high_clerist_tower`, is a real location but an
+inland mountain fortress, not a coastal landing point, so a narrow-strait
+ferry teleporting the player straight to it never made geographic sense
+once questioned.
+
+**Re-measured directly rather than trusting the original "same crop"
+note.** A fresh labeled pixel-grid overlay (`.research/
+_crop_grid_overlay.png`, step-50 gridlines with printed coordinates,
+same crop-and-grid-overlay method as every placement in this file) put
+Crossing's own label at almost exactly its existing `(200, 185)` —
+confirming the pixel-to-grid conversion is still accurate after however
+many intervening regenerations — and Port O'Call's icon at native pixel
+`(3448, 3068)`, converting to grid **`(202, 180)`**: 5 tiles from
+Crossing, directly across the water, exactly matching "a port town
+across the strait" rather than requiring any judgment call.
+
+**`data/overworld.grid` at `(202, 180)` is `%` (forest)** — passable, no
+nudge needed, sitting on a small headland ringed by `r` (shallow water),
+matching the map's own drawn coastline there. `REGION Solamnia`, matching
+High Clerist's Tower and Palanthas — Port O'Call sits on Solamnia's own
+shore, not Abanasinia's.
+
+**No `ROAD_PAIRS` entry**, same reasoning and same precedent as Crossing
+itself: the map's coastal road continues to Castle Di Estra/Firstward,
+neither modeled, so nothing sourced to draw a road to. Confirmed
+foot-reachable to `high_clerist_tower` anyway via a throwaway BFS over
+`data/overworld.grid` (93 steps, no true-water tiles crossed) — same
+"roads only affect speed, raw terrain determines reachability" principle
+used throughout this file. Its zone (`data/zones/port_ocall.txt`) carries
+no `PRESENCE`/`TIMELINE_ANCHOR` either, same as Crossing's.
+
+**On sourcing**: Port O'Call, like Crossing, never appears on-page in any
+of the three tracked novels — it's real on `References/dragonlancemap2.png`
+and nothing more. Added anyway, per the user's own explicit call this
+session: this project's restraint principle governs the tracked
+Companions' documented timeline, not the player character's own overworld
+geography (now called out directly in `CLAUDE.md`'s "Restraint over
+completeness" bullet). The user's first suggestion for this crossing was
+Caergoth — also real on the map, but on the Straits of Algoni, a
+different body of water entirely, well northwest of the Strait of
+Schallsea — ruled out on geography, not sourcing.
+
 ## Southern Ergoth (Milestone 95)
 
 Placed the same crop-and-grid-overlay method as every placement since

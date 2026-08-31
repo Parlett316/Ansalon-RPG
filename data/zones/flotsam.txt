@@ -18,7 +18,7 @@ GRID
 #......................................#
 #......................................#
 #....................................H.#
-#......................................#
+#.................................N....#
 #......................................#
 #......................................#
 #......................................#
@@ -35,5 +35,9 @@ SUBJECT H perechon,ship,passage,captain,maquesta Best ship in this harbor for a 
 SUBJECT H storm,gale,weather Building out past the point for two days now. First real blow of the season. Bad time to be putting out to sea, though I doubt that'll stop whoever's desperate enough to try.
 SUBJECT H highlords,dragonarmies,occupation Highlords don't much bother with Flotsam so long as their coin keeps flowing and their officers get their fun. Rest of us just try to stay out of whatever business brought them here this week.
 SUBJECT_UNKNOWN H The dockhand shrugs, already looking back to his line. "Not my business, and I'd thank you kindly to keep it that way."
+POI N "A Northbound Trader" A stocky captain in a salt-stained coat oversees her crew loading crates well clear of the wharf's rougher corners, her hold smelling of dried fish and tar instead of whatever the smugglers two piers over are hauling.
+TALK N "Kalaman-bound, same as every fair run -- around the cape of Nordmaar, three days if the wind holds." She sizes you up without much interest. "Not the Blood Sea, if that's what you're picturing. I leave that crossing to captains with more debts than sense. Got room for one more passenger, if you've got the fare and don't mind sharing the hold with the fish."
+TALK_AGAIN N "Still loading," she says, not looking up. "Kalaman run leaves when the tide's right, not before."
+BOAT N kalaman 72
 TIMELINE_ANCHOR I
 END

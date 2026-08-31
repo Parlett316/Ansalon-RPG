@@ -4117,10 +4117,108 @@ now fully verified, nothing further outstanding.
      Verified via the piped smoke test (confirms the new quest block and
      zone POI/binding all parse cleanly, and `main.cpp`'s cross-validation
      accepts it) and a clean `/W4` rebuild (zero new warnings).
-     **Interactive verification needed**, same `_getch()` limitation as
-     every other quest/combat-facing milestone -- and no Mage save
-     currently exists to test with, so this also needs a fresh Mage
-     character leveled to 3rd.
+
+     **Interactively verified in a follow-up session**, on a hand-crafted
+     level-3 Mage save (Serath, Human, True Neutral -- values derived
+     directly from this project's own tables, since `_getch()` can't be
+     scripted to play up from level 1). Confirmed end to end: the Robed
+     Stranger offers `wayreth_summons` at level 3; `VISIT palanthas`
+     tracks correctly (quest moved Active -> ReadyToTurnIn only after
+     Serath actually reached the Great Library and got Astinus's `SAY_IF
+     L mage` line); turning the quest in back at Solace narrated the
+     scripted trip to Wayreth and assigned `ROBE 2` (Red/Lunitari),
+     exactly matching True Neutral per `character::robeForAlignment`; the
+     character sheet reflected it correctly afterward. The one item not
+     separately re-confirmed by walking a non-Mage character to the
+     Stranger: the `wayreth_eligible` gate itself is a simple, direct
+     boolean check, already read/reviewed, low risk.
+
+     This same verification playthrough surfaced a real, unrelated gap in
+     how the player actually gets to Palanthas from Solace -- see
+     Milestone 122.
+
+122. Port O'Call, a real round-trip Crossing ferry, and a Flotsam sea
+     route -- all surfaced by Milestone 121's own verification
+     playthrough (Serath, walking from Solace toward Palanthas, hit a
+     genuine dead end at Crossing). Trying to keep walking north from
+     Crossing across the Strait of Schallsea hit a single stray true-
+     ocean pixel at overworld `(200, 182)` -- a real map-generation bug,
+     found and a `MANUAL_TERRAIN_OVERRIDES` fix drafted, then deliberately
+     reverted at the user's request in favor of a mechanic fix instead:
+     the user wanted Crossing's own `K "The Ferry Keeper"` (flavor-only
+     since Milestone 93) to actually grant passage.
+
+     First shipped pointing `BOAT K` at `high_clerist_tower` directly --
+     wrong once examined, since a strait ferry teleporting the player to
+     an inland mountain fortress many tiles further north never made
+     geographic sense. The user's own first suggestion for a better
+     target, Caergoth, turned out on direct pixel-measurement (labeled
+     grid-overlay crop against `References/dragonlancemap2.png`) to sit
+     on the Straits of Algoni -- a different body of water entirely,
+     well northwest of the Strait of Schallsea, ruled out on geography
+     alone. The map itself names the real port town directly across the
+     strait, already noted (but never given a real `LOCATION`) in
+     Milestone 93's own research: Port O'Call. Added as a brand-new
+     **`LOCATION port_ocall`** (`data/locations.txt`, `POS 202 180`,
+     pixel-measured and terrain-confirmed walkable) with its own minimal
+     zone, `data/zones/port_ocall.txt` (`D "The Dockmaster"`, granting the
+     return leg). Final state: `BOAT K port_ocall 3` / `BOAT D crossing
+     3` -- a real two-way ferry, 3 hours each way, down from the original
+     24 now that it lands at the actual coastal spot instead of
+     teleporting inland. `high_clerist_tower`/`palanthas` stay
+     foot-reachable north from there (confirmed via a throwaway BFS, 93
+     steps, no water crossed). The stray terrain tile at `(200, 182)`
+     stays deliberately unfixed.
+
+     **A durable principle the user stated directly, now written into
+     `CLAUDE.md`'s "Restraint over completeness" bullet**: this project's
+     sourcing-restraint rule governs the tracked Companions' documented
+     timeline, not the player character's own overworld geography. A
+     `LOCATION` can be added purely because it's real on the reference
+     map and useful for the player's own free movement -- Crossing itself
+     already cleared this bar at Milestone 93; Port O'Call is the second.
+
+     Separately, the same session added a real sea route out of Flotsam:
+     `data/zones/flotsam.txt`'s new `N "A Northbound Trader"`, granting
+     `BOAT N kalaman 72`. Unlike Port O'Call, this one *is* directly
+     novel-sourced -- `dwn_full.txt:944-948` states the historical
+     Perechon was actually "heading for Kalaman, northwest of Flotsam,
+     around the cape of Nordmaar" before the storm blew it into the Blood
+     Sea of Istar and wrecked it. Deliberately a new POI rather than
+     routed through the existing `H "The Harbor"` dockhand, whose
+     `TALK`/`TALK_AGAIN`/`TOPIC` lines are all built around hyping the
+     doomed Perechon and warning the storm makes it "a bad time to be
+     shopping for a ship" -- granting a working, successful voyage through
+     him would contradict his own already-shipped flavor (same call as
+     Tarsis's Runner avoiding the already-pessimistic Old Sailor,
+     Milestone 91). The Blood Sea itself stays uncrossable, consistent
+     with `world::terrainFor`'s existing "no lore invented about ships
+     crossing it" comment.
+
+     **A real bug found by playing the new ferry, not by review: `BOAT`
+     was one-time-per-NPC ever**, gated on `GameState::voyagesTaken`.
+     Fine for the four original one-way "story advances" legs (Tarsis ->
+     Ice Wall -> Southern Ergoth -> Sancrist -> Palanthas), broken the
+     moment a genuine round-trip ferry existed -- Serath boarded, walked
+     back to Crossing, and the Ferry Keeper had nothing left to offer.
+     Fixed in `GameLoop::talkTo` (`src/game/GameLoop.cpp`): the offer no
+     longer checks `voyagesTaken` at all (still populated on boarding,
+     still saved/loaded, kept purely as a historical record). Re-offering
+     doesn't reintroduce Milestone 88's "sail anywhere" problem -- still
+     one narrow, specific point-to-point jump per NPC. Same pass also
+     fixed the boarding log message, previously hardcoded to "days pass
+     ... rises out of the fog" regardless of trip length -- wrong for a
+     3-hour strait hop. Now branches on `candidate.boatHours < 24` for a
+     short-crossing phrasing. This was the one real C++ change in this
+     milestone; everything else was pure data. Clean `/W4` rebuild (zero
+     new warnings).
+
+     Verified via the piped save-slot smoke test (every new
+     `LOCATION`/`BOAT` destination resolves cleanly) and, for the boat
+     mechanics, by the user's own real play on Serath: boarded Crossing's
+     ferry, walked back, boarded it again successfully post-fix. Full
+     writeup: `docs/ZONE_NOTES.md`'s "Boats" section, `docs/MAP_NOTES.md`'s
+     new "Port O'Call" section.
 
 ## NEXT UP
 

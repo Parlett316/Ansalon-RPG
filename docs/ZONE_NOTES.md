@@ -438,7 +438,7 @@ The only shop currently locked this way is Flint's Smithy
 `BOAT <char> <destination-location-id> <hours>` marks a POI whose `TALK`
 interaction offers the player a Board/"Not yet" choice (a `drawPickerFrame`
 picker, added Milestone 92 -- mirrors `offerOrTurnInQuest`'s Accept/Decline
-picker) the first time it's ever accepted moving the player straight to
+picker) that, when accepted, moves the player straight to
 `<destination-location-id>`'s overworld `POS`, exits back to the
 overworld, and advances `hoursElapsed` by `<hours>` (see
 `docs/ARCHITECTURE.md`'s "Sea travel"). Same "layers an ability on top of
@@ -455,10 +455,23 @@ stored in its own `Zone`-level map, validated once a `World` exists (see
 `ZoneCatalog::loadForWorld`), not by `ZoneLoader` alone.
 
 **Declining** (Milestone 92) leaves the greeting's ordinary topics/
-`SUBJECT` picker still reachable instead of ending the conversation --
-tracked via `GameState::voyagesTaken`, not `metCharacters` (see
-`docs/ARCHITECTURE.md`'s "Sea travel" for why those can't share one flag).
-The offer comes back on every later visit until actually boarded.
+`SUBJECT` picker still reachable instead of ending the conversation. The
+offer comes back on every later visit -- **including after boarding**, a
+correction made during the Milestone 121 follow-up work below. Originally
+one-time-only, gated on `GameState::voyagesTaken` (still populated on
+boarding, still saved/loaded, but no longer read for gating -- kept
+purely as a historical record, per `GameLoop::talkTo`'s own comment where
+the check used to be). That was fine for the four one-way "story advances"
+legs below, but broke the moment a genuine round-trip ferry (Crossing <->
+Port O'Call) entered the picture: a player who boards, walks back to the
+origin, and wants to board again found the offer silently gone, with no
+in-fiction explanation. Re-offering doesn't reintroduce Milestone 88's
+"sail anywhere" problem -- it's still one narrow, specific point-to-point
+jump per NPC, never general ocean travel. The boarding log message is
+also now duration-aware (`candidate.boatHours < 24`): "days pass ... rises
+out of the fog" still fires for the long legs below, but a short hop like
+Crossing's 3-hour crossing gets its own "before long, comes into view"
+phrasing instead of overselling a multi-day voyage that didn't happen.
 
 Four POIs carry `BOAT`, four legs of the same route (Tarsis -> Ice Wall ->
 Southern Ergoth -> Sancrist -> Palanthas):
@@ -501,6 +514,70 @@ Southern Ergoth -> Sancrist -> Palanthas):
   Milestone 91 left open -- see "Sancrist Isle" below. Represents the
   Knights' own army muster for the Palanthas crossing (source-grounded, see
   `docs/TIMELINE_NOTES.md`'s "Sancrist Isle" section), not a generic guard.
+
+A fifth, unrelated to that four-leg route: `data/zones/crossing.txt`'s
+`K "The Ferry Keeper"` (Milestone 121 follow-up), granting `BOAT K
+port_ocall 3`. Unlike the four legs above, Crossing itself is map-only,
+not novel-sourced (`docs/MAP_NOTES.md`'s "Crossing" section) -- this
+isn't a real sourced sea journey, just making her own already-shipped
+dialogue literal (`TOPIC K "The Strait"` already said "Most people pay
+for the ferry instead," and her `TALK K` line already pointed at "the
+Tower road" on the far shore). Added after the user found that
+foot-crossing the strait's shallow water actually worked, then asked for
+a real boat option instead of a terrain fix (a stray true-ocean pixel
+one tile north of Crossing was found and reverted rather than patched --
+see that terrain bug's own history in git if it resurfaces).
+
+**First shipped pointing at `high_clerist_tower` directly, then
+corrected the same session**: a ferry crossing a narrow strait
+teleporting the player straight to an inland mountain fortress many
+tiles further north never made geographic sense once examined --
+`high_clerist_tower` was just the only real location her dialogue
+happened to name, not an actual coastal landing point. Pixel-measuring
+`References/dragonlancemap2.png` (labeled grid-overlay crop, cross-
+checked against Crossing's own already-correct `(200, 185)` to confirm
+the conversion math) found the real port town directly across the strait
+-- already noted in this project's own Milestone 93 research ("the map's
+own roads hug each shore -- ... Firstward -> Castle Di Estra -> Port
+O'Call on the east") but never given a real `LOCATION`. **`LOCATION
+port_ocall`** (`data/locations.txt`, `POS 202 180`, confirmed walkable
+coastal terrain, no nudge needed) and a new minimal zone,
+`data/zones/port_ocall.txt` (same shape as Crossing's own: no
+`PRESENCE`/`TIMELINE_ANCHOR`, two POIs -- `D "The Dockmaster"` granting
+the return leg, `BOAT D crossing 3`, and `Q "The Coast Road"`,
+flavor-only, pointing the way north). 3 hours each way (down from the
+original 24) -- a short strait hop is what this actually is, now that
+it lands at the real coastal spot instead of teleporting inland; no
+`ROAD_PAIRS` entry either, same "waypoint town, still foot-reachable"
+precedent as Crossing itself (confirmed via a throwaway BFS,
+`docs/MAP_NOTES.md`'s own established check for this kind of placement).
+`high_clerist_tower`/`palanthas` are still reachable on foot north from
+there.
+
+Worth remembering for later sessions: **Caergoth was the user's first
+suggestion for this, and is real on the reference map, but sits on the
+Straits of Algoni -- a different body of water from the Strait of
+Schallsea entirely, well to the northwest.** Not used here for that
+geographic reason, not a sourcing objection -- see the broader principle
+below.
+
+A sixth, same session: `data/zones/flotsam.txt`'s new `N "A Northbound
+Trader"`, granting `BOAT N kalaman 72`. Unlike Crossing's ferry, this one
+*is* a real sourced sea journey, just not the one the existing `H "The
+Harbor"` dockhand's dialogue points at -- `dwn_full.txt:944-948` states
+the historical Perechon was actually "heading for Kalaman, northwest of
+Flotsam, around the cape of Nordmaar" before the storm blew it into the
+Blood Sea of Istar and wrecked it (the Blood Sea crossing itself stays
+unmodeled -- `world::terrainFor`'s own comment: "no lore is invented here
+about ships crossing it"). Deliberately a new POI rather than routed
+through `H` -- his `TALK`/`TALK_AGAIN`/`TOPIC` lines are all built around
+hyping the doomed Perechon specifically and a storm making it "a bad time
+to be shopping for a ship," so granting a working, successful voyage
+through him would contradict his own already-shipped flavor. Same
+"deliberately not the thematically-wrong existing NPC" call as Tarsis's
+Runner avoiding the Old Sailor, above. 72 hours (three days, matching her
+own `TALK N` line) -- an ordinary, different, unnamed ship taking the
+historical route's *intended* path, not a re-enactment of the wreck.
 
 **Milestone 36 originally modeled this as a permanent `GameState::hasBoat`
 flag** that let the player cross any ocean tile anywhere, forever, once

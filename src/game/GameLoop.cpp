@@ -960,12 +960,18 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     if (!candidate.questId.empty()) {
         offerOrTurnInQuest(candidate.questId, name);
     }
-    // A scripted one-time voyage (Milestone 36, reworked; Milestone 92 added
-    // a real decline option). Offered on every talk until actually boarded
-    // -- gated on voyagesTaken rather than alreadyMet, since alreadyMet is
-    // set unconditionally above and declining must not burn the offer.
+    // A scripted voyage (Milestone 36, reworked; Milestone 92 added a real
+    // decline option). Offered on every talk, including after boarding once
+    // -- originally one-time-only (gated on voyagesTaken), but the Crossing/
+    // Port O'Call ferry pair (Milestone 121 follow-up) needs real round
+    // trips: a player who boards, then walks back to the origin, must be
+    // able to board again. Re-offering doesn't reintroduce Milestone 88's
+    // "sail anywhere" problem -- this is still one narrow, specific
+    // point-to-point jump per NPC, not general ocean travel. voyagesTaken
+    // itself is kept (still inserted into below, still saved/loaded) purely
+    // as a historical record; nothing gates on it reading empty anymore.
     // Mirrors offerOrTurnInQuest's Accept/Decline picker below.
-    if (!candidate.boatDestinationId.empty() && state_.voyagesTaken.count(id) == 0) {
+    if (!candidate.boatDestinationId.empty()) {
         const world::Location* destination = world_.getLocation(candidate.boatDestinationId);
         if (destination == nullptr) return; // defensive -- ZoneCatalog::loadForWorld already validated this id
         std::vector<std::string> labels = {"Board", "Not yet"};
@@ -996,9 +1002,22 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
             state_.y = destination->y;
             state_.hoursElapsed += candidate.boatHours;
             state_.visitedLocations.insert(destination->id);
-            pushLog("You board the ship, and it carries you " + std::string(dir) +
-                    " across open water. Days pass before " + destination->name +
-                    " finally rises out of the fog.");
+            // Two phrasings, split at a day -- "days pass ... rises out of
+            // the fog" reads fine for the four original 48-96 hour open-
+            // water legs, but was wrong for Crossing/Port O'Call's 3-hour
+            // strait hop (Milestone 121 follow-up) before this branch
+            // existed. boatHours, not distance -- pacing is already
+            // invented per-leg (docs/ZONE_NOTES.md's "Boats" section), so
+            // it's the one number already carrying "how long did this feel"
+            // intent.
+            if (candidate.boatHours < 24) {
+                pushLog("You board the ferry, and it carries you " + std::string(dir) +
+                        " across the water. Before long, " + destination->name + " comes into view.");
+            } else {
+                pushLog("You board the ship, and it carries you " + std::string(dir) +
+                        " across open water. Days pass before " + destination->name +
+                        " finally rises out of the fog.");
+            }
             checkQuestReadiness(); // a VISIT objective may have just been satisfied
             announceOverworldTile();
             return;
