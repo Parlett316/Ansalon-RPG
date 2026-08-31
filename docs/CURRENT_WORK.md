@@ -1,27 +1,32 @@
 # Current work
 
-Nothing in flight. Milestone 125 (sourced `GROUP` data for Thanoi, Ice
-Bear, and Giant Spider) is implemented and documented -- see
-`docs/MILESTONES.md` entry 125 for the full history.
+Nothing in flight. Milestone 126 (Atlas Chronology Re-sync) is
+implemented, documented, and verified -- see `docs/MILESTONES.md` entry
+126 and `docs/TIMELINE_NOTES.md`'s "Atlas Chronology Re-sync (Milestone
+126)" for the full history and the complete before/after day-number
+tables.
 
-Re-verified all 12 of Milestone 113's still-solo monsters' real No.
-Appearing data against rendered rulebook page images. Two (Owlbear,
-Ettin) turned out to print a solitary number for the real wandering
-encounter and are now permanently solo, not just deferred. Of the
-remaining 10, the user chose to keep the 7 `MIN_TOWN_DISTANCE`-gated
-danger-tier monsters (Ogre, Kapak, Bozak, Sivak, Aurak, Wight, Troll)
-solo for now, shipping only the 3 that carry no distance gate --
-`data/monsters.txt` gained a new `GROUP 1 4` line for Thanoi, Ice Bear,
-and Giant Spider each. Pure data change, no C++ touched.
+Re-derived every `PRESENCE`/`SUBJECT_WHEN` day-boundary in
+`data/timeline.txt` past `pax_tharkas 10 12` from `TSR 8448 The Atlas of
+the Dragonlance World.pdf`'s real day-by-day chronology (pp.137-139),
+replacing what had been explicit, disclosed guesses. The schedule now
+spans ~195 days instead of ~107, at the user's explicit choice of the
+Atlas's real absolute day counts over a compressed rescale. Pure data +
+doc change, no `.cpp`/`.h` touched.
 
-Verified via a clean `/W4` rebuild (zero new warnings) and reaching the
-save-slot menu, which loads `MonsterCatalog` (and therefore all three
-edited blocks) before it renders. **Not yet interactively verified**: all
-three save slots (Mason, Mike, Regan) were occupied again this session,
-so the piped test couldn't reach character creation either, and there's
-no piped path to a live combat encounter regardless (`_getch()` blocks
-that). Seeing an actual Thanoi/Ice Bear/Giant Spider band in a real fight
-still needs the user's own keyboard -- Ice Bear and Giant Spider are the
-easiest to reach (Icewall Glacier tiles for Ice Bear; most forest/bog
-terrain for Giant Spider), Thanoi needs the same glacier terrain as Ice
-Bear.
+Verified via `--check-timeline` (zero new keyword-collision warnings
+beyond the one pre-existing, already-documented Raistlin/Kitiara
+override) and a clean `/W4` rebuild (zero new warnings, no code diff).
+**Not yet interactively verified** in a real playthrough -- all three
+save slots (Mason Day 5, Mike Day 4, Regan Day 7) were occupied this
+session, so the piped smoke test couldn't reach character creation
+either. Worth noting for whoever plays next: Regan (Day 7) was
+previously inside the old `qualinesti 7 9` window and is now in a gap
+(new `qualinesti` starts Day 10) -- not a bug, just the disclosed cost of
+correcting the pacing (see the Milestone 126 writeup's "A new, honest gap
+this correction creates").
+
+Six real Atlas-named locations (Que-shu, Hopeful Vale, Skullcap,
+Qualimori, Dragon Mountain, Mount Nevermind) were found but deliberately
+not built this pass -- flagged as NEXT UP item 7, since each needs real
+map-placement/zone work, not a day-renumbering change.

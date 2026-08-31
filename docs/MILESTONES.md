@@ -4459,6 +4459,53 @@ now fully verified, nothing further outstanding.
      Full writeup: `docs/COMBAT_NOTES.md`'s "Monster encounter groups,
      continued (Milestone 125)".
 
+126. Atlas Chronology Re-sync -- the user asked whether `TSR 8448 The
+     Atlas of the Dragonlance World.pdf` (pp.137-139, a real day-by-day
+     chronology for Year 351-352 A.C.) matches the day numbers already
+     shipped in `data/timeline.txt`. It didn't: every window past
+     `pax_tharkas 10 12` had been an explicit, disclosed *guess* from
+     vague textual cues, and the Atlas's real dates showed one of those
+     guesses was off by a lot -- "roughly 2-3 months" between Pax Tharkas
+     and Sturm's death was actually closer to 5 months, almost all of it
+     between Sancrist Isle and the Tower siege.
+
+     Re-derived every `PRESENCE`/`SUBJECT_WHEN` day-boundary in the file
+     from the Atlas's own dates (Day 0 anchored to the existing `solace 0
+     1`, 30-day months evidenced directly by the Atlas's own "9.30 -- Last
+     day of autumn" and the fact no date in the chronology exceeds `.30`),
+     at the user's explicit choice of the Atlas's real absolute day counts
+     over a compressed/proportional rescale -- accepting that the tracked
+     schedule now spans ~195 days instead of ~107. Confirmed first, via
+     grep, that this is a pure data + doc change: no `.cpp`/`.h` file
+     hardcodes any of the day numbers being moved.
+
+     Applied via a throwaway, uncommitted Python script performing
+     count-verified literal substring replacements (every occurrence of a
+     given old value maps to exactly one new value everywhere in the
+     file, confirmed by grep beforehand) rather than dozens of manual
+     edits across 12 `CHARACTER` blocks. One real collision surfaced and
+     was fixed: Flint and Tasslehoff each carry two `PRESENCE kalaman`
+     windows, and the Atlas's literal dates would have put them one day
+     apart -- `Timeline::presentAt` has no defined behavior for two
+     overlapping windows at the same location for the same character, so
+     the second window was pushed out to a clean, non-overlapping day
+     instead, disclosed as an engineering adjustment, not an Atlas date.
+
+     Found, but deliberately not built this pass: six real, Atlas-named
+     waypoints the game still has no `LOCATION` for -- Que-shu, Hopeful
+     Vale, Skullcap, Qualimori, Dragon Mountain, and Mount Nevermind (see
+     NEXT UP). Adding any of them is a map-placement/zone-building effort,
+     not a day-renumbering one.
+
+     Verified via `--check-timeline`: zero *new* keyword-collision
+     warnings despite several windows widening substantially (`ice_wall`
+     5 days to 10, `silvanesti` 6 days to 13) -- the only warning that
+     fires is the one pre-existing, already-documented Raistlin/Kitiara
+     override. Clean `/W4` rebuild, zero new warnings, no `.cpp`/`.h`
+     diff at all. Full writeup, including the complete before/after
+     tables for both `PRESENCE` and `SUBJECT_WHEN`: `docs/TIMELINE_NOTES.md`'s
+     "Atlas Chronology Re-sync (Milestone 126)".
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -4554,3 +4601,13 @@ session's work.
    (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
    no opportunity attacks from companion movement, no "finish off a downed
    ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.
+7. **Six real, Atlas-named waypoints with no `LOCATION` yet**, surfaced by
+   Milestone 126's chronology research: Que-shu (Goldmoon/Riverwind's home
+   tribe, its destruction actually witnessed en route to Xak Tsaroth --
+   not just backstory), Hopeful Vale (the refugee camp where Goldmoon and
+   Riverwind marry and the first Whitestone Council convenes), Skullcap
+   (the map-to-Thorbardin's-door sidequest), Qualimori, Dragon Mountain,
+   and Mount Nevermind. Each needs real map-placement work (pixel
+   verification against `dragonlancemap2.png`, a `docs/MAP_NOTES.md`
+   entry) and a new zone file, not just a day number -- a content
+   milestone, not a follow-on to 126's pure renumbering pass.

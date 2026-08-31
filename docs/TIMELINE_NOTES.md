@@ -680,21 +680,36 @@ Raistlin, Caramon, Flint, Goldmoon, Riverwind, Sturm, and Tasslehoff —
 sharing the same seven-stop schedule through *Dragons of Autumn Twilight*
 and the opening of *Dragons of Winter Night* (Solace → Haven *or* Darken
 Wood → Xak Tsaroth → Qualinesti → Pax Tharkas → Tarsis, days
-0–1/2–3/2–3/4–6/7–9/10–12/20–22), since DL1/DL2/DAT's actual text keeps
+0–1/1–2/1–2/3–5/10–12/12–15/46–48 as of the Milestone 126 Atlas re-sync,
+see below), since DL1/DL2/DAT's actual text keeps
 the whole party moving together through this stretch of the story (DL1 is
 literally designed to be played by this cast, via pregenerated character
 cards; DL2's "Elvenhome" chapter has the group as a whole travel to
 Qualinost; DAT's climax is the whole company together at Pax Tharkas; DWN
-opens with everyone still together in Tarsis). Windows are deliberately
-generous (2–3 days each) so a player has a real chance of crossing paths
-without needing frame-perfect timing. **As of Milestone 35, the shared
+opens with everyone still together in Tarsis). Windows were originally
+kept deliberately generous (2–3 days each) so a player has a real chance
+of crossing paths without needing frame-perfect timing; as of the
+Milestone 126 re-sync several are wider still, now reflecting the real
+spread of events the Atlas's own day-by-day chronology gives rather than
+an invented guess (see below). **As of Milestone 35, the shared
 schedule ends at Tarsis** — Sturm, Flint, and Tasslehoff continue on,
-first to an `ice_wall 38 42` window (Milestone 36) and then to a
-`high_clerist_tower 76 80` window, while Tanis, Raistlin, Caramon,
-Goldmoon, and Riverwind instead gain a `silvanesti 25 30` window
+first to an `ice_wall 54 63` window (Milestone 36) and then to a
+`high_clerist_tower 157 159` window, while Tanis, Raistlin, Caramon,
+Goldmoon, and Riverwind instead gain a `silvanesti 51 63` window
 (Milestone 37); see "Dragons of Winter Night: the party splits" below for
 the mechanics of the split itself, and "Ice Wall"/"Silvanesti" below for
 each group's own destination.
+
+**A note on day numbers in the sections below.** Every numbered
+Milestone section in this file (Ice Wall, Silvanesti, Southern Ergoth,
+etc.) describes the day-ranges *as shipped at that milestone* — a
+historical record, same convention this file already uses for
+since-corrected "unnamed"/"off-stage" character mentions (see below).
+Milestone 126 (last section in this file) shifted nearly every window
+past `pax_tharkas` to a new, Atlas-sourced day number without rewriting
+each of those older write-ups in place; check `data/timeline.txt` itself,
+or the Milestone 126 section's own before/after table, for what's
+actually shipped.
 
 **Darken Wood shares Haven's day window (2–3), deliberately.** Milestone
 24's research confirmed directly in *Dragons of Autumn Twilight*: the
@@ -2297,6 +2312,144 @@ new grammar or `PRESENCE` boundary, same call as Milestones 47/50/60).
 Not yet interactively verified in a real playthrough — the `neraka 105
 107` window is deep into a long playthrough, same caveat as every prior
 Neraka-window milestone.
+
+## Atlas Chronology Re-sync (Milestone 126)
+
+Every day-range past `pax_tharkas 10 12` in this file had been an
+explicit, disclosed *guess* — Milestones 35/36/86/91/95/96/39/44/45/46
+all placed their windows from vague textual cues ("well over a month,"
+"beginning of the Yuletide season," "moved out from Palanthas only a few
+weeks ago") because no harder source existed. `TSR 8448 The Atlas of the
+Dragonlance World` (pp. 137-139, "Pathways — The Dragonlance
+Chronicles," a real day-by-day chronology for Year 351-352 A.C. built by
+TSR from both the Chronicles novels and the DL-series modules) is that
+harder source, found and checked against the existing schedule at the
+user's request. It doesn't just refine the guesses — it found one of them
+was off by a *lot*: this file's own Ice Wall section estimated "roughly
+2-3 months" between Pax Tharkas and Sturm's death; the Atlas puts it at
+145 days, nearly 5 months, almost all of it sitting between Sancrist Isle
+and the Tower siege, a real 79-day gap the schedule had compressed to 16.
+
+**Methodology.** `Day 0` stays anchored to the Atlas's own **9.13, Year
+351 A.C.** (the Inn meeting) — unchanged from what already shipped
+(`solace 0 1`), so the best-tested, earliest-game content doesn't move.
+Every other day number is `(atlas_date − 9.13)`, computed as
+`(month−1)×30 + day`. **30-day months are evidenced directly from the
+Atlas's own text**, not assumed from outside calendar lore: "9.30 — Last
+day of autumn" only parses if month 9 has exactly 30 days, and no date
+anywhere in the full 351-352 A.C. chronology exceeds `.30`.
+
+**One primary-source wrinkle, disclosed rather than silently resolved.**
+The Atlas's numbered chronology says "11.1 Arrive in Tarsis in
+morning... Dragons attack at dusk," but its own accompanying map page
+separately labels the Tarsis waypoint "10.30" along the marked travel
+route. The numbered list (the actual "Pathways" day-by-day text this
+whole table is built from) is treated as authoritative; the map
+annotation is a minor, one-day discrepancy in the source itself, same
+spirit as the Atlas's own intro disclosing the Earth-calendar
+reconciliation problems with the Inn-meeting date.
+
+**The full re-mapping** (every location's day-range was identical across
+every character who has it, confirmed by grep before making any change,
+so this is one table per location, not per character):
+
+| Location | Old range | New range | Atlas citation |
+|---|---|---|---|
+| solace | 0-1 | unchanged | 9.13 Inn meeting |
+| haven | 2-3 | 1-2 | 9.14-9.15, flight via Haven Road |
+| darken_wood | 2-3 | 1-2 | 9.14-9.15, flight via Darken Wood |
+| xak_tsaroth | 4-6 | 3-5 | 9.16 arrive/captured, 9.17 descend/destroy, 9.18 smoke seen |
+| qualinesti | 7-9 | 10-12 | 9.24 arrive p.m., 9.25 leave dawn (+1 day slack) |
+| pax_tharkas | 10-12 | 12-15 | 9.25 reach Sla-Mori, 9.26 escape, 9.28 retaken |
+| thorbardin | 13-19 | 33-41 | 10.16 Life-Tree through 10.24 leave for Tarsis — both the Hammer-of-Kharas visit and the later refugee-arrival ceremony, plus the Hopeful Vale round trip between them, folded into one window |
+| tarsis | 20-22 | 46-48 | 11.1 arrive/attack/split (see map-vs-text wrinkle above) |
+| silvanesti | 25-30 | 51-63 | 11.4 arrive dusk — 11.16 Lorac dies, heroes leave |
+| ice_wall | 38-42 | 54-63 | 11.7 reach glacier — 11.16 retrieve orb, escape |
+| southern_ergoth | 43-50 | 69-72 | 11.22 wreck — onward travel |
+| sancrist_isle | 55-60 | 75-78 | 11.28 arrive, 11.29 knighted, 12.1 sails |
+| high_clerist_tower (first window) | 76-80 | 157-159 | 2.20 blizzard arrival — 2.22 Solamnic Plain |
+| high_clerist_tower (Sturm's death) | 81-81 | 160-160 | 2.23 battle, Sturm dies |
+| palanthas (Raistlin only) | 83-83 | 168-168 | 3.1 "Raistlin appears at library, where Tas sees him" — an exact match for the existing ambiguous-collapse/glimpsed framing, an upgrade from soft-invented to sourced |
+| palanthas (Flint/Tasslehoff/Laurana) | 83-89 | 163-169 | 2.26 sea-elf rescue near Palanthas — 3.2 good dragons arrive |
+| port_balifor | 35-64 | 68-100 | 11.21 arrival; this file's own pre-existing "about a month" citation matches the Atlas's 32-day gap almost exactly — an independent cross-check that the old, invented estimate had already gotten this one right |
+| flotsam | 65-82 | 157-161 | 2.20 Tanis's group arrives — 2.24 leaves on the Perechon; now correctly overlaps the Tower siege dates, since both branches' stories genuinely run in parallel in the real calendar, same as the novel cuts between them |
+| kalaman (Flint/Tasslehoff/Laurana) | 90-92 | 187-189 | 3.20 Whitestone forces enter Kalaman |
+| dargaard_keep | 93-93 | 190-190 | kept in its existing relative slot — not in the Atlas's own list, no better source found this pass |
+| kalaman (Tanis/Caramon/Goldmoon/Riverwind/Flint) | 100-100 | 191-191 | 3.22 Tanis's group arrives (see collision note below for why this is 191, not the Atlas's literal 189) |
+| godshome | 103-103 | 192-192 | 3.25 Flint dies |
+| neraka | 105-107 | 193-195 | 3.26 Ariakas arrives/Council of War/Neraka destroyed (+1 day slack for the escape) |
+
+**Collision fix, disclosed as an engineering adjustment, not an Atlas
+date.** The Atlas literally puts the second Kalaman arrival two days
+after the first (day 189, the naive end of the 187-189 mapping). Both
+Flint *and* Tasslehoff carry both Kalaman `PRESENCE` blocks, and
+`Timeline::presentAt` has no defined behavior for two overlapping windows
+at the same location for the same character — so the second window was
+pushed to 191, one clear day after the first window's 189 end, rather
+than left exactly overlapping.
+
+**Real, sourced waypoints found this pass that the game still doesn't
+model** — added to `docs/MILESTONES.md`'s NEXT UP rather than built here,
+since each needs real map-placement/zone work, not just a day number:
+**Que-shu** (the party actually passes through and sees Goldmoon and
+Riverwind's home tribe destroyed en route to Xak Tsaroth — not just
+backstory), **Hopeful Vale** (the refugee camp where Goldmoon and
+Riverwind marry, and where the first Whitestone Council convenes),
+**Skullcap** (the map-to-Thorbardin's-door sidequest), **Qualimori**,
+**Dragon Mountain**, and **Mount Nevermind**.
+
+**What didn't change.** No flavor/`SAY`/`TOPIC` text — it was written to
+be evergreen regardless of the exact day a player reads it (the existing,
+explicit design principle behind the Tower's Muster Yard, Silvanesti's
+Warder, etc.), so only the numeric day-boundaries moved. No `.cpp`/`.h`
+file — confirmed by grep before starting that nothing in `src/` hardcodes
+any of the day-boundary numbers being changed; `Timeline::presentAt`,
+`latestDayEnd`, and `earliestDayStart` all read `PRESENCE`/`SUBJECT_WHEN`
+data live.
+
+**The corresponding `SUBJECT_WHEN` boundary shift**, applied everywhere
+the old boundary appeared (confirmed via grep beforehand that every
+numeric pair maps to exactly one gate, no two different gates sharing a
+pair, so each was a safe global replacement):
+
+| Old pair | New pair | Gate |
+|---|---|---|
+| `0 1` / `2 -1` | `0 0` / `1 -1` | draconians (darken_wood day-1) |
+| `0 3` / `4 -1` | `0 2` / `3 -1` | Khisanth/Verminaard/Disks/gods-stage/Fistandantilus/Bupu (xak_tsaroth day-3) |
+| `0 19` / `20 -1` | `0 45` / `46 -1` | Alhana/Starbreeze (tarsis day-46) |
+| `0 24` / `25 -1` | `0 50` / `51 -1` | Cyan Bloodbane, Lorac (silvanesti day-51) |
+| `0 75` / `76 -1` | `0 156` / `157 -1` | Sturm's own knighthood self-gate |
+| `0 80` / `81 -1` | `0 159` / `160 -1` | opinion-of-Sturm (his death) |
+| `0 82` / `83 -1` | `0 167` / `168 -1` | opinion-of-Raistlin (his collapse) |
+| `0 102` / `103 -1` | `0 191` / `192 -1` | opinion-of-Flint (his death) |
+
+**A new, honest gap this correction creates.** The old schedule was
+close to continuous from day 0 to day 107; the corrected one has real
+stretches — day 16 to 32 (between Pax Tharkas and Thorbardin), day 79 to
+156 (between Sancrist Isle and the Tower siege) — where no tracked
+character is anywhere on the map. This isn't a bug: it's the actual,
+disclosed cost of replacing invented pacing with real pacing, and it's
+the same "unmodeled travel time" abstraction this file already leans on
+everywhere else (see Southern Ergoth's own "leaving days 51-54 as
+unnarrated escort/travel time," above) — just wider, because the real
+gaps are wider than anyone had guessed. A character whose tracked
+in-progress save already sits inside one of these new gaps (e.g. a
+player at day 7, previously inside the old `qualinesti 7 9` window, now
+between `xak_tsaroth 3 5` and the new `qualinesti 10 12`) will see no
+Heroes until reaching the next window — not a regression in any window
+that character had already reached, just a temporary quiet stretch.
+
+Applied via a throwaway Python script (not committed) that performed the
+two tables above as literal, count-verified substring replacements over
+`data/timeline.txt` — safe because every occurrence of a given old
+`PRESENCE`/`SUBJECT_WHEN` value maps to exactly one new value everywhere
+in the file (verified by grep before writing the script, not assumed).
+Verified via `--check-timeline`: the shifted and widened windows produced
+**zero new** keyword-collision warnings — the only warning that fires is
+the one pre-existing, already-documented Raistlin/Kitiara override this
+file already calls permanent (see "Keyword-collision warning" above) —
+and a clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h` diff at all,
+confirming this really was a pure data + doc change).
 
 ## Adding a new character or event
 
