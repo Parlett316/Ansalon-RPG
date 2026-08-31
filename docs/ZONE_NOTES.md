@@ -1530,12 +1530,27 @@ four Heroes waiting on Tanis are actually found), the Saltbreeze Inn
 (`S`, flavor-only — deliberately *not* talkable; see below), a Back
 Alley (`A`, flavor-only, echoing the ambush scene without restaging it),
 and the Harbor (`H`, a generic dockhand, this zone's one talkable NPC —
-`TALK`/`TALK_AGAIN`, a `TOPIC` on the Perechon, three `SUBJECT`
+`TALK`/`TALK_AGAIN`, a `TOPIC` on the Perechon, four `SUBJECT`
 entries). The dockhand's dialogue names Maquesta Kar-thon and gestures at
 her "helmsman who can read the Blood Sea's moods... simple as a child"
 without naming Berem — the same kind of unstaged foreshadowing this
 project has used before naming a character outright (compare Fizban's
 unnamed appearances before Milestone 48).
+
+**A small follow-up pass, reviewing *Dragonlance Adventures* for further
+content**, added a second named crew member to the same `TOPIC`/a new
+`SUBJECT koraf,minotaur,mate` line: Bas-Ohn Koraf, Maquesta's first mate,
+sourced directly from `.research/dosd_full.txt:756-775` ("Her first
+mate, Bas Ohn-Koraf, was a Minotaur — a race not noted for its
+easy-going temper. He was exceptionally strong and was known to kill
+without provocation") and cross-referenced against DLA's own
+"Personalities of the Age of Dragons" index entry for the same character
+(p.111). Flavor-only, same off-stage treatment as every other named
+canon character — no new POI, no `TALK`/`SHOP` hook, just a fuller
+answer if the player asks. The same pass re-confirmed Milestone 112's own
+"Minotaur (Bloodsea)... not monster-roster material" call in
+`data/monsters.txt` still holds — Koraf's presence doesn't change that;
+minotaurs remain a civilized race, not wandering-encounter material.
 
 **The Saltbreeze Inn is deliberately flavor-only, no NPC standing in for
 Kitiara.** Milestone 50 already decided she stays off the talk/topic

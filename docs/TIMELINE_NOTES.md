@@ -1356,7 +1356,9 @@ Tanis's absences without naming what he's actually doing, matching how
 little the book itself lets them know at the time.
 
 See `docs/MAP_NOTES.md`'s "Port Balifor and Flotsam" section for
-placement and `docs/ZONE_NOTES.md`'s own section for the two new zones.
+placement and `docs/ZONE_NOTES.md`'s own section for the two new zones
+(including a later small addendum naming Maquesta's first mate,
+Bas-Ohn Koraf, at the Harbor).
 
 ## Dargaard Keep (Milestone 98)
 
