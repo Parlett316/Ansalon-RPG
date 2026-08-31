@@ -1134,6 +1134,70 @@ Ergoth content, the same "known accepted edge case" shape Milestone 92
 already documented for `voyagesTaken`, not a new one this milestone
 introduces.
 
+## Foghaven Vale (Milestone 127)
+
+Builds the "Dragon Mountain" leg that this file's own Southern Ergoth
+section (above) and `docs/CURRENT_WORK.md`'s NEXT UP list both flagged as
+sourced-but-unbuilt. Found while reviewing the world map against
+`References/TSR 9400 TM3 World Of Krynn Trailmap.pdf` — its page 8
+"Foghaven Vale" detail map (Huma's Tomb, the Guardians, the Ruined Keep
+with a dragon's lair) corroborates the geography, though the actual
+content is sourced from the novel, not the trail map.
+
+**Sourcing.** `dwn_full.txt` lines ~8330-9650, continuing directly from
+Southern Ergoth's own mountain-pass pursuit. The party splits here:
+**Sturm and Derek Crownguard head straight for the Knights' outpost with
+the dragon orb**, a separate two-day route that stays entirely off-page
+— Sturm gets no `PRESENCE` at this new location. Everyone else —
+**Laurana, Flint, Tasslehoff, Gilthanas, Theros Ironfeld** — follows
+Silvara to a secret place only her people know:
+
+- Lines ~9040-9110: Huma's Tomb, its entrance marked by a colossal stone
+  dragon carved straight into the cliff face. Flint's own assessment:
+  work no dwarf, elf, or human hand ever made, older even than the tomb
+  itself. Silvara casts a rose-petal sleep spell over the group rather
+  than let them follow her further.
+- Lines ~9220-9320: Tasslehoff, awake while the others sleep, climbs
+  alone into the mountain itself — hollow, shaped like a dragon's throat,
+  its walls painted with murals of the War against evil dragons and the
+  silver/gold dragons who opposed them. He finds Fizban asleep there and
+  wakes him.
+
+**Gilthanas and Theros Ironfeld stay off-stage**, same established
+precedent as Derek Crownguard/Elistan at Southern Ergoth — named in
+dialogue, no `CHARACTER` block of their own.
+
+**Fizban and Silvara each gain a second window**, `PRESENCE
+foghaven_vale 69 72`, alongside their existing `southern_ergoth 69 72`
+ones. These are genuinely different scenes, not a duplicate: Fizban's
+existing Southern Ergoth window covers him confronting "Silvan" over her
+broken oath (lines ~9550-9650, chronologically *after* this one); this
+new window covers the earlier mural-chamber meeting with Tasslehoff
+(~9220-9320) — placed first in `data/timeline.txt`'s file order to match
+that. Silvara's new window covers leading the group here and casting the
+sleep spell, distinct from her existing window's beach-side nursing of
+Gilthanas's wound.
+
+**No new overworld `LOCATION`.** `data/zones/foghaven_vale.txt` has no
+matching `LOCATION` block — same pattern `data/zones/solace_inn.txt`
+established at Milestone 16. It's reached only via a new `PORTAL M
+foghaven_vale` POI ("A Fog-Choked Trail") added to `data/zones/
+southern_ergoth.txt`. It also carries no `TIMELINE_LOCATION` override
+(unlike `solace_inn.txt`, which explicitly borrows `solace`'s id) — left
+unset, its effective timeline-location key defaults to its own zone id,
+`"foghaven_vale"`, a free-form string never cross-checked against `data/
+locations.txt` (confirmed directly in `TimelineLoader.cpp`). That keeps
+its new `PRESENCE` content fully isolated from Southern Ergoth's own
+already-shipped `southern_ergoth 69 72` lines — no day-range collision
+risk between the two zones. See `docs/ZONE_NOTES.md`'s own "Foghaven
+Vale" section for the zone's POI layout.
+
+**Day range.** `foghaven_vale 69 72` reuses the exact same range as the
+adjoining `southern_ergoth 69 72` content — the book gives no explicit
+day-delta between the wreck/beach events and the trek inland, same
+"soft, invented, disclosed" placement convention as every other day
+range in this file.
+
 ## Sancrist Isle (Milestone 86)
 
 Reverses the "deliberately not modeled" call this file made when Ice Wall
@@ -1893,11 +1957,14 @@ Pax Tharkas instead, with the fall itself folded into a `TOPIC` told
 wryly in retrospect (`"The Chain Room"`) rather than staged as the
 window's ending.
 
-**Days 13-102 deliberately stay empty.** Between Pax Tharkas and
-Godshome, Fizban is on his own separate DWN/DOSD side arcs (an unnamed
-"Dragon Mountain," Mount Nevermind, a mid-air dragon rescue) that have no
-existing game location — same "don't invent to fill a gap" restraint
-already applied to Sancrist Isle, Southern Ergoth, and Flotsam.
+**Days 13-102 mostly stay empty.** Between Pax Tharkas and Godshome,
+Fizban is on his own separate DWN/DOSD side arcs — Mount Nevermind, a
+mid-air dragon rescue — that still have no existing game location, same
+"don't invent to fill a gap" restraint already applied to Sancrist Isle,
+Southern Ergoth, and Flotsam. The Dragon Mountain leg of this stretch is
+no longer one of them — see this file's own "Foghaven Vale (Milestone
+127)" section below, which gives him a real `PRESENCE foghaven_vale 69
+72` window alongside his existing `southern_ergoth 69 72` one.
 
 **His true identity stays exactly as ambiguous as every prior milestone
 left it.** The source text itself gets explicit about this at Neraka —
@@ -2395,8 +2462,18 @@ since each needs real map-placement/zone work, not just a day number:
 Riverwind's home tribe destroyed en route to Xak Tsaroth — not just
 backstory), **Hopeful Vale** (the refugee camp where Goldmoon and
 Riverwind marry, and where the first Whitestone Council convenes),
-**Skullcap** (the map-to-Thorbardin's-door sidequest), **Qualimori**,
-**Dragon Mountain**, and **Mount Nevermind**.
+**Qualimori**, and **Mount Nevermind**.
+
+Two more names from this same pass turned out not to belong on this
+list. **Dragon Mountain** was built at Milestone 127 — see this file's
+"Foghaven Vale" section. **Skullcap** was removed outright: it doesn't
+appear anywhere in `dat_full.txt`/`dwn_full.txt`/`dosd_full.txt`, the
+three tracked Chronicles novels. It's real, but only in the *Legends*
+trilogy (`testott_full.txt`/`wott_full.txt`), as the ruin of Zhaman from
+the ancient Dwarfgate War — unrelated to the "map-to-Thorbardin's-door
+sidequest" this entry previously (incorrectly) called it. That claim
+wasn't sourced when it was written; it's corrected here rather than
+carried forward.
 
 **What didn't change.** No flavor/`SAY`/`TOPIC` text — it was written to
 be evergreen regardless of the exact day a player reads it (the existing,

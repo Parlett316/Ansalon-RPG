@@ -4506,6 +4506,76 @@ now fully verified, nothing further outstanding.
      tables for both `PRESENCE` and `SUBJECT_WHEN`: `docs/TIMELINE_NOTES.md`'s
      "Atlas Chronology Re-sync (Milestone 126)".
 
+127. Foghaven Vale (Huma's Tomb / the Dragon Mountain) -- requested after
+     reviewing the world map against a newly-supplied reference,
+     `References/TSR 9400 TM3 World Of Krynn Trailmap.pdf` (present in
+     `References/` since 2011, never previously cross-referenced by any
+     doc). That review pointed at two of Milestone 126's six unbuilt
+     Atlas-named waypoints, Skullcap and Dragon Mountain; the user picked
+     both.
+
+     Direct research against the three tracked Chronicles novels
+     (`dat_full.txt`/`dwn_full.txt`/`dosd_full.txt`) found Skullcap
+     doesn't actually belong on that list -- it never appears in any of
+     them, only in the *Legends* trilogy, as the ruin of Zhaman from the
+     Dwarfgate War. The "map-to-Thorbardin's-door sidequest" description
+     this project had attached to it was never sourced. Per the user's
+     decision: dropped outright, not built, with the doc corrected rather
+     than carried forward -- see `docs/TIMELINE_NOTES.md`'s "Foghaven
+     Vale" section for the correction and its exact wording.
+
+     Dragon Mountain checked out, and richer than expected:
+     `dwn_full.txt` lines ~8330-9650 give the full Foghaven Vale/Huma's
+     Tomb/Dragon Mountain scene, involving three tracked Heroes (Laurana,
+     Flint, Tasslehoff) plus Gilthanas, Theros Ironfeld, Silvara (already
+     a full `CHARACTER` since Milestone 95), and Fizban (already a full
+     `CHARACTER`). It's also the destination Tasslehoff's own
+     already-shipped `southern_ergoth` dialogue teases and never pays
+     off -- "I'm fairly sure he asked me to come somewhere with him, and
+     I said yes... I THINK I'm still invited!" -- this milestone is that
+     payoff.
+
+     **No new overworld `LOCATION`.** Same "no matching `LOCATION` of its
+     own" pattern `data/zones/solace_inn.txt` established at Milestone
+     16 -- Foghaven Vale is a secret place reached on foot from within
+     Southern Ergoth, not a separately-walkable overworld tile, so no
+     `ROAD_PAIRS`/`overworld.grid` regeneration was needed at all. A new
+     `PORTAL M foghaven_vale` POI was added to `data/zones/
+     southern_ergoth.txt`; the new `data/zones/foghaven_vale.txt` (three
+     POIs: the Guardians, Huma's Tomb as the `TIMELINE_ANCHOR`, the
+     Dragon's Throat) deliberately carries no `TIMELINE_LOCATION`
+     override, so its effective timeline-location key defaults to its
+     own zone id rather than borrowing Southern Ergoth's -- confirmed by
+     reading `GameLoop.cpp`/`ZoneLoader.cpp`/`Zone.h`/`TimelineLoader.cpp`
+     first, since a `PRESENCE` location-id is never cross-validated
+     against `data/locations.txt`. Keeps the new content fully isolated
+     from Southern Ergoth's own already-shipped `southern_ergoth 69 72`
+     lines.
+
+     Five `CHARACTER` blocks gained a new `PRESENCE foghaven_vale 69 72`
+     window: Laurana, Flint, and Tasslehoff (new tracked-Hero content),
+     plus a second window each for Fizban and Silvara, distinct from
+     their existing `southern_ergoth 69 72` ones (different specific
+     scenes from the same book stretch, not duplicates -- see
+     `docs/TIMELINE_NOTES.md`'s "Foghaven Vale" section). Sturm gets
+     nothing new -- he and Derek Crownguard split off toward the Knights'
+     outpost before this scene, confirmed by the source text rather than
+     assumed. Gilthanas and Theros Ironfeld stay off-stage, same
+     precedent Southern Ergoth already set for named-but-untracked
+     figures.
+
+     Pure data change, no `.cpp`/`.h` touched. Verified via a clean
+     `/W4` rebuild (zero new warnings, no diff) and `--check-timeline`
+     (zero new keyword-collision warnings beyond the one pre-existing,
+     already-documented Raistlin/Kitiara override). **Not interactively
+     walked** -- reaching the new zone/portal/anchor requires
+     `_getch()`-driven movement that can't be piped, same standing
+     limitation this project always discloses for zone-interior content;
+     the piped character-creation smoke test only confirms the new data
+     files parse without throwing. Full writeup: `docs/TIMELINE_NOTES.md`'s
+     "Foghaven Vale" section and `docs/ZONE_NOTES.md`'s "Foghaven Vale"
+     section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -4601,13 +4671,16 @@ session's work.
    (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
    no opportunity attacks from companion movement, no "finish off a downed
    ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.
-7. **Six real, Atlas-named waypoints with no `LOCATION` yet**, surfaced by
-   Milestone 126's chronology research: Que-shu (Goldmoon/Riverwind's home
-   tribe, its destruction actually witnessed en route to Xak Tsaroth --
-   not just backstory), Hopeful Vale (the refugee camp where Goldmoon and
-   Riverwind marry and the first Whitestone Council convenes), Skullcap
-   (the map-to-Thorbardin's-door sidequest), Qualimori, Dragon Mountain,
-   and Mount Nevermind. Each needs real map-placement work (pixel
-   verification against `dragonlancemap2.png`, a `docs/MAP_NOTES.md`
-   entry) and a new zone file, not just a day number -- a content
-   milestone, not a follow-on to 126's pure renumbering pass.
+7. **Four real, Atlas-named waypoints with no `LOCATION` yet**, surfaced
+   by Milestone 126's chronology research: Que-shu (Goldmoon/Riverwind's
+   home tribe, its destruction actually witnessed en route to Xak Tsaroth
+   -- not just backstory), Hopeful Vale (the refugee camp where Goldmoon
+   and Riverwind marry and the first Whitestone Council convenes),
+   Qualimori, and Mount Nevermind. Each needs real map-placement work
+   (pixel verification against `dragonlancemap2.png`, a
+   `docs/MAP_NOTES.md` entry) and a new zone file, not just a day number
+   -- a content milestone, not a follow-on to 126's pure renumbering
+   pass. ~~Dragon Mountain~~ shipped at Milestone 127 (as a portal-nested
+   zone off Southern Ergoth, no new overworld `LOCATION` needed).
+   ~~Skullcap~~ was removed from this list at Milestone 127 -- it isn't
+   actually sourced to any tracked novel; see that entry.

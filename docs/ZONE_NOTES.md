@@ -1509,6 +1509,38 @@ See `docs/MAP_NOTES.md`'s "Southern Ergoth" section for the placement and
 sourcing, including the correction to this project's own prior
 "deliberately not modeled" call.
 
+## Foghaven Vale (Milestone 127)
+
+`data/zones/foghaven_vale.txt` — a 40×15 grid, same borderless outdoor
+idiom as Southern Ergoth and Godshome. Three POIs: the Guardians (`G`,
+flavor-only — a row of worn statues lining the approach), Huma's Tomb
+(`T`, the `TIMELINE_ANCHOR` — the colossal stone dragon carved into the
+cliff, and where Laurana/Flint/Tasslehoff/Fizban/Silvara's tracked
+`PRESENCE` windows all resolve), and the Dragon's Throat (`D`,
+flavor-only — the mural-covered chamber deep in the mountain that
+Tasslehoff's own dialogue describes finding).
+
+**No matching `LOCATION` of its own** — reached only via a new `PORTAL M
+foghaven_vale` POI ("A Fog-Choked Trail") added to `data/zones/
+southern_ergoth.txt`'s own grid, same "hidden place reached on foot from
+an already-modeled location" pattern `data/zones/solace_inn.txt`
+established at Milestone 16. Unlike the Inn, it carries no
+`TIMELINE_LOCATION` override — left unset, so its effective
+timeline-location key defaults to its own zone id rather than borrowing
+Southern Ergoth's, keeping its `PRESENCE` content isolated from Southern
+Ergoth's own. See `docs/TIMELINE_NOTES.md`'s "Foghaven Vale" section for
+the full sourcing and the reasoning behind that choice.
+
+**All five canon characters resolve from the one `TIMELINE_ANCHOR`**,
+same "one anchor tile covers everyone regardless of their exact
+in-fiction spot" convention Southern Ergoth's own zone already uses —
+Tasslehoff's own scene is fictionally in the Dragon's Throat, not at the
+Tomb, but the engine only tracks presence per-location, not per-tile.
+
+Deliberately no `SHOP`, `BED`, or `QUEST` here — a one-time story
+location, not a settlement, same restraint Godshome and Southern Ergoth
+both already set.
+
 ## Port Balifor and Flotsam (Milestone 96)
 
 `data/zones/port_balifor.txt` — a 40×16 walled town grid (Kalaman's

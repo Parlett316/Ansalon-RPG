@@ -70,7 +70,9 @@ instead, a real round-trip boat ride across to Port O'Call on the far
 shore —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
-elven capital, inside Qualinesti. Standing at a location can also reveal
+elven capital, inside Qualinesti — plus one secret place reached only on
+foot from within a location rather than from the overworld: Foghaven
+Vale, hidden inland from Southern Ergoth's coast. Standing at a location can also reveal
 canon Heroes of the Lance passing through on their own schedule — the
 "chance encounter" engine described above now spans three novels: all
 eight Heroes travel together through *Dragons of Autumn Twilight* (an
@@ -80,7 +82,9 @@ genuinely split for the first time — Sturm, Flint, and Tasslehoff continue
 on, first to a dragon-orb quest at Ice Wall Castle, then shipwrecked by a
 white dragon onto Southern Ergoth's refugee coast — captured, nearly
 fought, and finally sheltered by elves scattered there from three
-different homelands — before reaching Sancrist and then the siege
+different homelands, while Flint and Tasslehoff (Sturm splitting off
+alone toward the Knights' outpost) follow a silver dragon inland to
+Huma's Tomb and the hollow Dragon Mountain — before reaching Sancrist and then the siege
 of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
 Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
 Silvanesti instead, into a second dragon-orb crisis of their own — then
@@ -108,12 +112,14 @@ eccentric old wizard, is the first canon character named and made
 talkable beyond the eight Heroes themselves — travels with the party
 from Qualinesti through the siege of Pax Tharkas, then resurfaces, still
 unidentified as anything more than "Fizban," on Southern Ergoth's
-refugee coast and again at both Godshome and Neraka.
+refugee coast — and asleep inside the hollow Dragon Mountain nearby —
+and again at both Godshome and Neraka.
 Laurana is the second and largest: introduced as the Speaker of the
 Suns's daughter at Qualinesti, she proves herself in the fighting at Pax
 Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,
 talks a shipwrecked standoff back from the brink of elf killing elf on
-Southern Ergoth, forces the dragon orb to its limit and delivers Sturm's
+Southern Ergoth, stands before Huma's own tomb in the hollow Dragon
+Mountain beyond it, forces the dragon orb to its limit and delivers Sturm's
 eulogy the day he dies at the High Clerist Tower, rises to command the
 war itself as the Golden General, is lured from Kalaman by a forged
 letter and taken captive below Dargaard Keep, and reunites with Tanis in
@@ -124,7 +130,9 @@ crisis, at her father Lorac's side as he's freed from the dragon orb's
 nightmare. Silvara, a silver dragon living disguised among Southern
 Ergoth's Wilder Elves, is talkable there too, caught between the oath
 she swore to stay out of the wars of elves and men and the shipwrecked
-strangers she couldn't bring herself to leave to the sea. Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
+strangers she couldn't bring herself to leave to the sea — and talkable
+again after leading them inland to the secret refuge of Foghaven Vale.
+Kitiara, the Dragon Highlord responsible for Sturm's death and Laurana's
 captivity, stays off the talk/topic picker by design — her defining
 scenes surface as retrospective dialogue inside Tanis's, Laurana's, and
 Caramon's own `TOPIC` entries instead. Lord Derek Crownguard and Lord
@@ -136,7 +144,7 @@ a zone carries the encounter through too: find them
 gathered at the Inn's fireplace, Haven's market, Xak Tsaroth's old well,
 Qualinost's Hall of the Sky, Darken Wood's faded trail, the Tharkadan mine
 entrance at Pax Tharkas, Tarsis's old dock, the Tower's Muster Yard, the
-Wilder Elves' Camp on Southern Ergoth, the
+Wilder Elves' Camp on Southern Ergoth, Huma's Tomb in Foghaven Vale, the
 Tower of the Stars in Silvanost, Kalaman's Market Square, Palanthas's
 Great Library, the bare stone at Godshome where Flint fell, or the ruined
 Temple Square at Neraka, not just
