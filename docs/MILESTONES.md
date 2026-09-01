@@ -5103,6 +5103,77 @@ now fully verified, nothing further outstanding.
      delivering the locket, and confirming the reward/journal entry all
      still need the user's own keyboard.
 
+137. Day-gated Astinus SUBJECT content, plus 3 new topics -- what started
+     as "add more subjects to Astinus's ask-anything pool" (routine
+     content work, same as Milestones 132/133) surfaced a real,
+     already-shipped bug the user caught directly: zone-file `SUBJECT`
+     has no day-range gate at all, so 12 of Astinus's 48 existing entries
+     stated a specific dated story beat as flat fact regardless of what
+     day the player actually asked -- Sturm's death, Kitiara revealed as
+     a Dragon Highlord, Laurana's Golden General title, the Xak Tsaroth/
+     Pax Tharkas/Que-shu/Hopeful Vale events, all reachable from day 0.
+
+     Fixed with a new zone grammar keyword, `SUBJECT_WHEN <char>
+     <day-start> <day-end> <keywords> <dialogue...>`, mirroring
+     `data/timeline.txt`'s existing character-level `SUBJECT_WHEN`
+     exactly (same `dayEnd == -1` open-ended sentinel and validation
+     wording, `TimelineLoader.cpp`). `world::PointOfInterest::subjects`
+     grew two `int` fields (`dayStart=0, dayEnd=-1` defaults, so every
+     other zone file's existing `SUBJECT`/`SUBJECT_ENDS` content needed
+     zero changes); `GameLoop::speechFromPoi` filters by the current day
+     using the identical comparison `timeline::Timeline::subjectsFor`
+     already uses, before anything reaches the ask picker.
+
+     The 12 affected entries were rewritten as before/after
+     `SUBJECT_WHEN` pairs, each gate day sourced directly from
+     `data/timeline.txt`'s `PRESENCE` windows: `gods`/`goldmoon`/new
+     `mishakal` at day 3 (Xak Tsaroth), `tanis`/`verminaard` at day 12
+     (Pax Tharkas), `riverwind`/`que-shu` at day 2 (Que-shu),
+     `hopeful,vale` at day 17, `sturm`/`kitiara` at day 160 (the High
+     Clerist's Tower siege), `mage,wizard,raistlin`/`tasslehoff` at day
+     168 (pinned to that exact `PRESENCE palanthas 168 168` line). **The
+     "before" half is not a deflection** -- a first draft used thin "ask
+     me again later" stubs, which the user corrected directly: Astinus
+     should have a real answer for everything Dragonlance-related, not a
+     stonewall. Each "before" half instead matches its "after" partner in
+     length and voice, giving Astinus's genuine take using whatever's
+     already fair game at that point (pre-game backstory, established
+     reputation, general public war knowledge) and omitting only the one
+     specific dated payoff -- e.g. `verminaard` before day 12 still names
+     him and still describes his rule by chained village and mine shaft,
+     just without "I record every death... the ink went down easier than
+     usual on his." The "after" half in every pair keeps the exact
+     previously-shipped text unchanged.
+
+     Three new entries, sourced from `References/pg.txt` (Player's Guide
+     to the Dragonlance Campaign): evergreen `SUBJECT`s for the Moons of
+     Magic (Solinari/Lunitari/Nuitari's real 36/28/8-day cycles) and the
+     Knights' actual Oath and Measure ("Est Sularus oth Mithas" -- "My
+     Honor is My Life"), plus `mishakal,goddess` as a third
+     `SUBJECT_WHEN` pair gated at the same day-3 reveal as `gods`/
+     `goldmoon`. Full writeup, including the day-sourcing table and the
+     "before" half's design reasoning: `docs/ZONE_NOTES.md`'s "Ask about
+     anything" section.
+
+     Verified via a throwaway `ZoneSubjectWhenSelfTest.cpp`: confirmed
+     `SUBJECT_WHEN`/plain `SUBJECT`/`SUBJECT_ENDS` all parse and merge
+     correctly side by side with the right day ranges (explicit for
+     `SUBJECT_WHEN`, implicit 0/-1 for the other two); confirmed a
+     malformed day range (`day-end < day-start`, negative `day-start`)
+     fails fast with the expected `file:line` message; confirmed the
+     day-gate filter matches at the exact day-159-vs-160 boundary
+     `sturm`/`kitiara` depend on; and loaded the real, edited
+     `palanthas.txt` end-to-end, confirming all 13 `SUBJECT_WHEN` pairs
+     (26 entries) and the 2 new evergreen entries are present -- then
+     deleted, along with its temporary CMake target, per the standing
+     self-test convention. Clean `/W4` rebuild, zero new warnings. Piped
+     character-creation smoke test passed (real `save1.txt` moved aside,
+     restored after) -- confirms the new grammar loads cleanly in the
+     real game data directory. **Not interactively walked** -- same
+     standing `_getch()` limitation; confirming the day-159-vs-160
+     transition and the new topics' actual in-game phrasing still needs
+     the user's own keyboard.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

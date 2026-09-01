@@ -126,13 +126,16 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // its POI never shows up or has no TALK line to react against.
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> sayIfLines;
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> topicLines;
-    // SUBJECT/SUBJECT_ENDS get the same "collected by POI char, zero or
-    // more per POI" treatment as topicLines -- first element of each tuple
-    // is the raw, still-comma-and-plus-separated keyword-list token (split
-    // in the application loop below, so a malformed list fails fast at
-    // load time), fourth is whether this came from SUBJECT_ENDS (true) or
-    // plain SUBJECT (false). See docs/ZONE_NOTES.md's "Ask about anything".
-    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int, bool>>> subjectLines;
+    // SUBJECT/SUBJECT_ENDS/SUBJECT_WHEN get the same "collected by POI
+    // char, zero or more per POI" treatment as topicLines -- first element
+    // of each tuple is the raw, still-comma-and-plus-separated keyword-list
+    // token (split in the application loop below, so a malformed list
+    // fails fast at load time), fourth is whether this came from
+    // SUBJECT_ENDS (true) or plain SUBJECT/SUBJECT_WHEN (false), fifth/
+    // sixth are the day range (0/-1, i.e. always available, for plain
+    // SUBJECT/SUBJECT_ENDS; explicit for SUBJECT_WHEN). See
+    // docs/ZONE_NOTES.md's "Ask about anything".
+    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int, bool, int, int>>> subjectLines;
     // SUBJECT_UNKNOWN gets the same "applied after the whole file is
     // parsed, one per POI" treatment as talkAgainLines.
     std::unordered_map<char, std::pair<std::string, int>> subjectUnknownLines;
@@ -396,7 +399,31 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                 if (text.empty()) {
                     fail(path, lineNumber, keyword + " is missing its dialogue text");
                 }
-                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber, keyword == "SUBJECT_ENDS");
+                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber, keyword == "SUBJECT_ENDS", 0,
+                                                         -1);
+            } else if (keyword == "SUBJECT_WHEN") {
+                std::istringstream iss(rest);
+                std::string codeToken, keywordList;
+                int dayStart = 0;
+                int dayEnd = 0;
+                if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> dayStart >> dayEnd >> keywordList)) {
+                    fail(path, lineNumber,
+                         "malformed SUBJECT_WHEN (expected: SUBJECT_WHEN <char> <day-start> <day-end> "
+                         "<keyword1,keyword2,...> <text>)");
+                }
+                if (dayStart < 0) {
+                    fail(path, lineNumber, "SUBJECT_WHEN day-start must be >= 0");
+                }
+                if (dayEnd != -1 && dayEnd < dayStart) {
+                    fail(path, lineNumber, "SUBJECT_WHEN day-end must be >= day-start, or -1 for open-ended");
+                }
+                std::string text;
+                std::getline(iss, text);
+                text = trim(text);
+                if (text.empty()) {
+                    fail(path, lineNumber, "SUBJECT_WHEN is missing its dialogue text");
+                }
+                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber, false, dayStart, dayEnd);
             } else if (keyword == "SUBJECT_UNKNOWN") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -753,9 +780,9 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             it->second.topics.emplace_back(std::get<0>(entry), std::get<1>(entry));
         }
     }
-    // Same rule for SUBJECT/SUBJECT_ENDS as TOPIC: reactive, free-text-
-    // askable content, same "must already have a TALK line to react
-    // against" requirement -- see docs/ZONE_NOTES.md's "Ask about
+    // Same rule for SUBJECT/SUBJECT_ENDS/SUBJECT_WHEN as TOPIC: reactive,
+    // free-text-askable content, same "must already have a TALK line to
+    // react against" requirement -- see docs/ZONE_NOTES.md's "Ask about
     // anything" section. The keyword-list token is split here (not by
     // game::GameLoop at talk-time) so a malformed line fails fast at load
     // time: first on commas into OR'd alternatives, then each alternative
@@ -793,7 +820,8 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             if (keywordGroups.empty()) {
                 fail(path, std::get<2>(entry), "SUBJECT '" + std::string(1, code) + "' has an empty keyword list");
             }
-            it->second.subjects.emplace_back(std::move(keywordGroups), std::get<1>(entry), std::get<3>(entry));
+            it->second.subjects.emplace_back(std::move(keywordGroups), std::get<1>(entry), std::get<3>(entry),
+                                              std::get<4>(entry), std::get<5>(entry));
         }
     }
     // ASK_ANYTHING needs a POI with a TALK line (same family as SUBJECT)

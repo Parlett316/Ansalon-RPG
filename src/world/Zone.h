@@ -74,22 +74,30 @@ struct PointOfInterest {
     // TALK line.
     std::vector<std::pair<std::string, std::string>> topics;
     // Free-text "ask about..." subjects, in authored order -- each tuple is
-    // (keyword groups, dialogue text, endsConversation). Each "keyword
-    // group" is one OR'd alternative (comma-separated in the file); a group
-    // with more than one word (`+`-joined in the file, e.g. `you+gilean`)
-    // matches only when *every* word in it appears somewhere in the
-    // player's typed input, not just one -- see game::matchSubject and
-    // docs/ZONE_NOTES.md's "Ask about anything". A plain single-word
+    // (keyword groups, dialogue text, endsConversation, dayStart, dayEnd).
+    // Each "keyword group" is one OR'd alternative (comma-separated in the
+    // file); a group with more than one word (`+`-joined in the file, e.g.
+    // `you+gilean`) matches only when *every* word in it appears somewhere
+    // in the player's typed input, not just one -- see game::matchSubject
+    // and docs/ZONE_NOTES.md's "Ask about anything". A plain single-word
     // keyword is just a length-1 group. Empty means no free-text asking is
-    // offered for this POI. Set via zero or more SUBJECT lines, which must
-    // reference a POI that also has a TALK line, same rule as TOPIC, or via
-    // SUBJECT_ENDS (identical shape, endsConversation forced true) --
-    // GameLoop::talkTo ends the conversation immediately after showing an
-    // endsConversation entry's text, rather than returning to the ask
-    // picker. game::GameLoop does the actual keyword matching so this stays
-    // a plain data holder, same decoupling reasoning as conditionalDialogue
-    // above.
-    std::vector<std::tuple<std::vector<std::vector<std::string>>, std::string, bool>> subjects;
+    // offered for this POI. Set via zero or more SUBJECT lines (dayStart=0,
+    // dayEnd=-1, i.e. always available), which must reference a POI that
+    // also has a TALK line, same rule as TOPIC; via SUBJECT_ENDS (identical
+    // shape, endsConversation forced true) -- GameLoop::talkTo ends the
+    // conversation immediately after showing an endsConversation entry's
+    // text, rather than returning to the ask picker; or via SUBJECT_WHEN
+    // (identical shape, explicit dayStart/dayEnd -- dayEnd of -1 means
+    // open-ended, same sentinel timeline::CharacterSubject uses) for a
+    // subject that should only be offered during a specific in-game day
+    // range, e.g. a before/after pair sharing one keyword list across two
+    // disjoint ranges so an NPC's answer changes once a dated story beat
+    // has actually happened -- see docs/ZONE_NOTES.md's "Ask about
+    // anything" and GameLoop::speechFromPoi, which filters this list by
+    // the current day before anything reaches the picker. game::GameLoop
+    // does the actual keyword matching so this stays a plain data holder,
+    // same decoupling reasoning as conditionalDialogue above.
+    std::vector<std::tuple<std::vector<std::vector<std::string>>, std::string, bool, int, int>> subjects;
     // Shown when a free-typed subject matches none of the above -- empty
     // means fall back to game::GameLoop::talkTo's generic line. Set via an
     // optional SUBJECT_UNKNOWN line.

@@ -140,6 +140,25 @@ SUBJECT_ENDS <char> <keywords> <dialogue...> identical grammar and
                                         again until the next day), not just
                                         this one visit; see "Ask about
                                         anything" below
+SUBJECT_WHEN <char> <day-start>          identical grammar and matching
+  <day-end> <keywords> <dialogue...>     rules to SUBJECT, plus an explicit
+                                        in-game day range this entry is
+                                        offered during -- <day-end> of -1
+                                        means open-ended, same sentinel
+                                        data/timeline.txt's own character-
+                                        level SUBJECT_WHEN uses (see
+                                        docs/TIMELINE_NOTES.md). A plain
+                                        SUBJECT/SUBJECT_ENDS line is
+                                        unaffected -- it keeps behaving as
+                                        "always available" (implicit
+                                        dayStart=0, dayEnd=-1). Lets a
+                                        before/after pair share one keyword
+                                        list across two disjoint day
+                                        ranges, so an NPC's answer changes
+                                        once a dated story beat has
+                                        actually happened in the player's
+                                        own playthrough -- see "Ask about
+                                        anything" below
 SUBJECT_UNKNOWN <char> <dialogue...>    optional, at most one per POI --
                                         shown when a typed subject matches
                                         no SUBJECT/SUBJECT_ENDS above;
@@ -420,16 +439,20 @@ silently truncates -- the word after the space leaked into the *displayed
 dialogue text* instead of becoming a matchable keyword. Both are now
 comma-joined (`temple,dark,queen` / `ruins,city,xak,tsaroth`).
 
-**Zone-file `SUBJECT` has no day-range gate**, unlike `data/timeline.txt`'s
-character-level `SUBJECT_WHEN` (Milestone 72) -- it's reachable on any day
-the player visits. Milestone 79's content deliberately stays within what
-each NPC's own un-gated `TALK`/`TOPIC` material already treats as always
-true (their identity, opinions, and immediate surroundings) rather than
-pulling from that same POI's `TALK_AFTER` block, which exists specifically
-*because* it's gated to fire only once the relevant canon-character window
-has closed -- reusing that material in an ungated `SUBJECT` would leak
-retrospective/spoiler content about the Heroes before it's actually
-happened in-game.
+**Plain zone-file `SUBJECT` has no day-range gate** -- it's reachable on
+any day the player visits. Milestone 79's content deliberately stays
+within what each NPC's own un-gated `TALK`/`TOPIC` material already
+treats as always true (their identity, opinions, and immediate
+surroundings) rather than pulling from that same POI's `TALK_AFTER`
+block, which exists specifically *because* it's gated to fire only once
+the relevant canon-character window has closed -- reusing that material
+in an ungated `SUBJECT` would leak retrospective/spoiler content about
+the Heroes before it's actually happened in-game. **Milestone 137 gave
+zone files their own day-gated variant, `SUBJECT_WHEN`** (see grammar
+table above and that milestone's own writeup below), for exactly the
+case this restraint couldn't cover forever: an NPC whose `SUBJECT` pool
+is large and general enough (Astinus) that it inevitably starts including
+dated story beats, not just always-true flavor.
 
 **Milestone 132 dropped Astinus of Palanthas's curated `TOPIC` menu
 entirely** and rebuilt him around free-text asking alone, closer to how
@@ -614,6 +637,58 @@ already established as the library's gatekeepers. Omitting
 original Milestone 133 behavior unchanged (ordinary `TALK_AGAIN`, ask
 option silently absent), so this is additive, not a breaking change to
 the grammar.
+
+**Milestone 137 added `SUBJECT_WHEN` and fixed a real, already-shipped
+spoiler bug in Astinus's pool.** While adding three new topics, the user
+caught the underlying problem directly: since plain `SUBJECT` has no
+day-range gate (see above), 12 of Astinus's 48 entries already stated a
+specific dated story beat as settled fact regardless of what day the
+player actually asked -- Sturm's death, Kitiara revealed as a Dragon
+Highlord, Laurana's Golden General title, the Xak Tsaroth/Pax Tharkas/
+Que-shu/Hopeful Vale events, all reachable from day 0. `SUBJECT_WHEN`
+(grammar table above) closes this the same way `data/timeline.txt`'s own
+character-level version already does for canon characters: mirrors its
+`dayEnd == -1` open-ended sentinel and validation wording exactly
+(`TimelineLoader.cpp`'s own `SUBJECT_WHEN` block). `world::
+PointOfInterest::subjects` grew two `int` fields (`dayStart=0, dayEnd=-1`
+defaults, so every existing plain `SUBJECT`/`SUBJECT_ENDS` line in every
+other zone file needed zero changes); `GameLoop::speechFromPoi` filters
+by the current day using the identical comparison
+`timeline::Timeline::subjectsFor` already uses, before anything reaches
+the ask picker, so a before/after pair sharing one keyword list across
+two disjoint ranges never collides.
+
+The 12 gated entries were rewritten as `SUBJECT_WHEN` before/after pairs,
+each day sourced directly from `data/timeline.txt`'s `PRESENCE` windows
+(`gods`/`goldmoon`/new `mishakal` at day 3, Xak Tsaroth; `tanis`/
+`verminaard` at day 12, Pax Tharkas; `riverwind`/`que-shu` at day 2,
+Que-shu; `hopeful,vale` at day 17; `sturm`/`kitiara` at day 160, the High
+Clerist's Tower siege; `mage,wizard,raistlin`/`tasslehoff` at day 168,
+pinned to that exact `PRESENCE palanthas 168 168` line). **The "before"
+half is not a deflection** -- an early draft used thin "ask me again
+later" stubs, which the user corrected directly: Astinus should have a
+real answer for everything Dragonlance-related. Each "before" half is
+instead sized and voiced to match its existing "after" partner, giving
+Astinus's genuine take using whatever's already fair game at that
+point -- pre-game backstory, a character's established reputation,
+general public war knowledge (Verminaard's method of rule, Kitiara's
+family and reputation as a sellsword, Sturm's devotion to the Oath and
+Measure) -- and omitting only the one specific dated payoff. The "after"
+half in every pair keeps the exact previously-shipped text unchanged.
+
+Three new entries finished the original ask, sourced from
+`References/pg.txt` (Player's Guide to the Dragonlance Campaign): plain,
+evergreen `SUBJECT`s for the Moons of Magic (Solinari/Lunitari/Nuitari's
+real 36/28/8-day cycles) and the Knights' actual Oath and Measure ("Est
+Sularus oth Mithas"), plus `mishakal,goddess` as a third `SUBJECT_WHEN`
+pair gated at the same day-3 Xak Tsaroth reveal as `gods`/`goldmoon`.
+
+No automated cross-day keyword-collision checker was built for zone
+files, unlike `data/timeline.txt`'s opt-in `--check-timeline` report --
+a before/after pair sharing one keyword list with disjoint day ranges is
+exactly the intended, safe use, and a checker for a feature with a
+single caller (Astinus) would be speculative. Author `SUBJECT_WHEN` pairs
+carefully by hand instead.
 
 ## Zone-interior encounters (Milestone 23)
 

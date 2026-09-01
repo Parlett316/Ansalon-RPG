@@ -129,14 +129,20 @@ Speech speechFromWindow(const timeline::Timeline& timeline, const timeline::Cano
 
 // Adapts a world::PointOfInterest into the Speech shape GameLoop::talkTo
 // works with -- the zone-native counterpart to speechFromWindow above. See
-// docs/ZONE_NOTES.md for the underlying SAY_IF/TOPIC grammar.
-Speech speechFromPoi(const world::PointOfInterest& poi) {
+// docs/ZONE_NOTES.md for the underlying SAY_IF/TOPIC grammar. `day` filters
+// poi.subjects down to entries whose SUBJECT_WHEN day range (or the
+// implicit always-available 0/-1 range plain SUBJECT/SUBJECT_ENDS carry)
+// actually contains it -- same comparison timeline::Timeline::subjectsFor
+// uses for character-level day-gated subjects (Timeline.cpp), so a
+// SUBJECT_WHEN before/after pair never both reach the ask picker at once.
+Speech speechFromPoi(const world::PointOfInterest& poi, int day) {
     Speech speech;
     speech.greeting = poi.dialogue;
     speech.conditional = poi.conditionalDialogue;
     speech.again = poi.dialogueAgain;
     speech.topics = poi.topics;
-    for (const auto& [keywords, text, endsConversation] : poi.subjects) {
+    for (const auto& [keywords, text, endsConversation, dayStart, dayEnd] : poi.subjects) {
+        if (day < dayStart || (dayEnd != -1 && day > dayEnd)) continue;
         speech.subjects.push_back(Speech::SubjectEntry{keywords, text, endsConversation});
     }
     speech.subjectUnknown = poi.subjectUnknown;
@@ -850,7 +856,7 @@ void GameLoop::handleTalk() {
             const std::string* questId = zone->questAt(state_.zoneX, state_.zoneY);
             const world::BoatVoyage* boat = zone->boatAt(state_.zoneX, state_.zoneY);
             TalkCandidate candidate{state_.currentZoneId + ":" + std::string(1, poi->code), poi->name,
-                                     speechFromPoi(*poi),
+                                     speechFromPoi(*poi, dayNow),
                                      boat != nullptr ? boat->destinationLocationId : std::string(),
                                      boat != nullptr ? boat->hours : 0,
                                      questId != nullptr ? *questId : std::string(),
