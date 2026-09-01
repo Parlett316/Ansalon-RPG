@@ -114,6 +114,46 @@
 # own beak-only simplification; its real ability to speak "orc, goblin,
 # giant" dialects is left out of its DESC entirely, same "no orcs on
 # Krynn" restraint already applied to this whole roster.
+#
+# The Harpy, Griffon, and Stirge (added in Milestone 142) are visually
+# confirmed against rendered Monster Manual page images (p.184, p.178,
+# p.332). None needs a new grammar keyword. The Harpy's real "Singing and
+# charm" song (which charms nearby humans/demihumans into standing still
+# while it kills them) and its 50%-chance bone-club weapon variant are
+# left unmodeled -- no charm/status-effect system exists for anyone yet,
+# same restraint as the Kapak's paralysis-poison bite. The Stirge's real
+# attached "Blood drain" (1d4/round once its proboscis hits, until killed
+# or 12 points are drained) is likewise unmodeled, same restraint as the
+# Owlbear's hug -- its DAMAGE below is only the initial proboscis hit.
+# Neither the Harpy's real "land or coast" nor the Stirge's real "forests
+# or subterranean" Climate/Terrain maps cleanly onto this project's
+# terrain codes (no coast or subterranean code exists, and ocean/shallow
+# water are both non-walkable, so no monster can ever be purely coastal
+# or aquatic in this engine): the Harpy's TERRAIN_BIAS below is an
+# invented, informed-not-transcribed grassland+hills stand-in for its
+# coastline/well-traveled-path flavor, while the Stirge's forest half is
+# directly representable and gets a hard ONLY_TERRAIN. The Griffon's real
+# "Hills or mountains" Climate/Terrain is narrow and fully representable,
+# so it gets a hard ONLY_TERRAIN too, same treatment as the Thanoi/Ice
+# Bear's own narrow, sourced restrictions. The Harpy and Griffon (both
+# multi-attack, claw/claw/bite) are simplified to their single most
+# damaging real die, same treatment as the Ghoul/Owlbear/Troll/Black
+# Bear/Ice Bear/Lizard Man above. STEEL isn't a sourced field in this
+# project; the Harpy and Griffon (both HD7) are given the same STEEL tier
+# as the roster's nearest HD neighbor, the HD6 Sivak. The Stirge is
+# Intelligence: Animal (1), so it carries STEEL 0 0 0 despite its real
+# Treasure Type D, matching every other Animal-intelligence monster in
+# this roster (Wolf, Worg, Black Bear, Ice Bear). The Harpy and Griffon
+# are also both gated MIN_TOWN_DISTANCE 35, the same bracket as the HD6
+# Sivak/Troll pair (one Hit Die up from them, but without the Aurak's
+# spellcasting-driven further gate) -- and, matching the established
+# policy that every MIN_TOWN_DISTANCE-gated monster stays solo despite
+# real No. Appearing data supporting groups, neither carries a GROUP
+# line. The Stirge, by contrast, is low-danger (XP175, matching the Black
+# Bear/Worg tier) and carries GROUP 4 4 instead (real No. Appearing 3-30,
+# a swarm-tier "Clusters" organization, clamped to this project's
+# playability cap), same "always a full band of 4" treatment as the
+# Goblin/Kobold/Lizard Man above.
 
 MONSTER goblin
 NAME Goblin Raider
@@ -703,4 +743,82 @@ TERRAIN_BIAS ^ A
 # tuning, user-precedent-matched, not sourced.
 MIN_TOWN_DISTANCE 40
 DESC A hulking, two-headed brute lurches from the rocks, one head snarling while the other watches your back trail, twin clubs already rising.
+END
+
+MONSTER harpy
+NAME Harpy
+HP 7 8 0
+AC 7
+THAC0 13
+# Real attack is three hits (claw/claw/bite, 1-3/1-3/1-6) or, half the
+# time, claw/claw/weapon (a bone club, 1-8) -- simplified to one
+# representative die, same treatment as the Owlbear's beak-only
+# simplification above: the bite, its single most damaging natural hit.
+DAMAGE 1 6 0
+STEEL 3 10 0
+XP 975
+# Real Special Attack is a charming song (all humans/demihumans within
+# earshot save vs. spell or walk to the harpy and stand entranced while
+# it kills them) plus a lesser touch-charm -- left unmodeled, no charm/
+# status-effect system exists for anyone yet, same restraint as the
+# Kapak's paralysis-poison bite above.
+# Real Climate/Terrain is "Temperate, tropical land or coast" -- no coast
+# terrain code exists in this project (ocean/shallow water are both
+# non-walkable), so TERRAIN_BIAS is an invented, informed-not-transcribed
+# grassland+hills stand-in for its coastline/well-traveled-path flavor.
+TERRAIN_BIAS . ^
+# HD7 sits one Hit Die above the Sivak/Troll pair above -- gated the same
+# distance as an elite draconian without one of their own spellcasting/
+# breath-weapon complications. Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 35
+DESC A ragged, vulture-winged shape drops from the rocks above, a wordless, eerie song already rising as its talons flash for your eyes.
+END
+
+MONSTER griffon
+NAME Griffon
+HP 7 8 0
+AC 3
+THAC0 13
+# Real attack is three hits (claw/claw/bite, 1-4/1-4/2-16) -- simplified
+# to one representative die, same treatment as the Harpy's bite above:
+# its single most damaging natural hit.
+DAMAGE 2 8 0
+STEEL 3 10 0
+XP 650
+# Real Climate/Terrain is "Temperate or subtropical / Hills or
+# mountains" -- narrow and fully representable, so (unlike the Harpy
+# above) this is a hard restriction, same treatment as the Thanoi/Ice
+# Bear's own narrow, sourced Climate/Terrain.
+ONLY_TERRAIN ^ A
+# HD7, same bracket as the Harpy above -- see that entry's comment.
+MIN_TOWN_DISTANCE 35
+DESC A lion-bodied, eagle-headed shape screams down out of the sky, wings booming, talons already reaching for a killing grip.
+END
+
+MONSTER stirge
+NAME Stirge
+HP 1 8 1
+AC 8
+# Real HD is a plain 1+1, but the book's own text gives it a special
+# combat note: stirges attack as 4-Hit-Die creatures -- already baked
+# into the printed THAC0 below, not re-derived from this project's usual
+# HD-to-THAC0 pattern.
+THAC0 17
+# Real single attack is a proboscis stab, 1-3 -- once it hits, the real
+# stirge also drains 1d4 blood per round until killed or 12 points are
+# drained, left unmodeled (no attached/ongoing-effect system exists for
+# anyone yet, same restraint as the Owlbear's hug above); DAMAGE below is
+# only the initial proboscis hit.
+DAMAGE 1 3 0
+STEEL 0 0 0
+XP 175
+# Real Climate/Terrain is "Forests or subterranean" -- no subterranean
+# terrain code exists in this project, so the representable half (forest)
+# becomes a hard restriction, same treatment as the Griffon above.
+ONLY_TERRAIN %
+# Real No. Appearing is 3-30 (a "Clusters" swarm) -- clamped to this
+# project's playability cap, so stirges always turn up in a full band of
+# 4, same treatment as the Goblin/Kobold/Lizard Man above.
+GROUP 4 4
+DESC A rusty-red, bat-winged shape darts in on clicking pincer legs, its long proboscis already questing for a vein.
 END

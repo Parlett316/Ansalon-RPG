@@ -1430,21 +1430,27 @@ opposite grid side).
   resistance (a related but different mechanic -- resistance to being
   targeted at all, not a saving throw) still isn't modeled for any of
   them.
-- **More monsters**: twenty-six creatures are in the roster now (Goblin,
+- **More monsters**: twenty-nine creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
   Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi,
   Owlbear, Wight, Troll, Black Bear, Worg, Ice Bear, Lizard Man, Giant
-  Toad, Ettin); `Monster Manual (2nd ed).pdf` and *Dragonlance Adventures*
-  still have more of Krynn's actual bestiary untouched, though the DLA
-  well (its "Common Creatures of Krynn" chapter) is now confirmed dry
-  beyond Ice Bear — see Milestone 112's writeup in `docs/MILESTONES.md`
-  for why Dreamshadow/Dreamwraith/Fetch/Minotaur/Shadowpeople/Spectral
-  Minion don't fit this project's wandering-encounter model. Can be
-  added the same way, one more sourced `MONSTER` block at a time. A new
-  monster with real terrain flavor can also carry `TERRAIN_BIAS`/
-  `EXCLUDE_TERRAIN` lines — see "Terrain-specific monster pools" above. A
-  new low/mid-HD monster can also carry a sourced `GROUP <min> <max>` line
-  from the start — see "Monster encounter groups" above.
+  Toad, Ettin, Harpy, Griffon, Stirge); `Monster Manual (2nd ed).pdf` and
+  *Dragonlance Adventures* still have more of Krynn's actual bestiary
+  untouched, though the DLA well (its "Common Creatures of Krynn"
+  chapter) is now confirmed dry beyond Ice Bear — see Milestone 112's
+  writeup in `docs/MILESTONES.md` for why Dreamshadow/Dreamwraith/Fetch/
+  Minotaur/Shadowpeople/Spectral Minion don't fit this project's
+  wandering-encounter model. Milestone 142 added the roster's first
+  flying/aerial predators (Harpy p.184, Griffon p.178) plus a low-tier
+  swarm pest (Stirge p.332), all visually confirmed against rendered
+  Monster Manual page images — see that entry for the terrain-code
+  honesty notes (no coast/subterranean code exists in this engine) and
+  gating rationale. Can be added the same way, one more sourced
+  `MONSTER` block at a time. A new monster with real terrain flavor can
+  also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines — see
+  "Terrain-specific monster pools" above. A new low/mid-HD monster can
+  also carry a sourced `GROUP <min> <max>` line from the start — see
+  "Monster encounter groups" above.
 - **The rest of Bozak/Sivak/Aurak's abilities** (Milestone 99 shipped the
   parts that ground out in this engine's real combat math -- Bozak's
   signature Magic Missile, Aurak's breath weapon, Sivak's death-burst; see

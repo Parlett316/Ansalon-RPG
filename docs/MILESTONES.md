@@ -5315,6 +5315,82 @@ now fully verified, nothing further outstanding.
      a specialized Fighter's to-hit/damage/attack-rate all read correctly
      in actual combat.
 
+142. Three new Monster Manual monsters: Harpy, Griffon, Stirge. Continues
+     the Milestone 107/112 pattern (a batch of three, each visually
+     confirmed against a rendered page image — `Monster Manual (2nd
+     ed).pdf` is Acrobat-Capture OCR and unreliable for stat-block
+     tables, same caveat as the PHB's Weapon Specialization tables) after
+     confirming DLA's own "Common Creatures of Krynn" chapter is still
+     dry beyond Ice Bear, so all three come straight from the Monster
+     Manual: Harpy (p.184, AC7/HD7/THAC0 13, bite `DAMAGE 1 6 0`, XP 975),
+     Griffon (p.178, AC3/HD7/THAC0 13, bite `DAMAGE 2 8 0`, XP 650), and
+     Stirge (p.332, AC8/HD1+1 but "attacks as 4-Hit-Die" already baked
+     into its printed THAC0 17, proboscis `DAMAGE 1 3 0`, XP 175). Harpy
+     and Griffon are the roster's first flying/aerial predators; Stirge
+     is a low-tier swarm pest. Roster grows from 26 to 29.
+
+     Each multi-attack creature (Harpy/Griffon, both claw/claw/bite) is
+     simplified to its single most damaging real die, the same treatment
+     already used for the Ghoul/Owlbear/Troll/Black Bear/Ice Bear/Lizard
+     Man. Special abilities stay unmodeled for the same reason those
+     precedents do — no charm/status-effect or attached/ongoing-effect
+     system exists for anyone yet: Harpy's real charming song (and its
+     50%-chance bone-club weapon variant) and Stirge's real attach-and-
+     drain (1d4 blood/round once its proboscis hits) are flagged in
+     `data/monsters.txt`'s comments but not mechanically modeled, same
+     restraint as the Kapak's paralysis-poison bite and the Owlbear's
+     hug.
+
+     Terrain-code honesty, called out explicitly in the file: this
+     engine has no coast or subterranean terrain code (ocean/shallow
+     water are both non-walkable, so no monster can ever be purely
+     coastal or aquatic here), so Harpy's real "land or coast"
+     Climate/Terrain becomes an invented, informed-not-transcribed
+     `TERRAIN_BIAS . ^` (grassland+hills) rather than a literal coast
+     restriction. Griffon's "Hills or mountains" and Stirge's
+     forest-representable half of "Forests or subterranean" are both
+     narrow and fully representable, so each gets a hard `ONLY_TERRAIN`
+     instead, the same treatment already used for Thanoi/Ice Bear's own
+     narrow, sourced restrictions (`ONLY_TERRAIN ^ A` and `ONLY_TERRAIN
+     %` respectively).
+
+     Danger gating: Harpy and Griffon are both HD7, one Hit Die above the
+     Sivak/Troll pair (`MIN_TOWN_DISTANCE 35`) and below Ettin/Aurak
+     (40/45) — both land at `MIN_TOWN_DISTANCE 35`, the same bracket as
+     that HD6 pair, without one of the Aurak's own spellcasting-driven
+     further gate. Matching the established policy that every
+     `MIN_TOWN_DISTANCE`-gated monster stays solo despite real No.
+     Appearing data supporting groups, neither carries a `GROUP` line.
+     Stirge is low-danger by contrast (XP175, matching the Black
+     Bear/Worg tier) and gets no distance gate at all, carrying `GROUP 4
+     4` instead (real No. Appearing 3-30, clamped to this project's
+     playability cap), the same "always a full band of 4" treatment
+     already used for Goblin/Kobold/Lizard Man. STEEL isn't a sourced
+     field in this project; Harpy/Griffon are given the same tier as
+     their nearest HD neighbor, the HD6 Sivak (`STEEL 3 10 0`), and
+     Stirge — `Intelligence: Animal (1)` — carries `STEEL 0 0 0` despite
+     its real Treasure Type D, matching every other Animal-intelligence
+     monster in the roster (Wolf, Worg, Black Bear, Ice Bear).
+
+     No C++ source or `CMakeLists.txt` changes — every field used already
+     has a loader/grammar keyword. README.md's Status paragraph was
+     deliberately left untouched: checked against the Milestone 112
+     commit (the closest precedent, same shape of change), which touched
+     only `data/monsters.txt` and these same three doc files, not
+     README — this project's README monster list has never been kept as
+     an exhaustive enumeration (it's already missing several
+     already-shipped monsters, e.g. Wight/Troll/Ettin), so adding to it
+     here would be inconsistent with precedent, not a fix.
+
+     Verified with a clean incremental rebuild (no source changed, so
+     this was a no-op recompile, run anyway per the standard workflow)
+     and a piped character-creation smoke test confirming `MonsterCatalog`'s
+     fail-fast loader parses all three new blocks cleanly. **Not yet
+     interactively walked** — same standing `_getch()` limitation; confirm
+     on the next play session that a wilderness encounter on hills/
+     mountains (Griffon), grassland/hills (Harpy), and forest (Stirge)
+     all read correctly in a real fight.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

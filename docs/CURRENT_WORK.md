@@ -46,3 +46,14 @@ but **not yet interactively walked in a real fight**. Worth doing on the
 next play session: create a specialized Fighter and confirm to-hit,
 damage, and the faster extra-attacks rate all read correctly against a
 real monster.
+
+Milestone 142 (three new Monster Manual monsters -- Harpy p.184, Griffon
+p.178, Stirge p.332, all visually confirmed against rendered page images;
+roster grows from 26 to 29; see `docs/MILESTONES.md` entry 142 for the
+terrain-code-honesty and danger-gating reasoning) is implemented,
+documented, and verified via a data-only rebuild and a piped
+character-creation smoke test confirming `MonsterCatalog` parses the
+three new blocks cleanly, but **not yet interactively walked**. Worth
+doing on the next play session: trigger a wilderness encounter on hills/
+mountains (Griffon), grassland/hills (Harpy), and forest (Stirge) and
+confirm all three read correctly in a real fight.
