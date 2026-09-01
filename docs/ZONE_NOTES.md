@@ -700,6 +700,40 @@ bare `elves` keyword the existing `elves,kinslayer` entry already claims
 (first-match-wins would otherwise always resolve a plain "elves" question
 to the Kinslayer War instead).
 
+**Milestone 139 added 3 more evergreen entries**, same ongoing pass,
+inserted right after Milestone 138's gully-dwarves entry:
+`minotaurs,mithas,kothas`, `ogres,ogre,irda`, and
+`reorx,graystone,gargath,greystone`, all sourced from `References/pg.txt`
+(the Minotaurs and "Ogre Irda (First-Born)" race writeups, and the Reorx
+god profile plus the Graystone of Gargath origin story told under the
+Gnomes history section). None needed `SUBJECT_WHEN` -- evergreen
+racial/mythological lore, not a dated story beat, same category as
+Milestone 138's trio. No keyword collisions with any of Astinus's existing
+entries (checked against the full list before writing). The Reorx entry
+deliberately doesn't resolve the source material's own internal tension
+rather than inventing a tiebreaker: `pg.txt` gives dwarves a
+self-belief that Reorx made them directly, "in the god's image," while
+also crediting his Graystone of Gargath with transmogrifying gnomes into
+dwarves and kender when it broke loose -- two different accounts of the
+same peoples' origin, never reconciled by the source itself. Astinus's
+line ("I have recorded both accounts faithfully... I have never once been
+asked to referee between a god's chosen people and his own family's
+history") reports that tension rather than picking a winner, keeping with
+this project's sourcing discipline. Minotaurs' own entry deliberately
+avoids repeating the source's Taladas-continent origin legend (high ogres
+transformed by the same escaped Graystone) -- that's a different
+continent from this game's Ansalon scope, so the dialogue gestures at
+"whatever legend explains where they first came from" without asserting
+Taladas-specific details Astinus (an Ansalon historian) has no particular
+reason to vouch for.
+
+Verified via a piped character-creation smoke test (real `save1.txt`
+moved aside, restored after) against the built `data/zones/palanthas.txt`
+-- confirms `ZoneCatalog` still parses the file cleanly with the 3 new
+entries added. No rebuild needed (no source changes); the updated zone
+file was synced into `build/Debug/data/` before the smoke test. **Not
+interactively walked** -- same standing `_getch()` limitation.
+
 ## Zone-interior encounters (Milestone 23)
 
 `TIMELINE_ANCHOR <char>` layers a *third* kind of ability onto a POI,

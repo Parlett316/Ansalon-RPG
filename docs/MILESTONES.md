@@ -5201,6 +5201,46 @@ now fully verified, nothing further outstanding.
      into `build/Debug/data/` before the smoke test. **Not interactively
      walked** -- same standing `_getch()` limitation.
 
+139. Three more Astinus SUBJECT entries -- continuing the same ongoing
+     ask-anything pass, inserted right after Milestone 138's gully-dwarves
+     entry: `minotaurs,mithas,kothas` (the honor-and-arena culture of the
+     two minotaur island-kingdoms), `ogres,ogre,irda` (common ogres as a
+     coarsened remnant of the once-beautiful Irda, the "first-born" high
+     ogres), and `reorx,graystone,gargath,greystone` (the dwarves' forge
+     god, and the Graystone of Gargath's role in the origin of dwarves,
+     gnomes, and kender). All evergreen (no `SUBJECT_WHEN` gate needed --
+     racial/mythological lore, not a dated story beat), all sourced from
+     `References/pg.txt` (the Minotaurs and "Ogre Irda (First-Born)" race
+     writeups, and the Reorx god profile plus the Graystone origin story
+     under the Gnomes history section). Zero `.cpp`/`.h` changes -- pure
+     data content, same shape as Milestone 138.
+
+     The Reorx entry deliberately reports rather than resolves a real
+     tension in the source material itself: `pg.txt` gives dwarves a
+     religious belief that Reorx made them directly "in the god's image,"
+     while separately crediting his escaped Graystone of Gargath with
+     transmogrifying gnomes into dwarves and kender -- two accounts of the
+     same peoples' origin that the source never reconciles. Astinus's line
+     reports that tension ("I have recorded both accounts faithfully...
+     Reorx himself has been notably unhelpful in settling it") rather than
+     inventing a tiebreaker, per `CLAUDE.md`'s sourcing discipline. The
+     minotaurs entry deliberately omits the source's own origin legend for
+     the race (high ogres transformed by the same Graystone) because that
+     legend is set on Taladas, a different continent outside this game's
+     Ansalon scope -- the dialogue gestures at "whatever legend explains
+     where they first came from" without asserting details an Ansalon
+     historian has no particular reason to vouch for. Full writeup:
+     `docs/ZONE_NOTES.md`'s "Ask about anything" section.
+
+     Verified via a piped character-creation smoke test (real `save1.txt`
+     moved aside, restored after) against the built `data/zones/
+     palanthas.txt` -- confirms `ZoneCatalog` still parses the file
+     cleanly with the 3 new entries added, no keyword collisions with any
+     of Astinus's existing 51 entries. No rebuild needed (no source
+     changes); the updated zone file was synced into `build/Debug/data/`
+     before the smoke test. **Not interactively walked** -- same standing
+     `_getch()` limitation.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
