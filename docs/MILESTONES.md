@@ -4576,6 +4576,33 @@ now fully verified, nothing further outstanding.
      "Foghaven Vale" section and `docs/ZONE_NOTES.md`'s "Foghaven Vale"
      section.
 
+128. Terrain accuracy pass -- while mocking up a possible new "World Map"
+     screen (zoomed-out travel view, not built this milestone -- see NEXT
+     UP), the user asked to verify plains/forest/mountain/snow terrain
+     against two references already in `References/` but never checked
+     against the pipeline: the TSR 9400 Trailmap and TSR 8448 Atlas (both
+     scanned, read by rendering pages to images). Found and fixed three
+     real bugs in `data/overworld.grid` itself, independent of the World
+     Map screen's fate: **zero grassland tiles anywhere on the continent**
+     (`tools/generate_overworld.py`'s color classification mapped the
+     relevant buckets entirely to `savannah`, which costs 2x grassland's
+     movement time -- every off-road trip across open country had silently
+     cost double since Milestone 2); a **Blood Sea over-classification
+     leak** the Milestone 85 note already flagged but undersold ("a couple
+     of stray dots... harmless") -- a flood-fill found 64 stray tiles, one
+     cluster of 27 sitting on the route from Tarsis to Ice Wall Castle, not
+     somewhere harmless; and **bog placed near Xak Tsaroth for the first
+     time**, sourced to the Atlas's explicit "swamp" description of the
+     approach, backing up flavor text this project already asserted but
+     never actually placed as terrain. Fixed in `tools/generate_overworld.py`
+     (an `INDEX_TO_TERRAIN` relabel plus new `MANUAL_TERRAIN_OVERRIDES`
+     entries, each cross-checked against the two new references) and
+     regenerated. Pure data change -- clean `/W4` rebuild, **zero
+     `.cpp`/`.h` diff**, piped character-creation smoke test passed (real
+     saves moved aside, restored after). Full writeup, sourcing, and every
+     fixed coordinate: `docs/MAP_NOTES.md`'s "Terrain accuracy pass"
+     section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -4684,3 +4711,17 @@ session's work.
    zone off Southern Ergoth, no new overworld `LOCATION` needed).
    ~~Skullcap~~ was removed from this list at Milestone 127 -- it isn't
    actually sourced to any tracked novel; see that entry.
+8. **A "World Map" screen** -- a second, zoomed-out travel/overview mode
+   distinct from the real-time walking viewport, mocked up (not built) in
+   the same session as Milestone 128's terrain fix: the whole 480x320 grid
+   downsampled with a 3:1 horizontal:vertical sampling ratio (cancels the
+   terminal font's ~2:1 tall character cells so the continent's real shape
+   reads correctly, confirmed against `References/dragonlancemap2.png`'s
+   silhouette), plus multi-cell town footprints sized by rough importance
+   tier (Palanthas/Thorbardin/Tarsis large, Solace deliberately small --
+   a real treetop village, not a city) and inline name labels. Scope if
+   picked up: a new render function, a new keybind, and likely a new
+   per-location size field in `data/locations.txt`'s grammar. The
+   importance tiers used in the mockup are placeholder judgment calls, not
+   yet checked against the Atlas the way Milestone 128's terrain fix was --
+   would need the same sourcing discipline before shipping.

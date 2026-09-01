@@ -89,7 +89,7 @@ TERRAIN_CHARS = {
 #     plus real inland river-line squiggles -- same "fordable shallow
 #     water, not literal rivers" treatment the old map used for its
 #     equivalent color.
-#   1/2/5 are pale olive-tan -> grassland/savannah; 4/8/9 are darker
+#   1/2/5 are pale olive-tan -> grassland (see below); 4/8/9 are darker
 #     brown-olive (G<=R) -> hills; 3/6/7/10/11 are green-leaning (G>R)
 #     -> forest. This is still an approximation, same as the old map's
 #     classification -- painted/textured map art doesn't cleanly separate
@@ -97,6 +97,26 @@ TERRAIN_CHARS = {
 #     NUM_COLORS, index-mask inspection confirmed these buckets are mostly
 #     scattered shading/hatch-line noise rather than one coherent region
 #     each.
+#   1/2/5 were originally all mapped to "savannah" -- corrected to
+#     "grassland" after cross-checking two references never previously
+#     consulted, `References/TSR 9400 TM3 World Of Krynn Trailmap.pdf` and
+#     `References/TSR 8448 The Atlas of the Dragonlance World.pdf`. The
+#     Trailmap's own terrain legend (its PDF page 17 -- a fold-out poster
+#     with no printed pagination of its own, unlike the Atlas) draws a
+#     clean line between "Grassland" (flat, textureless light green) and
+#     "Barren"/"Moors"/"Desert" (all distinct colors); its Estwilde panel
+#     (PDF page 21) reads as
+#     the former. The Atlas's Que-shu page (its own printed p.16, PDF page
+#     37 -- this book's roman-numeral front matter makes the two diverge
+#     by ~20) independently places Que-shu "in the central plains of
+#     Abanasinia." No sampled region
+#     reads as true arid savannah -- Plains of Dust, the one candidate,
+#     is already hill-dominant in this grid's own classification (index 4/
+#     8/9's "hills" bucket), which matches its canon description as a
+#     misleadingly-named rugged highland, not flat plains. `savannah`
+#     stays defined in TERRAIN_CHARS/Terrain.cpp for a future region that
+#     actually earns it -- not deleted, just not force-used without
+#     evidence.
 #   18-31 are the remaining dark teal shades (ocean, confirmed by mask
 #     inspection to trace the coastline cleanly, including the old map's
 #     "many near-identical buckets from background noise" pattern).
@@ -104,11 +124,11 @@ TERRAIN_CHARS = {
 # NUM_COLORS=32 -- see docs/MAP_NOTES.md.
 INDEX_TO_TERRAIN: dict[int, str] = {
     0: "glacier",
-    1: "savannah",
-    2: "savannah",
+    1: "grassland",
+    2: "grassland",
     3: "forest",
     4: "hills",
-    5: "savannah",
+    5: "grassland",
     6: "forest",
     7: "forest",
     8: "hills",
@@ -214,6 +234,118 @@ MANUAL_TERRAIN_OVERRIDES: dict[tuple[int, int], str] = {
     # 6 of 8 neighbors are mountain, so that's what it's corrected to,
     # same rule as the High Clerist's Tower tile above.
     (368, 156): "mountain",
+
+    # Blood Sea over-classification (found this session, cross-checking
+    # `References/TSR 8448 The Atlas of the Dragonlance World.pdf`'s
+    # "World View: Post-Cataclysm" map): docs/MAP_NOTES.md's High Clerist's
+    # Tower section already flagged mountain-shadow bleeding into the same
+    # color bucket as the Blood Sea's maroon fill, but never fixed it. A
+    # flood-fill over every '!' tile found exactly one real component
+    # (5,129 tiles, bbox x349-462 y55-154) matching the Blood Sea's actual
+    # position on the Atlas map -- left untouched -- plus 64 stray tiles in
+    # small disconnected clusters, each reclassified below by neighbor-
+    # majority vote (same method as the hand-picked overrides above).
+    #
+    # The larger, more consequential cluster (27 tiles, x203-238 y274-298)
+    # sits in the hills south of Tarsis, on the approach to Ice Wall
+    # Castle -- a player wandering off-road there was hitting nonsense
+    # "Blood Sea" tiles nowhere near the real one. All 27 resolve to hills.
+    (203, 274): "hills",
+    (203, 275): "hills",
+    (204, 276): "hills",
+    (205, 277): "hills",
+    (206, 278): "hills",
+    (207, 279): "hills",
+    (212, 292): "hills",
+    (213, 293): "hills",
+    (214, 294): "hills",
+    (215, 295): "hills",
+    (219, 297): "hills",
+    (221, 297): "hills",
+    (222, 297): "hills",
+    (225, 296): "hills",
+    (226, 296): "hills",
+    (227, 296): "hills",
+    (228, 296): "hills",
+    (229, 296): "hills",
+    (230, 295): "hills",
+    (230, 296): "hills",
+    (231, 293): "hills",
+    (231, 296): "hills",
+    (232, 290): "hills",
+    (233, 297): "hills",
+    (235, 298): "hills",
+    (236, 298): "hills",
+    (238, 298): "hills",
+
+    # The remaining 37 stray tiles cluster around the Blood Sea's own
+    # edges and the small Mithas/Kothas island chain east of it -- far
+    # from any current game content, but real noise all the same.
+    (362, 120): "river",
+    (362, 121): "river",
+    (393, 83): "hills",
+    (398, 123): "hills",
+    (404, 98): "hills",
+    (409, 123): "hills",
+    (410, 123): "hills",
+    (412, 82): "hills",
+    (413, 82): "hills",
+    (414, 82): "hills",
+    (416, 79): "mountain",
+    (416, 80): "mountain",
+    (417, 81): "hills",
+    (424, 92): "hills",
+    (424, 93): "hills",
+    (425, 92): "hills",
+    (425, 93): "hills",
+    (443, 81): "mountain",
+    (444, 81): "mountain",
+    (445, 81): "mountain",
+    (446, 25): "hills",
+    (446, 27): "forest",
+    (446, 81): "mountain",
+    (447, 24): "hills",
+    (447, 28): "forest",
+    (447, 82): "mountain",
+    (447, 109): "mountain",
+    (447, 110): "mountain",
+    (447, 111): "mountain",
+    (451, 27): "mountain",
+    (451, 30): "forest",
+    (456, 33): "forest",
+    (457, 29): "mountain",
+    (457, 34): "hills",
+    (458, 26): "mountain",
+    (458, 27): "mountain",
+    (459, 25): "forest",
+
+    # Xak Tsaroth approach bog (found this session, sourced to the Atlas's
+    # "The Cursed Lands" page, its own printed p.19 (PDF page 40)): the
+    # companions' route from Haven
+    # crosses "a swamp -- the Cursed Lands of Newsea" to reach the ruins,
+    # and that page's own map legend lists "Marsh" as a distinct category.
+    # This backs up the "swampy lowlands" flavor text this project's docs
+    # already assert for Xak Tsaroth (POS 202,203) but never actually
+    # placed as grid terrain. Kept deliberately tight -- only the open
+    # ground within a few tiles of the ruins, not a guessed regional
+    # extent -- and only tiles that were plain open ground (not the
+    # existing forest/hills/river tiles nearby, which likely represent the
+    # real tree-cover and water features the Atlas map shows mixed into
+    # the same swamp).
+    (199, 200): "bog",
+    (199, 202): "bog",
+    (199, 203): "bog",
+    (199, 204): "bog",
+    (200, 200): "bog",
+    (200, 201): "bog",
+    (200, 202): "bog",
+    (200, 203): "bog",
+    (201, 202): "bog",
+    (201, 203): "bog",
+    (201, 206): "bog",
+    (202, 200): "bog",
+    (202, 201): "bog",
+    (202, 202): "bog",
 }
 
 

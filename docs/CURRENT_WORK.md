@@ -1,31 +1,27 @@
 # Current work
 
-Nothing in flight. Milestone 127 (Foghaven Vale -- Huma's Tomb / the
-Dragon Mountain) is implemented, documented, and verified -- see
-`docs/MILESTONES.md` entry 127 and `docs/TIMELINE_NOTES.md`'s "Foghaven
-Vale" section for the full sourcing.
+Nothing in flight. Milestone 128 (terrain accuracy pass) is implemented,
+verified, and documented -- see `docs/MILESTONES.md` entry 128 and
+`docs/MAP_NOTES.md`'s "Terrain accuracy pass" section for the full sourcing
+and every fixed coordinate.
 
-Reviewed the world map against a newly-supplied reference,
-`References/TSR 9400 TM3 World Of Krynn Trailmap.pdf`, which pointed at
-two of Milestone 126's six unbuilt Atlas-named waypoints: Skullcap and
-Dragon Mountain. Research against the three tracked Chronicles novels
-found Skullcap isn't actually sourced to any of them (it's *Legends*-only
-content, the ruin of Zhaman) -- dropped, with the doc corrected rather
-than carried forward. Dragon Mountain checked out and shipped: a new
-portal-nested zone, `data/zones/foghaven_vale.txt` (no new overworld
-`LOCATION`, reached via a new `PORTAL M foghaven_vale` POI off `data/
-zones/southern_ergoth.txt`), plus five new `PRESENCE foghaven_vale 69
-72` windows (Laurana, Flint, Tasslehoff, and a second window each for
-Fizban and Silvara).
+This grew out of mocking up a possible new "World Map" screen (a
+zoomed-out, separate travel view -- see `docs/MILESTONES.md`'s NEXT UP
+item 8) against the Cataclysm: Dark Days Ahead reference the user supplied.
+The user liked the direction but flagged that terrain accuracy needed
+checking against real sources before going further, pointing at two
+references in `References/` never previously cross-checked against the
+pipeline: the TSR 9400 Trailmap and TSR 8448 Atlas. That check found real
+bugs in `data/overworld.grid` itself (zero grassland tiles anywhere,
+silently doubling off-road movement time everywhere; a Blood Sea
+misclassification leak on the route to Ice Wall Castle; no bog near Xak
+Tsaroth despite already-asserted "swampy lowlands" flavor text) --
+independent of the World Map screen's fate, so it shipped as its own
+milestone rather than being bundled into a UI feature.
 
-Verified via a clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h`
-diff), `--check-timeline` (zero new keyword-collision warnings beyond the
-one pre-existing, already-documented Raistlin/Kitiara override), and the
-piped character-creation smoke test (real save1-3.txt moved aside and
-restored afterward) -- confirms `WorldLoader`/`ZoneCatalog`/`Timeline`
-all load the new zone/portal/PRESENCE content without throwing.
-**Not yet interactively walked** -- reaching the new zone requires real
-keypresses (`_getch()` can't be piped), so the actual in-game text/flow
-(taking the new portal, standing on the `TIMELINE_ANCHOR`, talking to all
-five canon characters) hasn't been read back by a human yet. Worth doing
-on the next play session that reaches Southern Ergoth.
+**Next open thread**: the World Map screen itself was never built this
+session -- only mocked up and conceptually approved. If picked back up,
+start from `docs/MILESTONES.md` NEXT UP item 8 rather than re-deriving the
+approach; the mockup script and comparison artifact from that session are
+gone (scratchpad), so the design decisions (3:1 sampling ratio, importance-
+tiered town footprints) live only in that NEXT UP writeup now.

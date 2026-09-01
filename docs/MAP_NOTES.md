@@ -465,6 +465,12 @@ concrete wins over the old classification:
   compression artifacts, not a limitation of the classification method
   itself.
 
+  **Correction (Milestone 128):** "a couple of stray dots... harmless"
+  undersold it -- a flood-fill found 64 stray tiles, not a couple, and one
+  27-tile cluster sat directly on the hills south of Tarsis, on the route
+  to Ice Wall Castle, not somewhere nothing routes through. Fixed; see
+  "Terrain accuracy pass" below.
+
 Bog and salt_flat still did not emerge as distinct colors at
 `NUM_COLORS=32` -- same honest gap as before, not invented. Forest vs.
 plains vs. hills also still don't cleanly separate by flat color (mask
@@ -925,6 +931,76 @@ Hero is ever shown conscious inside the keep in the source text (see
 wooded mountain approach below it, same "described, not modeled"
 treatment already given the Tower of the Stars and the High Clerist's
 Tower's own sealed rooms.
+
+## Terrain accuracy pass (Milestone 128)
+
+Prompted by the user pointing at two references sitting in `References/`
+since 2011 but never cross-checked against the terrain pipeline:
+`TSR 9400 TM3 World Of Krynn Trailmap.pdf` (a fold-out, elevation-tinted
+color map of the continent, cut into panels) and `TSR 8448 The Atlas of the
+Dragonlance World.pdf` (regional maps plus prose, organized around the
+Heroes' own route). Both are scanned images with no extractable text --
+read by rendering pages to PNG/JPEG at 70-220 DPI and reading them directly,
+not `pdftotext`.
+
+**Grassland never existed anywhere in `data/overworld.grid` -- 0 of 153,600
+tiles.** `tools/generate_overworld.py`'s `INDEX_TO_TERRAIN` mapped its
+32-color quantization's indices 1/2/5 ("pale olive-tan") entirely to
+`"savannah"`, none to `"grassland"` -- confirmed by direct character count
+and by sampling every named location this session (Kalaman, Dargaard Keep,
+Solace, Palanthas, Qualinesti all came back 100% savannah, 0% grassland in
+their surrounding tiles). Not cosmetic: `Terrain.cpp` charges savannah 30
+min/tile vs. grassland's 15, so every off-road trip across open country had
+silently cost double since Milestone 2.
+
+Corrected by relabeling indices 1/2/5 to `"grassland"`, grounded in: the
+Trailmap's own legend (its PDF page 17 -- a fold-out poster with no printed
+pagination of its own, unlike the Atlas, so PDF page is the only usable
+reference) drawing a clean line between "Grassland" (flat
+light green) and "Barren"/"Moors"/"Desert" (distinct colors), its Estwilde
+panel (p.21) reading as the former, and the Atlas's Que-shu page (its own
+printed p.16, PDF page 37 -- this book's front matter uses roman numerals
+before its own Arabic pagination restarts, so the two diverge by ~20)
+placing Que-shu "in the central plains of Abanasinia." Checked whether any
+region should have stayed savannah -- Plains of Dust was the candidate (the
+"savannah/hills terrain" language above, Milestone 85) -- but it sampled
+104/169 tiles hills, not savannah, and is independently sourced as a
+misleadingly-named rugged highland, not flat plains, so nothing real was
+overwritten. `savannah` stays in `TERRAIN_CHARS`/`Terrain.cpp`, just unused
+until a real arid region is sourced.
+
+**The Blood Sea leak** (see the corrected Milestone 85 note above): a
+flood-fill over every `!` tile found one real 5,129-tile component (bbox
+x349-462 y55-154, matching the Atlas's Blood Sea position) plus 64 stray
+tiles in small disconnected clusters. Each reclassified by neighbor-majority
+vote, same method as every hand-picked `MANUAL_TERRAIN_OVERRIDES` entry
+already in the file. The 27-tile cluster near Tarsis/Ice Wall Castle
+resolved entirely to hills; the remaining 37, scattered near the Blood
+Sea's own edges and the Mithas/Kothas islands, to a mix of hills/mountain/
+forest/river depending on local majority.
+
+**Bog placed near Xak Tsaroth for the first time** -- sourced, not
+invented: the Atlas's "The Cursed Lands" page (its own printed p.19, PDF
+page 40) has the companions
+route from Haven cross "a swamp -- the Cursed Lands of Newsea" to reach the
+ruins, and that page's own map legend lists "Marsh" as its own category.
+This backs up the "swampy lowlands" flavor text already asserted for Xak
+Tsaroth but never actually placed as grid terrain. Kept deliberately tight
+(14 tiles within a few steps of POS 202,203, only converting plain open
+ground -- the existing forest/river tiles nearby were left alone as the
+real tree-cover and water the Atlas map shows mixed into the same swamp)
+rather than guessing a wider regional extent. `salt_flat` still doesn't
+appear anywhere -- no source checked this session calls for it near any
+built location, so it stays an honest gap, not filled in speculatively.
+
+Verified via the same character-frequency count and flood-fill used to find
+these bugs (grassland now 10.49% of the grid; Blood Sea exactly one
+component; 14 bog tiles at Xak Tsaroth), re-sampling every location checked
+above, a clean `/W4` rebuild with **zero `.cpp`/`.h` diff** (pure data
+regeneration), and the piped character-creation smoke test (real
+save1-3.txt moved aside, restored after). `ROAD_PAIRS` connectivity
+unaffected -- roads are stamped after terrain classification and the total
+road-tile count (612) is unchanged.
 
 ## Extending the map
 
