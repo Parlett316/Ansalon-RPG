@@ -1276,3 +1276,53 @@ project always discloses; the actual screen (does the silhouette read
 correctly, is the legend legible, do the Medium/Large footprints look
 right at real console sizes, does `'o'` open/close cleanly) needs a real
 playthrough.
+
+## Walking viewport goes full-screen, with inline labels (Milestone 135)
+
+The user's maximized terminal (~212x60 character cells) was only using
+about a third of that -- `MapRenderer::configureLayout` (Milestone 33)
+pinned the map at `kPreferredViewportWidth`/`Height` (78x30) and the log
+panel at up to `kMaxLogPanelWidth` (60), with no path for the map to
+absorb whatever was left over. Fixed in `docs/ARCHITECTURE.md`'s new
+"Full-screen presentation" section (Milestone 135) -- full formula
+there; the map-relevant summary is that the walking viewport is now
+`contentWidth/Height` minus the log panel/chrome, not a fixed preferred
+size, so a big console shows far more of `data/overworld.grid` per frame
+than before (148x56 on the user's own terminal, versus the old 78x30).
+
+**Inline location name labels** were added to `drawOverworldFrame` at
+this new scale, CDDA-style (`References/cataclysm-dark-days-ahead.avif`
+was the user's own reference) -- previously every location on the
+walking map was glyph-only, its name visible only via the "Standing On"
+status line or the World Map's side legend above. A location's name now
+draws in plain gray beside its own glyph when there's room, with the
+same "skip rather than overlap or garble" restraint as the World Map
+screen's own side-legend decision above -- the algorithm (try 2 columns
+after the glyph, then immediately before it, else skip the label
+entirely) never truncates, never overlaps another glyph/label/the
+player's `@`, and never wraps a label onto a second row. Implementation
+detail (not a data/grammar change): `drawOverworldFrame` now builds a
+`MapCell` buffer before writing anything to the output stream, so the
+label pass can see what's already occupied -- see `docs/ARCHITECTURE.md`
+for the full mechanism.
+
+This is a distinct concern from the World Map screen's own clustering
+problem above (11 of 25 locations too dense at that screen's 3:1
+downsample) -- the walking viewport shows far fewer tiles at once and at
+1:1 scale, so most visible locations have real room around their glyph
+for an inline label; only a genuinely tight neighbor pair or a location
+near the log-panel divider would ever fall back to glyph-only here.
+
+Verified via a throwaway self-test (`MapRendererSelfTest.cpp`,
+dependency-free reimplementation of the layout math and the label-
+placement collision rule -- avoids pulling in MapRenderer.cpp's full
+world::/character::/combat:: dependency graph just to test two pure
+functions, same reasoning as Milestone 133's own self-test): asserted
+the new formula reproduces the old one exactly at the previously-
+documented 120x30 baseline, demonstrated the actual fix (78x30 -> 148x56
+at a ~212x60 console), and confirmed the label-placement helper never
+partially writes a row on a failed attempt. Clean `/W4` rebuild, zero
+new warnings. Piped character-creation smoke test passed (no real
+`save1-3.txt` existed this session to move aside). **Not interactively
+walked** -- see `docs/CURRENT_WORK.md` for what a real playthrough
+still needs to confirm.

@@ -26,8 +26,16 @@ public:
     // or it could clip on someone else's smaller terminal.
     static constexpr int kMinViewportWidth = 44;
     static constexpr int kMinViewportHeight = 16;
-    // Used by configureLayout when there's enough room; sized down toward
-    // the minimums above for a smaller console -- see docs/ARCHITECTURE.md.
+    // The original fixed frame size this project shipped at (Milestone
+    // 43). configureLayout uses kPreferredViewportWidth as the map's
+    // assumed share when sizing the log panel (see its own comment), but
+    // neither constant is a runtime CEILING on the map itself anymore --
+    // on a console bigger than this, the map absorbs all the leftover
+    // width/height rather than staying pinned here and leaving it blank.
+    // Only reachable value at all on a console AT the documented minimum,
+    // and still the compile-time default below for any caller that never
+    // runs configureLayout (e.g. a throwaway self-test) -- see
+    // docs/ARCHITECTURE.md.
     static constexpr int kPreferredViewportWidth = 78;
     static constexpr int kPreferredViewportHeight = 30;
     // Must fit not just wrapped log prose but real fixed status-panel
@@ -125,16 +133,26 @@ public:
 
     // Renders one full zone (interior) frame: the same Milestone 43
     // header/rule/status-panel layout as drawOverworldFrame (see above),
-    // the whole zone grid (wall-padded to kViewportWidth/Height if smaller
-    // -- see above), the entry/exit tile marked, and POI glyphs and the
-    // player's '@' overlaid. "Standing On" is always the zone's own name
-    // (Zone::name()); the status panel's mode label reads "INDOORS". As of
-    // Milestone 30, a POI's name/description and any TIMELINE_ANCHOR
-    // presence are pushed to `log` once on arrival by
-    // GameLoop::announceZoneTile rather than redrawn here every frame --
-    // see docs/ARCHITECTURE.md.
-    static void drawZoneFrame(const world::Zone& zone, const game::GameState& state,
-                               const std::vector<std::string>& log);
+    // the zone grid, the entry/exit tile marked, and POI glyphs and the
+    // player's '@' overlaid. Every authored zone (data/zones/*.txt, at
+    // most 44x16) is centered inside the full kViewportWidth/Height
+    // canvas rather than drawn at the origin -- if the canvas is bigger
+    // than the zone (any terminal above the documented minimum size), a
+    // thin border frames it and the real surrounding overworld terrain
+    // (sampled from `grid` around the player's own preserved overworld
+    // position -- see GameState::x/y's own doc comment) fills the rest as
+    // a purely decorative backdrop; `grid` is never consulted for
+    // movement/collision, which still checks only Zone::tileCodeAt/poiAt
+    // in zone-local coordinates exactly as before this milestone. At the
+    // absolute minimum terminal size the inset is exactly 0 and this
+    // renders identically to the old wall-padded behavior it replaces.
+    // "Standing On" is always the zone's own name (Zone::name()); the
+    // status panel's mode label reads "INDOORS". As of Milestone 30, a
+    // POI's name/description and any TIMELINE_ANCHOR presence are pushed
+    // to `log` once on arrival by GameLoop::announceZoneTile rather than
+    // redrawn here every frame -- see docs/ARCHITECTURE.md.
+    static void drawZoneFrame(const world::OverworldGrid& grid, const world::Zone& zone,
+                               const game::GameState& state, const std::vector<std::string>& log);
 
     // Renders the full character sheet as its own frame. GameLoop shows
     // this on demand ('c'), blocks for one keypress to dismiss it, then

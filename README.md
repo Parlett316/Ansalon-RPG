@@ -47,7 +47,15 @@ the game (character sheet, combat, shop, inventory, dialogue, pickers,
 the full log) still renders inside a plain-ASCII `+`/`-`/`|` window
 border with its own title bar, so nothing floats loose against the raw
 terminal; the whole frame sizes itself to your actual terminal window at
-launch rather than assuming a fixed size. Talking to someone colors their
+launch rather than assuming a fixed size, and the walkable map itself
+fills all the room that's left over after the status panel — a big,
+maximized window shows far more of the surrounding land at once than a
+small one, with each visible location's name captioned inline beside its
+glyph wherever there's room for it (never overlapping another glyph or
+the log panel). Stepping into a location's own walkable interior frames
+it with a thin border and shows the real surrounding countryside outside
+that border as backdrop, rather than a blank or walled-off room, on any
+terminal bigger than the smallest one this game supports. Talking to someone colors their
 name, and any cursor-list picker (who to talk to, what to ask about,
 Accept/Decline) colors its selected row; a fight colors your own stat line
 and the monster's separately — the same palette used elsewhere, not a
@@ -370,7 +378,7 @@ check your quest journal, and talk to a quest-giver to be offered one,
 track its progress, and turn it in for a reward — the moment every
 objective's actually done, the game says so itself ("...is ready to turn
 in -- return to..."), so you never have to guess or walk back
-speculatively. Seventeen ship so far — Solace's Notice Board offers a
+speculatively. Eighteen ship so far — Solace's Notice Board offers a
 bounty to clear three timber wolves off the south road;
 Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
 Tower, and Kalaman's City Watchman each have their own reason to send you
@@ -397,7 +405,9 @@ castle's gate; and a displaced farmer sheltering in Thorbardin, driven
 from Pax Tharkas, would trade real seed grain for a real shot at
 planting something come spring — a Farmer's Cart in Haven has more than
 its own fields will use this season, if you're willing to carry a sack
-the distance; and back in Solace, an unremarkable hooded figure at the
+the distance; Port O'Call's Beachcomber swears not everything the strait
+washes up is junk, and wants back whatever the storm-wrack down the
+shore is still hiding; and back in Solace, an unremarkable hooded figure at the
 corner of the square has nothing to say to most travelers at all, but a
 Mage who's reached 3rd level finds them waiting with a different offer
 entirely — the Tower of Wayreth itself moves through its forest at its

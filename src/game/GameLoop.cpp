@@ -365,7 +365,7 @@ void GameLoop::run() {
             render::MapRenderer::drawOverworldFrame(grid_, world_, state_, log_);
         } else {
             const world::Zone* zone = zones_.getZone(state_.currentZoneId);
-            render::MapRenderer::drawZoneFrame(*zone, state_, log_);
+            render::MapRenderer::drawZoneFrame(grid_, *zone, state_, log_);
         }
 
         render::Key key = render::Console::readKey();

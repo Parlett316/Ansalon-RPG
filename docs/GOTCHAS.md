@@ -475,14 +475,20 @@ you hit something surprising — that's the whole point of it existing.
 ## Presentation (Milestone 29: wide HUD + log panel)
 
 - **`drawZoneFrame` loops the full `kViewportWidth`/`kViewportHeight`
-  now, not `zone.width()`/`height()`.** This depends on
-  `Zone::tileCodeAt`/`poiAt` (`src/world/Zone.cpp`) returning `'#'`/
-  `nullptr` for any out-of-bounds coordinate rather than throwing/
-  asserting — that behavior already existed (for the entry/exit edge
-  case), this milestone just started relying on it for every
-  out-of-zone-bounds tile, not just a few. If that OOB behavior is ever
-  changed (e.g. made to assert in a debug build), `drawZoneFrame` will
-  need an explicit bounds check reintroduced before the render loop.
+  now, not `zone.width()`/`height()`.** Originally (through Milestone
+  134) this depended on `Zone::tileCodeAt`/`poiAt` (`src/world/Zone.cpp`)
+  returning `'#'`/`nullptr` for any out-of-bounds coordinate rather than
+  throwing/asserting, wall-padding the leftover space by relying on that
+  fallback for every out-of-zone-bounds tile. As of Milestone 135 (see
+  `docs/ARCHITECTURE.md`'s "Full-screen presentation"), `drawZoneFrame`
+  bounds-checks explicitly (`zoneCol && zoneRow`) before ever calling
+  `tileCodeAt`/`poiAt`, so it no longer exercises that OOB fallback at
+  all — the leftover space renders real backdrop terrain instead.
+  **`GameLoop::tryMoveZone` still does depend on it**, though (a
+  candidate next position past a zone's edge relies on `tileCodeAt`
+  returning `'#'` there to correctly block the move) — that call site is
+  untouched by Milestone 135 and still needs the OOB-safe behavior kept
+  if it's ever changed (e.g. made to assert in a debug build).
 - **The log panel wraps and pads to a fixed width/height
   (`MapRenderer::buildLogPanel`)** — every raw `log_` entry is word-
   wrapped to `kLogPanelWidth` (40) and the result is truncated to the

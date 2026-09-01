@@ -4887,12 +4887,14 @@ now fully verified, nothing further outstanding.
      source changed, so no new warnings possible) and a piped character-
      creation smoke test (real saves moved aside, restored after).
 
-     **Not interactively walked** -- same standing `_getch()` limitation;
-     the ability-check roll, the extension flavor line, the identity
-     abrupt-stop, the now-empty hint prompt, the same-day lockout after an
-     identity question, and the Aesthetic's own turned-away line all still
-     need a real keyboard playthrough. Full writeup: `docs/ZONE_NOTES.md`'s
-     "Ask about anything" and "Palanthas" sections.
+     **Interactively confirmed** by the user on 2026-09-01: the
+     ability-check roll extended the session to the 10-question hard cap
+     and the cutoff there booted them out as designed; a separate attempt
+     asking Astinus to confirm/deny he's Gilean ended the conversation
+     immediately, same-day; and walking back into the library afterward
+     was correctly blocked by an Aesthetic at the door rather than
+     reaching Astinus again. Full writeup: `docs/ZONE_NOTES.md`'s "Ask
+     about anything" and "Palanthas" sections.
 
 134. World Map screen -- NEXT UP item 8's mocked-up-but-never-built
      zoomed-out continent overview, the user's pick from this session's
@@ -4952,9 +4954,154 @@ now fully verified, nothing further outstanding.
      temporary CMake target, per the standing self-test convention.
      Clean `/W4` rebuild, zero new warnings. Piped character-creation
      smoke test passed (no real save files existed this session to move
-     aside). **Not interactively walked** -- same standing `_getch()`
-     limitation this project always discloses; see `docs/CURRENT_WORK.md`
-     for the specific playtest checklist this leaves open.
+     aside). **Interactively confirmed** by the user on 2026-09-01 -- the
+     World Map renders correctly, every location legible via the side
+     legend.
+
+135. Full-screen presentation -- the user's maximized terminal (~212x60
+     character cells) was only rendering a 78x30 frame with the log panel
+     capped at 60 columns, leaving a dead black gutter on the right and
+     bottom of the window every frame. Root cause confirmed by direct
+     code inspection: `MapRenderer::configureLayout` sized the map at
+     `kPreferredViewportWidth`/`Height` and the log panel up to
+     `kMaxLogPanelWidth`, but never gave the map any of the width/height
+     left over once those targets were hit. The user asked for a
+     graphics-designer's plan to fill the screen and look more like their
+     own `References/cataclysm-dark-days-ahead.avif` reference, with a
+     mockup of the end state before any code changed, while leaving game
+     mechanics untouched. Confirmed no new rendering engine was needed --
+     CDDA's own screenshot is the same terminal-ASCII technology this
+     project already ships, just using more of it; the SFML trial from
+     the backlog (item 3, still not pursued) stays irrelevant here.
+
+     Three real mockups (Python scripts rendering the project's actual
+     `data/overworld.grid`/`data/locations.txt`/`data/zones/solace.txt`
+     at the user's real terminal font metrics and the shipped ANSI
+     palette) were built and shown to the user before writing any C++,
+     resolving three open design questions:
+     - **The fix itself**: log panel width is computed first, same
+       formula and `[kMinLogPanelWidth, kMaxLogPanelWidth]` clamp as
+       before; the map now gets `contentWidth - kLogPanelGap - logWidth`
+       -- whatever's left, floored at `kMinViewportWidth` rather than
+       ceilinged at `kPreferredViewportWidth`. Map height lost its
+       `min(kPreferredViewportHeight, contentHeight)` cap the same way.
+       Reproduces the old 120x30-baseline numbers exactly (already "just
+       enough room to hit preferred, no more") while giving the user's
+       own ~212x60 console a 148x56 map instead of the old 78x30.
+     - **Inline location labels** (the user's pick over staying glyph-
+       only): `drawOverworldFrame` now builds a `MapCell{glyph, color,
+       occupied}` buffer before writing anything out, then overlays each
+       visible location's name beside its glyph (2 columns after, or
+       immediately before if that doesn't fit), skipping the label
+       entirely rather than truncating/overlapping/wrapping if neither
+       position is free -- same restraint precedent as Milestone 134's
+       side-legend decision, just applied inline since this viewport is
+       far less dense than the World Map's 3:1 downsample.
+     - **Indoors, the user's pick over a compact centered box or
+       re-authoring all 29 zone files bigger**: every authored zone is at
+       most 44x16 (`solace_inn.txt`), and `drawZoneFrame` used to
+       wall-pad the leftover space with solid `#` glyphs -- at full
+       screen size that would have meant a tiny room inside a huge
+       fortress of wall texture, a real regression the mockup surfaced
+       before it shipped. Replaced with: the zone centered in the
+       viewport (`insetX`/`insetY`), a thin ASCII border where there's
+       room for one (degrading to a single line, then to nothing at the
+       documented minimum terminal size, where the inset is
+       mathematically exactly 0 and this renders identically to the old
+       wall-padded behavior), and the real surrounding overworld terrain
+       drawn as a decorative backdrop outside it -- sampled from a new
+       `world::OverworldGrid&` parameter on `drawZoneFrame`, centered on
+       the player's own overworld position, which `GameState::x`/`y`
+       already stay valid for while indoors. Movement/collision
+       (`GameLoop::tryMoveZone`) is completely untouched -- still checks
+       only `Zone::tileCodeAt`/`poiAt` in zone-local coordinates; the
+       backdrop is never queried by game logic.
+
+     Full mechanism and formulas: `docs/ARCHITECTURE.md`'s new
+     "Full-screen presentation" section. Player-facing description:
+     `README.md`'s Status paragraph. `docs/MAP_NOTES.md` and
+     `docs/ZONE_NOTES.md` both got matching updates (the latter also
+     correcting a now-stale `docs/GOTCHAS.md` entry that had described
+     `drawZoneFrame` as depending on `Zone::tileCodeAt`/`poiAt`'s
+     out-of-bounds fallback -- it now bounds-checks explicitly before
+     ever calling them, though `tryMoveZone` still genuinely depends on
+     that fallback and is noted as such).
+
+     Verified via a throwaway, dependency-free `MapRendererSelfTest.cpp`
+     (reimplementing the layout math, the label-placement collision rule,
+     and the zone-inset math as standalone functions rather than pulling
+     in MapRenderer.cpp's full world::/character::/combat:: dependency
+     graph just to test three pure functions -- same reasoning as
+     Milestone 133's own self-test): confirmed the new layout formula
+     exactly reproduces the old one at the 120x30 baseline, demonstrated
+     the actual fix numerically (78x30 -> 148x56 at a ~212x60 console),
+     confirmed the label-placement helper never partially writes a row on
+     a failed placement attempt, and confirmed the zone-inset is exactly
+     0 at the documented minimum terminal size and positive/centered
+     above it -- then deleted, along with its temporary CMake target, per
+     the standing self-test convention. Clean `/W4` rebuild, zero new
+     warnings. Piped character-creation smoke test passed (no real
+     `save1-3.txt` existed this session to move aside). **Interactively
+     confirmed** by the user on 2026-09-01 at their real maximized
+     terminal -- the map fills the screen with no dead gutter, inline
+     location labels read cleanly, and zone interiors show a correctly
+     centered, bordered inset with sane surrounding backdrop terrain.
+
+136. `what_the_tide_kept` -- a user-requested quest content pass. Direct
+     re-check of every zone added since the last quest sweep
+     (`reason_worth_giving`, Milestone 106) plus every zone that sweep
+     already flagged as checked-and-rejected confirmed the project's own
+     documented caution: the "reuse an already-written NPC's existing
+     dialogue" method is genuinely exhausted. Every zone either already
+     has a quest, was already checked-and-rejected (Crossing, Palanthas,
+     Sancrist, Flotsam, Port Balifor, Tarsis, Pax Tharkas, Qualinesti,
+     Neraka), or has zero talkable NPCs at all (Dargaard Keep, Foghaven
+     Vale, Godshome, Hopeful Vale, Mount Nevermind, Qualimori, Que-shu --
+     deliberately pure scenery/ruin/sacred-site zones). The one zone
+     added since the last sweep, Port O'Call (Milestone 122), has only a
+     Dockmaster with the same deliberately-mundane, no-thread dialogue as
+     every rejected boat-logistics NPC.
+
+     Put to the user directly: accept the well is dry, or add one new
+     small NPC/hook, the only precedent for which this project has is
+     Xak Tsaroth's Ruin-Scavenger and Southern Ergoth's Kaganesti
+     Lookout. They chose to add one. Rather than inventing a wholly new
+     character, this gives voice to one already half-there: Port
+     O'Call's Beachcomber's Stall (`data/zones/port_ocall.txt` POI `B`)
+     was a non-talkable shop-only POI whose own description already
+     implied a voice and a hook ("the old woman minding it swears a few
+     pieces still carry a working charm, salvaged off ships that never
+     made land"). `B` gains `TALK`/`TALK_AGAIN`/`QUEST B
+     what_the_tide_kept`; `SHOP B magic` stays untouched and open (she's
+     already an active shop, unlike Flint's Smithy's `SHOP_LOCKED`
+     precedent). A new POI, `W` "The Storm-Wrack," is the DELIVER
+     source (`GRANTS_ITEM W drowned_sailors_locket`), matching
+     `ore_for_the_forge`'s Ore Cart phrasing. `data/quests.txt`'s new
+     `QUEST what_the_tide_kept`: one `DELIVER drowned_sailors_locket 1`
+     objective, no `REQUIRE`, `REWARD_STEEL 35`/`REWARD_XP 80` -- the
+     same tier as `ore_for_the_forge`/`seed_for_thorbardin`, the two
+     prior DELIVER-only quests. Port O'Call has no `PRESENCE`/
+     `TIMELINE_ANCHOR` (map-only, like Crossing), so the stricter
+     novel-citation bar doesn't apply. Zero `.cpp`/`.h` changes -- pure
+     data content. Full writeup: `docs/QUEST_NOTES.md`'s "Shipped
+     quests" and updated "Extending this later" sections.
+
+     Verified via a throwaway self-test (`QuestZoneSelfTest.cpp`:
+     `QuestLoader` parsing the real, now-18-quest `data/quests.txt`
+     confirming the new quest's requirement/objective/reward shape;
+     `ZoneLoader` parsing the edited `port_ocall.txt`, confirming the new
+     `W` POI, `B`'s new `TALK`/`QUEST` lines, and the `GRANTS_ITEM` all
+     parse and resolve to the expected coordinates), then deleted along
+     with its temporary CMake target per the standing self-test
+     convention. Clean `/W4` rebuild, zero new warnings (no source
+     changes). Piped character-creation smoke test passed (real
+     `save1.txt` moved aside, restored after) -- confirms `main.cpp`'s
+     cross-validation accepts the new `QUEST B what_the_tide_kept` zone
+     binding against the loaded `QuestCatalog`. **Not interactively
+     walked** -- same standing `_getch()` limitation this project always
+     discloses; talking to the Beachcomber, finding the Storm-Wrack,
+     delivering the locket, and confirming the reward/journal entry all
+     still need the user's own keyboard.
 
 ## NEXT UP
 

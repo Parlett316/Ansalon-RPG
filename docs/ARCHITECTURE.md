@@ -840,6 +840,91 @@ narrower, harder problem. Solving the reported bug (frame bigger than
 the window at launch) didn't require solving live resize too, and
 taking on that scope wasn't asked for.
 
+## Full-screen presentation: the map absorbs surplus space (Milestone 135)
+
+The user's maximized terminal (~212×60 character cells) was still
+rendering a 78×30 frame with the log panel capped at 60 columns —
+`configureLayout` (Milestone 33 above) sized the map at
+`kPreferredViewportWidth`/`Height` and the log panel up to
+`kMaxLogPanelWidth`, but never gave the *map* any of the width/height
+left over once those targets were hit. On a big console that leftover
+was simply never rendered into anything — a dead black gutter on the
+right and bottom of the window. Confirmed by direct code inspection, no
+new engine needed: the user's own CDDA reference screenshot
+(`References/cataclysm-dark-days-ahead.avif`) is the same terminal-ASCII
+technology this project already ships, just using more of it.
+
+**The fix**: log panel width is still computed first, same formula and
+same `[kMinLogPanelWidth, kMaxLogPanelWidth]` clamp as before (wrapped
+prose doesn't get easier to read past 60 columns, so there's no reason
+to let it keep growing) — but the map now gets **whatever's left**,
+`contentWidth - kLogPanelGap - logWidth`, with `kMinViewportWidth` as a
+floor rather than `kPreferredViewportWidth` as a ceiling. Map height
+lost its `min(kPreferredViewportHeight, contentHeight)` cap the same
+way — it's just `contentHeight` now. `kPreferredViewportWidth`/`Height`
+remain as constants (the compile-time default before `configureLayout`
+ever runs, e.g. a throwaway self-test) but no longer bound the map at
+runtime. Verified this reproduces the old 120×30-baseline numbers
+exactly (that size was already "just enough room to hit preferred, no
+more" — precisely where old and new formulas can never diverge) while
+giving a ~212×60 console a 148×56 map instead of the old 78×30.
+`kWorldMapRows`/`Columns` (Milestone 134) and `kSecondaryBoxMaxWidth`/
+`kProseWrapWidth` (character sheet, dialogue, combat, shop, inventory)
+are untouched — the former is already independently adaptive and
+deliberately self-caps at 25 rows to match the legend; the latter are
+deliberately readable-width screens, not meant to stretch full-screen.
+
+**Inline location labels on the overworld map**: at 148+ columns wide,
+CDDA-style inline name captions beside each visible location's glyph
+(previously glyph-only — the name was only ever visible via the "Standing
+On" panel or the `'o'` World Map's side legend) fit comfortably. Required
+restructuring `drawOverworldFrame` from streaming straight to the output
+`ostringstream` cell-by-cell into building a `MapCell{glyph, color,
+occupied}` buffer first, then a second pass that tries placing each
+recorded location's name 2 columns after its glyph, falling back to
+immediately before it, and skipping the label entirely if neither
+position fits without overlapping another glyph, the player's own `@`,
+or an already-placed label (`tryPlaceLabel`, a small anonymous-namespace
+helper — leaves its target row completely unmodified on any failed
+attempt, so a second candidate position can always be tried safely).
+Same restraint precedent as Milestone 134's side-legend decision — never
+truncated, never overlapped, never wrapped to a second row; a location
+just stays glyph-only if it doesn't fit cleanly.
+
+**Indoors got a bigger, second problem this fix would otherwise have
+made worse**: every authored zone (`data/zones/*.txt`) is at most 44×16
+(`solace_inn.txt`), and `drawZoneFrame` used to wall-pad
+(`Zone::tileCodeAt`/`poiAt` already return `'#'`/`nullptr` out of bounds
+— a pre-existing guarantee) whatever was left of the viewport with solid
+gray wall glyphs. At the old 78×30 size that was a modest amount of
+wall texture; at full screen it would have meant a tiny room sitting
+inside a huge fortress of `#`. Replaced with: the authored zone is
+centered inside the full viewport (`insetX`/`insetY =
+max(0, (kViewportWidth/Height - zone.width()/height()) / 2)`), framed by
+a thin ASCII border (`+`/`-`/`|`) where there's room for one, and
+everywhere outside that the *real* surrounding overworld terrain is
+drawn as a backdrop — sampled from `world::OverworldGrid` centered on
+the player's own overworld position, which `game::GameState::x`/`y`
+already stay valid for while indoors (see that struct's own doc
+comment; this is the first thing to actually make use of that on the
+render side). The border degrades gracefully to a single line (no
+corners) if only one axis has surplus room, and vanishes entirely at the
+documented minimum terminal size, where `insetX`/`insetY` are
+mathematically exactly `0` (`kMinViewportWidth`/`Height` were sized to
+fit the largest authored zone exactly) — meaning at that floor, this
+renders pixel-for-pixel identically to the old wall-padded behavior.
+`drawZoneFrame` gained a `world::OverworldGrid&` parameter for this (one
+call site, `GameLoop::run`, which already holds `grid_`); **movement and
+collision are completely unchanged** — `GameLoop::tryMoveZone` still
+checks only `Zone::tileCodeAt`/`poiAt` in zone-local coordinates, exactly
+as before. The backdrop is purely decorative and never queried by game
+logic.
+
+**Scope boundary, same as Milestone 33's**: this still adapts once, at
+process startup, not continuously — live mid-session terminal resize
+remains a separate, deliberately deferred problem (see "What's
+deliberately NOT abstracted yet" below).
+
 ## Sea travel: a scripted one-time voyage (Milestone 36, reworked Milestone 88, extended Milestone 91, decline option + third leg Milestone 92, fourth leg + repoint Milestone 95)
 
 Some locations (Ice Wall Castle, Sancrist Isle) are sea-locked — confirmed

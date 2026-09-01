@@ -99,6 +99,49 @@ std::string colorLine(const std::string& text, const char* ansiColor, int width)
     return std::string(ansiColor) + padded + "\x1b[0m";
 }
 
+// One rendered overworld map cell. drawOverworldFrame builds a full
+// buffer of these before streaming anything out (rather than streaming
+// straight to the frame row by row as it computes each cell), because
+// inline location labels (below) need to know what's already occupied
+// before deciding where their text can go -- `occupied` is set wherever
+// a cell is painted with the player's own '@', a location's glyph, or a
+// label character; the label pass below only ever writes into cells
+// where it's still false.
+struct MapCell {
+    char glyph = ' ';
+    const char* color = "\x1b[37m";
+    bool occupied = false;
+};
+
+// One visible location's own glyph position, recorded while the terrain/
+// glyph buffer is built so the label pass below doesn't need a second
+// lookup against world::World.
+struct VisibleLocation {
+    int row;
+    int col;
+    std::string name;
+};
+
+// Tries to write `text` into `row` starting at column `col0`, entirely
+// left-to-right in a plain, muted color (deliberately not a location's
+// own bright-yellow glyph color, so labels read as captions rather than
+// more map markers) -- but only if the whole run fits inside [0, width)
+// and every cell it would touch is still unoccupied. Leaves `row`
+// completely unmodified on failure, so the caller can safely try a
+// second candidate position (see drawOverworldFrame's own comment for
+// the two positions it tries). Marks every cell it writes `occupied`, so
+// a second location's label can never overlap this one's.
+bool tryPlaceLabel(std::vector<MapCell>& row, int width, int col0, const std::string& text) {
+    if (col0 < 0 || col0 + static_cast<int>(text.size()) > width) return false;
+    for (int i = 0; i < static_cast<int>(text.size()); ++i) {
+        if (row[static_cast<size_t>(col0 + i)].occupied) return false;
+    }
+    for (int i = 0; i < static_cast<int>(text.size()); ++i) {
+        row[static_cast<size_t>(col0 + i)] = MapCell{text[static_cast<size_t>(i)], "\x1b[37m", true};
+    }
+    return true;
+}
+
 // Wraps every raw log entry to `width - 2` (reserving 2 columns for a
 // "> "/"  " prefix -- see below), takes the tail `height` physical lines
 // (so once the panel fills, the oldest lines scroll off the top -- most
@@ -354,18 +397,27 @@ void writeBoxed(std::ostringstream& out, const std::string& title, const std::ve
 bool MapRenderer::configureLayout(int columns, int rows) {
     if (columns < kAbsoluteMinColumns || rows < kAbsoluteMinRows) return false;
 
-    // Map width gets priority up to the preferred size; only shrinks
-    // toward the floor if that's needed to still guarantee the log panel
-    // its own minimum width.
+    // Log panel first: a comfortable, capped-width sidebar -- wrapped
+    // prose doesn't get any easier to read past kMaxLogPanelWidth, so it
+    // grows toward that cap (using kPreferredViewportWidth as the map's
+    // assumed share) and no further. The MAP gets everything left over
+    // after that, with no ceiling of its own -- a full-screen console
+    // should show a full-screen map, not leave the surplus blank. (Before
+    // this, the map stayed pinned at kPreferredViewportWidth even when
+    // far more room was available, which is exactly the "dead black
+    // gutter" this fixes.) kMinViewportWidth is still a hard floor: at
+    // kAbsoluteMinColumns exactly, mapWidth lands precisely on it.
     int contentWidth = columns - kChromeColumns;
-    int mapWidth = kPreferredViewportWidth;
-    if (mapWidth + kLogPanelGap + kMinLogPanelWidth > contentWidth) {
-        mapWidth = std::max(kMinViewportWidth, contentWidth - kLogPanelGap - kMinLogPanelWidth);
-    }
-    int logWidth = std::clamp(contentWidth - mapWidth - kLogPanelGap, kMinLogPanelWidth, kMaxLogPanelWidth);
+    int logWidth = std::clamp(contentWidth - kPreferredViewportWidth - kLogPanelGap, kMinLogPanelWidth,
+                               kMaxLogPanelWidth);
+    int mapWidth = std::max(kMinViewportWidth, contentWidth - kLogPanelGap - logWidth);
 
+    // Map height likewise absorbs the full available height -- no
+    // kPreferredViewportHeight ceiling anymore (that constant remains
+    // only as the compile-time default below, for callers that never run
+    // configureLayout at all, e.g. a throwaway self-test).
     int contentHeight = rows - kChromeRows;
-    int mapHeight = std::min(kPreferredViewportHeight, contentHeight);
+    int mapHeight = contentHeight;
 
     kViewportWidth = mapWidth;
     kViewportHeight = mapHeight;
@@ -422,29 +474,55 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
     out << padPlain(writeHeaderLine(state.character, state, kContentWidth), kContentWidth) << "\n";
     out << std::string(static_cast<size_t>(kContentWidth), '=') << "\n";
 
+    // First pass: exactly the terrain/glyph/player logic this function
+    // has always had, just written into a buffer instead of straight to
+    // the output stream -- see MapCell's own comment for why. Every
+    // visible location's glyph position is also recorded for the label
+    // pass below, in the same top-to-bottom/left-to-right order the loop
+    // discovers them (no separate sort needed for determinism).
+    std::vector<std::vector<MapCell>> cells(static_cast<size_t>(kViewportHeight),
+                                             std::vector<MapCell>(static_cast<size_t>(kViewportWidth)));
+    std::vector<VisibleLocation> visibleLocations;
     for (int row = 0; row < kViewportHeight; ++row) {
         int gy = top + row;
-        std::ostringstream rowStream;
         for (int col = 0; col < kViewportWidth; ++col) {
             int gx = left + col;
 
-            char displayChar;
-            const char* color;
+            MapCell cell;
             if (gx == state.x && gy == state.y) {
-                displayChar = '@';
-                color = "\x1b[97m"; // bright white -- the player must always read clearly against any terrain
+                cell = MapCell{'@', "\x1b[97m", true}; // bright white -- the player must always read clearly
             } else if (const world::Location* loc = world.locationAt(gx, gy)) {
-                displayChar = loc->glyph;
-                color = "\x1b[93m"; // bright yellow -- locations stand out from raw terrain
+                cell = MapCell{loc->glyph, "\x1b[93m", true}; // bright yellow -- locations stand out from raw terrain
+                visibleLocations.push_back({row, col, loc->name});
             } else {
                 const world::TerrainInfo& terrain = world::terrainFor(grid.terrainCodeAt(gx, gy));
-                displayChar = terrain.glyph;
-                color = terrain.ansiColor;
+                cell = MapCell{terrain.glyph, terrain.ansiColor, false};
             }
+            cells[static_cast<size_t>(row)][static_cast<size_t>(col)] = cell;
+        }
+    }
 
+    // Second pass: an inline name caption beside each visible location's
+    // own glyph (CDDA-style -- see docs/ARCHITECTURE.md's Presentation
+    // section). Tries starting 2 columns after the glyph first, then
+    // immediately before it; if neither fits cleanly inside the viewport
+    // without overlapping another glyph, the player, or an already-placed
+    // label, the location just stays glyph-only, same as before this
+    // labels existed -- never truncated, never overlapped, never wrapped
+    // to another row.
+    for (const VisibleLocation& loc : visibleLocations) {
+        std::vector<MapCell>& row = cells[static_cast<size_t>(loc.row)];
+        if (tryPlaceLabel(row, kViewportWidth, loc.col + 2, loc.name)) continue;
+        tryPlaceLabel(row, kViewportWidth, loc.col - 1 - static_cast<int>(loc.name.size()), loc.name);
+    }
+
+    for (int row = 0; row < kViewportHeight; ++row) {
+        std::ostringstream rowStream;
+        for (int col = 0; col < kViewportWidth; ++col) {
+            const MapCell& cell = cells[static_cast<size_t>(row)][static_cast<size_t>(col)];
             // Every color-set code is paired with a reset immediately
             // after -- see docs/GOTCHAS.md on why (color bleed).
-            rowStream << color << displayChar << "\x1b[0m";
+            rowStream << cell.color << cell.glyph << "\x1b[0m";
         }
         rowStream << " | " << statusPanel[static_cast<size_t>(row)];
         // Not padded via padPlain -- already exactly kContentWidth visible
@@ -465,8 +543,8 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
     std::cout << out.str();
 }
 
-void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& state,
-                                 const std::vector<std::string>& log) {
+void MapRenderer::drawZoneFrame(const world::OverworldGrid& grid, const world::Zone& zone,
+                                 const game::GameState& state, const std::vector<std::string>& log) {
     const int kContentWidth = kViewportWidth + kLogPanelGap + kLogPanelWidth;
 
     std::vector<std::string> statusPanel =
@@ -478,30 +556,73 @@ void MapRenderer::drawZoneFrame(const world::Zone& zone, const game::GameState& 
     out << padPlain(writeHeaderLine(state.character, state, kContentWidth), kContentWidth) << "\n";
     out << std::string(static_cast<size_t>(kContentWidth), '=') << "\n";
 
-    // Always renders the full kViewportWidth/Height, not zone.width()/
-    // height() -- a zone smaller than the viewport wall-pads out to fill
-    // it (Zone::tileCodeAt/poiAt return '#'/nullptr for any out-of-bounds
-    // coordinate, so this is safe -- see docs/GOTCHAS.md), which keeps the
-    // status panel's left edge at a stable screen column regardless of
-    // which zone is showing.
+    // The authored zone (at most 44x16 -- see docs/ZONE_NOTES.md) is
+    // centered inside the full kViewportWidth/Height canvas rather than
+    // drawn at the origin and wall-padded, as before this milestone.
+    // insetX/insetY are exactly 0 whenever kViewportWidth/Height equal
+    // kMinViewportWidth/Height (they're sized to fit the largest authored
+    // zone exactly), so at that floor terminal size this renders
+    // pixel-for-pixel like the old wall-padded behavior always did: the
+    // zone fills the whole viewport, no border, no backdrop -- see
+    // borderV/borderH below for how the border degrades gracefully if
+    // only one axis has room. Only once there's real surplus space does
+    // the border + real-terrain backdrop appear.
+    int insetX = std::max(0, (kViewportWidth - zone.width()) / 2);
+    int insetY = std::max(0, (kViewportHeight - zone.height()) / 2);
+    bool borderV = insetX >= 1; // room for left/right border pipes
+    bool borderH = insetY >= 1; // room for top/bottom border dashes
+
+    // Backdrop camera: the same real overworld tile a step outside the
+    // zone would show, centered on the player's own overworld position --
+    // GameState::x/y stay valid while indoors for exactly this kind of
+    // use (see its own doc comment). Purely decorative: nothing sampled
+    // here is ever queried by movement/collision, which still checks
+    // only Zone::tileCodeAt/poiAt in zone-local coordinates below,
+    // exactly as before this milestone.
+    int backdropLeft = std::clamp(state.x - kViewportWidth / 2, 0, std::max(0, grid.width() - kViewportWidth));
+    int backdropTop = std::clamp(state.y - kViewportHeight / 2, 0, std::max(0, grid.height() - kViewportHeight));
+
     for (int y = 0; y < kViewportHeight; ++y) {
         std::ostringstream rowStream;
         for (int x = 0; x < kViewportWidth; ++x) {
+            int zx = x - insetX;
+            int zy = y - insetY;
+            bool zoneCol = zx >= 0 && zx < zone.width();
+            bool zoneRow = zy >= 0 && zy < zone.height();
+
             char displayChar;
             const char* color;
-            if (x == state.zoneX && y == state.zoneY) {
-                displayChar = '@';
-                color = "\x1b[97m";
-            } else if (const world::PointOfInterest* poi = zone.poiAt(x, y)) {
-                displayChar = poi->code;
-                color = "\x1b[93m"; // bright yellow, matching overworld location markers
-            } else if (x == zone.entryX() && y == zone.entryY()) {
-                displayChar = '>';
-                color = "\x1b[96m"; // bright cyan -- the way back out
+            if (zoneCol && zoneRow) {
+                if (zx == state.zoneX && zy == state.zoneY) {
+                    displayChar = '@';
+                    color = "\x1b[97m";
+                } else if (const world::PointOfInterest* poi = zone.poiAt(zx, zy)) {
+                    displayChar = poi->code;
+                    color = "\x1b[93m"; // bright yellow, matching overworld location markers
+                } else if (zx == zone.entryX() && zy == zone.entryY()) {
+                    displayChar = '>';
+                    color = "\x1b[96m"; // bright cyan -- the way back out
+                } else {
+                    const world::ZoneTileInfo& tile = world::zoneTileFor(zone.tileCodeAt(zx, zy));
+                    displayChar = tile.glyph;
+                    color = tile.ansiColor;
+                }
             } else {
-                const world::ZoneTileInfo& tile = world::zoneTileFor(zone.tileCodeAt(x, y));
-                displayChar = tile.glyph;
-                color = tile.ansiColor;
+                bool borderCol = borderV && (zx == -1 || zx == zone.width());
+                bool borderRow = borderH && (zy == -1 || zy == zone.height());
+                if ((borderRow && (zoneCol || borderCol)) || (borderCol && (zoneRow || borderRow))) {
+                    // A thin frame around the zone -- true 7-bit ASCII,
+                    // per CLAUDE.md's charset rule -- degrading to a
+                    // single line (no corners) if only one axis has room.
+                    bool corner = borderRow && borderCol;
+                    displayChar = corner ? '+' : (borderRow ? '-' : '|');
+                    color = "\x1b[90m"; // dim gray -- a frame, not a walkable wall
+                } else {
+                    const world::TerrainInfo& terrain =
+                        world::terrainFor(grid.terrainCodeAt(backdropLeft + x, backdropTop + y));
+                    displayChar = terrain.glyph;
+                    color = terrain.ansiColor;
+                }
             }
             rowStream << color << displayChar << "\x1b[0m";
         }

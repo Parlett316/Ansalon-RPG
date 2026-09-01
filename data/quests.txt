@@ -273,3 +273,15 @@ REWARD_STEEL 75
 REWARD_XP 250
 REWARD_WAYRETH_ROBE
 END
+
+QUEST what_the_tide_kept
+NAME What the Tide Kept
+OFFER "There's a name should go with this, if I ever get it back." She nods toward the strand without looking up. "Piece washed up with the last real storm, still on its chain -- but my knees aren't what they were, and the good stuff always ends up furthest out in the wrack. Bring it back to me and I'll see it goes where it's owed, not into some fool's pocket."
+ACCEPT Mind the tide coming back in. The sea doesn't give things back twice.
+PROGRESS "Still nothing?" She goes back to her sorting. "It's out there. The sea's slow to give things up, but it always does, eventually."
+COMPLETE She takes the locket and turns it over twice in her palm before her fingers close around it. "Can't read the name scratched inside anymore -- salt's had it too long. But somebody loved whoever wore this enough to have it made. That's worth more than what it'd fetch melted down." She presses a few coins into your hand without quite meeting your eyes.
+GIVER the Beachcomber's Stall in Port O'Call
+DELIVER drowned_sailors_locket 1 Bring back whatever the storm-wrack is still hiding
+REWARD_STEEL 35
+REWARD_XP 80
+END

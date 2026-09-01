@@ -443,6 +443,65 @@ needs one.
 
 ## Shipped quests
 
+### A third DELIVER quest: `what_the_tide_kept`, at Port O'Call
+
+A user-requested quest content pass, but the "unforced hook" method
+`reason_worth_giving`'s sweep used (check every `TALK`-having POI's
+existing dialogue for an unmined thread) came back genuinely dry on
+re-check: every zone either already has a quest, was already
+checked-and-rejected in that sweep (Crossing, Palanthas's Knight/
+Astinus, Sancrist's Embarkation Officer, Flotsam, Port Balifor, Tarsis's
+Sailor/Runner, Pax Tharkas's Fortress Guard, Qualinesti's Elven
+Sentinel, Neraka's Deserting Guard), or has zero talkable NPCs at all
+(Dargaard Keep, Foghaven Vale, Godshome, Hopeful Vale, Mount Nevermind,
+Qualimori, Que-shu — deliberately pure scenery/ruin/sacred-site zones).
+The one zone added since that sweep (Port O'Call, Milestone 122) has
+only a Dockmaster with the same deliberately-mundane, no-thread
+dialogue as every rejected boat-logistics NPC.
+
+Put to the user directly: accept the well is dry, or add one new small
+NPC/hook the way `ore_for_the_forge`'s journeyman and Southern Ergoth's
+Kaganesti Lookout both did. They chose the latter. Rather than inventing
+a genuinely new character, this gives voice to one that was already
+half-there: Port O'Call's Beachcomber's Stall (`data/zones/
+port_ocall.txt` POI `B`) was a non-talkable shop-only POI whose own
+description already implied both a voice and a hook ("the old woman
+minding it swears a few pieces still carry a working charm, salvaged
+off ships that never made land") — nothing new invented, just paid off.
+
+**Sink** — POI `B` gains `TALK`/`TALK_AGAIN` (her salt-worn,
+superstitious voice, straight from her existing description) and
+`QUEST B what_the_tide_kept`. `SHOP B magic` is untouched and stays
+open unconditionally — unlike Flint's Smithy's `SHOP_LOCKED`, she's
+already an active shop, not scenery-until-now, so there's no reason to
+gate her ordinary trade behind the quest. **Source** — a new POI, `W`
+"The Storm-Wrack" (driftwood/wreckage, matching the town's own "what the
+strait washes up" flavor), with `TALK W`/`TALK_AGAIN W` (the same "you
+dig through it and come away with..." phrasing `ore_for_the_forge`'s Ore
+Cart established) and `GRANTS_ITEM W drowned_sailors_locket A Drowned
+Sailor's Locket`. `QUEST what_the_tide_kept` (`data/quests.txt`): one
+`DELIVER drowned_sailors_locket 1` objective, no `REQUIRE` (broadly
+offered, matching `ore_for_the_forge`/`seed_for_thorbardin`'s
+precedent), `REWARD_STEEL 35`/`REWARD_XP 80` — the same tier as both
+prior DELIVER-only quests. Port O'Call has no `PRESENCE`/
+`TIMELINE_ANCHOR` (map-only, like Crossing), so the stricter
+novel-citation bar doesn't apply here — same footing Crossing's Ferry
+Keeper and Plains of Dust's Rider already have. Zero `.cpp`/`.h`
+changes — pure data content, same as every prior DELIVER quest.
+
+Verified via a throwaway self-test (`QuestLoader` parsing the real,
+now-18-quest `data/quests.txt` confirming the new quest's shape;
+`ZoneLoader` parsing the edited `port_ocall.txt`, confirming the new `W`
+POI, `B`'s new `TALK`/`QUEST` lines, and the `GRANTS_ITEM` all parse
+correctly), a clean `/W4` rebuild (zero new warnings, no source
+changes), and the piped character-creation smoke test (real `save1.txt`
+moved aside, restored after) confirming `main.cpp`'s cross-validation
+accepts the new `QUEST B what_the_tide_kept` zone binding. Interactive
+verification (talking to the Beachcomber, finding the Storm-Wrack,
+delivering the locket, confirming the reward and journal entry) still
+needs the user's own keyboard, the same `_getch()` limitation flagged
+for every quest milestone so far.
+
 ### `wayreth_summons`, in Solace — the Test of High Sorcery
 
 Requested directly by the user: "the Towers of High Sorcery need to be
@@ -1187,7 +1246,12 @@ design is now shipped; what's still open:
   Refugee Quarter, now `seed_for_thorbardin`); every other quest-less
   NPC checked had only a VISIT/TALK-shaped hook already well covered by
   existing quests. A future pass would need a genuinely new zone or
-  NPC to find another one rather than reusing an existing hook.
+  NPC to find another one rather than reusing an existing hook. **Since
+  shipped a third time** — see `what_the_tide_kept` above, which needed
+  exactly the "new zone or NPC" this note predicted: Port O'Call postdates
+  every prior sweep, and its hook came from giving voice to an
+  already-described-but-silent shop POI, not from mining existing
+  dialogue.
 - **The `what_the_stones_remember`/`word_to_the_wilder_kin`/
   `new_faces_on_the_road` pass (see "Shipped quests" above) confirms the
   well is nearly dry, and `reason_worth_giving` (also above) closes the one
@@ -1202,3 +1266,16 @@ design is now shipped; what's still open:
   having POI across all 23 zone files has had a real look. Absent a new
   zone/NPC or a concrete user ask, don't re-run this sweep expecting to find
   more — same caution as the DLA magic-items chapter above.
+- **Re-confirmed at the `what_the_tide_kept` milestone, this time
+  checking every zone added since (Dargaard Keep, Foghaven Vale,
+  Godshome, Hopeful Vale, Mount Nevermind, Port O'Call, Qualimori,
+  Que-shu).** The well really is dry now for the "reuse existing
+  dialogue" method specifically — every one of those either has zero
+  talkable NPCs (deliberately, for the sacred/ruin/scenery ones) or, for
+  Port O'Call, only a deliberately-mundane boat-logistics voice. The one
+  way forward from here, confirmed working once, is `what_the_tide_kept`'s
+  own move: give voice to an already-described-but-silent POI rather than
+  invent a wholly new character. Don't re-run the "check existing
+  dialogue" sweep again absent a new zone; do consider the
+  give-a-silent-POI-a-voice move again if a concrete future ask wants
+  more quest content.

@@ -36,12 +36,22 @@ This is still an upper bound only. As of Milestone 29 (the Caves of
 Qud-style wide layout — see `docs/ARCHITECTURE.md`), `drawZoneFrame`
 always renders the full `kViewportWidth`×`kViewportHeight` frame
 (whatever that run's adaptive size is) regardless of a zone's actual
-size: a zone smaller than that (e.g. Solace's 42-column-wide town
-square) now wall-pads out to fill it, so the side-by-side log panel's
-left edge sits at the same screen column no matter which zone is
-showing. There's nothing to author differently for this — it falls out
-of `Zone::tileCodeAt`/`poiAt` already returning a wall/no-POI for any
-out-of-bounds tile.
+size, so the side-by-side log panel's left edge sits at the same screen
+column no matter which zone is showing. There's nothing to author
+differently for this.
+
+**How the leftover space renders changed at Milestone 135** (see
+`docs/ARCHITECTURE.md`'s "Full-screen presentation" section): a zone
+smaller than the viewport used to wall-pad straight out to the frame
+edge with solid `#` glyphs (still exactly what happens at the
+documented *minimum* terminal size, where the viewport equals
+`kMinViewportWidth`/`Height` and there's no leftover at all). On any
+bigger terminal, the authored zone is now centered inside the viewport,
+framed by a thin border, with the real surrounding overworld terrain
+drawn as a decorative backdrop outside it — purely a rendering change.
+`Zone::tileCodeAt`/`poiAt` are still exactly what movement/collision
+check, in the same zone-local coordinates as before; nothing about
+authoring a zone's `GRID`/`POI` grammar changes because of this.
 
 ## File grammar (`data/zones/<location-id>.txt`)
 

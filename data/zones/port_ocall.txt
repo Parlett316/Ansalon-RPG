@@ -14,7 +14,7 @@ GRID
 #.............................#
 #.............................#
 #....D........................#
-#.............................#
+#....................W........#
 #..........S..................#
 #.............................#
 #...................Q.........#
@@ -30,5 +30,12 @@ BOAT D crossing 3
 POI S "The Netmender's Forge" A forge that used to mend nothing but hooks and gaffs now turns out plain blades and boiled-leather jacks for anyone walking the Tower road north. The smith still smells more of fish than of coal.
 SHOP S armory
 POI B "A Beachcomber's Stall" A driftwood table heaped with what the strait washes up -- most of it worthless, but the old woman minding it swears a few pieces still carry a working charm, salvaged off ships that never made land.
+TALK B "Half of what washes up here's junk, and I sell it as junk, mostly." She doesn't look up from sorting a tangle of cord and sea-glass. "But the sea doesn't give everything back for nothing, dear. Some of it still remembers who it belonged to."
+TALK_AGAIN B "Tide's still bringing things in," she says, turning a shell over in her fingers before setting it aside. "Always does, eventually."
 SHOP B magic
+QUEST B what_the_tide_kept
+POI W "The Storm-Wrack" A tangle of splintered spars and waterlogged rope, thrown up past the tideline by the last real storm -- driftwood, mostly, the same as everything else along this stretch, except for the one thing glinting where the wood's pulled apart.
+TALK W You dig through the wrack and come away with a tarnished locket, still fastened shut, its chain snapped clean through. Nobody else seems to have noticed it.
+TALK_AGAIN W The rest of the wrack is just driftwood now -- whatever else washed up here, it isn't giving up anything more.
+GRANTS_ITEM W drowned_sailors_locket A Drowned Sailor's Locket
 END
