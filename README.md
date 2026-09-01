@@ -286,7 +286,7 @@ mountains riskiest, and which monster you draw leans toward that terrain too
 Thanoi more common on glacier, and so on) — resolved with real 2e attack/damage math, and the combat log shows that math for every
 weapon swing (natural-roll, THAC0/AC, and damage-die breakdown, not just
 the hit/miss result) (Enter to attack, `f` to flee, and a Mage or
-Cleric can also `m` to cast — a real multi-level spellbook now, 49 spells
+Cleric can also `m` to cast — a real multi-level spellbook now, 50 spells
 across Mage's 9 levels and Cleric's 7, sourced from an official TSR/SSI
 Dragonlance computer game manual and cross-checked against the actual PHB
 (damage, healing, blocking a monster's attacks, or a this-fight to-hit/AC

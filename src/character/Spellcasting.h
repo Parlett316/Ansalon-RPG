@@ -102,6 +102,15 @@ enum class SpellEffect {
     // one cast -- a dedicated case rather than two SpellCastResults, since
     // castSpell only consumes one memorized slot per call.
     BuffPlayerAndDebuffMonsterThac0,
+    // Haste (PHB p.192): "functions at double its normal... attack rate."
+    // amount: multiplies the player's attacks-per-round this fight (see
+    // character::meleeAttacksThisRound) -- player-only, same as every other
+    // buff effect above; companions never read the player's spell buffs.
+    HastePlayer,
+    // Slow (PHB p.196): "an Armor Class penalty of +4 AC, an attack penalty
+    // of -4" -- one dedicated case sharing a single amount across both
+    // penalties, same shape as BuffPlayerAndDebuffMonsterThac0 above.
+    DebuffMonsterThac0AndAc,
     InstantDefeat, // the monster is simply defeated -- sets monsterHp to 0
 };
 

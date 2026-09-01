@@ -69,6 +69,21 @@ Worth doing on the next play session: talk to the Curiosities Cart in
 Kalaman, find the new Furtive Trader POI, deliver the wedding band, and
 confirm the reward/journal entry read correctly.
 
-Eight milestones in a row (136-143) are now implemented but unplayed --
+Milestone 144 (Haste and a real Slow -- Haste is a new Mage 3rd-level spell
+that doubles the player's attacks-per-round this fight, unblocked now that
+Milestone 108's `meleeAttacksThisRound` exists; Slow's existing THAC0
+penalty was corrected from an invented -2 to the real -4 and gained a new
++4 AC penalty on the monster, both sourced against the scanned PHB p.192/
+196 -- see `docs/MILESTONES.md` entry 144 and `docs/CHARACTER_NOTES.md`'s
+"Haste and a real Slow" section for the full sourcing and what's still
+deliberately unmodeled) is implemented, documented, and verified via a
+throwaway self-test, a full clean rebuild (zero new warnings), and a piped
+character-creation smoke test confirming `Spellcasting`'s new spell list
+parses cleanly, but **not yet interactively walked**. Worth doing on the
+next play session: as a Mage, cast Haste in a fight and confirm the logged
+attack count doubles; cast Slow on a monster and confirm both the THAC0 and
+AC math show up correctly in the "Showing the math" bracketed breakdown.
+
+Nine milestones in a row (136-144) are now implemented but unplayed --
 worth a dedicated playtest pass on the next session before piling on
 more unverified content.

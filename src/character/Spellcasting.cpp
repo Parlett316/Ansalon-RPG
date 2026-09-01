@@ -100,6 +100,7 @@ const std::vector<SpellInfo>& wizardSpells() {
         {"stinking_cloud", "Stinking Cloud", 2},
         {"strength", "Strength", 2},
         {"fireball", "Fireball", 3},
+        {"haste", "Haste", 3},
         {"hold_person_wiz", "Hold Person", 3},
         {"lightning_bolt", "Lightning Bolt", 3},
         {"protection_from_evil_10_wiz", "Protection from Evil, 10' Radius", 3},
@@ -294,12 +295,28 @@ SpellCastResult castSpell(Character& character, const std::string& spellId) {
     } else if (spellId == "lightning_bolt") {
         result.effect = SpellEffect::DamageMonster;
         result.amount = fireballLikeDamage(level);
-    } else if (spellId == "slow") {
-        // PHB p.196: halves the target's attacks/movement -- modeled as a
-        // this-fight to-hit penalty on the monster (this engine has no
-        // per-round attack count to actually halve).
-        result.effect = SpellEffect::DebuffMonsterThac0;
+    } else if (spellId == "haste") {
+        // PHB p.192: "functions at double its normal movement and attack
+        // rates... a creature... attacking once per round would... attack
+        // twice per round." Modeled as a this-fight x2 multiplier on the
+        // player's own attacks-per-round (character::meleeAttacksThisRound)
+        // -- the real spell's -2 initiative bonus, doubled movement, 1-year
+        // aging, and multi-creature targeting are all unmodeled (no
+        // initiative-modifier/movement-speed system exists, no age is
+        // tracked, and every buff spell in this roster is player-only).
+        result.effect = SpellEffect::HastePlayer;
         result.amount = 2;
+    } else if (spellId == "slow") {
+        // PHB p.196: "move and attack at half their normal rates... an
+        // Armor Class penalty of +4 AC, an attack penalty of -4, and all
+        // Dexterity combat bonuses are negated." Modeled as a this-fight
+        // -4 THAC0 penalty AND +4 AC penalty on the monster -- halving the
+        // attack rate is moot regardless (no monster in this roster ever
+        // attacks more than once per round to begin with), and the
+        // Dexterity-bonus/saving-throw nuances are unmodeled (no Dex-AC
+        // decomposition or monster saving-throw system exists).
+        result.effect = SpellEffect::DebuffMonsterThac0AndAc;
+        result.amount = 4;
     } else if (spellId == "bestow_curse") {
         // PHB: reduces the target's THAC0 and saving throws by 4 (DQoK
         // p.28 gives the same number).

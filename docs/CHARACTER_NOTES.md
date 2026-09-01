@@ -792,7 +792,7 @@ every level their own character level unlocks. This is a documented
 simplification of the Wizard's real spell-research/spellbook rules, called
 out here exactly once rather than re-flagged at every spell.
 
-### The spell census: 49 implemented, 39 sourced-but-excluded
+### The spell census: 50 implemented, 38 sourced-but-excluded
 
 Of the 88 real spells found above, **only a spell whose PHB effect maps
 onto state this engine already tracks is actually castable** -- a
@@ -852,7 +852,7 @@ Dispel Magic (nothing currently debuffs the player for it to remove);
 Raise Dead, Resurrection, Restoration (this engine's "knocked out, not
 killed" model means player characters never actually die).
 
-**Mage, implemented (35 of 59):**
+**Mage, implemented (36 of 59):**
 
 | Spell | Level | Effect | Source |
 |---|---|---|---|
@@ -868,10 +868,11 @@ killed" model means player characters never actually die).
 | Stinking Cloud | 2 | block, 3 attacks | PHB p.188 |
 | Strength | 2 | +2 player damage | PHB p.188 |
 | Fireball | 3 | damage 1d6/level, capped 10d6 | PHB p.192, "a maximum of 10d6" |
+| Haste | 3 | doubles player attacks/round, this fight | PHB p.192 |
 | Hold Person | 3 | block, rest of fight | PHB p.193 |
 | Lightning Bolt | 3 | damage 1d6/level, capped 10d6 | PHB p.194, "maximum ... of 10d6" |
 | Protection from Evil, 10' Radius | 3 | +2 player AC | PHB p.195 |
-| Slow | 3 | -2 monster THAC0 | PHB p.196 |
+| Slow | 3 | -4 monster THAC0, +4 monster AC | PHB p.196 |
 | Bestow Curse | 4 | -4 monster THAC0 | PHB; DQoK p.28 ("reduces THACO and saving throws by 4") |
 | Charm Monster | 4 | block, rest of fight | PHB p.198 |
 | Confusion | 4 | block, 4 attacks | PHB p.198 |
@@ -892,23 +893,70 @@ killed" model means player characters never actually die).
 | Meteor Swarm | 9 | damage, uniform 10-40 | PHB p.248; DQoK p.30's own "10-40" number is used directly rather than the real spell's four-separate-2d6-sphere total, flagged since it isn't an ordinary N*d*M roll |
 | Power Word, Kill | 9 | instant defeat | PHB p.249 |
 
-**Mage, sourced but excluded (24 of 59), and why:** Detect Magic, Read
+**Mage, sourced but excluded (23 of 59), and why:** Detect Magic, Read
 Magic, Knock, Friends (no item-identification/lock/NPC-reaction system);
 Shield, Protection from Normal Missiles, Minor Globe of Invulnerability,
 Globe of Invulnerability, Mind Blank (only matter against an enemy
 spellcaster or ranged attacker -- monsters in this engine never cast
 spells or shoot); Detect Invisibility, Invisibility, Invisibility 10'
-Radius, Mass Invisibility (no stealth system); Haste (needs the
-already-deferred multi-attack-per-round engine feature, see "Leveling /
-experience" above); Dimension Door, Blink (the existing Flee action
-already always succeeds for free, so a "guaranteed escape" spell adds
-nothing to model); Fire Shield (needs a reflect-damage mechanic not built
-this pass); Remove Curse, Feeblemind (no curse/spellcasting-disable status
-exists); Dispel Magic (nothing currently debuffs the player for it to
-remove); Stone to Flesh (counters a status -- petrification -- nothing
-inflicts); Mass Charm's own Charm Monster analog is separate and IS
-implemented above; Iron Skin, Fire Touch (not real PHB spells, see
-sourcing above); Monster Summoning (no ally-summoning system).
+Radius, Mass Invisibility (no stealth system); Dimension Door, Blink (the
+existing Flee action already always succeeds for free, so a "guaranteed
+escape" spell adds nothing to model); Fire Shield (needs a reflect-damage
+mechanic not built this pass); Remove Curse, Feeblemind (no
+curse/spellcasting-disable status exists); Dispel Magic (nothing currently
+debuffs the player for it to remove); Stone to Flesh (counters a status --
+petrification -- nothing inflicts); Mass Charm's own Charm Monster analog
+is separate and IS implemented above; Iron Skin, Fire Touch (not real PHB
+spells, see sourcing above); Monster Summoning (no ally-summoning system).
+
+### Haste and a real Slow (a later content pass)
+
+Haste was originally on the excluded list above specifically because it
+"needs the already-deferred multi-attack-per-round engine feature" --
+Milestone 108's `character::meleeAttacksThisRound` (see "Leveling /
+experience" above) closed that gap, so this pass moved it to implemented.
+Both spells were re-verified directly against the scanned PHB (visually
+confirmed for Slow, whose page is otherwise OCR-scrambled by a
+neighboring table) rather than trusting the old citations at face value.
+
+**Haste** (PHB p.192, "functions at double its normal movement and attack
+rates... a creature... attacking once per round would... attack twice per
+round") is modeled as a this-fight x2 multiplier on the player's own
+attacks-per-round (`character::SpellEffect::HastePlayer`,
+`hasteAttackMultiplier` in `GameLoop::runCombat`) -- the book's own "not
+cumulative with itself" line is honored by assigning rather than
+multiplying on a second cast. **Not modeled**: the real spell's -2
+initiative bonus (no initiative-modifier system exists for anyone), the
+doubled movement rate (no movement-speed variance exists -- the Positional
+combat grid already declined this for unrelated reasons, see
+`docs/COMBAT_NOTES.md`), the 1-year aging side effect (no age is tracked),
+and multi-creature targeting (every buff spell in this roster -- Bless,
+Strength, Enlarge, Prayer's player half -- is player-only; companions
+never read the player's spell buffs today, so this isn't a new gap).
+
+**Slow** (PHB p.196, "an Armor Class penalty of +4 AC, an attack penalty of
+-4, and all Dexterity combat bonuses are negated") had its THAC0 penalty
+corrected from an invented -2 to the real -4 (matching the precedent
+already set by Bestow Curse/Power Word Blind's own -4), and gained the
+real +4 AC penalty as a genuinely new effect
+(`character::SpellEffect::DebuffMonsterThac0AndAc`, one dedicated case
+sharing a single amount across both penalties, same shape as
+`BuffPlayerAndDebuffMonsterThac0`). Mechanically, `combat::
+resolvePlayerAttack` gained a `monsterAcPenalty` parameter, added to the
+monster's own `armorClass` -- unlike the THAC0/damage bonus parameters
+next to it, this represents the *monster* being easier to hit, not a buff
+to whoever's attacking it, so every attacker (player, sweep, and every
+companion call site) threads it through, not just the caster. **Still not
+modeled**: halving the monster's attack rate is moot regardless of Haste's
+new player-side multiplier -- no monster in this roster ever attacks more
+than once per round to begin with (multi-attack monsters like the Ghoul
+are already collapsed to one representative die, see
+`docs/COMBAT_NOTES.md`); negating Dexterity AC bonus (this engine's AC has
+no Dex decomposition at attack-resolution time, same flagged
+simplification as backstab's own shield/Dex nuance); the -4 penalty to the
+target's saving throw (no monster saving-throw system exists at all --
+"No monster saving throws" is an established, repeated rule in
+`docs/COMBAT_NOTES.md`, not something this pass changes).
 
 ### Rest and spell memorization
 

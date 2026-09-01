@@ -5436,6 +5436,78 @@ now fully verified, nothing further outstanding.
      Cart, finding the Furtive Trader, delivering the band, and the
      reward/journal entry all read correctly.
 
+144. Haste and a real Slow. User asked "any more AD&D 2nd edition things to
+     add?" -- a review of `docs/CHARACTER_NOTES.md`/`docs/COMBAT_NOTES.md`'s
+     own sourcing sections turned up several concrete, sourced gaps; the
+     user picked this one from the resulting menu. Both spells were
+     re-verified directly against the scanned PHB (`References/Player's
+     Handbook (revised).pdf`) rather than trusting the old citations at
+     face value -- Slow's page needed a rendered page image, since it sits
+     next to an OCR-scrambled table, same caveat as Milestone 141/142's own
+     dense tables.
+
+     **Haste** (PHB p.192, "functions at double its normal movement and
+     attack rates... a creature... attacking once per round would... attack
+     twice per round") was previously flagged sourced-but-excluded
+     specifically because it "needs the already-deferred
+     multi-attack-per-round engine feature" -- Milestone 108's
+     `character::meleeAttacksThisRound` closed that gap, so it moved to
+     implemented this pass: a new Mage 3rd-level spell
+     (`character::SpellEffect::HastePlayer`) that doubles the player's own
+     attacks-per-round for the rest of the fight (`hasteAttackMultiplier`
+     in `GameLoop::runCombat`, multiplied into the existing
+     `meleeAttacksThisRound(...)` call). The book's "not cumulative with
+     itself" line is honored by assignment rather than `*=` on a second
+     cast. **Not modeled**: the real -2 initiative bonus (no
+     initiative-modifier system exists), doubled movement (no
+     movement-speed variance exists), 1-year aging (no age is tracked), and
+     multi-creature targeting (every buff spell in this roster is
+     player-only; companions never read the player's spell buffs today).
+
+     **Slow** (PHB p.196, "an Armor Class penalty of +4 AC, an attack
+     penalty of -4, and all Dexterity combat bonuses are negated") was
+     already implemented but as an invented, undersized simplification
+     ("-2 monster THAC0... this engine has no per-round attack count to
+     actually halve"). Corrected to the real -4 THAC0 penalty (matching the
+     precedent already set by Bestow Curse/Power Word Blind's own -4), plus
+     a genuinely new +4 AC penalty on the monster
+     (`character::SpellEffect::DebuffMonsterThac0AndAc`, one dedicated case
+     sharing a single amount across both penalties, same shape as Prayer's
+     `BuffPlayerAndDebuffMonsterThac0`). `combat::resolvePlayerAttack`
+     gained a new `monsterAcPenalty` parameter for this, added to the
+     monster's own `armorClass` -- unlike the THAC0/damage bonus parameters
+     next to it, this represents the *monster* being easier to hit, not a
+     buff to whoever's attacking it, so all four `resolvePlayerAttack` call
+     sites (player sweep, player main attack, companion sweep, companion
+     main attack) now thread it through. **Still not modeled**: halving
+     the monster's attack rate is moot regardless of Haste's own new
+     player-side multiplier, since no monster in this roster ever attacks
+     more than once per round to begin with (multi-attack monsters like the
+     Ghoul are already collapsed to one representative die); negating
+     Dexterity AC bonus (this engine's AC has no Dex decomposition at
+     attack-resolution time, same flagged simplification as backstab's own
+     shield/Dex nuance); the -4 penalty to the target's saving throw (no
+     monster saving-throw system exists at all -- "No monster saving
+     throws" is an established, repeated rule, not something this pass
+     changes).
+
+     Verified with a throwaway self-test (`resolvePlayerAttack`'s new
+     `monsterAcPenalty` shifting `defenderArmorClass`/`targetNumber`
+     correctly, alone and stacked with the existing `thac0Bonus`/
+     `damageMultiplier` parameters; `meleeAttacksThisRound`'s known-good
+     values at two representative levels, confirming what Haste's own
+     multiplication is applied to -- all passed, then the test file and its
+     CMakeLists.txt target were deleted), a full clean rebuild (zero new
+     `/W4` warnings across every source file), and a piped
+     character-creation smoke test against the real save-slot menu (an
+     empty slot used, `save1.txt` left untouched) confirming
+     `Spellcasting`'s new spell list parses/loads cleanly end-to-end.
+     **Not yet interactively walked in a real fight** -- same standing
+     `_getch()` limitation; confirm on the next play session that casting
+     Haste doubles the logged attack count, and that casting Slow on a
+     monster shows both the THAC0 and AC math correctly in the "Showing
+     the math" bracketed breakdown.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

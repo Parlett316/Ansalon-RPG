@@ -42,7 +42,7 @@ struct AttackOutcome {
 //
 // thac0Bonus/damageBonus (player) and acBonus/thac0Penalty/damagePenalty
 // (monster) are this-fight-only spell buffs/debuffs (Bless, Prayer,
-// Protection from Evil, Strength, Slow, Bestow Curse, ... -- see
+// Protection from Evil, Strength, Haste, Slow, Bestow Curse, ... -- see
 // character/Spellcasting.h), held as local variables in
 // game::GameLoop::runCombat and never written into the character's real
 // saved armorClass/thac0 -- same "local to this one runCombat call, doesn't
@@ -53,8 +53,14 @@ struct AttackOutcome {
 // damageBonus are added, per PHB Table 30 (p.57): "The weapon's standard
 // damage is multiplied by the value given in Table 30. Then Strength and
 // magical weapon bonuses are added." A plain 1 for every ordinary attack.
+// monsterAcPenalty (Slow, PHB p.196): added to the monster's own armorClass
+// -- unlike thac0Bonus/damageBonus/damageMultiplier above, this represents
+// the MONSTER being easier to hit, not a buff to whoever's attacking it, so
+// every attacker (player or companion) targeting a slowed instance passes
+// it, not just the caster.
 AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
-                                   int thac0Bonus = 0, int damageBonus = 0, int damageMultiplier = 1);
+                                   int thac0Bonus = 0, int damageBonus = 0, int damageMultiplier = 1,
+                                   int monsterAcPenalty = 0);
 AttackOutcome resolveMonsterAttack(const Monster& monster, const character::Character& character,
                                     int acBonus = 0, int thac0Penalty = 0, int damagePenalty = 0);
 

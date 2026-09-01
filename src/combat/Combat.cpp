@@ -7,13 +7,18 @@
 namespace combat {
 
 AttackOutcome resolvePlayerAttack(const character::Character& character, const Monster& monster,
-                                   int thac0Bonus, int damageBonus, int damageMultiplier) {
+                                   int thac0Bonus, int damageBonus, int damageMultiplier,
+                                   int monsterAcPenalty) {
     int strToHit = character::strengthToHitAdjustment(character.scores.strength,
                                                         character.exceptionalStrengthPercentile);
 
     int naturalRoll = character::roll(1, 20);
     int toHitBonus = strToHit + character.weaponMagicBonus + thac0Bonus;
-    int targetNumber = character.thac0 - monster.armorClass;
+    // monsterAcPenalty (Slow, PHB p.196) worsens the monster's own AC number
+    // -- adding, not subtracting, matches the "penalty" naming convention
+    // resolveMonsterAttack's thac0Penalty/damagePenalty already use below.
+    int defenderArmorClass = monster.armorClass + monsterAcPenalty;
+    int targetNumber = character.thac0 - defenderArmorClass;
 
     bool hit;
     if (naturalRoll == 20) {
@@ -29,7 +34,7 @@ AttackOutcome resolvePlayerAttack(const character::Character& character, const M
     outcome.naturalRoll = naturalRoll;
     outcome.toHitBonus = toHitBonus;
     outcome.attackerThac0 = character.thac0;
-    outcome.defenderArmorClass = monster.armorClass;
+    outcome.defenderArmorClass = defenderArmorClass;
     outcome.targetNumber = targetNumber;
     if (hit) {
         int strDamage = character::strengthDamageAdjustment(character.scores.strength,

@@ -1955,6 +1955,9 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     int playerThac0Bonus = 0;
     int playerDamageBonus = 0;
     int playerAcBonus = 0;
+    // Haste (PHB p.192): multiplies the player's own attacks-per-round for
+    // the rest of the fight -- player-only, same as every buff local above.
+    int hasteAttackMultiplier = 1;
     // Per-instance versions of the this-fight debuffs above (Bestow Curse's
     // THAC0/damage penalties) -- a group fight's Debuff spells hit one
     // chosen enemy, not the whole group at once (see pickTarget above and
@@ -1963,6 +1966,11 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     // behaves exactly like the old single int for the common case.
     std::vector<int> monsterThac0Penalty(instances.size(), 0);
     std::vector<int> monsterDamagePenalty(instances.size(), 0);
+    // Slow's own +4 AC penalty (PHB p.196) -- unlike the two vectors above,
+    // this represents the targeted MONSTER being easier to hit, not a buff
+    // to whoever attacks it, so every resolvePlayerAttack call site (player
+    // and companion alike) reads it, not just the caster's own attacks.
+    std::vector<int> monsterAcPenalty(instances.size(), 0);
     // Same per-instance treatment for the "blocks the monster's attack(s)"
     // family (Webnet, Sleep/Hold/Charm/Confusion/Fear) -- each targets one
     // chosen enemy rather than the whole group.
@@ -2220,7 +2228,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                         backstabBonus(state_.character, 0, playerPos, targetIndex);
                     combat::AttackOutcome outcome = combat::resolvePlayerAttack(
                         state_.character, monster, playerThac0Bonus + backstabThac0, playerDamageBonus,
-                        backstabMultiplier);
+                        backstabMultiplier, monsterAcPenalty[static_cast<size_t>(targetIndex)]);
                     if (outcome.hit) {
                         instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                         log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) +
@@ -2247,7 +2255,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             return;
         }
         int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
-                                                         roundNumber, state_.character.specializedWeapon);
+                                                         roundNumber, state_.character.specializedWeapon) *
+                      hasteAttackMultiplier;
         for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
             if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                 // Real Gold Box rule (DQoK.pdf's own manual, re-checked
@@ -2265,7 +2274,8 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             std::string targetName = monsterLabel(targetIndex);
             auto [backstabThac0, backstabMultiplier] = backstabBonus(state_.character, 0, playerPos, targetIndex);
             combat::AttackOutcome outcome = combat::resolvePlayerAttack(
-                state_.character, monster, playerThac0Bonus + backstabThac0, playerDamageBonus, backstabMultiplier);
+                state_.character, monster, playerThac0Bonus + backstabThac0, playerDamageBonus, backstabMultiplier,
+                monsterAcPenalty[static_cast<size_t>(targetIndex)]);
             if (outcome.hit) {
                 instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                 log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + "You hit the " +
@@ -2349,8 +2359,9 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                         std::string targetName = monsterLabel(idx);
                         auto [backstabThac0, backstabMultiplier] =
                             backstabBonus(companion, attackerId, companionPos, idx);
-                        combat::AttackOutcome outcome =
-                            combat::resolvePlayerAttack(companion, monster, backstabThac0, 0, backstabMultiplier);
+                        combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                            companion, monster, backstabThac0, 0, backstabMultiplier,
+                            monsterAcPenalty[static_cast<size_t>(idx)]);
                         if (outcome.hit) {
                             instances[static_cast<size_t>(idx)].hp -= outcome.damage;
                             log.push_back(companion.name + " hits the " + targetName + " for " +
@@ -2389,8 +2400,9 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 std::string targetName = monsterLabel(targetIndex);
                 auto [backstabThac0, backstabMultiplier] =
                     backstabBonus(companion, attackerId, companionPos, targetIndex);
-                combat::AttackOutcome outcome =
-                    combat::resolvePlayerAttack(companion, monster, backstabThac0, 0, backstabMultiplier);
+                combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                    companion, monster, backstabThac0, 0, backstabMultiplier,
+                    monsterAcPenalty[static_cast<size_t>(targetIndex)]);
                 if (outcome.hit) {
                     instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                     log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + companion.name +
@@ -2596,6 +2608,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                             result.effect == character::SpellEffect::DebuffMonsterThac0 ||
                             result.effect == character::SpellEffect::DebuffMonsterDamage ||
                             result.effect == character::SpellEffect::BuffPlayerAndDebuffMonsterThac0 ||
+                            result.effect == character::SpellEffect::DebuffMonsterThac0AndAc ||
                             result.effect == character::SpellEffect::InstantDefeat;
         int targetIndex = needsTarget ? pickTarget("Cast at which enemy?", false, anyAlive) : -1;
         std::string targetName = targetIndex >= 0 ? monsterLabel(targetIndex) : monster.name;
@@ -2647,6 +2660,19 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 playerThac0Bonus += result.amount;
                 monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
                 log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::HastePlayer:
+                // PHB p.192: "not cumulative with itself" -- assignment
+                // rather than *= so re-casting Haste in the same fight
+                // (e.g. into a second memorized slot) still caps at the
+                // same x2, not x4.
+                hasteAttackMultiplier = result.amount;
+                log.push_back("You cast " + result.spellName + "! Your attacks quicken.");
+                break;
+            case character::SpellEffect::DebuffMonsterThac0AndAc:
+                monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                monsterAcPenalty[static_cast<size_t>(targetIndex)] += result.amount;
+                log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
                 break;
             case character::SpellEffect::InstantDefeat:
                 log.push_back("Your " + result.spellName + " destroys the " + targetName + " outright!");

@@ -1412,7 +1412,7 @@ opposite grid side).
   distance thresholds, or an invented lower group cap for this
   elite/dangerous tier) before grouping is safe to ship for them.
 - **Spellcasting**: Mage/Cleric now select and cast from a real,
-  PHB/DQoK-sourced multi-level spellbook (49 implemented spells across
+  PHB/DQoK-sourced multi-level spellbook (50 implemented spells across
   Mage's 9 levels and Cleric's 7 — see `docs/CHARACTER_NOTES.md`'s
   spellcasting section for the full census, including what's sourced but
   intentionally not castable yet).
