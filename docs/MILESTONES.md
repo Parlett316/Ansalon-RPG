@@ -4622,6 +4622,34 @@ now fully verified, nothing further outstanding.
      the next fight. See `docs/COMBAT_NOTES.md`'s "Positional combat
      grid" section for the full sizing math.
 
+130. Shallow water fixed -- the user flagged two problems with `r`
+     ("shallow water") at once: it was walkable, and there was far too
+     much of it (17,824 of 153,600 tiles, 11.6% -- more than mountains or
+     glacier). A distance-transform BFS showed why: only ~26.5% of it sat
+     within 2 tiles of real land; the rest, trailing off to 66 tiles from
+     any shore, was open bay/strait interior (Good Bay, New Bay, Blood
+     Bay, the Strait of Schallsea) the 32-color quantization happened to
+     bucket the same as narrow coastal shallows. Fixed both at the
+     generator level: `tools/generate_overworld.py` gained
+     `shrink_river_to_coastal_fringe()`, a BFS-based pass reclassifying
+     any `river` tile farther than 2 tiles from land to `ocean` (`r`
+     dropped to 4,708 tiles, 3.1%); `Terrain.cpp`'s `r` entry flipped
+     `passable` to `false`, matching ocean. Re-verified with the same
+     throwaway-BFS method Milestone 87 established: no location's own
+     `POS` tile is coded `r` (nothing needed nudging), and only
+     `sancrist_isle`/`southern_ergoth` lose foot-reachability from
+     Solace -- both already boat-only by design, so not a regression.
+     `README.md`'s Status paragraph line about Crossing's water being
+     "shallow enough to wade" was rewritten to match. Pure data +
+     one-flag change -- clean `/W4` rebuild, zero unrelated `.cpp`/`.h`
+     diff, piped character-creation smoke test passed (real saves moved
+     aside, restored after). **Interactively confirmed working** by the
+     user on real save data -- shallow water blocks movement and the
+     shrunken coastline reads correctly in a real terminal. Full writeup,
+     stats, and the one pre-road-classification false alarm found while
+     re-auditing `ROAD_PAIRS`: `docs/MAP_NOTES.md`'s "Shallow water pass"
+     section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

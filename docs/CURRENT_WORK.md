@@ -1,20 +1,17 @@
 # Current work
 
-Nothing in flight. Milestone 129 (bigger combat battlefield -- the
-tactical grid bumped from 11x7 to 15x9) is implemented and documented --
-see `docs/MILESTONES.md` entry 129 and `docs/COMBAT_NOTES.md`'s
-"Positional combat grid" section for the sizing math.
+Nothing in flight. Milestone 130 (shallow water fixed -- `r` shrunk from
+11.6% to 3.1% of the map and made impassable, matching ocean) is
+implemented, documented, and interactively confirmed working by the user
+-- see `docs/MILESTONES.md` entry 130 and `docs/MAP_NOTES.md`'s "Shallow
+water pass" section for the full before/after numbers and reachability
+audit.
 
-**Not yet interactively verified** -- `_getch()` can't be piped, so the
-actual in-game combat screen at the new size (roster layout, target-picker
-brackets, monster spread across a wider/taller grid) hasn't been read back
-by a human yet. Worth doing on the next real fight; if anything looks off
-(too big, too small, awkward roster/log layout), the fix is just tuning
-`render::MapRenderer::kCombatGridWidth`/`kCombatGridHeight` again -- both
-are read dynamically everywhere else, no other code depends on their
-specific values (width must stay odd).
+Milestone 129 (bigger combat battlefield -- the tactical grid bumped from
+11x7 to 15x9) is also still awaiting its own first interactive combat --
+see that entry and `docs/COMBAT_NOTES.md`'s "Positional combat grid"
+section.
 
-Milestone 128 (terrain accuracy pass) shipped earlier in this same
-session -- see that entry for the `data/overworld.grid` fixes. The World
-Map screen mockup from that session (`docs/MILESTONES.md` NEXT UP item 8)
-is still just a mockup, not started.
+The World Map screen mockup from the Milestone 128 session
+(`docs/MILESTONES.md` NEXT UP item 8) is still just a mockup, not
+started.

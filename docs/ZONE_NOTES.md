@@ -541,7 +541,12 @@ Tower road" on the far shore). Added after the user found that
 foot-crossing the strait's shallow water actually worked, then asked for
 a real boat option instead of a terrain fix (a stray true-ocean pixel
 one tile north of Crossing was found and reverted rather than patched --
-see that terrain bug's own history in git if it resurfaces).
+see that terrain bug's own history in git if it resurfaces). Foot-crossing
+the strait no longer works at all as of Milestone 130 (shallow water is
+impassable everywhere now) -- see `docs/MAP_NOTES.md`'s "Shallow water
+pass" section; the Ferry Keeper's boat is the only way across the strait
+itself now, though the wider continent stays reachable on foot the long
+way around.
 
 **First shipped pointing at `high_clerist_tower` directly, then
 corrected the same session**: a ferry crossing a narrow strait
@@ -1464,6 +1469,17 @@ building: the strait's shallow water was already made foot-passable
 without a boat at Milestone 87, so Crossing doesn't need the sea-travel
 mechanism to do its job; it's a plain waypoint, reached and left on foot
 like every other location.
+
+**Superseded by Milestone 130**: shallow water is no longer foot-passable
+anywhere, including the strait immediately around Crossing itself — see
+`docs/MAP_NOTES.md`'s "Shallow water pass" section. This location's own
+reachability is unaffected (`crossing` still comes back reachable from
+Solace in that milestone's BFS re-audit, via the wider land route the
+same audit found rather than a direct wade across the narrow strait), so
+this section's placement/zone-design reasoning still holds; only the
+"shallow water was already foot-passable" premise above no longer does.
+Still no `BOAT` grant needed at Crossing itself either way — it's the
+Ferry Keeper (below) who grants one, to `port_ocall`.
 
 ## Southern Ergoth (Milestone 95)
 

@@ -65,9 +65,8 @@ Ergoth are the exceptions, three sea-locked stops reachable only by
 arranging passage on a ship, first out of Tarsis, then onward from Ice
 Wall (see below); Crossing, a ferry
 waypoint on the strait north of Solace, has no road either, and its water
-is shallow enough to wade — though most travelers pay the Ferry Keeper
-instead, a real round-trip boat ride across to Port O'Call on the far
-shore —
+can't be waded — every traveler pays the Ferry Keeper for a real
+round-trip boat ride across to Port O'Call on the far shore —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
 elven capital, inside Qualinesti — plus one secret place reached only on

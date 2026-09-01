@@ -46,6 +46,21 @@ LOCATIONS_FILE = REPO_ROOT / "data" / "locations.txt"
 GRID_WIDTH = 480  # tiles across the continent's full bounding box; height follows the image's aspect ratio
 NUM_COLORS = 32   # dominant colors to reduce the map to during discovery
 
+# How many tiles of 'river' (shallow coastal water) to keep touching real
+# land before reclassifying the rest to 'ocean' -- see the distance-transform
+# pass in main() and docs/MAP_NOTES.md's "Shallow water pass" section. The
+# 12-15 color buckets classified as 'river' traced real coastline plus real
+# river-mouth squiggles *and* the interior of large bays/straits the 32-color
+# quantization happened to bucket identically (Good Bay, New Bay, Blood Bay,
+# the Strait of Schallsea) -- measured on the pre-this-change grid, 'river'
+# covered 17,824 tiles (11.6% of the continent), with a distance-to-nearest-
+# land histogram trailing off to 66 tiles from any shore. Only a genuine
+# coastal fringe should stay 'river'; 2 tiles keeps ~26% (4,708 tiles) of
+# the original total and reclassifies the rest (open water, not coastline) to
+# 'ocean'. Tune this single constant if a rendered look-over calls for a
+# thinner/thicker fringe.
+RIVER_COASTAL_FRINGE_TILES = 2
+
 # Terrain keys -> the single ASCII character baked into data/overworld.grid.
 # This table is the shared vocabulary between this script and
 # src/world/Terrain.cpp, which attaches glyph/color/passability/time-cost to
@@ -410,6 +425,49 @@ def draw_line(grid: list[list[str]], x0: int, y0: int, x1: int, y1: int, char: s
             stamp(x, y)
 
 
+def shrink_river_to_coastal_fringe(grid: list[list[str]]) -> None:
+    """Reclassifies 'river' (shallow coastal water) tiles farther than
+    RIVER_COASTAL_FRINGE_TILES from any land tile to 'ocean', in place.
+
+    A multi-source BFS (4-directional, same connectivity rule the game's own
+    movement and every reachability check in docs/MAP_NOTES.md uses) computes
+    each tile's distance to the nearest genuinely-land tile -- 'ocean',
+    'river', and 'blood_sea' don't count as land, everything else does
+    (including 'road', which is always physically on the ground). See
+    RIVER_COASTAL_FRINGE_TILES's own comment for why this pass exists and how
+    the threshold was chosen.
+    """
+    height = len(grid)
+    width = len(grid[0])
+    water_chars = {TERRAIN_CHARS["ocean"], TERRAIN_CHARS["river"], TERRAIN_CHARS["blood_sea"]}
+    river_char = TERRAIN_CHARS["river"]
+    ocean_char = TERRAIN_CHARS["ocean"]
+
+    from collections import deque
+
+    dist = [[-1] * width for _ in range(height)]
+    queue: deque[tuple[int, int]] = deque()
+    for y in range(height):
+        for x in range(width):
+            if grid[y][x] not in water_chars:
+                dist[y][x] = 0
+                queue.append((x, y))
+
+    while queue:
+        x, y = queue.popleft()
+        d = dist[y][x]
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < width and 0 <= ny < height and dist[ny][nx] == -1:
+                dist[ny][nx] = d + 1
+                queue.append((nx, ny))
+
+    for y in range(height):
+        for x in range(width):
+            if grid[y][x] == river_char and dist[y][x] > RIVER_COASTAL_FRINGE_TILES:
+                grid[y][x] = ocean_char
+
+
 def main() -> None:
     if not SOURCE_IMAGE.exists():
         sys.exit(f"Reference image not found: {SOURCE_IMAGE}")
@@ -451,6 +509,8 @@ def main() -> None:
 
     for (ox, oy), terrain_key in MANUAL_TERRAIN_OVERRIDES.items():
         grid[oy][ox] = TERRAIN_CHARS[terrain_key]
+
+    shrink_river_to_coastal_fringe(grid)
 
     positions = load_location_positions()
     road_char = TERRAIN_CHARS["road"]

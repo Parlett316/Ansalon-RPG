@@ -1002,6 +1002,80 @@ save1-3.txt moved aside, restored after). `ROAD_PAIRS` connectivity
 unaffected -- roads are stamped after terrain classification and the total
 road-tile count (612) is unchanged.
 
+## Shallow water pass (Milestone 130)
+
+The user flagged two problems with `r` ("shallow water") at once: it was
+walkable (`Terrain.cpp`'s `passable = true`, a deliberate Milestone-84/87
+call), and there was far too much of it on the map -- 17,824 of 153,600
+tiles (11.6%), more than mountains or glacier.
+
+**A distance-transform explained why.** A 4-directional BFS from every
+genuinely-land tile, measured against the *pre-this-change* grid, gave each
+`r` tile's distance to the nearest shore: 15.9% sat 1 tile out, 26.5%
+within 2 -- a real coastal fringe -- but the rest trailed off in a long
+tail to **66 tiles** from any land. That's not coastline; the 32-color
+quantization (Milestone 85's classifier) bucketed the interior of large
+bays and straits (Good Bay, New Bay, Blood Bay, the Strait of Schallsea)
+into the same color index as narrow coastal shallows -- exactly the "real
+river fords never survived downsampling" quirk this file already flagged
+(the "How `data/overworld.grid` is generated" section above) but never
+corrected.
+
+**Fixed both at once, in the generator, not by hand-editing the grid.**
+`tools/generate_overworld.py` gained `shrink_river_to_coastal_fringe()`, a
+multi-source BFS run after `MANUAL_TERRAIN_OVERRIDES` are applied and
+before roads are drawn: any `river`-classified tile farther than
+`RIVER_COASTAL_FRINGE_TILES` (2) tiles from land gets reclassified to
+`ocean`. Regenerating dropped `r` from 17,824 tiles (11.6%) to 4,708
+(3.1%), with true ocean growing from 44.2% to 52.7% -- a real coastal
+fringe kept, the rest correctly reads as open sea. `Terrain.cpp`'s `r`
+entry then flipped `passable` to `false`, matching ocean immediately
+above it in the table -- what's left of `r` is now a color-only
+distinction from ocean (a lighter cyan), same as the Blood Sea's
+color-only distinction below it.
+
+**Re-verified with the same throwaway-BFS method this file has used since
+Milestone 87**, this time run twice: once against the live (pre-change)
+grid with `r` hypothetically impassable (to scope the blast radius before
+touching anything), then again against the actually-regenerated grid.
+Both agreed:
+- No location's own `POS` tile is coded `r` -- the 17 road-connected
+  locations sit on their road's `#` (roads stamp over whatever was
+  underneath, including their own endpoint tile), and the 6 road-free
+  locations (`port_ocall`, `ice_wall`, `silvanesti`, `sancrist_isle`,
+  `crossing`, `southern_ergoth`) already sit on ordinary land. Nothing
+  needed nudging or a manual override.
+- Every location stays foot-reachable from Solace **except
+  `sancrist_isle` and `southern_ergoth`** -- both already boat-only by
+  design (`southern_ergoth` is `SEA_LOCKED`; `sancrist_isle` is reached
+  by a scripted `BOAT` grant from `ice_wall`, Milestone 91). Losing an
+  incidental, never-advertised foot path to two already-boat-gated
+  locations is a correctness improvement, not a regression.
+- A Milestone-87-style straight-line re-audit of all 15 `ROAD_PAIRS`
+  against the regenerated *pre-road* classified grid found one apparent
+  new issue -- `neraka`-`flotsam` now shows 4 "true water" tiles it
+  didn't before -- but it's not real: those are the same four
+  `MANUAL_TERRAIN_OVERRIDES` tiles patched at Milestone 96 ("Blood Bay's
+  edge"), sitting more than 2 tiles from land, so the new fringe pass
+  reclassifies them back to `ocean` *before* roads are drawn. Roads are
+  always stamped last, so all four are `#` in the real, final
+  `data/overworld.grid` regardless -- confirmed directly. No location or
+  road actually lost passability; this is a pre-road-classification
+  artifact of running the two passes in sequence, not a live bug.
+
+Also updated **`README.md`'s Status paragraph**: its line describing
+Crossing ("its water is shallow enough to wade -- though most travelers
+pay the Ferry Keeper instead") stated the opposite of the new behavior
+and was rewritten to match.
+
+Verified: clean `/W4` rebuild with zero new warnings, diff scoped to
+`tools/generate_overworld.py`, `src/world/Terrain.cpp`, and
+`data/overworld.grid` (pure regeneration, no other `.cpp`/`.h` changes),
+and the piped character-creation smoke test (real `save1-3.txt` moved
+aside, restored after). **Interactively confirmed working** by the user
+afterward -- shallow water blocks movement and the shrunken coastline
+reads correctly in a real terminal.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

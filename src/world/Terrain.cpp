@@ -29,13 +29,17 @@ constexpr std::array<TerrainInfo, 12> kTable = {{
     // lore is invented here about ships crossing it. See docs/MAP_NOTES.md /
     // docs/TIMELINE_NOTES.md.
     {'!', '~', "\x1b[31m", false, 0, "the Blood Sea", 0},
-    // Zeroed (Milestone 84) for the same reason ocean/Blood Sea are 0%: no
-    // sea monsters exist in the roster, and per docs/MAP_NOTES.md this code
-    // is essentially always coastal water in the generated grid (real river
-    // fords never survived downsampling), so it's crossed constantly while
-    // sailing -- a nonzero chance here meant land monsters ambushing the
-    // player mid-voyage. Was 5 until this milestone.
-    {'r', '~', "\x1b[36m", true, 30, "shallow water", 0},
+    // Impassable, matching ocean immediately above -- shallow water is no
+    // longer a foot-fordable shortcut (it was, briefly: Milestone 84 zeroed
+    // its encounter chance and Milestone 87 leaned on its passability to
+    // avoid inventing sea-lane roads, both superseded here). The generator's
+    // shrink_river_to_coastal_fringe() pass (tools/generate_overworld.py)
+    // now also keeps only a real coastal fringe of this code in the grid --
+    // the rest of what used to be classified 'river' is 'ocean' -- so what's
+    // left is a color-only distinction from ocean (a lighter, "shallow"
+    // cyan), same as the Blood Sea's color-only distinction from ocean below.
+    // See docs/MAP_NOTES.md's "Shallow water pass" section.
+    {'r', '~', "\x1b[36m", false, 0, "shallow water", 0},
     {':', '.', "\x1b[97m", true, 60, "glacier", 6},
     {'A', '^', "\x1b[90m", true, 90, "mountains", 12},
     {'^', '^', "\x1b[33m", true, 45, "hills", 8},
