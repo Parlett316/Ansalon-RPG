@@ -5241,6 +5241,33 @@ now fully verified, nothing further outstanding.
      before the smoke test. **Not interactively walked** -- same standing
      `_getch()` limitation.
 
+140. Combat grid starting positions pushed farther apart. The player's
+     starting row moved from `kCombatGridHeight - 2` to `kCombatGridHeight
+     - 1` (the very bottom row) and the monster row from a fixed `y = 2`
+     to `y = 0` (the very top row), in `GameLoop::runCombat`
+     (`src/game/GameLoop.cpp`) -- widening the initial Chebyshev gap from
+     5 rows to the grid's full 8-row vertical span. The user found the
+     original gap closed in one or two rounds, leaving little room for
+     ranged options (Hoopak, offensive spells) to matter before melee. No
+     grid-size change (still 15x9, `kCombatGridWidth`/`kCombatGridHeight`
+     in `MapRenderer.h`, untouched since Milestone 129) -- purely the two
+     starting-row constants. Companion starting positions are unaffected
+     in logic (still placed adjacent to `playerPos` in x, same y), they
+     just inherit the player's new bottom row. Movement bounds-checking
+     (`playerMoves`'s destination validation, `combat::stepToward` for
+     monster/companion AI) already clamps to `[0, kCombatGridHeight)`
+     with no assumption of spare rows past either starting position, so
+     no other code needed to change.
+
+     Verified with a clean incremental rebuild (`cmake --build build
+     --config Debug`), zero new `/W4` warnings, plus a piped
+     character-creation smoke test confirming `World`/`ZoneCatalog`/
+     `Timeline`/`MonsterCatalog` still load (this change touches no data
+     files, only two integer constants in `GameLoop.cpp`). **Not yet
+     interactively walked** -- same standing `_getch()` limitation;
+     confirm on the next play session that the wider starting gap feels
+     right in an actual fight.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

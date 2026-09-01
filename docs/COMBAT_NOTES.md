@@ -1004,13 +1004,15 @@ core 2e AD&D combat itself is abstract "melee range," not squares.
   The `[X]` target-picker bracket (Milestone 115) is unchanged and still
   legible against the new border, including in the edge columns where it
   abuts the `|` directly.
-- **Starting layout** (invented): the player begins near the bottom
-  center; monster instances spread evenly across a row near the top,
-  centered and spaced two cells apart. Purely local state
-  (`GameLoop::runCombat`'s own `combat::GridPos playerPos` and
-  `std::vector<combat::GridPos> instancePositions`), never touching
-  `GameState`/`SaveGame`, same "combat isn't saved" precedent as monster
-  HP/the log.
+- **Starting layout** (invented): the player begins centered on the
+  bottom row; monster instances spread evenly across the top row,
+  centered and spaced two cells apart -- the full 8-row vertical span as
+  of Milestone 140 (originally rows `height-2`/`2`, a 5-row gap, widened
+  after the user found it too easy to close in one or two rounds).
+  Purely local state (`GameLoop::runCombat`'s own `combat::GridPos
+  playerPos` and `std::vector<combat::GridPos> instancePositions`), never
+  touching `GameState`/`SaveGame`, same "combat isn't saved" precedent as
+  monster HP/the log.
 - **Movement** (invented mechanic, sourced as a real action in the
   manual): `w`/`a`/`s`/`d` (`render::Key::North/South/East/West`,
   previously ignored inside combat) move the player one cell as a full

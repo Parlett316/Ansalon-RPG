@@ -1799,14 +1799,16 @@ void GameLoop::runCombat(const combat::Monster& monster) {
     const world::TerrainInfo& hereTerrain = world::terrainFor(grid_.terrainCodeAt(state_.x, state_.y));
 
     // Starting layout (Milestone 114, see docs/COMBAT_NOTES.md's
-    // "Positional combat grid" section): player near the bottom-center,
-    // monster instances spread evenly across a row a few tiles above --
-    // close enough that a melee character reaches combat within a couple
-    // of rounds, far enough that positioning/ranged options are real.
-    // Purely local to this one runCombat call, never touching
+    // "Positional combat grid" section): player on the bottom row,
+    // centered, monster instances spread evenly across the top row --
+    // widened to the grid's full vertical span at Milestone 140 (was rows
+    // height-2/2, a gap of 5) after the user found the original gap too
+    // easy to close in one or two rounds; a full-height gap of 8 gives
+    // ranged options (Hoopak, spells) more rounds to matter before melee
+    // closes in. Purely local to this one runCombat call, never touching
     // GameState/SaveGame, same "combat isn't saved" precedent as
     // instances/log above.
-    combat::GridPos playerPos{render::MapRenderer::kCombatGridWidth / 2, render::MapRenderer::kCombatGridHeight - 2};
+    combat::GridPos playerPos{render::MapRenderer::kCombatGridWidth / 2, render::MapRenderer::kCombatGridHeight - 1};
     std::vector<combat::GridPos> instancePositions(instances.size());
     {
         constexpr int kMonsterSpacing = 2;
@@ -1814,7 +1816,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         const int count = static_cast<int>(instances.size());
         for (int i = 0; i < count; ++i) {
             int offsetIndex = i - (count - 1) / 2;
-            instancePositions[static_cast<size_t>(i)] = {centerX + offsetIndex * kMonsterSpacing, 2};
+            instancePositions[static_cast<size_t>(i)] = {centerX + offsetIndex * kMonsterSpacing, 0};
         }
     }
 

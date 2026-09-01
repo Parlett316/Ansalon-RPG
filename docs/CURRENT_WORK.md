@@ -26,3 +26,10 @@ correctly.
 
 The Astinus ask-anything pool is an ongoing, open-ended content thread --
 expect more sessions like 137/138 adding further topics as they come up.
+
+Milestone 140 (combat grid starting positions widened -- player now
+starts on the bottom row, monsters on the top row, an 8-row gap instead
+of 5) is implemented and verified via clean rebuild + piped smoke test,
+but **not yet interactively walked**. Worth doing on the next play
+session: start a fight and confirm the wider gap plays well (not so wide
+that closing distance feels tedious).
