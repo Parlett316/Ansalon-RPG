@@ -84,6 +84,19 @@ next play session: as a Mage, cast Haste in a fight and confirm the logged
 attack count doubles; cast Slow on a monster and confirm both the THAC0 and
 AC math show up correctly in the "Showing the math" bracketed breakdown.
 
-Nine milestones in a row (136-144) are now implemented but unplayed --
+Milestone 145 (three more Astinus SUBJECT entries -- `fizban`, `silvara`,
+and `berem,everman`, shifting from Milestones 138/139's race/pantheon lore
+to named characters the player meets later in the story, each gated with
+a real `SUBJECT_WHEN` before/after pair sourced from `data/timeline.txt`'s
+own PRESENCE/TOPIC windows; see `docs/MILESTONES.md` entry 145 and
+`docs/ZONE_NOTES.md`'s "Ask about anything" section) is implemented,
+documented, and verified via a piped character-creation smoke test
+confirming `ZoneCatalog`/`Timeline` still parse `data/zones/palanthas.txt`
+cleanly, but **not yet interactively walked**. Worth doing on the next
+play session: ask Astinus about Fizban, Silvara, and Berem/the Everman
+both before and after the relevant day thresholds (day 192/69/193
+respectively) and confirm all six variants read correctly.
+
+Ten milestones in a row (136-145) are now implemented but unplayed --
 worth a dedicated playtest pass on the next session before piling on
 more unverified content.

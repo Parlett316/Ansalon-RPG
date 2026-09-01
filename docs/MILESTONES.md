@@ -5508,6 +5508,48 @@ now fully verified, nothing further outstanding.
      monster shows both the THAC0 and AC math correctly in the "Showing
      the math" bracketed breakdown.
 
+145. Three more Astinus SUBJECT entries -- continuing the same ongoing
+     ask-anything pass, but shifting from Milestone 138/139's race/pantheon
+     lore to named characters the player actually meets later in the
+     story: `fizban` (the absent-minded old wizard who recurs across the
+     timeline -- Qualinesti, Pax Tharkas, Foghaven Vale, Mount Nevermind,
+     Neraka -- and departs on a gold dragon's back at Neraka day 193;
+     confirmed against `References/Dragons_of_Spring_Dawning_-
+     _Margaret_Weis.pdf` that he is Paladine in disguise), `silvara` (the
+     silver dragon wearing an elf-woman's shape, first met at Southern
+     Ergoth day 69), and `berem,everman` (the Green Gemstone Man --
+     confirmed against `References/Dragons_of_Winter_Night_-
+     _Margaret_Weis.pdf`'s "Green Gemstone Man" passages -- referenced only
+     secondhand through Tanis's own `data/timeline.txt` dialogue; he has no
+     `CHARACTER` block of his own). Unlike 138/139's evergreen lore, all
+     three needed a real `SUBJECT_WHEN` before/after pair, day-sourced
+     directly from `data/timeline.txt`'s own `PRESENCE`/`TOPIC` windows for
+     these characters -- same category as Milestone 137's tanis/sturm/
+     goldmoon pairs, since these are dated story beats about specific
+     characters rather than racial/mythological background. The "after"
+     halves deliberately play off Astinus's own established personality:
+     Fizban's entry echoes the standing `SUBJECT_ENDS` gag about Astinus's
+     own refused identity ("I do not explain what I choose not to
+     explain... he is the one guest who would actually forgive me the
+     silence"), and Silvara's entry draws a direct contrast with the
+     already-shipped `draconian` entry -- a dragon remade by choice into
+     something kinder, against draconians remade against their will into
+     something crueler. No keyword collisions with any of Astinus's
+     existing entries (checked against the full list before writing). Zero
+     `.cpp`/`.h` changes -- pure data content, same shape as Milestones
+     138/139. Full writeup: `docs/ZONE_NOTES.md`'s "Ask about anything"
+     section.
+
+     Verified via a piped character-creation smoke test (real `save1.txt`
+     left untouched, empty slot 2 used) confirming `ZoneCatalog`/`Timeline`
+     still parse `data/zones/palanthas.txt` cleanly with the 6 new lines
+     added. No rebuild needed for source, but the build was re-run to sync
+     the updated zone file into `build/Debug/data/` before the smoke test.
+     **Not interactively walked** -- same standing `_getch()` limitation;
+     worth doing on the next play session: ask Astinus about Fizban,
+     Silvara, and Berem/the Everman both before and after the relevant day
+     thresholds, and confirm all six variants read correctly.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

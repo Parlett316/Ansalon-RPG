@@ -734,6 +734,55 @@ entries added. No rebuild needed (no source changes); the updated zone
 file was synced into `build/Debug/data/` before the smoke test. **Not
 interactively walked** -- same standing `_getch()` limitation.
 
+**Milestone 145 added 3 more entries, shifting from Milestone 138/139's
+racial/pantheon lore to named characters the player meets later in the
+story**: `fizban`, `silvara`, and `berem,everman`. Unlike 138/139, all
+three needed `SUBJECT_WHEN` gating -- these are dated story beats about
+specific characters, same category as Milestone 137's tanis/sturm/
+goldmoon pairs, not evergreen lore. Day ranges were sourced directly from
+`data/timeline.txt`'s own `PRESENCE`/`TOPIC` windows for these three
+(none of whom are Heroes of the Lance, but all three already have real
+`CHARACTER` blocks or dialogue references there): `fizban` splits at day
+192 (his final `PRESENCE neraka 193 195` block, where he departs on a
+gold dragon's back); `silvara` splits at day 69 (`PRESENCE
+southern_ergoth 69 72`, where she's first met); `berem,everman` splits at
+day 193 (Tanis's own `PRESENCE neraka 193 195` block and its "The Man Who
+Finally Rested" `TOPIC`, which resolves him as truly dead -- Berem
+himself has no `CHARACTER` block of his own; the player only ever hears
+of him secondhand, through Tanis's dialogue).
+
+Two of the three needed novel-text verification beyond what
+`data/timeline.txt` already encodes, since their `SUBJECT_WHEN` "after"
+half asserts something the game's own existing dialogue only implies:
+`References/Dragons_of_Spring_Dawning_-_Margaret_Weis.pdf` confirms
+Fizban is Paladine (`"Fizban -- er -- Paladine, were you ever in --"`,
+late in the book, shortly after the gold-dragon departure this project's
+own `PRESENCE neraka 193 195` block already dramatizes) -- Astinus's own
+entry stays consistent with that without stating it outright, playing
+off his established refusal to explain his own nature (the standing
+`SUBJECT_ENDS you+gilean,you+god,...` gag from Milestone 137). `References/
+Dragons_of_Winter_Night_-_Margaret_Weis.pdf` confirms Berem is called the
+"Green Gemstone Man," a mute helmsman with a stone embedded in his chest,
+sought by the dragonarmies -- Astinus's entry alludes to "a stone he
+never asked for" rather than describing it directly, keeping with this
+project's non-transcription discipline. Silvara's entry needed no PDF
+check beyond what `data/timeline.txt` already establishes (a silver
+dragon wearing an elf-woman's shape, first named as such by Tasslehoff at
+`southern_ergoth` day 69) and deliberately draws a contrast with the
+already-shipped `draconian` entry: a dragon remade by her own choice into
+something kinder, against draconians remade against their will into
+something crueler.
+
+No keyword collisions with any of Astinus's existing entries (checked
+against the full list before writing). Zero `.cpp`/`.h` changes -- pure
+data content, same shape as Milestones 138/139. Verified via a piped
+character-creation smoke test (real `save1.txt` untouched, empty slot 2
+used) confirming `ZoneCatalog`/`Timeline` still parse
+`data/zones/palanthas.txt` cleanly with the 6 new lines added. No rebuild
+needed for source, but the build was re-run to sync the updated zone file
+into `build/Debug/data/` before the smoke test. **Not interactively
+walked** -- same standing `_getch()` limitation.
+
 ## Zone-interior encounters (Milestone 23)
 
 `TIMELINE_ANCHOR <char>` layers a *third* kind of ability onto a POI,
