@@ -33,3 +33,16 @@ of 5) is implemented and verified via clean rebuild + piped smoke test,
 but **not yet interactively walked**. Worth doing on the next play
 session: start a fight and confirm the wider gap plays well (not so wide
 that closing distance feels tedious).
+
+Milestone 141 (Weapon Specialization for Fighters -- PHB Tables 34/35: a
+Fighter may choose at creation to specialize in their weapon for +1
+to-hit/+2 damage and a faster attacks-per-round progression; full
+per-weapon proficiency slots deliberately not modeled, see
+`docs/CHARACTER_NOTES.md`'s "Weapon Specialization" section for why) is
+implemented, documented, and verified via a throwaway self-test, a clean
+rebuild (zero new warnings), and two piped character-creation smoke tests
+(prompt appears correctly for a Fighter, correctly skipped for a Mage),
+but **not yet interactively walked in a real fight**. Worth doing on the
+next play session: create a specialized Fighter and confirm to-hit,
+damage, and the faster extra-attacks rate all read correctly against a
+real monster.

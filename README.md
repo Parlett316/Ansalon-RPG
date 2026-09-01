@@ -27,7 +27,10 @@ a real, race-specific level once you're playing) — a class screen, and an
 alignment screen (Kender can't pick an Evil alignment — Dragonlance
 Adventures states plainly that none are known to exist; qualifying
 Fighters can join the Knights of Solamnia, and Gnomes are always Tinkers),
-your scores carried along and visible at every step, before dropping you
+and every Fighter is offered real Weapon Specialization (+1 to hit, +2
+damage with their weapon, and faster extra attacks as they level, sourced
+from the Player's Handbook's own optional rule), your scores carried
+along and visible at every step, before dropping you
 into the world with a real character behind the `@`.
 Progress autosaves continuously. The overworld/zone screen is a wide, frameless, side-by-side
 view — no box border, just `=`/`-` rule dividers — a one-line header

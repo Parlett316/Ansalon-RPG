@@ -5268,6 +5268,53 @@ now fully verified, nothing further outstanding.
      confirm on the next play session that the wider starting gap feels
      right in an actual fight.
 
+141. Weapon Specialization for Fighters (PHB p.71-73, Tables 34/35,
+     visually confirmed via rendered page images -- `phb.txt`'s OCR of
+     these two dense tables was column-scrambled and not trustworthy). A
+     Fighter may now choose to specialize in their weapon at creation
+     (`character::Character::specializedWeapon`, offered as a
+     `promptYesNo` in `CharacterCreator.cpp` right after the Knight of
+     Crown offer, race-agnostic): +1 to attack rolls, +2 to damage rolls
+     (`character::kWeaponSpecializationToHitBonus`/
+     `kWeaponSpecializationDamageBonus`, folded into `playerThac0Bonus`/
+     `playerDamageBonus` in `GameLoop::runCombat` alongside the existing
+     Frostreaver bonus -- deliberately stacks with it, since this project
+     doesn't track weapon-type identity), plus a faster attacks-per-round
+     progression (Table 35's melee column: 3/2 at 1-6, 2/1 at 7-12, 5/2 at
+     13+, replacing Table 15's non-specialist rates -- `character::
+     meleeAttacksThisRound` gained a `specialized` parameter, no default,
+     every call site updated explicitly; companions always pass `false`,
+     no creation flow exists to ever set theirs). Shown on the character
+     sheet as "(specialized)" next to the weapon name; persisted as
+     `SPECIALIZED <0|1>` (same shape as `SHIELD`, optional on load like
+     `BROOCHDAY`/`STAFFCUREDAY`). **Deliberate scope cut, written up in
+     `docs/CHARACTER_NOTES.md`'s new "Weapon Specialization" section**:
+     Table 34's full numbered proficiency-slot system (a -2/-5/-3/-3
+     attack penalty for an off-class weapon) is NOT modeled -- this
+     project's equipment model gives each class exactly one weapon
+     lineage bought from a fixed class-specific shop catalog, so that
+     penalty could never fire in this engine; tracking slots for it would
+     be inert bookkeeping. Also updated the "Knights of Solamnia"
+     write-up's stale "no weapon-proficiency system... to plug into"
+     claim, since ordinary Fighter specialization now covers what a
+     Knight of Solamnia loses by not being a real Cavalier (just without
+     the Cavalier's free-of-cost guarantee).
+
+     Verified with a throwaway self-test
+     (`character::meleeAttacksThisRound`'s new specialist branch across
+     rounds 1-6/7-12/13+, both parities, plus the non-specialist path and
+     a non-Warrior class -- all passed, then the test file and its
+     CMakeLists.txt target were deleted), a full clean rebuild (zero new
+     `/W4` warnings across all 30 source files), and two piped
+     character-creation smoke tests against the real save-slot menu (an
+     empty slot, `save1.txt` left untouched) confirming the new prompt
+     appears and works correctly for a Fighter (text, y/n handling, and
+     the resulting summary screen all correct) and is correctly skipped
+     for a Mage. **Not yet interactively walked in a real fight** -- same
+     standing `_getch()` limitation; confirm on the next play session that
+     a specialized Fighter's to-hit/damage/attack-rate all read correctly
+     in actual combat.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

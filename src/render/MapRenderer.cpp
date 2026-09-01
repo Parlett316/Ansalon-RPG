@@ -687,6 +687,7 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
 
     std::ostringstream weaponLine;
     weaponLine << "Weapon: " << c.weaponName;
+    if (c.specializedWeapon) weaponLine << " (specialized)";
     if (c.equippedArmor != character::ArmorId::None || c.hasShield) {
         weaponLine << "   Armor: ";
         if (c.equippedArmor != character::ArmorId::None) {

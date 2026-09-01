@@ -426,6 +426,23 @@ Character CharacterCreator::run() {
         }
     }
 
+    // Weapon Specialization (PHB p.71-73): an optional rule limited to
+    // single-class fighters. Every Fighter here already qualifies -- this
+    // project has no multi-classing -- so it's offered unconditionally to
+    // the class, race-agnostic (a Kender wielding a Hoopak may specialize
+    // too; the book allows "any weapon"). See character::Character::
+    // specializedWeapon and docs/CHARACTER_NOTES.md's "Weapon
+    // Specialization" section for why this is a flat yes/no rather than
+    // tracked proficiency slots.
+    if (character.charClass == ClassId::Fighter) {
+        std::cout << "\nYou may specialize in your weapon, gaining +1 to hit and +2 damage "
+                      "with it, plus faster extra attacks as you level (PHB, Weapon "
+                      "Specialization).\n";
+        if (promptYesNo("Specialize? (y/n) ")) {
+            character.specializedWeapon = true;
+        }
+    }
+
     bool isWarrior = character.charClass == ClassId::Fighter;
     character.maxHp = std::max(1, chosenClass.hitDieSides + hpAdjustmentForConstitution(scores.constitution, isWarrior));
     character.currentHp = character.maxHp;

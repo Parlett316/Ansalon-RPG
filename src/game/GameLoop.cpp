@@ -1999,6 +1999,16 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             log.push_back("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
         }
     }
+    // Weapon Specialization (PHB p.71-73, character::Character::
+    // specializedWeapon): applies regardless of which tier of the class's
+    // own weapon lineage is equipped, and stacks with Frostreaver's own
+    // bonus above if both apply -- see character::kWeaponSpecialization
+    // ToHitBonus/kWeaponSpecializationDamageBonus's doc comment
+    // (Equipment.h) for why that stacking is a deliberate simplification.
+    if (state_.character.charClass == character::ClassId::Fighter && state_.character.specializedWeapon) {
+        playerThac0Bonus += character::kWeaponSpecializationToHitBonus;
+        playerDamageBonus += character::kWeaponSpecializationDamageBonus;
+    }
     // roundNumber feeds character::meleeAttacksThisRound's 7-12-level
     // alternating pattern (PHB Table 15) -- incremented once per
     // for(;;) iteration below, since each iteration is exactly one round.
@@ -2237,7 +2247,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
             return;
         }
         int attacks = character::meleeAttacksThisRound(state_.character.charClass, state_.character.level,
-                                                         roundNumber);
+                                                         roundNumber, state_.character.specializedWeapon);
         for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
             if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                 // Real Gold Box rule (DQoK.pdf's own manual, re-checked
@@ -2357,7 +2367,13 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     continue;
                 }
             }
-            int attacks = character::meleeAttacksThisRound(companion.charClass, companion.level, roundNumber);
+            // Companions have no creation flow that could ever set
+            // specializedWeapon (see character::Character::
+            // specializedWeapon's doc comment), so this always passes
+            // false -- AI-controlled, no player choice, same as every
+            // other companion-facing decision in this loop.
+            int attacks =
+                character::meleeAttacksThisRound(companion.charClass, companion.level, roundNumber, false);
             for (int i = 0; i < attacks && !fightAlreadyEnded; ++i) {
                 if (instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                     int retarget = -1;

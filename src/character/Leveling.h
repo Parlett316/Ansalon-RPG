@@ -36,7 +36,18 @@ SavingThrows savesForLevel(ClassId id, int level);
 // rounds, 2 on even -- the book states the 3/2 rate but not which rounds
 // get the extra swing; this is the standard interpretation, not printed
 // verbatim). Every other class always returns 1.
-int meleeAttacksThisRound(ClassId id, int level, int roundNumber);
+//
+// specialized selects Table 35's melee-weapon column instead (PHB p.71,
+// "Specialist Attacks Per Round" -- see character::Character::
+// specializedWeapon): 1-6 = 3/2, 7-12 = 2/1, 13+ = 5/2, each rate reached
+// roughly six levels earlier than Table 15's own. The new 5/2 rate at
+// 13+ uses the same odd/even alternation convention as the 3/2 case
+// above (2 attacks on odd rounds, 3 on even) -- again this project's own
+// interpretation, not printed verbatim. Callers must pass this
+// explicitly (no default) -- companions have no creation flow that could
+// ever set Character::specializedWeapon, so GameLoop.cpp's companion
+// call site always passes false.
+int meleeAttacksThisRound(ClassId id, int level, int roundNumber, bool specialized);
 
 // PHB Table 30 (p.57), "Backstab Damage Multipliers": levels 1-4 = x2,
 // 5-8 = x3, 9-12 = x4, 13+ = x5, multiplying the thief's raw weapon die

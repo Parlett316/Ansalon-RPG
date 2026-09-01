@@ -240,8 +240,13 @@ int applyPendingLevelUps(Character& character, std::vector<std::string>& message
     return levelsGained;
 }
 
-int meleeAttacksThisRound(ClassId id, int level, int roundNumber) {
+int meleeAttacksThisRound(ClassId id, int level, int roundNumber, bool specialized) {
     if (classGroupFor(id) != ClassGroup::Warrior) return 1;
+    if (specialized) {
+        if (level >= 13) return (roundNumber % 2 == 0) ? 3 : 2; // Table 35: 5/2
+        if (level >= 7) return 2;                               // Table 35: 2/1
+        return (roundNumber % 2 == 0) ? 2 : 1;                  // Table 35: 3/2
+    }
     if (level >= 13) return 2;
     if (level >= 7) return (roundNumber % 2 == 0) ? 2 : 1;
     return 1;

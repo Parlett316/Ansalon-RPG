@@ -484,6 +484,20 @@ constexpr int kFrostreaverDamageSides = 8; // PHB Table 44, "Battle axe": 1d8
 constexpr int kFrostreaverMagicBonus = 4;  // "+4" to both hit and damage, glacier-only
 constexpr int kFrostreaverMinStrength = 13;
 
+// PHB p.73, "Effects of Specialization": "+1 bonus to all his attack
+// rolls... and a +2 bonus to all damage rolls (in addition to bonuses for
+// Strength and magic)." Applied whenever Character::specializedWeapon is
+// true (see Character.h), regardless of which tier of the class's own
+// weapon lineage is currently equipped, and stacking with
+// kFrostreaverMagicBonus if both apply -- this project doesn't track
+// weapon-type identity beyond the single equipped-weapon fields, so a
+// specialist wielding the (unrelated, axe-type) Frostreaver still gets
+// both bonuses rather than the RAW "wrong weapon, no specialization"
+// restriction. A deliberate simplification, not an oversight -- see
+// docs/CHARACTER_NOTES.md's "Weapon Specialization" section.
+constexpr int kWeaponSpecializationToHitBonus = 1;
+constexpr int kWeaponSpecializationDamageBonus = 2;
+
 // The Tinker's Light Crossbow upgrade (see kTinkerUpgrade in
 // Equipment.cpp) -- this project's one real ranged weapon as of Milestone
 // 114's positional combat grid (docs/COMBAT_NOTES.md). Same

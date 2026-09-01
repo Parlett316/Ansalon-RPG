@@ -37,6 +37,17 @@ images (same discipline as every other rules pass in this project):
   rounds" rate's odd/even split (1 attack on odd rounds of the fight, 2 on
   even) is this project's interpretation, not printed verbatim — the book
   states the rate but not which rounds carry the extra swing.
+- **Specialist attacks per round** (PHB Table 35, p.71, "Specialist
+  Attacks Per Round," melee weapon column): a Fighter who chose Weapon
+  Specialization at creation (`character::Character::specializedWeapon` —
+  see `docs/CHARACTER_NOTES.md`'s "Weapon Specialization" section) gets
+  3/2 at 1–6, 2/1 at 7–12, 5/2 at 13+ instead of Table 15's rates above —
+  each bracket's rate arrives roughly six levels early, plus a new top
+  rate at 13+. `meleeAttacksThisRound` gained a `specialized` parameter
+  (no default; every call site passes it explicitly) for this. The new
+  5/2 rate reuses the same odd/even-by-round-parity convention as the
+  non-specialist 3/2 case (2 attacks on odd rounds, 3 on even) — again
+  this project's interpretation, not printed verbatim.
 
 **Not specifically re-verified this pass, called out honestly rather than
 overclaimed**: damage is floored at 1 on a hit

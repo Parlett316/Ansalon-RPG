@@ -101,6 +101,7 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "STEEL " << c.steelPieces << "\n";
     file << "ARMOR " << static_cast<int>(c.equippedArmor) << "\n";
     file << "SHIELD " << (c.hasShield ? 1 : 0) << "\n";
+    file << "SPECIALIZED " << (c.specializedWeapon ? 1 : 0) << "\n";
     // MAGICWEAPON, not WEAPON -- see load() below. Written unconditionally
     // (even when weaponMagicBonus == 0) so save() has exactly one weapon
     // line format to produce; the legacy WEAPON keyword is still accepted
@@ -392,6 +393,17 @@ GameState SaveGame::load(const std::string& path) {
                 fail(path, lineNumber, "malformed SHIELD (expected 0 or 1)");
             }
             state.character.hasShield = value == 1;
+        } else if (keyword == "SPECIALIZED") {
+            // Optional, same backward-compat reasoning as BROOCHDAY/
+            // STAFFCUREDAY above -- a save written before this milestone
+            // has no SPECIALIZED line, and Character::specializedWeapon's
+            // false default is already correct for it (created before
+            // Weapon Specialization existed to choose at all).
+            int value = -1;
+            if (!(iss >> value) || (value != 0 && value != 1)) {
+                fail(path, lineNumber, "malformed SPECIALIZED (expected 0 or 1)");
+            }
+            state.character.specializedWeapon = value == 1;
         } else if (keyword == "WEAPON") {
             // Legacy pre-magic-weapon keyword (see docs/GOTCHAS.md) --
             // save() never writes this anymore (MAGICWEAPON below), but a

@@ -60,6 +60,14 @@ struct Character {
     // to-hit bonus). See character::magicWeaponFor and
     // combat::resolvePlayerAttack.
     int weaponMagicBonus = 0;
+    // True only for a Fighter who chose to specialize in their weapon at
+    // creation (PHB p.71-73, Tables 34/35 -- "Weapon Specialization").
+    // Grants character::kWeaponSpecializationToHitBonus/
+    // kWeaponSpecializationDamageBonus (see Equipment.h) and a faster
+    // meleeAttacksThisRound progression (see Leveling.h). See
+    // docs/CHARACTER_NOTES.md's "Weapon Specialization" section for why
+    // this is a flat bool rather than tracked proficiency slots.
+    bool specializedWeapon = false;
     // Carried, not-currently-equipped items -- bought via the General
     // Store, worn via GameLoop::handleInventory ('i'). See Equipment.h's
     // equipInventoryItem for how items move between here and the equipped

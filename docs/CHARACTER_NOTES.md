@@ -443,9 +443,12 @@ Solamnia on the **Cavalier** class (Unearthed Arcana), not Fighter — this
 project doesn't implement Cavalier (out of scope, same as Paladin/Ranger/
 Druid/Bard above) and isn't adding it just for this. Modeled instead as "a
 qualifying Fighter who swears the oath," which loses the Cavalier-specific
-perks the book mentions (e.g. guaranteed weapon specialization) — moot for
-now anyway, since this project has no weapon-proficiency system for that to
-plug into.
+perks the book mentions beyond ordinary weapon specialization (Cavaliers
+get it guaranteed, free of the usual proficiency-slot cost) — a Knight of
+Solamnia in this project specializes exactly like any other Fighter (see
+"Weapon Specialization" below), just without that free-of-cost guarantee,
+which is moot anyway since this project doesn't track proficiency slots at
+all (see that section's own scope cut).
 
 **Racial exclusion**: every Elf and Dwarf subrace researched shows "N/E"
 (not eligible) for Knight of Crown/Sword/Rose in its class-limit table — no
@@ -465,6 +468,68 @@ chassis in Unearthed Arcana, which isn't implemented); falling from Good
 alignment is described as demoting a Knight back to a plain Fighter (p.14)
 but nothing currently tracks alignment changes after character creation to
 enforce this.
+
+### Weapon Specialization
+
+PHB (revised) pp.71-73, Tables 34/35, visually confirmed via rendered page
+images (`phb.txt`'s OCR of these two dense tables was column-scrambled and
+not trustworthy). A single-class Fighter (every Fighter here already
+qualifies — this project has no multi-classing) may choose to specialize
+in their weapon at creation: `character::Character::specializedWeapon`
+(`Character.h`), offered as a `promptYesNo` in `CharacterCreator.cpp`
+right after the Knight of Crown offer, race-agnostic (a Kender wielding a
+Hoopak may specialize too — the book allows "any weapon").
+
+**Effects, both sourced from Table 35/p.73 "Effects of Specialization"**:
+- **+1 to attack rolls, +2 to damage rolls** with the specialized weapon
+  ("in addition to bonuses for Strength and magic") —
+  `character::kWeaponSpecializationToHitBonus`/
+  `kWeaponSpecializationDamageBonus` (`Equipment.h`), folded into
+  `playerThac0Bonus`/`playerDamageBonus` in `GameLoop::runCombat`
+  alongside the existing Frostreaver bonus. Applies regardless of which
+  tier of the class's own weapon lineage is currently equipped (starting/
+  upgrade/"+1" magic — see "Equipment" above), the same "one weapon slot,
+  tiers stack" treatment `weaponMagicBonus` already gets, and — a
+  deliberate simplification, not a RAW-faithful "wrong weapon type, no
+  bonus" restriction — stacks with Frostreaver's own +4/+4 too, since this
+  project doesn't track weapon-type identity beyond the single
+  equipped-weapon fields.
+- **Faster extra attacks per round**: Table 35's melee-weapon column (1-6
+  = 3/2, 7-12 = 2/1, 13+ = 5/2) replaces Table 15's non-specialist rate
+  (1/1, 3/2, 2/1) for a specialized Fighter — `character::
+  meleeAttacksThisRound` gained a `specialized` parameter (no default;
+  every call site passes it explicitly, matching how `resolvePlayerAttack`
+  already takes its bonuses). The new 5/2 rate at 13+ reuses the existing
+  odd/even-by-round-parity convention (2 attacks on odd rounds, 3 on even)
+  already established for the non-specialist 3/2 case — this project's own
+  interpretation, not printed verbatim, same flag as that existing case.
+  Companions (Bren Alder) always pass `specialized = false`: there's no
+  companion creation flow that could ever set it.
+
+Shown on the character sheet as "(specialized)" next to the weapon name
+(`MapRenderer::drawCharacterSheet`) — left off the compact combat-HUD and
+inventory lines to avoid clutter. Persisted as `SPECIALIZED <0|1>`
+(`SaveGame.cpp`), same shape as the existing `SHIELD` line; optional on
+load, same backward-compatibility pattern as `BROOCHDAY`/`STAFFCUREDAY`
+(a save from before this milestone just keeps the `false` default).
+
+**Deliberately not modeled — the full Table 34 proficiency-slot system**:
+Table 34 also defines numbered weapon-proficiency slots and a -2/-5/-3/-3
+attack penalty (by class group) for wielding a weapon you haven't spent a
+slot on. Not built: this project's equipment model gives each class
+exactly one weapon lineage (starting weapon → class-specific upgrade →
+its "+1" magic version — `character::weaponUpgradeFor`), bought only from
+that class's own fixed shop catalog, so there is no scenario where a
+character ever wields a weapon outside their own class's designated set.
+The penalty could never fire, so tracking a slot pool for it would be
+inert bookkeeping — exactly what `CLAUDE.md`'s "no premature abstraction"
+rule says to skip. Also not modeled, for related reasons: bow/crossbow
+specialization's point-blank range bonus (no range-category system exists
+— see `docs/COMBAT_NOTES.md`'s "Positional combat grid"); re-specializing
+after character creation (the book allows it later "provided he has the
+weapon proficiency slots available," but this project tracks no slot pool
+to check against, and there's no other post-creation training moment
+either).
 
 ### Wizards of High Sorcery — mostly out of scope at level 1, and that's correct
 
