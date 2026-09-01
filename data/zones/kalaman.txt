@@ -18,7 +18,7 @@ GRID
 #......................................#
 #..........G...........................#
 #...................P..................#
-#......................................#
+#....F.................................#
 #......................................#
 #......................................#
 ###################...##################
@@ -40,6 +40,16 @@ SUBJECT_UNKNOWN G The watchman shrugs, eyes still on the crowd. "Wouldn't know. 
 QUEST G bazaar_road_raiders
 TIMELINE_ANCHOR M
 SHOP M bazaar
+POI F "A Furtive Trader" A trader keeps to the market's fringes, wares laid out on a cloth he can fold and vanish in a heartbeat if the Watchman's eye lingers too long. Whatever's under that cloth didn't all come by the front gate.
+TALK F Among the trader's odds and ends, half-hidden under a fold of cloth, a plain steel wedding band catches your eye -- soldier's make, by the look of it. He's busy haggling three stalls down and doesn't notice it leave his cloth.
+TALK_AGAIN F Whatever else the trader's got spread out today, none of it's what you came for. You already have what you needed from this stall.
+GRANTS_ITEM F soldiers_wedding_band A Soldier's Wedding Band
 POI P "A Curiosities Cart" A cart of small, unlabeled wonders -- a war widow's trade, picked up piece by piece from refugees who needed steel more than keepsakes. She won't say which pieces are real magic and which are just old brass, and charges the same for both.
+TALK P Everything on this cart's got a story, if you believe the folk who sold it to me. Half of them I do believe. Buy something and you can make up your own mind which half.
+TALK_AGAIN P Back for another look? Stock doesn't change much day to day, but you're welcome to it.
+SUBJECT P cart,wares,magic,brass Won't lie and tell you every piece here is what it looks like. Real magic and old brass fetch the same price from me -- I'm no judge of enchantment, only of steel. Buy carefully, or don't buy at all.
+SUBJECT P refugees,war,widow Most of what's on this cart came off refugees who needed steel worse than they needed keepsakes. I don't ask what a thing meant to whoever sold it -- learned early that's easier on both of us. My own husband didn't come home from this war either, if you're wondering why I don't ask twice.
+SUBJECT_UNKNOWN P She glances up from sorting her wares just long enough to shrug. "Don't know that one. Ask me something with a price on it."
+QUEST P a_widows_due
 SHOP P magic
 END

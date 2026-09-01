@@ -285,3 +285,15 @@ DELIVER drowned_sailors_locket 1 Bring back whatever the storm-wrack is still hi
 REWARD_STEEL 35
 REWARD_XP 80
 END
+
+QUEST a_widows_due
+NAME A Widow's Due
+OFFER "There's a band should be on this cart, not off it." She sets down whatever she's sorting, voice gone flat and careful. "Soldier's ring, plain steel, nothing a stranger would look twice at -- which is exactly why nobody but me would know it's missing. Someone lifted it off this cart three days back, and a little asking around says a trader working the market's fringes has it now. Bring it back and I'll make it worth the walk."
+ACCEPT You get the shape of it without her having to spell out the rest -- whatever else passes through her hands day to day, this one she means to have back herself.
+PROGRESS She glances toward the market's edge more than usual today. "Still out there somewhere, unless you're about to tell me otherwise."
+COMPLETE She turns the band over once in her palm, thumb finding a worn spot in the steel before her eyes do. "Didn't think I'd see this again." A beat, and whatever she was about to say next, she doesn't. She presses steel into your hand instead, brisk again, like the moment already cost her more than she meant to spend.
+GIVER the Curiosities Cart in Kalaman
+DELIVER soldiers_wedding_band 1 Recover the widow's stolen keepsake from whoever's fencing it in the market
+REWARD_STEEL 35
+REWARD_XP 80
+END

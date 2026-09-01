@@ -57,3 +57,18 @@ three new blocks cleanly, but **not yet interactively walked**. Worth
 doing on the next play session: trigger a wilderness encounter on hills/
 mountains (Griffon), grassland/hills (Harpy), and forest (Stirge) and
 confirm all three read correctly in a real fight.
+
+Milestone 143 (`a_widows_due`, a fourth DELIVER quest at Kalaman -- the
+give-a-silent-POI-a-voice move proven a second time on the Curiosities
+Cart; see `docs/MILESTONES.md` entry 143 and `docs/QUEST_NOTES.md`'s
+"Shipped quests" for the full design) is implemented, documented, and
+verified via a clean rebuild (zero new warnings) and a piped
+character-creation smoke test confirming `ZoneCatalog`/`QuestCatalog`
+parse the new content cleanly, but **not yet interactively walked**.
+Worth doing on the next play session: talk to the Curiosities Cart in
+Kalaman, find the new Furtive Trader POI, deliver the wedding band, and
+confirm the reward/journal entry read correctly.
+
+Eight milestones in a row (136-143) are now implemented but unplayed --
+worth a dedicated playtest pass on the next session before piling on
+more unverified content.

@@ -381,7 +381,7 @@ check your quest journal, and talk to a quest-giver to be offered one,
 track its progress, and turn it in for a reward — the moment every
 objective's actually done, the game says so itself ("...is ready to turn
 in -- return to..."), so you never have to guess or walk back
-speculatively. Eighteen ship so far — Solace's Notice Board offers a
+speculatively. Nineteen ship so far — Solace's Notice Board offers a
 bounty to clear three timber wolves off the south road;
 Otik at the Inn of the Last Home, the Garrison Knight at High Clerist's
 Tower, and Kalaman's City Watchman each have their own reason to send you
@@ -410,7 +410,11 @@ planting something come spring — a Farmer's Cart in Haven has more than
 its own fields will use this season, if you're willing to carry a sack
 the distance; Port O'Call's Beachcomber swears not everything the strait
 washes up is junk, and wants back whatever the storm-wrack down the
-shore is still hiding; and back in Solace, an unremarkable hooded figure at the
+shore is still hiding; Kalaman's Curiosities Cart, a war widow trading in
+whatever refugees will part with for steel, wants back the one thing she
+never meant to sell — her late husband's wedding band, lifted off her own
+cart by a trader working the market's fringes; and back in Solace, an
+unremarkable hooded figure at the
 corner of the square has nothing to say to most travelers at all, but a
 Mage who's reached 3rd level finds them waiting with a different offer
 entirely — the Tower of Wayreth itself moves through its forest at its

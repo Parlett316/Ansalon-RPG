@@ -5391,6 +5391,51 @@ now fully verified, nothing further outstanding.
      mountains (Griffon), grassland/hills (Harpy), and forest (Stirge)
      all read correctly in a real fight.
 
+143. A Widow's Due — a fourth DELIVER quest, at Kalaman. User asked for
+     another pass at the give-a-silent-POI-a-voice move `what_the_tide_
+     kept` (Milestone 136) proved out. A fresh scan of every `data/
+     zones/*.txt` file for described-but-`TALK`-less POIs, this time not
+     limited to zones added since the last sweep, found mostly
+     deliberately-mute scenery/sacred-site POIs or deliberately off-stage
+     political seats (Kalaman's own Lord's Keep; Qualimori's Speaker's
+     House, also a `TIMELINE_ANCHOR`). One real standout: Kalaman's
+     Curiosities Cart (`data/zones/kalaman.txt` POI `P`), shop-only since
+     Milestone 141, whose own description already names a specific
+     person and backstory — "a war widow's trade, picked up piece by
+     piece from refugees who needed steel more than keepsakes."
+
+     The hook ties into dialogue this same zone already shipped: the
+     Kalaman City Watchman (POI `G`) already complains, in his existing
+     `TALK` line, about "light fingers" he can never catch in the bazaar.
+     The widow lost her late husband's wedding band to exactly that; a
+     trader working the market's fringes has it now.
+
+     **Sink** — POI `P` gains `TALK`/`TALK_AGAIN`, two `SUBJECT` entries
+     (cart/wares/authenticity; refugees/war/widow), `SUBJECT_UNKNOWN`,
+     and `QUEST P a_widows_due`. `SHOP P magic` stays open
+     unconditionally, same reasoning as the Beachcomber's Stall. **Source**
+     — a new POI, `F` "A Furtive Trader," with `TALK F`/`TALK_AGAIN F`
+     and `GRANTS_ITEM F soldiers_wedding_band A Soldier's Wedding Band`
+     — deliberately distinct item name from Milestone 136's `drowned_
+     sailors_locket`. `QUEST a_widows_due` (`data/quests.txt`): one
+     `DELIVER soldiers_wedding_band 1` objective, no `REQUIRE`,
+     `REWARD_STEEL 35`/`REWARD_XP 80` — the same tier as every prior
+     DELIVER-only quest. No C++ or `CMakeLists.txt` changes — pure data
+     content, same as every prior DELIVER quest. See
+     `docs/QUEST_NOTES.md`'s "Shipped quests" for the full design writeup,
+     including why Kalaman's own `TIMELINE_ANCHOR` doesn't raise the
+     sourcing bar for these two original, invented-not-sourced characters.
+
+     Verified with a clean `/W4` rebuild (zero new warnings, no source
+     changed) and a piped character-creation smoke test (an empty save
+     slot used; the user's real save left untouched) confirming
+     `ZoneCatalog` and `QuestCatalog`'s fail-fast loaders parse the edited
+     `kalaman.txt` and the new quest block cleanly end-to-end. **Not yet
+     interactively walked** — same standing `_getch()` limitation;
+     confirm on the next play session that talking to the Curiosities
+     Cart, finding the Furtive Trader, delivering the band, and the
+     reward/journal entry all read correctly.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

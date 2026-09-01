@@ -502,6 +502,66 @@ delivering the locket, confirming the reward and journal entry) still
 needs the user's own keyboard, the same `_getch()` limitation flagged
 for every quest milestone so far.
 
+### A fourth DELIVER quest: `a_widows_due`, at Kalaman — the give-a-voice move, proven a second time
+
+The user asked for another pass at exactly the move `what_the_tide_kept`
+proved out: give voice to an already-described-but-silent POI rather
+than invent a wholly new character. A fresh scan of every `data/
+zones/*.txt` file for POIs with a description but no `TALK` line, this
+time not restricted to zones added since the last sweep, turned up
+mostly deliberately-mute scenery (ruins, sacred sites) or deliberately
+off-stage political seats (Kalaman's own Lord's Keep; Qualimori's
+Speaker's House, which is also a `TIMELINE_ANCHOR`, same reasoning as
+Sancrist's Great Hall staying closed). One real standout: Kalaman's
+Curiosities Cart (`data/zones/kalaman.txt` POI `P`), shop-only since
+Milestone 141's equipment-expansion pass, whose own description already
+names a specific person and a specific backstory ("a war widow's trade,
+picked up piece by piece from refugees who needed steel more than
+keepsakes") — nothing new invented, just paid off, same as the
+Beachcomber's Stall.
+
+The hook ties into dialogue this same zone already shipped rather than
+inventing new lore: the Kalaman City Watchman (POI `G`, `bazaar_
+road_raiders`'s own giver) already complains, in his existing `TALK`
+line, about "light fingers" he can never catch in the bazaar. The widow
+lost her late husband's wedding band to exactly that; a trader working
+the market's fringes has it now.
+
+**Sink** — POI `P` gains `TALK`/`TALK_AGAIN` (her cagey, transactional
+voice, straight from her existing description), two `SUBJECT` entries
+(cart/wares/authenticity; refugees/war/widow, the latter also surfacing
+the husband detail the `OFFER` draws on), `SUBJECT_UNKNOWN`, and `QUEST P
+a_widows_due`. `SHOP P magic` is untouched and stays open
+unconditionally, same reasoning as the Beachcomber's Stall — she's
+already an active shop, not scenery-until-now. **Source** — a new POI,
+`F` "A Furtive Trader" (someone working the market's fringes in goods of
+uncertain origin, matching the Watchman's own complaint), with `TALK
+F`/`TALK_AGAIN F` (the same "you spot it among his wares and it's gone
+before he notices" register `ore_for_the_forge`'s Ore Cart and `what_
+the_tide_kept`'s Storm-Wrack both established) and `GRANTS_ITEM F
+soldiers_wedding_band A Soldier's Wedding Band` — deliberately distinct
+item name from `what_the_tide_kept`'s `drowned_sailors_locket`. `QUEST
+a_widows_due` (`data/quests.txt`): one `DELIVER soldiers_wedding_band 1`
+objective, no `REQUIRE`, `REWARD_STEEL 35`/`REWARD_XP 80` — the same
+tier as every prior DELIVER-only quest. Kalaman already carries a
+`TIMELINE_ANCHOR` (on POI `M`, unrelated to either `F` or `P`), so unlike
+Port O'Call/Plains of Dust this zone *is* novel-anchored — but the widow
+and the trader are original, invented-not-sourced characters, same
+footing as `ore_for_the_forge`'s journeyman or `reason_worth_giving`'s
+Rider: the stricter novel-citation bar applies to the tracked Heroes'
+own timeline content, not to every NPC standing in an anchored zone.
+Zero `.cpp`/`.h` changes — pure data content, same as every prior DELIVER
+quest.
+
+Verified with a clean `/W4` rebuild (zero new warnings, no source
+changed) and the piped character-creation smoke test (real `save1.txt`
+left alone — an empty slot was used instead) confirming `ZoneCatalog` and
+`QuestCatalog`'s fail-fast loaders parse the edited `kalaman.txt` and the
+new `QUEST a_widows_due` block cleanly end-to-end. **Not yet
+interactively walked** — same standing `_getch()` limitation as every
+quest milestone so far; see `docs/CURRENT_WORK.md` for the concrete next
+playtest step.
+
 ### `wayreth_summons`, in Solace — the Test of High Sorcery
 
 Requested directly by the user: "the Towers of High Sorcery need to be
@@ -1273,9 +1333,14 @@ design is now shipped; what's still open:
   dialogue" method specifically — every one of those either has zero
   talkable NPCs (deliberately, for the sacred/ruin/scenery ones) or, for
   Port O'Call, only a deliberately-mundane boat-logistics voice. The one
-  way forward from here, confirmed working once, is `what_the_tide_kept`'s
-  own move: give voice to an already-described-but-silent POI rather than
-  invent a wholly new character. Don't re-run the "check existing
-  dialogue" sweep again absent a new zone; do consider the
-  give-a-silent-POI-a-voice move again if a concrete future ask wants
-  more quest content.
+  way forward from here is `what_the_tide_kept`'s own move: give voice to
+  an already-described-but-silent POI rather than invent a wholly new
+  character. **Confirmed working a second time at `a_widows_due`**
+  (Kalaman's Curiosities Cart) — that pass scanned every zone, not just
+  ones added since the last sweep, and still found only one real
+  standout; the well is getting shallower with each use, not deeper.
+  Don't re-run the "check existing dialogue" sweep again absent a new
+  zone; do consider the give-a-silent-POI-a-voice move again if a
+  concrete future ask wants more quest content, but temper expectations —
+  two uses in, genuinely person-shaped silent POIs (not scenery, not
+  already-off-stage political seats) are getting hard to find.
