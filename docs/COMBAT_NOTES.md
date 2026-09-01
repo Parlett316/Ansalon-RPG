@@ -956,10 +956,19 @@ tagged **(sourced)** is transcribed from that section; everything tagged
 "3/2 rounds" odd/even split and the sell-back half-price convention --
 core 2e AD&D combat itself is abstract "melee range," not squares.
 
-- **The grid** (invented sizing, sourced concept): 11x7 cells
+- **The grid** (invented sizing, sourced concept): originally 11x7 cells,
+  **bumped to 15x9 at Milestone 129** after the user asked for a bigger
+  battlefield, "like the SSI Gold Box games"
   (`render::MapRenderer::kCombatGridWidth`/`kCombatGridHeight`), small
   enough to read inside the existing "organic" combat box, big enough
-  that closing distance takes a couple of real rounds. The manual's own
+  that closing distance takes a couple of real rounds. At 15 cells wide, a
+  grid row (3 columns per cell plus a 2-column border, 47 total) stays
+  well under `kProseWrapWidth`'s floor of 71 even on the smallest
+  supported console (`kAbsoluteMinColumns`), so it can never wrap
+  mid-row -- see `MapRenderer.h`'s own comment on the constants for the
+  exact math. Width must stay odd either way, for
+  `GameLoop::runCombat`'s player-centered, symmetric monster spawn. The
+  manual's own
   words: "Battle takes place on a tactical combat map that is a detailed
   view of the terrain that the party was in when the combat began...set
   up with an invisible square grid." The real tile's `world::TerrainInfo`

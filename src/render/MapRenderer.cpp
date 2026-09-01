@@ -712,12 +712,13 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
     // that's the in-frame target picker (see CombatPrompt's own comment in
     // MapRenderer.h and docs/COMBAT_NOTES.md's "In-frame combat actions"
     // section): the grid itself is the picker now, so the cursored
-    // instance needs to visibly stand out from the rest. 11 cells * 3
-    // columns = 33, still well under kProseWrapWidth.
+    // instance needs to visibly stand out from the rest. kCombatGridWidth
+    // cells * 3 columns (33 at the original 11-wide grid, 45 at Milestone
+    // 129's 15-wide one) stays well under kProseWrapWidth either way.
     //
     // Milestone 120: the empty floor is a uniform '.' and the terrain it
     // stands for is named once on its own label line, rather than tiling
-    // the real tile's world::TerrainInfo glyph across all 77 cells -- a
+    // the real tile's world::TerrainInfo glyph across every cell -- a
     // forest fight used to fill the board with '%', which drowned out the
     // '@'/letter glyphs that actually matter. The grid also gets its own
     // ASCII border so the battlefield reads as a bounded map instead of

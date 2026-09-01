@@ -139,15 +139,20 @@ public:
     // drawCharacterSheet.
     static void drawSpellbookFrame(const character::Character& character, long long currentDay);
 
-    // The tactical combat grid's fixed size (Milestone 114, see
-    // docs/COMBAT_NOTES.md's "Positional combat grid" section) -- small
-    // enough to read comfortably inside the existing "organic" combat box
-    // (an 11-wide grid renders at 22 visible columns, well under
-    // kSecondaryBoxMaxWidth), big enough that closing distance takes a
-    // couple of real rounds. GameLoop::runCombat reads these same
-    // constants for placement/bounds-checking -- no duplicated numbers.
-    static constexpr int kCombatGridWidth = 11;
-    static constexpr int kCombatGridHeight = 7;
+    // The tactical combat grid's fixed size (Milestone 114, bumped at
+    // Milestone 129 -- see docs/COMBAT_NOTES.md's "Positional combat grid"
+    // section) -- small enough to read comfortably inside the existing
+    // "organic" combat box (each cell renders 3 columns wide, " X "/"[X]",
+    // so a 15-wide grid is 47 visible columns including its own border --
+    // well under kProseWrapWidth's floor of 71 even on the smallest
+    // supported console, so a grid row can never wrap), big enough for a
+    // roomier Gold-Box-style battlefield than the original 11x7. Width
+    // MUST stay odd -- GameLoop::runCombat centers the player and spreads
+    // monster instances symmetrically around kCombatGridWidth / 2.
+    // GameLoop::runCombat reads these same constants for placement/
+    // bounds-checking -- no duplicated numbers.
+    static constexpr int kCombatGridWidth = 15;
+    static constexpr int kCombatGridHeight = 9;
 
     // One monster instance's presentation state, built by GameLoop::runCombat
     // from its own std::vector<MonsterInstance> -- MapRenderer never sees

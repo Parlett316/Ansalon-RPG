@@ -4603,6 +4603,25 @@ now fully verified, nothing further outstanding.
      fixed coordinate: `docs/MAP_NOTES.md`'s "Terrain accuracy pass"
      section.
 
+129. Bigger combat battlefield -- the user asked for the tactical combat
+     grid to be "a bit bigger, like the SSI Gold Box games." Bumped
+     `render::MapRenderer::kCombatGridWidth`/`kCombatGridHeight` from
+     11x7 (77 cells) to 15x9 (135 cells) -- both constants
+     `GameLoop::runCombat` already read for every placement/movement/
+     bounds check, so no other code changed. Confirmed the new 47-column
+     grid row (15 cells * 3 columns + a 2-column border) stays well under
+     `kProseWrapWidth`'s floor of 71 even on the smallest supported
+     console, so it can never wrap mid-row; width stays odd, preserving
+     the player-centered symmetric monster-spawn invariant. Pure
+     rendering-constant change -- clean `/W4` rebuild, zero new warnings,
+     and the piped character-creation smoke test (real saves moved aside,
+     restored after) confirms nothing else broke. **Not interactively
+     played** -- `_getch()` can't be piped, so the actual in-game combat
+     screen at the new size (roster layout, target-picker brackets,
+     monster spread) hasn't been read back by a human yet; worth doing on
+     the next fight. See `docs/COMBAT_NOTES.md`'s "Positional combat
+     grid" section for the full sizing math.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

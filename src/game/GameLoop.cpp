@@ -1661,7 +1661,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
 
     // Milestone 117/118: each companion's own cell on this same tactical
     // grid, starting adjacent to the player in a small alternating right/
-    // left pattern (kCombatGridWidth is always odd (11), so a couple of
+    // left pattern (kCombatGridWidth is always odd, so a couple of
     // cells either side of playerPos.x never leaves the grid). Empty when
     // no companion is recruited. Purely local to this one runCombat call,
     // never written to GameState/SaveGame, same as playerPos/
