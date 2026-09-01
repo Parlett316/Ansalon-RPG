@@ -126,15 +126,36 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // its POI never shows up or has no TALK line to react against.
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> sayIfLines;
     std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> topicLines;
-    // SUBJECT gets the same "collected by POI char, zero or more per POI"
-    // treatment as topicLines -- first element of each tuple is the raw,
-    // still-comma-separated keyword-list token (split in the application
-    // loop below, so a malformed list fails fast at load time). See
-    // docs/ZONE_NOTES.md's "Ask about anything".
-    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int>>> subjectLines;
+    // SUBJECT/SUBJECT_ENDS get the same "collected by POI char, zero or
+    // more per POI" treatment as topicLines -- first element of each tuple
+    // is the raw, still-comma-and-plus-separated keyword-list token (split
+    // in the application loop below, so a malformed list fails fast at
+    // load time), fourth is whether this came from SUBJECT_ENDS (true) or
+    // plain SUBJECT (false). See docs/ZONE_NOTES.md's "Ask about anything".
+    std::unordered_map<char, std::vector<std::tuple<std::string, std::string, int, bool>>> subjectLines;
     // SUBJECT_UNKNOWN gets the same "applied after the whole file is
     // parsed, one per POI" treatment as talkAgainLines.
     std::unordered_map<char, std::pair<std::string, int>> subjectUnknownLines;
+    // ASK_LIMIT/ASK_LIMIT_REACHED/ASK_LIMIT_EXTENDED -- same "applied after
+    // the whole file is parsed, at most one per POI" treatment as
+    // subjectUnknownLines. Kept as separate maps (rather than one struct)
+    // so the post-parse merge can fail fast if the required ones don't
+    // appear together. askLimitLines' tuple is (soft limit, hard cap --
+    // equal to the soft limit if ASK_LIMIT's optional 2nd number was
+    // omitted, line number). See docs/ZONE_NOTES.md's "Ask about anything".
+    std::unordered_map<char, std::tuple<int, int, int>> askLimitLines;
+    std::unordered_map<char, std::pair<std::string, int>> askLimitReachedLines;
+    std::unordered_map<char, std::pair<std::string, int>> askLimitExtendedLines;
+    // ASK_ANYTHING -- a bare per-POI flag, same "collected by POI char,
+    // applied after the whole file is parsed" treatment as bedLines, but
+    // additionally requires at least one SUBJECT (checked after SUBJECT's
+    // own merge below, since that's the only point a POI's final subject
+    // count is known). See docs/ZONE_NOTES.md's "Ask about anything".
+    std::unordered_map<char, int> askAnythingLines;
+    // ASK_LIMIT_LOCKED -- same "applied after the whole file is parsed, at
+    // most one per POI" treatment as askLimitReachedLines, but carries an
+    // extra quoted speaker name (same parsing shape as TOPIC's label).
+    std::unordered_map<char, std::tuple<std::string, std::string, int>> askLimitLockedLines;
     // TIMELINE_ANCHOR -- see docs/TIMELINE_NOTES.md. At most one per zone;
     // validated against declared POIs after the whole file is parsed, same
     // as TALK/SHOP/PORTAL above.
@@ -361,19 +382,21 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "TOPIC is missing its text");
                 }
                 topicLines[codeToken[0]].emplace_back(label, text, lineNumber);
-            } else if (keyword == "SUBJECT") {
+            } else if (keyword == "SUBJECT" || keyword == "SUBJECT_ENDS") {
                 std::istringstream iss(rest);
                 std::string codeToken, keywordList;
                 if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> keywordList)) {
-                    fail(path, lineNumber, "malformed SUBJECT (expected: SUBJECT <char> <keyword1,keyword2,...> <text>)");
+                    fail(path, lineNumber,
+                         "malformed " + keyword + " (expected: " + keyword +
+                             " <char> <keyword1,keyword2,...> <text>)");
                 }
                 std::string text;
                 std::getline(iss, text);
                 text = trim(text);
                 if (text.empty()) {
-                    fail(path, lineNumber, "SUBJECT is missing its dialogue text");
+                    fail(path, lineNumber, keyword + " is missing its dialogue text");
                 }
-                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber);
+                subjectLines[codeToken[0]].emplace_back(keywordList, text, lineNumber, keyword == "SUBJECT_ENDS");
             } else if (keyword == "SUBJECT_UNKNOWN") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -387,6 +410,80 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "SUBJECT_UNKNOWN is missing its dialogue text");
                 }
                 subjectUnknownLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "ASK_LIMIT") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                int limit = -1;
+                if (!(iss >> codeToken) || codeToken.size() != 1 || !(iss >> limit) || limit < 1) {
+                    fail(path, lineNumber,
+                         "malformed ASK_LIMIT (expected: ASK_LIMIT <char> <n> [<hard-cap>], n >= 1)");
+                }
+                int hardCap = limit;
+                if (iss >> hardCap) {
+                    if (hardCap < limit) {
+                        fail(path, lineNumber, "ASK_LIMIT's hard cap can't be lower than its soft limit");
+                    }
+                } else {
+                    hardCap = limit;
+                }
+                askLimitLines[codeToken[0]] = {limit, hardCap, lineNumber};
+            } else if (keyword == "ASK_LIMIT_REACHED") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed ASK_LIMIT_REACHED (expected: ASK_LIMIT_REACHED <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "ASK_LIMIT_REACHED is missing its dialogue text");
+                }
+                askLimitReachedLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "ASK_LIMIT_EXTENDED") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed ASK_LIMIT_EXTENDED (expected: ASK_LIMIT_EXTENDED <char> dialogue...)");
+                }
+                std::string dialogue;
+                std::getline(iss, dialogue);
+                dialogue = trim(dialogue);
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "ASK_LIMIT_EXTENDED is missing its dialogue text");
+                }
+                askLimitExtendedLines[codeToken[0]] = {dialogue, lineNumber};
+            } else if (keyword == "ASK_ANYTHING") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber, "malformed ASK_ANYTHING (expected: ASK_ANYTHING <char>)");
+                }
+                askAnythingLines[codeToken[0]] = lineNumber;
+            } else if (keyword == "ASK_LIMIT_LOCKED") {
+                std::istringstream iss(rest);
+                std::string codeToken;
+                if (!(iss >> codeToken) || codeToken.size() != 1) {
+                    fail(path, lineNumber,
+                         "malformed ASK_LIMIT_LOCKED (expected: ASK_LIMIT_LOCKED <char> \"speaker\" text)");
+                }
+                std::string remainder;
+                std::getline(iss, remainder);
+                remainder = trim(remainder);
+                if (remainder.empty() || remainder.front() != '"') {
+                    fail(path, lineNumber,
+                         "ASK_LIMIT_LOCKED speaker must be quoted, e.g. ASK_LIMIT_LOCKED L \"An Aesthetic\" text");
+                }
+                size_t closeQuote = remainder.find('"', 1);
+                if (closeQuote == std::string::npos) {
+                    fail(path, lineNumber, "ASK_LIMIT_LOCKED speaker is missing its closing quote");
+                }
+                std::string speaker = remainder.substr(1, closeQuote - 1);
+                std::string dialogue = trim(remainder.substr(closeQuote + 1));
+                if (dialogue.empty()) {
+                    fail(path, lineNumber, "ASK_LIMIT_LOCKED is missing its dialogue text");
+                }
+                askLimitLockedLines[codeToken[0]] = {speaker, dialogue, lineNumber};
             } else if (keyword == "TIMELINE_ANCHOR") {
                 std::istringstream iss(rest);
                 std::string codeToken;
@@ -656,11 +753,14 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
             it->second.topics.emplace_back(std::get<0>(entry), std::get<1>(entry));
         }
     }
-    // Same rule for SUBJECT as TOPIC: reactive, free-text-askable content,
-    // same "must already have a TALK line to react against" requirement --
-    // see docs/ZONE_NOTES.md's "Ask about anything" section. The keyword-
-    // list token is split on commas here (not by game::GameLoop at
-    // talk-time) so a malformed SUBJECT line fails fast at load time.
+    // Same rule for SUBJECT/SUBJECT_ENDS as TOPIC: reactive, free-text-
+    // askable content, same "must already have a TALK line to react
+    // against" requirement -- see docs/ZONE_NOTES.md's "Ask about
+    // anything" section. The keyword-list token is split here (not by
+    // game::GameLoop at talk-time) so a malformed line fails fast at load
+    // time: first on commas into OR'd alternatives, then each alternative
+    // on '+' into an AND-group of words (a plain word is just a length-1
+    // group) -- see game::matchSubject for how a group is matched.
     for (const auto& [code, entries] : subjectLines) {
         auto it = pois.find(code);
         if (it == pois.end()) {
@@ -673,18 +773,46 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         }
         for (const auto& entry : entries) {
             const std::string& keywordList = std::get<0>(entry);
-            std::vector<std::string> keywords;
+            std::vector<std::vector<std::string>> keywordGroups;
             std::istringstream kiss(keywordList);
-            std::string token;
-            while (std::getline(kiss, token, ',')) {
-                token = trim(token);
-                if (!token.empty()) keywords.push_back(token);
+            std::string alternative;
+            while (std::getline(kiss, alternative, ',')) {
+                std::vector<std::string> group;
+                std::istringstream aiss(alternative);
+                std::string word;
+                while (std::getline(aiss, word, '+')) {
+                    word = trim(word);
+                    if (word.empty()) {
+                        fail(path, std::get<2>(entry),
+                             "SUBJECT '" + std::string(1, code) + "' has an empty '+'-joined word");
+                    }
+                    group.push_back(word);
+                }
+                if (!group.empty()) keywordGroups.push_back(std::move(group));
             }
-            if (keywords.empty()) {
+            if (keywordGroups.empty()) {
                 fail(path, std::get<2>(entry), "SUBJECT '" + std::string(1, code) + "' has an empty keyword list");
             }
-            it->second.subjects.emplace_back(std::move(keywords), std::get<1>(entry));
+            it->second.subjects.emplace_back(std::move(keywordGroups), std::get<1>(entry), std::get<3>(entry));
         }
+    }
+    // ASK_ANYTHING needs a POI with a TALK line (same family as SUBJECT)
+    // and at least one SUBJECT of its own -- checked here, after SUBJECT's
+    // own merge above, since that's the only point a POI's final subject
+    // count is known. A POI with nothing to ask about has nothing for this
+    // flag to suppress the hint list of.
+    for (const auto& [code, lineNum] : askAnythingLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "ASK_ANYTHING '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "ASK_ANYTHING '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        if (it->second.subjects.empty()) {
+            fail(path, lineNum, "ASK_ANYTHING '" + std::string(1, code) + "' has no SUBJECT content to ask about");
+        }
+        it->second.suppressAskHints = true;
     }
     // Same rule for SUBJECT_UNKNOWN as TALK_AGAIN: an optional per-POI
     // override, applied after the whole file is parsed. No TALK-line
@@ -697,6 +825,88 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                  "SUBJECT_UNKNOWN '" + std::string(1, code) + "' has no matching POI declaration");
         }
         it->second.subjectUnknown = dialogueAndLine.first;
+    }
+    // Same rule for ASK_LIMIT as SUBJECT: reactive, free-text-asking-only
+    // content, same "must already have a TALK line to react against"
+    // requirement.
+    for (const auto& [code, limitHardCapAndLine] : askLimitLines) {
+        const auto& [limit, hardCap, lineNum] = limitHardCapAndLine;
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "ASK_LIMIT '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "ASK_LIMIT '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        it->second.askLimit = limit;
+        it->second.askLimitHardCap = hardCap;
+    }
+    // ASK_LIMIT_REACHED has no TALK-line requirement of its own beyond what
+    // ASK_LIMIT already needs -- same shape as SUBJECT_UNKNOWN above.
+    for (const auto& [code, dialogueAndLine] : askLimitReachedLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "ASK_LIMIT_REACHED '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.askLimitReachedText = dialogueAndLine.first;
+    }
+    // ASK_LIMIT_EXTENDED, same shape again.
+    for (const auto& [code, dialogueAndLine] : askLimitExtendedLines) {
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, dialogueAndLine.second,
+                 "ASK_LIMIT_EXTENDED '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        it->second.askLimitExtendedText = dialogueAndLine.first;
+    }
+    // ASK_LIMIT and ASK_LIMIT_REACHED must appear together -- one without
+    // the other is dead/broken data (a cap with nothing to say when it's
+    // hit, or a departure line that can never fire), so this fails fast at
+    // load time rather than shipping silently inert content. Same pairing
+    // rule for ASK_LIMIT_EXTENDED against an actually-configured hard cap
+    // (askLimitHardCap > askLimit) -- an ASK_LIMIT with no hard cap has
+    // nothing for ASK_LIMIT_EXTENDED to ever announce, and a hard cap with
+    // no ASK_LIMIT_EXTENDED line could parse cleanly but never say anything
+    // when the check succeeds.
+    for (const auto& [code, poi] : pois) {
+        if (poi.askLimit > 0 && poi.askLimitReachedText.empty()) {
+            fail(path, std::get<2>(askLimitLines.at(code)),
+                 "ASK_LIMIT '" + std::string(1, code) + "' has no matching ASK_LIMIT_REACHED line");
+        }
+        if (poi.askLimit == 0 && !poi.askLimitReachedText.empty()) {
+            fail(path, askLimitReachedLines.at(code).second,
+                 "ASK_LIMIT_REACHED '" + std::string(1, code) + "' has no matching ASK_LIMIT line");
+        }
+        if (poi.askLimitHardCap > poi.askLimit && poi.askLimitExtendedText.empty()) {
+            fail(path, std::get<2>(askLimitLines.at(code)),
+                 "ASK_LIMIT '" + std::string(1, code) + "' has a hard cap but no matching ASK_LIMIT_EXTENDED line");
+        }
+        if (poi.askLimitHardCap <= poi.askLimit && !poi.askLimitExtendedText.empty()) {
+            fail(path, askLimitExtendedLines.at(code).second,
+                 "ASK_LIMIT_EXTENDED '" + std::string(1, code) + "' has no hard cap above ASK_LIMIT to extend to");
+        }
+    }
+    // ASK_LIMIT_LOCKED needs an already-declared POI with a TALK line (same
+    // family as ASK_LIMIT itself) and, unlike ASK_LIMIT_REACHED/EXTENDED,
+    // is meaningless without ASK_LIMIT actually being configured at all
+    // (there's no "day's cap" to have been reached otherwise) -- checked
+    // after ASK_LIMIT's own merge above, since that's the only point a
+    // POI's askLimit is known.
+    for (const auto& [code, speakerTextAndLine] : askLimitLockedLines) {
+        const auto& [speaker, dialogue, lineNum] = speakerTextAndLine;
+        auto it = pois.find(code);
+        if (it == pois.end()) {
+            fail(path, lineNum, "ASK_LIMIT_LOCKED '" + std::string(1, code) + "' has no matching POI declaration");
+        }
+        if (it->second.dialogue.empty()) {
+            fail(path, lineNum, "ASK_LIMIT_LOCKED '" + std::string(1, code) + "' has no TALK line to react against");
+        }
+        if (it->second.askLimit == 0) {
+            fail(path, lineNum, "ASK_LIMIT_LOCKED '" + std::string(1, code) + "' has no ASK_LIMIT to react against");
+        }
+        it->second.askLimitLockedSpeaker = speaker;
+        it->second.askLimitLockedText = dialogue;
     }
     // Same rule for TIMELINE_ANCHOR: it must point at a real, already-
     // declared POI (the anchor's own name/description come from that POI;

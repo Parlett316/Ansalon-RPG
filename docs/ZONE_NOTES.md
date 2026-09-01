@@ -105,15 +105,96 @@ SUBJECT <char> <keywords> <dialogue...> optional, zero or more per POI --
                                         a free-text-askable subject (see
                                         "Ask about anything" below);
                                         <keywords> is one whitespace-free,
-                                        comma-separated token, matched
-                                        case-insensitively against words
-                                        the player types; same
+                                        comma-separated list of
+                                        alternatives, matched case-
+                                        insensitively against words the
+                                        player types (any one alternative
+                                        matching is enough); an alternative
+                                        may itself be `+`-joined words
+                                        (e.g. `you+gilean`), which matches
+                                        only when *every* one of those
+                                        words appears somewhere in what the
+                                        player typed -- same
                                         POI-and-TALK-must-exist rule as
                                         SAY_IF/TOPIC
+SUBJECT_ENDS <char> <keywords> <dialogue...> identical grammar and
+                                        matching rules to SUBJECT, but
+                                        flags the entry so a match ends the
+                                        conversation immediately after
+                                        showing its text, instead of
+                                        returning to the ask picker -- if
+                                        the POI also has an ASK_LIMIT, this
+                                        additionally exhausts the day the
+                                        same way running out the ordinary
+                                        question count does (no audience
+                                        again until the next day), not just
+                                        this one visit; see "Ask about
+                                        anything" below
 SUBJECT_UNKNOWN <char> <dialogue...>    optional, at most one per POI --
                                         shown when a typed subject matches
-                                        no SUBJECT above; omitting this
-                                        falls back to a generic engine line
+                                        no SUBJECT/SUBJECT_ENDS above;
+                                        omitting this falls back to a
+                                        generic engine line
+ASK_LIMIT <char> <n> [<hard-cap>]       optional, at most one per POI --
+                                        caps free-text "Ask about..."
+                                        questions at <n> per in-game day
+                                        (see "Ask about anything" below);
+                                        requires a matching
+                                        ASK_LIMIT_REACHED line; same
+                                        POI-and-TALK-must-exist rule as
+                                        SAY_IF/TOPIC/SUBJECT. The optional
+                                        <hard-cap> raises that cap to a
+                                        second, higher number if the player
+                                        passes a check when <n> is first
+                                        reached (see "Ask about anything")
+                                        -- omitting it (or setting it equal
+                                        to <n>) means no such extension is
+                                        possible; requires a matching
+                                        ASK_LIMIT_EXTENDED line whenever
+                                        <hard-cap> is actually higher than
+                                        <n>
+ASK_LIMIT_REACHED <char> <dialogue...>  required alongside ASK_LIMIT --
+                                        shown the moment <n> (or, once
+                                        extended, <hard-cap>) questions have
+                                        been answered for the day, ending
+                                        the conversation immediately after;
+                                        ZoneLoader fails fast if either
+                                        line appears without the other
+ASK_LIMIT_EXTENDED <char> <dialogue...> required iff ASK_LIMIT's <hard-cap>
+                                        is higher than its <n> -- shown
+                                        once, in place of ASK_LIMIT_REACHED,
+                                        the moment the check succeeds;
+                                        ZoneLoader fails fast if either
+                                        appears without a real extension
+                                        configured
+ASK_ANYTHING <char>                     optional, at most one per POI, no
+                                        argument -- suppresses the "You
+                                        could ask about: ..." suggestion
+                                        line from the free-text ask prompt
+                                        (see "Ask about anything" below);
+                                        requires the same POI-and-TALK-must
+                                        -exist rule as SUBJECT, plus at
+                                        least one SUBJECT of its own
+ASK_LIMIT_LOCKED <char> "<speaker>"     optional, at most one per POI --
+<dialogue...>                           shown instead of TALK/TALK_AGAIN,
+                                        checked every visit (an ongoing
+                                        truth, not a one-time event), while
+                                        ASK_LIMIT's cap has already been
+                                        reached for the day (see "Ask about
+                                        anything" below); requires ASK_LIMIT
+                                        to be set on the same POI. Unlike
+                                        every other dialogue field, this one
+                                        is attributed to <speaker> (quoted,
+                                        same shape as TOPIC's label)
+                                        instead of the POI's own name -- a
+                                        different character can turn the
+                                        player away without this NPC
+                                        himself needing to reappear.
+                                        Omitting this line preserves the
+                                        original behavior: the ordinary
+                                        TALK_AGAIN still plays, and only the
+                                        "Ask about something else..."
+                                        option quietly disappears
 SHOP <char>                             optional, marks a POI as
                                         browsable -- pressing 'p' on that
                                         tile opens the shop screen (see
@@ -339,6 +420,190 @@ pulling from that same POI's `TALK_AFTER` block, which exists specifically
 has closed -- reusing that material in an ungated `SUBJECT` would leak
 retrospective/spoiler content about the Heroes before it's actually
 happened in-game.
+
+**Milestone 132 dropped Astinus of Palanthas's curated `TOPIC` menu
+entirely** and rebuilt him around free-text asking alone, closer to how
+Dragonlance Adventures (pp.88-89) and *Time of the Twins* actually write
+him: a historian who, in principle, can answer anything about Krynn's past
+or present, not a man offering a shortlist of subjects. His two `TOPIC`
+lines were deleted outright (both were already near-duplicated by existing
+`SUBJECT` entries, so no content was lost), and his `SUBJECT` pool grew
+from 4 to 12 entries -- the Cataclysm, the gods (deflecting the source's
+own "rumored to be Gilean" line rather than confirming or denying it),
+Knights of Solamnia, the Towers of High Sorcery, Huma and the First
+Dragonlance, draconians, and the Qualinesti/Silvanesti split, each pulled
+from a `pdftotext -layout` re-extraction of DLA and the novels rather than
+written from memory. A new `future,prophecy,destiny,fate,foretell,foresee,
+tomorrow` `SUBJECT` gives a dedicated, genuinely curious response ("Astinus
+cannot see into the future... that is the province of the gods," DLA)
+distinct from the terser `SUBJECT_UNKNOWN` brush-off used for everything
+else unmatched.
+
+This pass also introduced `ASK_LIMIT`/`ASK_LIMIT_REACHED` (see grammar
+above), sourced from DLA's "if disturbed at his studies, he may be annoyed
+at the interruption" and *Time of the Twins*' escalation beat where "his
+pen ceased its eternal scratching... a deep unnatural silence settled upon
+the room." Astinus is the first (and so far only) POI to use it: `ASK_LIMIT
+L 5` caps him at five free-text questions per in-game day, and
+`ASK_LIMIT_REACHED L ...` ends the conversation with the pen -- which every
+other Astinus line in this file describes as never stopping -- actually
+stopping. `GameLoop::talkTo` tracks the day and running count on
+`character::Character::lastAstinusAskDay`/`astinusQuestionsToday`, the same
+`hoursElapsed / 24` once-per-day convention as `lastRestDay`/
+`lastBroochUseDay`/`lastStaffCureDay`, persisted the same backward-
+compatible way (new optional `ASTINUSASKDAY`/`ASTINUSASKCOUNT` save lines).
+Once exhausted for the day, the "Ask about something else..." menu option
+simply stops appearing -- no separate cooldown line was added for repeat
+same-day visits, since the existing `TALK_AGAIN` ("History continues to
+happen whether or not you stand here watching me write it down...") already
+reads fine in that role. `ASK_LIMIT` itself is generic, reusable grammar
+(any POI with `SUBJECT` content could adopt it), following this project's
+established preference for data-driven POI behavior over hardcoded zone-id
+checks (see BOAT/RECRUIT/GRANTS_ITEM/TALK_AFTER/TALK_BEFORE, all shipped as
+general grammar despite launching with only one or a few users) -- but the
+persistent day-gate state is a named, Astinus-specific field pair, not a
+generic per-POI counter map, matching the existing `lastBroochUseDay`/
+`lastStaffCureDay` precedent (item-specific fields on a shared struct)
+rather than building a subsystem nobody else needs yet.
+
+Deliberately left out this pass: dwarves/Thorbardin and kender as `SUBJECT`
+topics -- no confirming passage was pulled this session (the Atlas of the
+Dragonlance World PDF is image-only and produced no extractable text), and
+other NPCs already carry kender/dwarf flavor elsewhere in the game.
+Restraint over invention, per `CLAUDE.md`.
+
+**Milestone 133 made good on "answer anything," added a homebrew ability
+check to buy more patience, and gave identity questions a harder edge.**
+His `SUBJECT` pool grew from 12 to 48 entries: the 7 remaining Heroes of
+the Lance (Raistlin already had one), Laurana, Kitiara, and Verminaard, a
+broad `war,dragonarmies,highlords` overview, and one entry per remaining
+`data/locations.txt` `LOCATION` (24 places, reusing each location's own
+already-sourced `DESC` line reframed in Astinus's voice rather than
+re-deriving new research -- e.g. `docs/MAP_NOTES.md` already has the
+placement/sourcing writeup behind every `DESC`). This pass also folds in
+the dwarves/kender flavor the previous one deliberately deferred, just
+distributed rather than given standalone topics: Flint's own entry
+mentions Thorbardin's mountain dwarves, Tasslehoff's covers `kender` as a
+people, and Thorbardin's own place entry covers the kingdom directly. One
+real mistake caught while writing the High Clerist's Tower entry: a first
+draft had a Knight reopening the sealed inner sanctum, which contradicts
+this file's own "described, not modeled" precedent for that door (see the
+Tower's section below) -- rewritten to match what's actually implemented
+before it shipped. The Kinslayer entry's own keywords
+(`elves,qualinesti,silvanesti,kinslayer`) would have collided with the new
+standalone `qualinesti`/`silvanesti` place entries (first-match-wins, same
+bug class Milestone 82 fixed elsewhere), so it dropped the two place names
+down to `elves,kinslayer`.
+
+Two new behaviors, both requested directly by the user:
+
+- **An Intelligence-and-Wisdom check can buy five more questions.**
+  `ASK_LIMIT` grew an optional second number -- `ASK_LIMIT L 5 10` --
+  and a new `ASK_LIMIT_EXTENDED <char> <dialogue...>` line, required
+  whenever that hard cap is actually higher than the soft one (same
+  fail-fast pairing `ASK_LIMIT`/`ASK_LIMIT_REACHED` already had).
+  The moment the soft limit is first reached, `GameLoop::talkTo` rolls the
+  real PHB proficiency-check formula (Player's Handbook, revised,
+  re-extracted this session: "roll 1d20; if the roll is equal to or less
+  than the character's ability score, it succeeds... a roll of 20 always
+  fails") twice -- once against Intelligence, once against Wisdom, both
+  must succeed. **This specific two-ability combination is this project's
+  own homebrew**, not itself a printed 2e mechanic; the check formula
+  underneath it is real. Success raises the day's effective cap to the
+  hard cap and shows `ASK_LIMIT_EXTENDED`'s text; failure (or reaching the
+  hard cap itself, where no further check is ever rolled -- "a hard stop
+  regardless of the checks," per the user) falls through to the existing
+  `ASK_LIMIT_REACHED`. The day's effective cap lives on
+  `character::Character::astinusDailyLimit`, alongside the existing
+  `lastAstinusAskDay`/`astinusQuestionsToday`, saved the same
+  backward-compatible way (`ASTINUSDAILYLIMIT`) -- a value of 0 (a save
+  written before this field existed, or simply a new day) means "not yet
+  set, use the plain `ASK_LIMIT`."
+- **Identity questions get a harder, immediate refusal.** The user's own
+  correction shaped this: asking *about* Gilean (mythology, his portfolio)
+  must keep working, but a direct challenge -- "are you Gilean," "are you
+  a god," "who are you" -- should refuse to answer and end the
+  conversation outright. Both phrasings can contain the exact same single
+  word (`gilean`, `god`), which the matcher's original "any one keyword
+  equals any one typed word" rule genuinely cannot tell apart. Fixing this
+  needed a real, small addition to the matching engine, not just more
+  data: a `SUBJECT`/`SUBJECT_ENDS` keyword list's comma-separated
+  alternatives can now themselves be `+`-joined word groups (e.g.
+  `you+gilean`), matching only when *every* word in the group is present
+  somewhere among the typed words -- see the grammar table above and
+  `game::matchSubject`. A plain single-word keyword is just a length-1
+  group, so nothing about any existing `SUBJECT` line anywhere else in the
+  game changed shape or behavior; `data/timeline.txt`'s own, separate
+  `SUBJECT` grammar has no `+` syntax and never produces anything but
+  length-1 groups either (see `speechFromWindow`). Astinus's new
+  `SUBJECT_ENDS L you+gilean,you+god,astinus+god,astinus+gilean,who+you,
+  identity,really,truly` sits *before* the plain `gods,paladine,takhisis,
+  gilean` lore entry in the file specifically so "are you gilean" (which
+  satisfies both) resolves to the harder refusal, while "tell me about
+  gilean" (satisfying only the lore entry) still gets a real answer.
+  Fixing this also surfaced a latent ordering bug in the *previous*
+  milestone's own self-identity entry: it used bare `who` as a keyword,
+  which -- sitting earlier in the file than the new `SUBJECT_ENDS` entry
+  -- would have silently intercepted "who are you" (and, worse, *any*
+  "who is `<X>`" question about anyone else) before it ever reached either
+  the identity refusal or the actual subject asked about. Fixed by
+  dropping bare `who` from that entry (`astinus,yourself,who,historian` ->
+  `astinus,yourself,historian`) -- `who+you` in the new entry covers "who
+  are you" instead, and a bare "who is Kitiara"-style question now
+  correctly reaches Kitiara's own entry. `endsConversation` is also
+  filtered out of the "Ask about something else..." hint list
+  `GameLoop::talkTo` shows the player -- deliberately not menu-suggested,
+  since the point is that it's something the player has to think to ask.
+  **Also locks Astinus out for the rest of the day, same as running out
+  the ordinary question count** -- an early draft of this feature only
+  ended the current visit, which the user caught immediately by walking
+  back into the library the same day and finding the ask prompt still
+  open: "be it hard stop or not, when it reaches the limit, there can be
+  no audience with Astinus that day." Fixed by having the
+  `endsConversation` branch set `astinusQuestionsToday` to today's
+  effective limit (initializing `astinusDailyLimit` to the plain
+  `askLimit` first if this is the day's first question) before returning,
+  whenever the POI has an `ASK_LIMIT` at all -- exactly the state
+  `askLimitExhausted` already checks on the next visit.
+
+**No hint list where the whole point is that anything is askable.** The
+"Ask about something else..." prompt was still listing every one of
+Astinus's ~46 non-identity keywords as a "You could ask about: ..."
+suggestion line -- directly working against the point of this pass, per
+the user: "if EVERYTHING is on the table no need to show the entire menu."
+New bare flag, `ASK_ANYTHING <char>` (see grammar table above; same
+POI-and-TALK-and-at-least-one-SUBJECT family as SUBJECT itself), sets
+`world::PointOfInterest::suppressAskHints`; `GameLoop::talkTo` skips
+building the hint list entirely when it's set, and
+`render::MapRenderer::drawAskInputFrame` already renders correctly with an
+empty hint vector (it just omits the suggestion line), so no rendering
+change was needed. Astinus (`ASK_ANYTHING L`) is the first and so far only
+use -- every other zone-native NPC's 2-subject pool is small enough that
+the hint list is still useful there.
+
+**A named Aesthetic, not Astinus, now turns the player away once today's
+audience is used up.** Directly requested: "have an Aesthetic say that no
+audience will be granted" rather than Astinus himself repeating
+`TALK_AGAIN` while quietly withholding the ask option. New
+`ASK_LIMIT_LOCKED <char> "<speaker>" <dialogue...>` (see grammar table
+above) is the first field on `PointOfInterest` attributed to a name other
+than the POI's own -- everything else (`TALK`, `TALK_AGAIN`,
+`TALK_AFTER`, `TALK_BEFORE`, `SAY_IF`, every `SUBJECT`) speaks as the same
+character reacting differently, never a genuinely different one.
+`GameLoop::talkTo` now computes `askLimitExhausted` up front (it used to
+be computed only where the ask-picker itself is built, further down) so
+this can override the greeting/`TALK_AGAIN` choice entirely, one rung
+below `TALK_BEFORE` in precedence and above the ordinary `alreadyMet`
+check -- same "ongoing truth, re-checked every visit" shape as
+`TALK_BEFORE` itself, not a one-time event like `TALK_AFTER`. Astinus's
+own `ASK_LIMIT_LOCKED L "An Aesthetic" ...` intercepts the player in the
+vestibule before Astinus is even in view, consistent with his own `TALK`
+line's "very few are let past this room" framing -- the Aesthetics were
+already established as the library's gatekeepers. Omitting
+`ASK_LIMIT_LOCKED` on some future `ASK_LIMIT`-using POI preserves the
+original Milestone 133 behavior unchanged (ordinary `TALK_AGAIN`, ask
+option silently absent), so this is additive, not a breaking change to
+the grammar.
 
 ## Zone-interior encounters (Milestone 23)
 
@@ -1283,6 +1548,27 @@ are confirmed (by direct text search) to happen away from the city near
 Vingaard Keep — correctly out of scope here, same "don't invent to fill a
 gap, and don't drag in an off-site subplot" restraint as Dargaard Keep
 staying unmodeled at Kalaman.
+
+**Milestone 132 revisited Astinus specifically** (see "Ask about anything"
+above for the full writeup): his two `TOPIC` entries were dropped in favor
+of a much wider `SUBJECT` pool (12 entries, up from 4), and he became the
+first POI to carry the new `ASK_LIMIT`/`ASK_LIMIT_REACHED` grammar -- five
+free-text questions per in-game day before he ends the conversation and
+"departs" (mechanically: the ask option disappears until the next day),
+sourced from Dragonlance Adventures pp.88-89 ("if disturbed at his studies,
+he may be annoyed at the interruption") and the escalation beat in *Time of
+the Twins* ch.1 where his pen, which never otherwise stops, does.
+
+**Milestone 133 followed up again** (full writeup, same "Ask about
+anything" section above): the `SUBJECT` pool grew again, from 12 to 47,
+to genuinely cover this game's own NPCs, places, and events rather than
+just Dragonlance-wide lore; an Intelligence+Wisdom check can now extend his
+five-question patience to a hard cap of ten; and a new `SUBJECT_ENDS`
+entry — keyed to real `+`-joined word groups (`you+gilean`, `who+you`, and
+similar), a small addition to the matching engine itself, not just data —
+refuses to answer and ends the conversation outright if asked to confirm
+or deny he's the god Gilean, while a plain question *about* Gilean still
+gets a real answer.
 
 ## Godshome (Milestone 45)
 

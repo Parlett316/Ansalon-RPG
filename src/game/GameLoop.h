@@ -20,12 +20,24 @@ namespace game {
 // see docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md for the underlying
 // SAY/SAY_IF/SAY_AGAIN/TOPIC and TALK/TALK_AGAIN grammar.
 struct Speech {
-    // One SUBJECT entry: matches if any of `keywords` equals a word in the
-    // player's free-typed "ask about..." input (see matchSubject below) --
-    // docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md's "Ask about anything".
+    // One SUBJECT (or SUBJECT_ENDS) entry: matches if any group in
+    // `keywords` is fully satisfied by the player's free-typed "ask
+    // about..." input -- a group is satisfied when *every* word in it
+    // appears somewhere among the input's tokens (see matchSubject below).
+    // A plain single-word keyword (the only kind data/timeline.txt's own
+    // SUBJECT grammar produces -- see speechFromWindow) is just a length-1
+    // group; multi-word groups (zone-only, `+`-joined in the file, e.g.
+    // `you+gilean`) are how a zone SUBJECT_ENDS entry tells "are you
+    // Gilean" apart from "tell me about Gilean" despite both containing
+    // the word "gilean" -- see docs/ZONE_NOTES.md's "Ask about anything".
+    // `endsConversation` (zone-only, set via SUBJECT_ENDS instead of
+    // SUBJECT) tells GameLoop::talkTo to end the conversation immediately
+    // after showing this entry's text, rather than returning to the ask
+    // picker -- always false for a timeline-window Speech.
     struct SubjectEntry {
-        std::vector<std::string> keywords;
+        std::vector<std::vector<std::string>> keywords;
         std::string text;
+        bool endsConversation = false;
     };
 
     std::string greeting;                                          // plain SAY/TALK
@@ -34,6 +46,28 @@ struct Speech {
     std::vector<std::pair<std::string, std::string>> topics;       // TOPIC (timeline or zone)
     std::vector<SubjectEntry> subjects;                            // SUBJECT (timeline or zone)
     std::string subjectUnknown;    // SUBJECT_UNKNOWN override; empty means fall back to a generic line
+    // ASK_LIMIT/ASK_LIMIT_REACHED -- zone-only (see speechFromPoi), always
+    // 0/empty for a timeline-window Speech. 0 means unlimited free-text
+    // questions per day.
+    int askLimit = 0;
+    std::string askLimitReachedText;
+    // Raises askLimit's cap to this many for the rest of the day once the
+    // Intelligence+Wisdom check GameLoop::talkTo rolls succeeds -- zone-
+    // only, 0 or equal to askLimit means no extension is possible. See
+    // world::PointOfInterest::askLimitHardCap.
+    int askLimitHardCap = 0;
+    std::string askLimitExtendedText;
+    // True if the "Ask about something else..." prompt should skip its
+    // suggested-keywords line -- zone-only, always false for a timeline-
+    // window Speech. See world::PointOfInterest::suppressAskHints.
+    bool suppressAskHints = false;
+    // Shown instead of TALK/TALK_AGAIN, attributed to askLimitLockedSpeaker
+    // rather than this NPC's own name, whenever ASK_LIMIT's cap has already
+    // been reached for the day -- zone-only, empty means no override (the
+    // ordinary TALK_AGAIN still plays). See
+    // world::PointOfInterest::askLimitLockedText.
+    std::string askLimitLockedSpeaker;
+    std::string askLimitLockedText;
 };
 
 // SAY_IF's condition vocabulary -- see docs/TIMELINE_NOTES.md. A free
@@ -62,9 +96,11 @@ character::Alignment withEthic(character::Alignment current, EthicChoice choice)
 std::vector<std::string> tokenizeAskInput(const std::string& raw);
 
 // The first SubjectEntry (authored order, same "first match wins"
-// convention as SAY_IF) any of whose keywords equals a word tokenized from
-// `raw`, or nullptr if none match -- see docs/TIMELINE_NOTES.md /
-// docs/ZONE_NOTES.md's "Ask about anything".
+// convention as SAY_IF) any of whose keyword groups is fully satisfied by
+// words tokenized from `raw` (every word in the group present somewhere
+// among the tokens, not necessarily adjacent or in order), or nullptr if
+// none match -- see docs/TIMELINE_NOTES.md / docs/ZONE_NOTES.md's "Ask
+// about anything".
 const Speech::SubjectEntry* matchSubject(const std::vector<Speech::SubjectEntry>& subjects, const std::string& raw);
 
 // How far GameState satisfies one quest::Objective: kills so far for Slay

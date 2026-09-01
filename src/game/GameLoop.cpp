@@ -115,7 +115,13 @@ Speech speechFromWindow(const timeline::Timeline& timeline, const timeline::Cano
     speech.again = window.dialogueAgain;
     speech.topics = window.topics;
     for (const auto& subject : timeline.subjectsFor(character, window, day)) {
-        speech.subjects.push_back(Speech::SubjectEntry{subject.keywords, subject.text});
+        // timeline::Subject's keywords are flat, single-word OR
+        // alternatives (data/timeline.txt has no `+`-joined AND-group
+        // grammar, unlike the zone side) -- each becomes its own length-1
+        // group, matching exactly as it always has.
+        std::vector<std::vector<std::string>> groups;
+        for (const std::string& keyword : subject.keywords) groups.push_back({keyword});
+        speech.subjects.push_back(Speech::SubjectEntry{std::move(groups), subject.text, false});
     }
     speech.subjectUnknown = timeline.subjectUnknownFor(character, window);
     return speech;
@@ -130,10 +136,17 @@ Speech speechFromPoi(const world::PointOfInterest& poi) {
     speech.conditional = poi.conditionalDialogue;
     speech.again = poi.dialogueAgain;
     speech.topics = poi.topics;
-    for (const auto& [keywords, text] : poi.subjects) {
-        speech.subjects.push_back(Speech::SubjectEntry{keywords, text});
+    for (const auto& [keywords, text, endsConversation] : poi.subjects) {
+        speech.subjects.push_back(Speech::SubjectEntry{keywords, text, endsConversation});
     }
     speech.subjectUnknown = poi.subjectUnknown;
+    speech.askLimit = poi.askLimit;
+    speech.askLimitReachedText = poi.askLimitReachedText;
+    speech.askLimitHardCap = poi.askLimitHardCap;
+    speech.askLimitExtendedText = poi.askLimitExtendedText;
+    speech.suppressAskHints = poi.suppressAskHints;
+    speech.askLimitLockedSpeaker = poi.askLimitLockedSpeaker;
+    speech.askLimitLockedText = poi.askLimitLockedText;
     return speech;
 }
 
@@ -263,13 +276,33 @@ std::vector<std::string> tokenizeAskInput(const std::string& raw) {
 const Speech::SubjectEntry* matchSubject(const std::vector<Speech::SubjectEntry>& subjects, const std::string& raw) {
     std::vector<std::string> tokens = tokenizeAskInput(raw);
     for (const auto& subject : subjects) {
-        for (const std::string& keyword : subject.keywords) {
-            std::string lowerKeyword = keyword;
-            std::transform(lowerKeyword.begin(), lowerKeyword.end(), lowerKeyword.begin(),
-                           [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-            for (const std::string& token : tokens) {
-                if (token == lowerKeyword) return &subject;
+        for (const std::vector<std::string>& group : subject.keywords) {
+            // A group matches only when every one of its words is present
+            // somewhere among the typed tokens -- a plain single-word
+            // keyword is just a length-1 group, so this is the same
+            // "any keyword equals any token" check as before for those;
+            // a multi-word group (authored `+`-joined in the zone file)
+            // is how e.g. "are you gilean" is told apart from "tell me
+            // about gilean" despite both containing "gilean" -- see
+            // docs/ZONE_NOTES.md's "Ask about anything".
+            bool allWordsPresent = true;
+            for (const std::string& word : group) {
+                std::string lowerWord = word;
+                std::transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(),
+                               [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                bool wordPresent = false;
+                for (const std::string& token : tokens) {
+                    if (token == lowerWord) {
+                        wordPresent = true;
+                        break;
+                    }
+                }
+                if (!wordPresent) {
+                    allWordsPresent = false;
+                    break;
+                }
             }
+            if (allWordsPresent) return &subject;
         }
     }
     return nullptr;
@@ -928,6 +961,26 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     const std::string& name = candidate.name;
     const Speech& speech = candidate.speech;
     std::string text;
+    std::string speakerName = name;
+    // ASK_LIMIT (see docs/ZONE_NOTES.md's "Ask about anything") caps
+    // free-text questions per in-game day. Computed up front (rather than
+    // only where the ask-picker itself is built, further down) so
+    // ASK_LIMIT_LOCKED below can override the greeting/TALK_AGAIN entirely
+    // once today's cap is reached, not just hide the ask option. Character
+    // state, not GameState, since it's the same "day the player last did
+    // X" shape as lastRestDay/lastBroochUseDay/lastStaffCureDay. The
+    // effective limit is astinusDailyLimit once an Intelligence+Wisdom
+    // check has raised it past speech.askLimit earlier today (see the
+    // bookkeeping block further down) -- falling back to speech.askLimit
+    // itself covers both "no extension yet today" and "a save written
+    // before astinusDailyLimit existed," same backward-compatibility shape
+    // RESTDAY/BROOCHDAY/STAFFCUREDAY already established.
+    long long today = state_.hoursElapsed / 24;
+    bool sameDay = state_.character.lastAstinusAskDay == today;
+    int effectiveLimitToday =
+        (sameDay && state_.character.astinusDailyLimit > 0) ? state_.character.astinusDailyLimit : speech.askLimit;
+    bool askLimitExhausted =
+        speech.askLimit > 0 && sameDay && state_.character.astinusQuestionsToday >= effectiveLimitToday;
     // Aftermath dialogue (see docs/ZONE_NOTES.md) is checked before the
     // ordinary alreadyMet branch below, and tracked under its own id, so it
     // fires the first time the Heroes' window has closed regardless of
@@ -942,11 +995,20 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
     // above, but with no id of its own to track: it's an ongoing truth, not
     // a one-time event, so it's meant to repeat on every visit until the
     // condition (dayNow < earliestDayStart) stops holding on its own.
+    // ASK_LIMIT_LOCKED (docs/ZONE_NOTES.md's "Ask about anything") takes
+    // the same "ongoing truth" shape, one rung below dialogueBefore: once
+    // today's audience is used up, a different, named speaker (e.g. one of
+    // Astinus's Aesthetics) turns the player away instead of Astinus
+    // himself repeating the ordinary TALK_AGAIN line.
+    bool askLimitLocked = askLimitExhausted && !speech.askLimitLockedText.empty();
     if (showAfter) {
         text = candidate.dialogueAfter;
         state_.metCharacters.insert(afterId);
     } else if (!candidate.dialogueBefore.empty()) {
         text = candidate.dialogueBefore;
+    } else if (askLimitLocked) {
+        text = speech.askLimitLockedText;
+        speakerName = speech.askLimitLockedSpeaker;
     } else if (alreadyMet) {
         text = !speech.again.empty() ? speech.again
                                       : (name + " catches your eye and gives a small nod of recognition.");
@@ -959,7 +1021,7 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
             }
         }
     }
-    render::MapRenderer::drawDialogueFrame({{name, text}});
+    render::MapRenderer::drawDialogueFrame({{speakerName, text}});
     render::Console::readKey(); // block for one keypress to dismiss, any key
     state_.metCharacters.insert(id);
     checkQuestReadiness(); // a TALK objective may have just been satisfied
@@ -1078,7 +1140,12 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
         // below, same as BOAT's decline path above.
     }
 
-    bool canAskAnything = !speech.subjects.empty();
+    // today/askLimitExhausted were already computed at the top of this
+    // function (ASK_LIMIT_LOCKED needs them before the greeting is even
+    // chosen) -- once exhausted, the "Ask about something else..." option
+    // simply doesn't appear this visit, whether or not ASK_LIMIT_LOCKED
+    // also overrode the greeting above.
+    bool canAskAnything = !speech.subjects.empty() && !askLimitExhausted;
     if (!speech.topics.empty() || canAskAnything) {
         std::vector<std::string> labels;
         for (const auto& [label, topicText] : speech.topics) labels.push_back(label);
@@ -1110,23 +1177,37 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
                     // blind -- keywords are authored lowercase for
                     // case-insensitive matchSubject lookups (see
                     // docs/TIMELINE_NOTES.md's "Ask about anything"), not
-                    // for display, so the canonical first keyword gets its
-                    // first letter capitalized here.
+                    // for display, so the canonical first word of the
+                    // first keyword group gets its first letter capitalized
+                    // here. A conversation-ending subject (SUBJECT_ENDS) is
+                    // deliberately left out of this list -- it's meant to
+                    // be something the player thinks to ask, not something
+                    // the UI nudges them toward. ASK_ANYTHING (see
+                    // docs/ZONE_NOTES.md's "Ask about anything") skips the
+                    // whole list: a POI whose pool is meant to feel like it
+                    // covers everything shouldn't offer a shortlist that
+                    // implies otherwise -- drawAskInputFrame already
+                    // renders correctly with no hints at all.
                     std::vector<std::string> hints;
-                    for (const auto& subject : speech.subjects) {
-                        std::string hint = subject.keywords.front();
-                        if (!hint.empty()) {
-                            hint[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(hint[0])));
+                    if (!speech.suppressAskHints) {
+                        for (const auto& subject : speech.subjects) {
+                            if (subject.endsConversation) continue;
+                            std::string hint = subject.keywords.front().front();
+                            if (!hint.empty()) {
+                                hint[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(hint[0])));
+                            }
+                            hints.push_back(hint);
                         }
-                        hints.push_back(hint);
                     }
                     render::MapRenderer::drawAskInputFrame(name, hints);
                     std::string input = render::Console::readLine(60);
                     if (!input.empty()) {
                         const Speech::SubjectEntry* match = matchSubject(speech.subjects, input);
                         std::string response;
+                        bool endsConversation = false;
                         if (match != nullptr) {
                             response = match->text;
+                            endsConversation = match->endsConversation;
                         } else if (!speech.subjectUnknown.empty()) {
                             response = speech.subjectUnknown;
                         } else {
@@ -1134,6 +1215,72 @@ void GameLoop::talkTo(const TalkCandidate& candidate) {
                         }
                         render::MapRenderer::drawDialogueFrame({{name, response}});
                         render::Console::readKey();
+                        // SUBJECT_ENDS (see docs/ZONE_NOTES.md's "Ask about
+                        // anything") ends the conversation right here --
+                        // before the ordinary ASK_LIMIT bookkeeping below,
+                        // so it can't be talked past with a good roll. It
+                        // still exhausts today's audience entirely (same as
+                        // running out the ordinary question count), rather
+                        // than just ending this one visit -- walking back
+                        // in for a second attempt the same day gets no
+                        // "Ask about something else..." option either.
+                        if (endsConversation) {
+                            if (speech.askLimit > 0) {
+                                state_.character.lastAstinusAskDay = today;
+                                if (state_.character.astinusDailyLimit <= 0) {
+                                    state_.character.astinusDailyLimit = speech.askLimit;
+                                }
+                                state_.character.astinusQuestionsToday = state_.character.astinusDailyLimit;
+                            }
+                            return;
+                        }
+                        // ASK_LIMIT bookkeeping -- reset the count (and the
+                        // day's effective limit) on a new day, then check
+                        // whether this question was the last one this NPC
+                        // will tolerate today (see the askLimitExhausted
+                        // comment above). A same-day-but-unset daily limit
+                        // (a save written before astinusDailyLimit existed)
+                        // is repaired to the soft limit here too.
+                        if (speech.askLimit > 0) {
+                            if (state_.character.lastAstinusAskDay != today) {
+                                state_.character.lastAstinusAskDay = today;
+                                state_.character.astinusQuestionsToday = 0;
+                                state_.character.astinusDailyLimit = speech.askLimit;
+                            } else if (state_.character.astinusDailyLimit <= 0) {
+                                state_.character.astinusDailyLimit = speech.askLimit;
+                            }
+                            ++state_.character.astinusQuestionsToday;
+                            if (state_.character.astinusQuestionsToday >= state_.character.astinusDailyLimit) {
+                                bool extended = false;
+                                if (state_.character.astinusDailyLimit < speech.askLimitHardCap) {
+                                    // A homebrew combination of the real PHB
+                                    // proficiency-check formula (roll 1d20;
+                                    // success if the roll is <= the ability
+                                    // score; a natural 20 always fails),
+                                    // applied twice -- Intelligence and
+                                    // Wisdom must both succeed. Not itself a
+                                    // printed 2e mechanic -- see
+                                    // docs/ZONE_NOTES.md's "Ask about
+                                    // anything".
+                                    int intRoll = character::roll(1, 20);
+                                    int wisRoll = character::roll(1, 20);
+                                    bool passedInt =
+                                        intRoll <= state_.character.scores.intelligence && intRoll != 20;
+                                    bool passedWis = wisRoll <= state_.character.scores.wisdom && wisRoll != 20;
+                                    if (passedInt && passedWis) {
+                                        state_.character.astinusDailyLimit = speech.askLimitHardCap;
+                                        extended = true;
+                                        render::MapRenderer::drawDialogueFrame({{name, speech.askLimitExtendedText}});
+                                        render::Console::readKey();
+                                    }
+                                }
+                                if (!extended) {
+                                    render::MapRenderer::drawDialogueFrame({{name, speech.askLimitReachedText}});
+                                    render::Console::readKey();
+                                    return;
+                                }
+                            }
+                        }
                     }
                     continue;
                 }

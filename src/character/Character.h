@@ -102,6 +102,24 @@ struct Character {
     // see docs/CHARACTER_NOTES.md's "Magic items" for the full reasoning,
     // so no separate charge count is tracked.
     long long lastStaffCureDay = -1;
+    // The day (same hoursElapsed/24 convention) the character last asked
+    // Astinus of Palanthas a free-text question, and how many he's
+    // answered so far that day -- see GameLoop::talkTo's ASK_LIMIT handling
+    // and docs/ZONE_NOTES.md's "Ask about anything". Not a generic
+    // once-per-day gate like lastRestDay above (which just blocks a second
+    // use); this counts up to a per-POI limit before Astinus ends the
+    // conversation, then resets once lastAstinusAskDay no longer matches
+    // the current day.
+    long long lastAstinusAskDay = -1;
+    int astinusQuestionsToday = 0;
+    // Today's effective question cap -- starts at the POI's ASK_LIMIT
+    // (world::PointOfInterest::askLimit) and is raised to its
+    // askLimitHardCap the moment the character passes the Intelligence+
+    // Wisdom check GameLoop::talkTo rolls once astinusQuestionsToday first
+    // reaches it. 0 (or stale from a previous day) means "not yet set for
+    // today, use the POI's plain askLimit" -- same backward-compatibility
+    // shape as the fields above.
+    int astinusDailyLimit = 0;
 };
 
 } // namespace character

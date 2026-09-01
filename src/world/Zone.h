@@ -73,19 +73,79 @@ struct PointOfInterest {
     // docs/ZONE_NOTES.md), which must reference a POI that also has a
     // TALK line.
     std::vector<std::pair<std::string, std::string>> topics;
-    // Free-text "ask about..." subjects, in authored order -- each pairs a
-    // comma-separated keyword-alias list with its dialogue text. Empty means
-    // no free-text asking is offered for this POI. Set via zero or more
-    // SUBJECT lines (see docs/ZONE_NOTES.md's "Ask about anything"), which
-    // must reference a POI that also has a TALK line, same rule as TOPIC.
-    // game::GameLoop does the actual keyword matching (see
-    // game::matchSubject) so this stays a plain data holder, same
-    // decoupling reasoning as conditionalDialogue above.
-    std::vector<std::pair<std::vector<std::string>, std::string>> subjects;
+    // Free-text "ask about..." subjects, in authored order -- each tuple is
+    // (keyword groups, dialogue text, endsConversation). Each "keyword
+    // group" is one OR'd alternative (comma-separated in the file); a group
+    // with more than one word (`+`-joined in the file, e.g. `you+gilean`)
+    // matches only when *every* word in it appears somewhere in the
+    // player's typed input, not just one -- see game::matchSubject and
+    // docs/ZONE_NOTES.md's "Ask about anything". A plain single-word
+    // keyword is just a length-1 group. Empty means no free-text asking is
+    // offered for this POI. Set via zero or more SUBJECT lines, which must
+    // reference a POI that also has a TALK line, same rule as TOPIC, or via
+    // SUBJECT_ENDS (identical shape, endsConversation forced true) --
+    // GameLoop::talkTo ends the conversation immediately after showing an
+    // endsConversation entry's text, rather than returning to the ask
+    // picker. game::GameLoop does the actual keyword matching so this stays
+    // a plain data holder, same decoupling reasoning as conditionalDialogue
+    // above.
+    std::vector<std::tuple<std::vector<std::vector<std::string>>, std::string, bool>> subjects;
     // Shown when a free-typed subject matches none of the above -- empty
     // means fall back to game::GameLoop::talkTo's generic line. Set via an
     // optional SUBJECT_UNKNOWN line.
     std::string subjectUnknown;
+    // Caps free-text "ask about..." questions at this many per in-game day
+    // -- 0 (the default) means unlimited. Set via an optional ASK_LIMIT
+    // line (see docs/ZONE_NOTES.md's "Ask about anything"), which must
+    // reference a POI that also has a TALK line and a matching
+    // ASK_LIMIT_REACHED line, same pairing ZoneLoader enforces for BOAT's
+    // destination/hours. First (and so far only) use: Astinus of Palanthas,
+    // who cuts a conversation short once his patience runs out.
+    int askLimit = 0;
+    // Shown the moment askLimit (or, once extended, askLimitHardCap)
+    // questions have been answered for the day, ending the conversation
+    // immediately after -- set via an optional ASK_LIMIT_REACHED line.
+    // Required (and only meaningful) when askLimit is nonzero; ZoneLoader
+    // fails fast if the two don't appear together.
+    std::string askLimitReachedText;
+    // Raises askLimit's per-day cap to this many if the player's character
+    // passes the check GameLoop::talkTo rolls at the moment askLimit would
+    // otherwise end the conversation -- 0 or equal to askLimit means no
+    // extension is possible (the default). Set via ASK_LIMIT's optional
+    // second number; see docs/ZONE_NOTES.md's "Ask about anything" for the
+    // Intelligence-and-Wisdom check this project layers on top of the real
+    // PHB proficiency-check formula (this specific two-ability combination
+    // is this project's own homebrew, not itself a printed 2e mechanic).
+    int askLimitHardCap = 0;
+    // Shown once, in place of askLimitReachedText, the moment the check
+    // above succeeds -- set via an optional ASK_LIMIT_EXTENDED line,
+    // required (and only meaningful) when askLimitHardCap > askLimit;
+    // ZoneLoader fails fast if the two don't appear together.
+    std::string askLimitExtendedText;
+    // True if the "Ask about something else..." prompt should skip its
+    // "You could ask about: ..." suggestion line entirely -- set via an
+    // optional ASK_ANYTHING line, which must reference a POI that also has
+    // a TALK line and at least one SUBJECT. For a POI whose SUBJECT pool
+    // is meant to feel like it covers everything (see docs/ZONE_NOTES.md's
+    // "Ask about anything"), listing every keyword defeats the point --
+    // the player should feel free to ask about anything, not be steered
+    // toward a curated shortlist. First (and so far only) use: Astinus of
+    // Palanthas, whose 47-entry pool is exactly the case this exists for.
+    bool suppressAskHints = false;
+    // Shown instead of TALK/TALK_AGAIN (checked every visit, an ongoing
+    // truth like dialogueBefore rather than a one-time event like
+    // dialogueAfter) whenever ASK_LIMIT's cap has already been reached for
+    // the day -- set via an optional ASK_LIMIT_LOCKED line, which requires
+    // askLimit to be nonzero (meaningless otherwise) and, unlike every
+    // other dialogue field on PointOfInterest, carries its own speaker
+    // name rather than being attributed to this POI's own name: the point
+    // is that a *different* character (e.g. one of Astinus's Aesthetics)
+    // turns the player away without Astinus himself needing to reappear.
+    // Omitting this line preserves the original behavior -- the ordinary
+    // TALK_AGAIN still plays, and the "Ask about something else..." option
+    // simply doesn't appear.
+    std::string askLimitLockedSpeaker;
+    std::string askLimitLockedText;
     // True if the player can press 'b' (shop) while standing on this tile
     // to browse/buy from character::Equipment's catalog -- set via a SHOP
     // line in the zone file, which must reference an already-declared POI

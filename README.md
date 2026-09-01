@@ -178,7 +178,29 @@ the Inn than everywhere else, a specific letter-scene beat overriding the
 general one. Every talkable zone-native NPC (Otik, Tika, Astinus, every
 zone-native guard/knight/warder, and more — 22 in all) has the same
 "ask about anything" ability too, two subjects each drawn from their own
-established voice. Arrive somewhere after the Heroes have already
+established voice — Astinus is the one exception, rebuilt with no topic
+menu at all, and no suggested-keywords list either when you ask him
+something: his pool (48 subjects) is meant to feel genuinely unbounded, so
+the prompt is just a blank line to type into, covering not just Krynn-wide
+lore (the Cataclysm, the gods, the Knights, the Towers of High Sorcery,
+Huma, draconians, the elven split) but every Hero of the Lance, Laurana,
+Kitiara, Verminaard, and every place on the overworld map, true to a
+historian who
+can, in principle, answer anything about Krynn's past or present. Ask him
+more than five questions in a day and he'll tell you he can't be delayed
+from his work any longer and decline to answer any more until the next
+one — unless he judges you worth the extra time first (a real
+Intelligence-and-Wisdom check can buy five more, up to a hard cap of ten).
+Push him to confirm or deny he's the god Gilean, though, and he refuses
+outright, ends the conversation on the spot, and won't grant another
+audience for the rest of that day either, same as running out of
+questions the ordinary way — try walking back into the library after
+either kind of cutoff and one of his Aesthetics meets you before you even
+reach him, turning you away rather than making Astinus repeat himself —
+asking about Gilean as a topic still works fine; it's the direct challenge
+to his own identity he won't tolerate at
+any price. Arrive somewhere after the
+Heroes have already
 moved on and it shows, on thirteen POIs now: Otik at the Inn of the Last
 Home, Haven's Seeker Guard, Xak Tsaroth's Ruin-Scavenger, Qualinesti's
 Elven Sentinel, Darken Wood's Forestmaster, the Tower's Garrison Knight,

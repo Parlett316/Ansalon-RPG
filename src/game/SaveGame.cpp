@@ -158,6 +158,9 @@ void SaveGame::save(const GameState& state, const std::string& path) {
     file << "RESTDAY " << c.lastRestDay << "\n";
     file << "BROOCHDAY " << c.lastBroochUseDay << "\n";
     file << "STAFFCUREDAY " << c.lastStaffCureDay << "\n";
+    file << "ASTINUSASKDAY " << c.lastAstinusAskDay << "\n";
+    file << "ASTINUSASKCOUNT " << c.astinusQuestionsToday << "\n";
+    file << "ASTINUSDAILYLIMIT " << c.astinusDailyLimit << "\n";
     file << "MODE " << (state.mode == Mode::Zone ? "ZONE" : "OVERWORLD") << "\n";
     file << "POS " << state.x << " " << state.y << "\n";
     file << "HOURS " << state.hoursElapsed << "\n";
@@ -457,6 +460,21 @@ GameState SaveGame::load(const std::string& path) {
             // anyway, same backward-compatibility shape as RESTDAY/
             // BROOCHDAY above.
             if (!(iss >> state.character.lastStaffCureDay)) fail(path, lineNumber, "malformed STAFFCUREDAY");
+        } else if (keyword == "ASTINUSASKDAY") {
+            // Optional -- a save written before this milestone simply has
+            // no ASTINUSASKDAY line, and Character::lastAstinusAskDay's
+            // default (-1, "never asked") is the correct value for it
+            // anyway, same backward-compatibility shape as RESTDAY/
+            // BROOCHDAY/STAFFCUREDAY above.
+            if (!(iss >> state.character.lastAstinusAskDay)) fail(path, lineNumber, "malformed ASTINUSASKDAY");
+        } else if (keyword == "ASTINUSASKCOUNT") {
+            // Optional, same reasoning as ASTINUSASKDAY -- default 0.
+            if (!(iss >> state.character.astinusQuestionsToday)) fail(path, lineNumber, "malformed ASTINUSASKCOUNT");
+        } else if (keyword == "ASTINUSDAILYLIMIT") {
+            // Optional, same reasoning as ASTINUSASKDAY -- default 0,
+            // which GameLoop::talkTo already treats as "not yet set, use
+            // the POI's plain askLimit."
+            if (!(iss >> state.character.astinusDailyLimit)) fail(path, lineNumber, "malformed ASTINUSDAILYLIMIT");
         } else if (keyword == "MODE") {
             if (rest == "ZONE") {
                 modeIsZone = true;

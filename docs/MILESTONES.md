@@ -4699,6 +4699,201 @@ now fully verified, nothing further outstanding.
      content. Full writeups: `docs/MAP_NOTES.md`, `docs/TIMELINE_NOTES.md`,
      and `docs/ZONE_NOTES.md`, each with their own matching section.
 
+132. Astinus of Palanthas, rebuilt closer to source -- the user asked for
+     him to be able to answer *anything* about Krynn's past and present
+     rather than a curated topic menu, to cut a conversation short after
+     about five questions (annoyed at being kept from his work), and to
+     react to future-events questions with curiosity rather than his usual
+     brush-off. Researched via a fresh `pdftotext -layout` extraction of
+     `TSR 2021 DragonLance Adventures.pdf` (pp.88-89's Astinus NPC writeup)
+     and `Time_of_the_Twins_-_Margaret_Weis.pdf` (the Raistlin/Crysania/
+     Astinus chapters), plus DLA's Solamnia and Silvanesti history sections
+     for the new lore `SUBJECT`s.
+
+     Dropped both `TOPIC` lines outright (both were already near-duplicated
+     by existing `SUBJECT` entries, so nothing was lost) and grew his
+     `SUBJECT` pool from 4 to 12: the Cataclysm, the gods (deflecting DLA's
+     own "rumored to be Gilean" line rather than confirming or denying it),
+     Knights of Solamnia, the Towers of High Sorcery, Huma and the First
+     Dragonlance, draconians, the Qualinesti/Silvanesti split, and a
+     dedicated future-events response distinct from the generic
+     `SUBJECT_UNKNOWN` brush-off. Deliberately left out dwarves/Thorbardin
+     and kender -- no confirming passage was pulled this session (the Atlas
+     of the Dragonlance World PDF is image-only, no extractable text), and
+     other NPCs already carry that flavor elsewhere.
+
+     New engine-level grammar: `ASK_LIMIT <char> <n>` /
+     `ASK_LIMIT_REACHED <char> <dialogue...>`, a generic, reusable
+     "cap free-text questions per in-game day" pair (`world::Zone`/
+     `world::ZoneLoader`, same "must already have a TALK line, fails fast
+     if the two don't appear together" validation as TOPIC/SUBJECT), with
+     the persistent day/count state living as named fields on
+     `character::Character` (`lastAstinusAskDay`/`astinusQuestionsToday`),
+     the same `hoursElapsed / 24` once-per-day convention and backward-
+     compatible save format (`ASTINUSASKDAY`/`ASTINUSASKCOUNT`) as
+     `lastRestDay`/`lastBroochUseDay`/`lastStaffCureDay`. `GameLoop::talkTo`
+     folds the day-gate into the existing "Ask about something else..."
+     menu option rather than adding new UI. Astinus is the first (and so
+     far only) POI to use it; the cutoff line -- sourced from DLA's "he may
+     be annoyed at the interruption" and *Time of the Twins*' "his pen
+     ceased its eternal scratching" -- is the one moment in the whole file
+     where the pen, otherwise described as never stopping, actually stops.
+
+     Verified via a throwaway self-test (`ZoneLoaderSelfTest.cpp`, a
+     minimal `world::Zone`/`ZoneLoader`/`ZoneTile`-only CMake target, same
+     shape Milestone 82 used) confirming `palanthas.txt`'s POI `L` parses
+     with `askLimit == 5`, 12 subjects, 0 topics, and that both orphan
+     cases (`ASK_LIMIT` with no `ASK_LIMIT_REACHED` and vice versa) fail
+     fast as designed. Clean `/W4` rebuild, zero new warnings. Piped
+     character-creation smoke test passed (real `save1-3.txt` moved aside,
+     restored after); a second piped run against an existing real save
+     (predating the new `ASTINUSASKDAY`/`ASTINUSASKCOUNT` lines) reached
+     the live game loop without error, confirming the backward-compatible
+     load path. **Not interactively walked** -- same standing `_getch()`
+     limitation this project always discloses; the five-question cutoff,
+     the pen-stops beat, and the next-day reset all still need a real
+     keyboard playthrough. Full writeup: `docs/ZONE_NOTES.md`'s "Ask about
+     anything" and "Palanthas" sections.
+
+133. Astinus follow-up: genuinely comprehensive world knowledge, an
+     Intelligence+Wisdom check to buy more patience, and a harder refusal
+     on identity questions -- three direct user requests in one session.
+     Grew his `SUBJECT` pool from 12 to 47: the 7 remaining Heroes of the
+     Lance, Kitiara, Verminaard, a broad war/dragonarmies overview, and one
+     entry per remaining `data/locations.txt` `LOCATION` (24 places),
+     reusing each location's own already-sourced `DESC` line reframed in
+     his voice rather than re-deriving new research. Caught and fixed one
+     real mistake in the process: a first draft of the High Clerist's
+     Tower entry had a Knight reopening its sealed inner sanctum, which
+     contradicts `docs/ZONE_NOTES.md`'s own "described, not modeled"
+     precedent for that door -- fixed before it shipped. Also fixed a
+     keyword collision the new place entries would have caused (Kinslayer
+     War's own `qualinesti,silvanesti` keywords vs. the new standalone
+     place entries of the same names) and, while implementing the identity
+     check below, a latent ordering bug in Milestone 132's own
+     self-identity entry (bare `who` was intercepting "who is `<anyone>`"
+     questions before they ever reached their real answer).
+
+     New engine-level grammar: `ASK_LIMIT` gained an optional second
+     number (a hard cap) plus `ASK_LIMIT_EXTENDED <char> <dialogue...>`,
+     required whenever that cap exceeds the soft one (`ASK_LIMIT L 5 10`
+     for Astinus). The moment the soft limit is first reached,
+     `GameLoop::talkTo` rolls the real PHB proficiency-check formula
+     (Player's Handbook, revised, re-extracted this session) twice --
+     Intelligence, then Wisdom, both must succeed -- a homebrew combination
+     of two real checks, not itself a printed 2e mechanic. Success raises
+     the day's effective cap (`character::Character::astinusDailyLimit`,
+     new, saved via optional `ASTINUSDAILYLIMIT`, same backward-compatible
+     shape as `lastRestDay` etc.); failure, or reaching the hard cap itself
+     (no further checks ever rolled once there), falls through to the
+     existing `ASK_LIMIT_REACHED`.
+
+     Second new grammar: `SUBJECT_ENDS`, identical to `SUBJECT` but ends
+     the conversation immediately after its text is shown. Telling "are
+     you Gilean" apart from "tell me about Gilean" -- both contain the
+     same word -- needed a real, small addition to the matcher itself, not
+     just data: a keyword alternative can now be a `+`-joined word group
+     (`you+gilean`, `who+you`, ...) that only matches when *every* word in
+     it is present, alongside plain single-word keywords (a length-1
+     group) which keep matching exactly as before -- `data/timeline.txt`'s
+     own, separate `SUBJECT` grammar is untouched by this (no `+` syntax
+     there, and `speechFromWindow` wraps its plain keywords into length-1
+     groups). Astinus's `SUBJECT_ENDS L you+gilean,you+god,astinus+god,
+     astinus+gilean,who+you,identity,really,truly` sits ahead of the plain
+     gods/Gilean lore entry so a genuine identity challenge wins the tie.
+     The conversation-ending entry is also filtered out of the "Ask about
+     something else..." hint list -- meant to be discovered, not
+     menu-suggested.
+
+     Two more direct corrections landed in the same session, both from the
+     user's own read of the shipped behavior:
+
+     - **No hint list when the pool is meant to feel unbounded.** The
+       "Ask about something else..." prompt was still listing all 46
+       askable keywords (everything but the identity entry) as a
+       suggestion line -- exactly the curated-menu feel the whole point of
+       this pass was to move away from. New bare per-POI flag,
+       `ASK_ANYTHING <char>` (same "must have a TALK line and at least one
+       SUBJECT" family as SUBJECT itself), sets
+       `world::PointOfInterest::suppressAskHints` /
+       `game::Speech::suppressAskHints`; `GameLoop::talkTo` skips building
+       the hint list entirely when set, and `render::MapRenderer::
+       drawAskInputFrame` already renders correctly with an empty hint
+       vector (no separate rendering change needed). Astinus (`ASK_ANYTHING
+       L`) is the first and so far only use.
+     - **The identity hard-stop didn't actually stop the day.** Reported
+       directly: asking "are you a god" ended that conversation, but
+       walking back into the library the same day still offered more
+       questions -- `SUBJECT_ENDS` only ever `return`ed from `talkTo`
+       without touching `lastAstinusAskDay`/`astinusQuestionsToday`/
+       `astinusDailyLimit` at all, so the day-long lockout `ASK_LIMIT`
+       running out already enforced correctly never applied to this path.
+       Per the user: "be it hard stop or not, when it reaches the limit,
+       there can be no audience with Astinus that day." Fixed by having
+       the `endsConversation` branch mark the day exhausted the same way
+       running out the ordinary count does (`astinusQuestionsToday` set to
+       today's effective limit) before returning, whenever the POI has an
+       `ASK_LIMIT` configured at all.
+
+     Verified via a throwaway self-test (`ZoneLoaderSelfTest.cpp`, same
+     minimal `Zone`/`ZoneLoader`/`ZoneTile`-only CMake target as Milestone
+     132's own, run twice -- once for the original pass's checks, once
+     more for `ASK_ANYTHING`'s own fail-fast cases): confirmed
+     `askLimit`/`askLimitHardCap`/the two new dialogue fields, 47 subjects
+     with exactly one `endsConversation` entry, `suppressAskHints == true`
+     on Astinus, every fail-fast pairing case (`ASK_LIMIT`/
+     `ASK_LIMIT_REACHED`/`ASK_LIMIT_EXTENDED`/`ASK_ANYTHING`, six cases in
+     total), and -- via a local reimplementation of the tokenize-then-
+     group-match logic, same dependency-avoidance reasoning as Milestone
+     82's own self-test -- that "are you gilean"/"are you a god"/"who are
+     you" hit the identity entry while "tell me about gilean"/"tell me
+     about the gods"/"who is kitiara" correctly don't. Clean `/W4`
+     rebuild, zero new warnings. Piped character-creation smoke test
+     passed twice (real `save1-3.txt` moved aside, restored after each
+     time); a piped run against an existing real save (predating
+     `ASTINUSDAILYLIMIT`) reached the live game loop without error.
+
+     A third correction, also from the user: once the day's audience is
+     used up, Astinus himself shouldn't be the one turning the player away
+     again -- "have an Aesthetic say that no audience will be granted."
+     New `ASK_LIMIT_LOCKED <char> "<speaker>" <dialogue...>` is the first
+     `PointOfInterest` dialogue field ever attributed to a name other than
+     the POI's own (`GameLoop::talkTo` now picks a `speakerName` separate
+     from `name`) -- every other field, from `TALK` through every
+     `SUBJECT`, speaks as the same character reacting differently, never a
+     genuinely different one. Required `askLimitExhausted` to be computed
+     up front in `talkTo` (previously only computed where the ask-picker
+     itself is built, further down) so this can override the greeting/
+     `TALK_AGAIN` choice entirely, one precedence rung below `TALK_BEFORE`
+     and above the ordinary `alreadyMet` check -- same "ongoing truth,
+     re-checked every visit" shape as `TALK_BEFORE`, not a one-time event
+     like `TALK_AFTER`. Astinus's own `ASK_LIMIT_LOCKED L "An Aesthetic"
+     ...` intercepts the player in the vestibule, consistent with his own
+     `TALK` line's "very few are let past this room" framing. Verified via
+     a third throwaway self-test pass (same target, three more checks: the
+     speaker/text parse correctly, `ASK_LIMIT_LOCKED` with no `ASK_LIMIT`
+     configured throws, an unquoted speaker throws), a third clean `/W4`
+     rebuild (zero new warnings), and a third piped character-creation
+     smoke test (real saves moved aside, restored after).
+
+     A fourth, smaller gap the user caught by simply trying it: Laurana --
+     the Golden General, already a schedule-tracked `data/timeline.txt`
+     character with her own established arc in this project (the Lord's
+     map room, Whitestone command, the Dargaard Keep captivity) -- had no
+     `SUBJECT` entry at all, an oversight in the original Hero/antagonist
+     pass. Added (`SUBJECT L laurana`, keyword collision-checked against
+     the other 47), bringing the pool to 48. Verified the same way as the
+     rest of this milestone's data-only passes: clean `/W4` rebuild (no
+     source changed, so no new warnings possible) and a piped character-
+     creation smoke test (real saves moved aside, restored after).
+
+     **Not interactively walked** -- same standing `_getch()` limitation;
+     the ability-check roll, the extension flavor line, the identity
+     abrupt-stop, the now-empty hint prompt, the same-day lockout after an
+     identity question, and the Aesthetic's own turned-away line all still
+     need a real keyboard playthrough. Full writeup: `docs/ZONE_NOTES.md`'s
+     "Ask about anything" and "Palanthas" sections.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
