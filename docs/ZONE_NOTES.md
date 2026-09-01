@@ -690,6 +690,16 @@ exactly the intended, safe use, and a checker for a feature with a
 single caller (Astinus) would be speculative. Author `SUBJECT_WHEN` pairs
 carefully by hand instead.
 
+**Milestone 138 added 3 more evergreen entries**, continuing the same
+routine content pass: `kagonesti`, `gnomes,nevermind,tinkers`, and
+`gully,aghar,dwarves`, all sourced from `References/pg.txt`. None needed
+`SUBJECT_WHEN` gating -- racial/cultural lore rather than a dated story
+beat, same category as the already-shipped `draconian`/`elves,kinslayer`
+entries they sit next to in the file. `kagonesti` deliberately drops the
+bare `elves` keyword the existing `elves,kinslayer` entry already claims
+(first-match-wins would otherwise always resolve a plain "elves" question
+to the Kinslayer War instead).
+
 ## Zone-interior encounters (Milestone 23)
 
 `TIMELINE_ANCHOR <char>` layers a *third* kind of ability onto a POI,

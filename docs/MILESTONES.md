@@ -5174,6 +5174,33 @@ now fully verified, nothing further outstanding.
      transition and the new topics' actual in-game phrasing still needs
      the user's own keyboard.
 
+138. Three more Astinus SUBJECT entries -- continuing the ongoing
+     ask-anything content pass (per standing practice, treated as routine
+     content work, not a new design). `kagonesti` (the wild elves --
+     tattooed, forest-bred, historically kept as servants by the Silvanesti
+     and Qualinesti alike), `gnomes,nevermind,tinkers` (Mount Nevermind's
+     200-clan, 50-guild Grand Council; the Life Quest each gnome commits
+     to young, completion of which is said to seat their soul beside
+     Reorx), and `gully,aghar,dwarves` (the Aghar -- disowned by dwarves
+     proper, believing Reorx abandoned them too, praying to ancestor
+     spirits instead) -- all evergreen (no `SUBJECT_WHEN` gate needed,
+     racial/cultural lore rather than a dated story beat), all sourced
+     from `References/pg.txt` (Player's Guide to the Dragonlance
+     Campaign). `kagonesti` deliberately omits the bare `elves` keyword
+     already claimed by the existing `elves,kinslayer` entry, to avoid
+     first-match-wins silently intercepting it. Zero `.cpp`/`.h`
+     changes -- pure data content, same shape as Milestone 133/134's
+     `pg.txt`-sourced additions. Full writeup:
+     `docs/ZONE_NOTES.md`'s "Ask about anything" section.
+
+     Verified via a piped character-creation smoke test (real `save1.txt`
+     moved aside, restored after) against the built `data/zones/
+     palanthas.txt` -- confirms `ZoneCatalog` still parses the file
+     cleanly with the 3 new entries added, no keyword collisions. No
+     rebuild needed (no source changes); the updated zone file was synced
+     into `build/Debug/data/` before the smoke test. **Not interactively
+     walked** -- same standing `_getch()` limitation.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
