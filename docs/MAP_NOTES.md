@@ -1076,6 +1076,92 @@ aside, restored after). **Interactively confirmed working** by the user
 afterward -- shallow water blocks movement and the shrunken coastline
 reads correctly in a real terminal.
 
+## Que-shu, Hopeful Vale, Qualimori, Mount Nevermind (Milestone 131)
+
+NEXT UP item 7's four remaining Atlas-named waypoints, all placed and
+researched in one session by reading `References/TSR 8448 The Atlas of the
+Dragonlance World.pdf` directly (page images -- it has no extractable
+text, same as the Trailmap) alongside `.research/dat_full.txt`/
+`dwn_full.txt` and a full-resolution crop-and-grid-overlay pass over
+`References/dragonlancemap2.png`, the same method every placement since
+Milestone 85 has used.
+
+**Que-shu** and **Hopeful Vale** are directly-legible-or-textually-placed,
+real overworld `LOCATION`s with their own `ROAD_PAIRS` entry each.
+**Qualimori** and **Mount Nevermind** are directly labeled on
+`dragonlancemap2.png` but deliberately get **no `LOCATION`/`POS` at all**
+-- see "Qualimori and Mount Nevermind: portal-only, not overworld tiles"
+below for why.
+
+**Que-shu** -- `POS 195 199`, grid tile `.` (grassland). Directly labeled
+"Qué-Shu" on `dragonlancemap2.png`, ~4 tiles from Solace (nearest existing
+location, so `("solace", "que_shu")` was added to `ROAD_PAIRS`; the
+straight-line road crosses zero impassable tiles, confirmed before
+regenerating). Placement matches the Atlas's own text (p.16/PDF pg.37):
+"at the eastern edge of the central plains of Abanasinia, just below the
+foothills of the Eastwall Mountains" -- and its subregional map (p.5/PDF
+pg.26) drawing Que-shu directly southwest of Xak Tsaroth along the
+"Sageway East" road, a name `dat_full.txt` independently confirms (Flint:
+"The Plainsman says we're on a road known as Sageway East").
+
+**Hopeful Vale** -- `POS 187 230`, grid tile `.` (grassland), **not drawn
+on any Atlas map or `dragonlancemap2.png`**. The Atlas's own "The South"
+regional text (p.1/PDF pg.22) places it only in prose: "in one of the
+uninhabited valleys the refugees escaping Verminaard's dragonarmy found a
+temporary home in 'Hopeful Vale'" -- the mountain valleys west of the only
+pass between Qualinost and Thorbardin, hill-dwarf country. Placed the same
+"described, not drawn" way Dargaard Keep was at Milestone 98: a real
+grassland tile in that exact corridor, a few tiles off the existing
+`pax_tharkas`-`thorbardin` road (not directly on it -- Hopeful Vale is its
+own camp, not a waypoint on that road), BFS-confirmed reachable to
+Thorbardin on foot in 182 steps. `("hopeful_vale", "thorbardin")` added to
+`ROAD_PAIRS`; straight line crosses zero impassable tiles.
+
+**A real chronology find, corrected from what Milestone 126 assumed.**
+That session's re-dating pass folded "the Hopeful Vale round trip" into
+the single `thorbardin 33 41` window, treating it as a short side-trip
+*within* the Thorbardin visit. The Atlas's own day-by-day Pathways list
+(p.137, "Year 351 A.C.") says otherwise: 9.30 (day 17) "Last day of
+autumn. Reach Hopeful Vale. Goldmoon and Riverwind marry" through 10.10
+(day 27) "First Whitestone Council meeting" to 10.12 (day 29) "Party
+leaves Hopeful Vale for Thorbardin" -- a full 13-day stay that happens
+*before* Thorbardin's own 10.16-10.24 (day 33-41) window even starts, not
+inside it. (A second, much smaller beat, 10.18 "Return to Hopeful Vale" --
+day 35, fetching the refugees before their day-40 Thorbardin arrival --
+*is* correctly inside the existing Thorbardin window, and stays there;
+Milestone 126 wasn't wrong about that half.) See
+`docs/TIMELINE_NOTES.md`'s own "Hopeful Vale" section for the full
+`PRESENCE` writeup this correction produced.
+
+## Qualimori and Mount Nevermind: portal-only, not overworld tiles
+
+Both are directly labeled on `dragonlancemap2.png` -- Qualimori inland of
+"Elderwild Wood" on the same landmass as `southern_ergoth` (Milestone 95),
+Mount Nevermind (star icon) on the mainland peaks across "Thalan Bay" from
+`sancrist_isle`'s own island. Both were **first placed as ordinary
+overworld locations, pixel-read exactly like Que-shu above, before the
+straight-line road check ruled that out**: Qualimori's line to
+`southern_ergoth` crosses 6 tiles of real water (3 true `~`, the rest `r`)
+-- Harkun Bay's actual mouth, not shallow-fringe noise, confirmed against
+Milestone 130's own `shrink_river_to_coastal_fringe()` fix (a tile this far
+from land is real bay interior, not a fordable pixel). Mount Nevermind's
+line to `sancrist_isle` crosses 6 tiles of Thalan Bay the same way. Same
+"don't fake a bridge across real water" rule Milestone 87 established for
+two removed roads.
+
+Both are BFS-confirmed foot-reachable from their neighbor's own tile over
+the classified grid (Qualimori: 1,702 steps from `southern_ergoth`; Mount
+Nevermind: 704 steps from `sancrist_isle`) -- real, walkable, same
+landmass, just not a straight line. Rather than force a `ROAD_PAIRS` entry
+across open water, or leave a multi-hundred-tile real-time cross-country
+walk as the only way in, both were rebuilt as **`PORTAL`-only zones with
+no `LOCATION`/`POS` of their own** -- the exact pattern Milestone 127
+established for Foghaven Vale off `southern_ergoth.txt`. `data/zones/
+southern_ergoth.txt` gained a `PORTAL Q qualimori` POI; `data/zones/
+sancrist_isle.txt` gained `PORTAL N mount_nevermind`. No `overworld.grid`
+regeneration was needed for either -- see `docs/ZONE_NOTES.md`'s own
+writeup for the zone-file details.
+
 ## Extending the map
 
 **Adding a location**: pick a `POS` that preserves its rough real/canon

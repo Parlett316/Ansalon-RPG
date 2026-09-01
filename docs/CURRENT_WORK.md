@@ -1,17 +1,16 @@
 # Current work
 
-Nothing in flight. Milestone 130 (shallow water fixed -- `r` shrunk from
-11.6% to 3.1% of the map and made impassable, matching ocean) is
-implemented, documented, and interactively confirmed working by the user
--- see `docs/MILESTONES.md` entry 130 and `docs/MAP_NOTES.md`'s "Shallow
-water pass" section for the full before/after numbers and reachability
-audit.
+Nothing in flight. Milestone 131 (four Atlas waypoints -- Que-shu,
+Hopeful Vale, Qualimori, Mount Nevermind) is implemented, documented, and
+verified (clean `/W4` rebuild, `--check-timeline` clean, piped
+character-creation smoke test passed) -- see `docs/MILESTONES.md` entry
+131 and the matching sections in `docs/MAP_NOTES.md`,
+`docs/TIMELINE_NOTES.md`, and `docs/ZONE_NOTES.md` for the full
+placement/sourcing/content writeup. Closes out `docs/MILESTONES.md`
+NEXT UP item 7.
 
-Milestone 129 (bigger combat battlefield -- the tactical grid bumped from
-11x7 to 15x9) is also still awaiting its own first interactive combat --
-see that entry and `docs/COMBAT_NOTES.md`'s "Positional combat grid"
-section.
-
-The World Map screen mockup from the Milestone 128 session
-(`docs/MILESTONES.md` NEXT UP item 8) is still just a mockup, not
-started.
+**Not yet interactively walked** -- same standing `_getch()` limitation
+this project always discloses for zone-interior content. Worth doing on
+the next playthrough: the Que-shu ruin scene (day 2), the Hopeful Vale
+wedding (day 17-29), the Qualimori portal off Southern Ergoth (day 70),
+and the Mount Nevermind portal off Sancrist Isle (day 104).

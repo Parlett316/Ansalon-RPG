@@ -1658,6 +1658,51 @@ Keep" section for placement, and `docs/TIMELINE_NOTES.md`'s own section
 for the full sourcing and the reasoning behind giving Flint/Tasslehoff a
 window here but not Laurana.
 
+## Que-shu, Hopeful Vale, Qualimori, Mount Nevermind (Milestone 131)
+
+Four new zones closing out `docs/MILESTONES.md` NEXT UP item 7. Full
+placement/sourcing: `docs/MAP_NOTES.md`'s matching section; full
+`PRESENCE` writeup: `docs/TIMELINE_NOTES.md`'s matching section.
+
+`data/zones/que_shu.txt` and `data/zones/hopeful_vale.txt` are ordinary
+top-level zones, filename-matched to real `LOCATION` ids the same as
+every zone above this section. Que-shu is a 40×15 grid of the
+dragon-melted ruin (`T` Ancestors' Temple, `H` Chieftain's Home, `G` the
+Sunken Arena and gibbet — the `TIMELINE_ANCHOR` — and `W` the Grieving
+Wall, all named directly off the Atlas's own Que-shu town-plan map).
+Hopeful Vale is a 40×15 grid of the refugee valley (`H` the Wedding Hill,
+the `TIMELINE_ANCHOR`; `C` the Refugee Shelters; `S` the Council Circle,
+flavor-only and deliberately vague — the Atlas sources only one line for
+the first Whitestone Council meeting held here, not enough to stage a
+scene around). Both are flavor-only outdoor grids, no `SHOP`/`BED`/
+`QUEST` — one-time story locations, same restraint Godshome and Southern
+Ergoth already set.
+
+`data/zones/qualimori.txt` and `data/zones/mount_nevermind.txt` are
+**portal-only** — no matching `LOCATION` of their own, same pattern
+Foghaven Vale established at Milestone 127 (see that section above), used
+here for the reason `docs/MAP_NOTES.md` explains (both are real places
+foot-reachable from an already-modeled sea-locked location, but only
+across open water in a straight line, so no `ROAD_PAIRS` entry exists to
+walk to them from the overworld). `data/zones/southern_ergoth.txt` gained
+a `PORTAL Q qualimori` POI ("The Southbound Trail"); `data/zones/
+sancrist_isle.txt` gained `PORTAL N mount_nevermind` ("The Nevermind
+Road"). Neither carries a `TIMELINE_LOCATION` override, same choice
+Foghaven Vale made — each zone's effective timeline-location key defaults
+to its own zone id (`qualimori`, `mount_nevermind`), keeping their
+`PRESENCE` content isolated from `southern_ergoth`'s/`sancrist_isle`'s own.
+
+Qualimori is a small 40×10 grid (Porthios's refugee camp — `S` the
+Speaker's House, the `TIMELINE_ANCHOR`; `G` the Guest Quarters,
+flavor-only), sized to match its source material: a single overnight
+stop, not a settlement. Mount Nevermind is a slightly larger 40×13 grid
+(the gnome city — six POIs covering the Gnomeflinger, the Philosopher's
+Guild Hall, a Window Shaft, Research, the Examination Room, and the
+Geothermal Station; `C`, the Examination Room, is the `TIMELINE_ANCHOR`,
+since that's where Fizban and Tasslehoff's own `PRESENCE mount_nevermind
+104 104` dialogue has them studying the dragon orb). Both flavor-only,
+same no-`SHOP`/`BED`/`QUEST` restraint as above.
+
 ## Adding a new zone
 
 1. Create `data/zones/<location-id>.txt` matching an existing `LOCATION` id.

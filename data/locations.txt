@@ -57,6 +57,15 @@ POS 189 213
 DESC A modest farming town on the edge of the Abanasinia plains, its market square usually busy with wagons and rumor alike.
 END
 
+LOCATION que_shu
+NAME Que-shu
+REGION Abanasinia
+TERRAIN plainsmen-village-ruins
+GLYPH A
+POS 195 199
+DESC The burned-out remains of a Plainsmen village on the grassy skirts of the Eastwall Mountains, its stone walls and temples melted like wax and left to cool crooked. A gibbet still stands over the sunken arena, iron chains creaking whenever the wind moves through the ruin.
+END
+
 LOCATION xak_tsaroth
 NAME Xak Tsaroth
 REGION Abanasinia
@@ -82,6 +91,15 @@ TERRAIN mountain-fortress
 GLYPH P
 POS 192 221
 DESC A vast fortress carved into a mountain pass, its twin towers guarding the only easy road south. The stonework here predates the kingdoms that now claim it.
+END
+
+LOCATION hopeful_vale
+NAME Hopeful Vale
+REGION Kharolis
+TERRAIN mountain-refugee-camp
+GLYPH Z
+POS 187 230
+DESC A hidden valley in the mountains between Pax Tharkas and Thorbardin, its passes narrow and easily held, its floor warm and sheltered from the winter winds above. Rough shelters and cookfires now dot ground that the hill dwarves once kept to themselves.
 END
 
 LOCATION plains_of_dust

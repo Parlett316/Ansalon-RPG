@@ -55,10 +55,10 @@ separate look. The whole continent is a
 480×320 tile grid,
 generated from
 the reference map image, walked tile-by-tile in real time; named locations
-(Solace, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall Castle,
-Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin, Sancrist
-Isle, Crossing, Southern Ergoth, Port Balifor, Flotsam, Dargaard Keep,
-Port O'Call, ...) sit on that
+(Solace, Que-shu, Tarsis, Xak Tsaroth, the High Clerist's Tower, Ice Wall
+Castle, Silvanesti, Kalaman, Palanthas, Godshome, Neraka, Thorbardin,
+Hopeful Vale, Sancrist Isle, Crossing, Southern Ergoth, Port Balifor,
+Flotsam, Dargaard Keep, Port O'Call, ...) sit on that
 grid, most connected by
 roads baked into the terrain — Ice Wall, Sancrist Isle, and Southern
 Ergoth are the exceptions, three sea-locked stops reachable only by
@@ -69,21 +69,27 @@ can't be waded — every traveler pays the Ferry Keeper for a real
 round-trip boat ride across to Port O'Call on the far shore —
 and every one of them now has a walkable interior (Enter to step in) —
 including the Inn of the Last Home inside Solace, and Qualinost, the
-elven capital, inside Qualinesti — plus one secret place reached only on
+elven capital, inside Qualinesti — plus secret places reached only on
 foot from within a location rather than from the overworld: Foghaven
-Vale, hidden inland from Southern Ergoth's coast. Standing at a location can also reveal
+Vale, hidden inland from Southern Ergoth's coast; Qualimori, a Qualinesti
+refugee camp reached the same way; and Mount Nevermind, the gnomes'
+mountain city reached on foot from Sancrist Isle. Standing at a location can also reveal
 canon Heroes of the Lance passing through on their own schedule — the
 "chance encounter" engine described above now spans three novels: all
-eight Heroes travel together through *Dragons of Autumn Twilight* (an
-alternate path through Darken Wood, the climactic siege of Pax Tharkas,
-then together again in Tarsis as *Dragons of Winter Night* opens), then
-genuinely split for the first time — Sturm, Flint, and Tasslehoff continue
-on, first to a dragon-orb quest at Ice Wall Castle, then shipwrecked by a
-white dragon onto Southern Ergoth's refugee coast — captured, nearly
-fought, and finally sheltered by elves scattered there from three
-different homelands, while Flint and Tasslehoff (Sturm splitting off
-alone toward the Knights' outpost) follow a silver dragon inland to
-Huma's Tomb and the hollow Dragon Mountain — before reaching Sancrist and then the siege
+eight Heroes travel together through *Dragons of Autumn Twilight* (fleeing
+Solace to find Goldmoon's home village of Que-shu already dragon-razed,
+an alternate path through Darken Wood, the climactic siege of Pax
+Tharkas, a hidden mountain refuge at Hopeful Vale where Goldmoon and
+Riverwind marry, then together again in Tarsis as *Dragons of Winter
+Night* opens), then genuinely split for the first time — Sturm, Flint,
+and Tasslehoff continue on, first to a dragon-orb quest at Ice Wall
+Castle, then shipwrecked by a white dragon onto Southern Ergoth's refugee
+coast — captured, nearly fought, and finally sheltered by elves scattered
+there from three different homelands, before a brief stop at the
+Qualinesti refugee camp of Qualimori on the way inland, while Flint and
+Tasslehoff (Sturm splitting off alone toward the Knights' outpost) follow
+a silver dragon to Huma's Tomb and the hollow Dragon Mountain — before
+reaching Sancrist and then the siege
 of the High Clerist's Tower and Sturm's Knighting and death, while Tanis,
 Raistlin, Caramon, Goldmoon, and Riverwind are griffon-carried east to
 Silvanesti instead, into a second dragon-orb crisis of their own — then
@@ -111,8 +117,10 @@ eccentric old wizard, is the first canon character named and made
 talkable beyond the eight Heroes themselves — travels with the party
 from Qualinesti through the siege of Pax Tharkas, then resurfaces, still
 unidentified as anything more than "Fizban," on Southern Ergoth's
-refugee coast — and asleep inside the hollow Dragon Mountain nearby —
-and again at both Godshome and Neraka.
+refugee coast, at the Qualinesti refugee camp of Qualimori en route
+inland — and asleep inside the hollow Dragon Mountain nearby — a side
+trip to the gnomes' mountain city of Mount Nevermind with Tasslehoff to
+have a dragon orb identified — and again at both Godshome and Neraka.
 Laurana is the second and largest: introduced as the Speaker of the
 Suns's daughter at Qualinesti, she proves herself in the fighting at Pax
 Tharkas, takes up an ancient blade to kill a Dragon Highlord at Ice Wall,

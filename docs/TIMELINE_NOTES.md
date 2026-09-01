@@ -1964,7 +1964,12 @@ mid-air dragon rescue — that still have no existing game location, same
 Southern Ergoth, and Flotsam. The Dragon Mountain leg of this stretch is
 no longer one of them — see this file's own "Foghaven Vale (Milestone
 127)" section below, which gives him a real `PRESENCE foghaven_vale 69
-72` window alongside his existing `southern_ergoth 69 72` one.
+72` window alongside his existing `southern_ergoth 69 72` one. **Nor is
+Mount Nevermind, any longer** — Milestone 131 gave him (and Tasslehoff) a
+real `PRESENCE mount_nevermind 104 104` window; see this file's own "Que-
+shu, Hopeful Vale, Qualimori, Mount Nevermind (Milestone 131)" section
+below. The mid-air dragon rescue stays unmodeled — no sourced date or
+location for it was found this pass either.
 
 **His true identity stays exactly as ambiguous as every prior milestone
 left it.** The source text itself gets explicit about this at Neraka —
@@ -2504,7 +2509,9 @@ pair, so each was a safe global replacement):
 close to continuous from day 0 to day 107; the corrected one has real
 stretches — day 16 to 32 (between Pax Tharkas and Thorbardin), day 79 to
 156 (between Sancrist Isle and the Tower siege) — where no tracked
-character is anywhere on the map. This isn't a bug: it's the actual,
+character is anywhere on the map. **The first of these two gaps closed at
+Milestone 131** — see that section below; the second is still open (Mount
+Nevermind's day 104 fills one day of it, not the whole stretch). This isn't a bug: it's the actual,
 disclosed cost of replacing invented pacing with real pacing, and it's
 the same "unmodeled travel time" abstraction this file already leans on
 everywhere else (see Southern Ergoth's own "leaving days 51-54 as
@@ -2527,6 +2534,87 @@ the one pre-existing, already-documented Raistlin/Kitiara override this
 file already calls permanent (see "Keyword-collision warning" above) —
 and a clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h` diff at all,
 confirming this really was a pure data + doc change).
+
+## Que-shu, Hopeful Vale, Qualimori, Mount Nevermind (Milestone 131)
+
+NEXT UP item 7's four remaining Atlas-named waypoints, closing it out.
+Full placement/sourcing writeup: `docs/MAP_NOTES.md`'s matching section.
+25 new `PRESENCE` blocks total, across 10 already-tracked characters —
+none newly added, no `SUBJECT` lines touched, so `--check-timeline`
+produced its usual **zero new** keyword-collision warnings (only the
+one pre-existing, already-documented Raistlin/Kitiara override fires).
+
+**Que-shu** (`PRESENCE que_shu 2 2`, all 8 core Heroes: Tanis, Sturm,
+Raistlin, Caramon, Flint, Goldmoon, Riverwind, Tasslehoff) — the real
+on-page scene `dat_full.txt` ch.12 gives in full: the party finds the
+village dragon-destroyed a day into their flight from Solace, Tanis's
+"melted stones," a gibbet signed by Verminaard, Goldmoon combing her
+father's ruined house for a broken vase, Caramon and a dying child's dog,
+Sturm's silent vow before the gibbet, Flint comforting a sobbing
+Tasslehoff. Day 2 already overlaps `haven`/`darken_wood`'s own shared 1-2
+window for every one of these characters in the shipped game today — a
+character carrying two locations' `PRESENCE` on the same day was already
+a confirmed, working pattern before this milestone, not a new one.
+
+**Hopeful Vale** (`PRESENCE hopeful_vale 17 29`, the 8 core Heroes +
+Laurana) — the wedding. `dat_full.txt` ch.19 names the full torchlit
+procession: Tika and Laurana bearing torches, then Goldmoon; Tanis and
+Sturm leading Riverwind; Flint and Tasslehoff behind him; Caramon and
+Raistlin (bearing the lit Staff of Magius in place of a torch) last.
+Flint reworked Goldmoon's mother's jewelry into her own bridegift — a
+ring plaited from her hair, bound in silver and gold — sourced directly
+("Goldmoon had given Flint her mother's jewelry; the dwarf's old hands
+had not lost their touch"), and gave that detail to his own `PRESENCE`
+flavor rather than inventing a reason for a dwarf to be at a wedding.
+Riverwind's own groomgift, wrapped in "one of Tasslehoff's
+handkerchiefs," did the same for Tasslehoff's. Tika isn't a tracked
+`CHARACTER` (same standing choice as ever — see this file's own
+precedent elsewhere for named-but-untracked figures), so Caramon's own
+`PRESENCE` carries the hand-holding beat from the source text instead of
+giving her a block of her own. **Closes the day-16-to-32 gap** this
+file's own "Re-dating pass" section already flagged as a byproduct of
+Milestone 126's correction — see `docs/MAP_NOTES.md` for the chronology
+research (Atlas Pathways places the wedding at day 17, a full 13 days
+*before* the existing `thorbardin 33 41` window starts, not folded inside
+it as Milestone 126 had assumed).
+
+**Qualimori** (`PRESENCE qualimori 70 70`, six characters: Sturm, Flint,
+Tasslehoff, Fizban, Laurana, Silvara) — a brief, single-night stop at
+Porthios's refugee camp, sourced to Atlas Pathways 11.23 ("Laurana's
+group reaches Qualimori. Leaves at night") and the Atlas's own Qualimori
+page showing Porthios, Gilthanas, and Laurana's rooms at "the Speaker's
+House." Lighter-touch than Que-shu/Hopeful Vale's fuller on-page scenes,
+matching the source's own brevity — no `SUBJECT` content, no multi-day
+window. Porthios himself stays an NPC, not a tracked `CHARACTER` — same
+"named but untracked" treatment already given Elistan, Gilthanas, and
+Theros Ironfeld elsewhere in this file.
+
+**Mount Nevermind** (`PRESENCE mount_nevermind 104 104`, Tasslehoff and
+Fizban only) — the one piece of this milestone that's genuinely off-page.
+`dwn_full.txt` ~12155-12159 confirms the visit itself is never staged as
+a scene; Fizban, Tasslehoff, and an unnamed gnome are simply described as
+having "arrived back from their journey only last night" when the story
+resumes at the Glade of Whitestone the next day. Atlas Pathways 12.27
+("Tas and Fizban at Mount Nevermind") is the only date, and it's sourced
+enough to place a real `PRESENCE` window on — what's invented is the
+specific gnomish chaos described while they're there, in the same
+plausible-not-verbatim spirit as every other zone's flavor text, not a
+retrospective-only device the way Pax Tharkas's "Chain Room" `TOPIC` is
+(that distinction matters: the characters really are AT Mount Nevermind
+on day 104, not just talking about having been there once). The Glade of
+Whitestone scene the next day (Council of Whitestone, day 105 — distinct
+from the *first* Whitestone Council at Hopeful Vale, day 27) stays
+unmodeled; it has no `LOCATION` of its own and wasn't part of NEXT UP
+item 7's four named waypoints.
+
+**Verified**: clean `/W4` rebuild (zero new warnings, no `.cpp`/`.h`
+diff — pure data), `--check-timeline` (zero new keyword-collision
+warnings), and the piped character-creation smoke test (real
+`save1-3.txt` moved aside, restored after) confirming `World`/
+`ZoneCatalog`/`Timeline`/`MonsterCatalog` all still load cleanly with the
+four new locations/zones and 25 new `PRESENCE` blocks in place. **Not
+interactively walked** — same standing `_getch()` limitation this file
+discloses for every zone-interior content milestone.
 
 ## Adding a new character or event
 

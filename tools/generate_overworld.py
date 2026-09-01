@@ -214,7 +214,19 @@ ROAD_PAIRS = [
     ("neraka", "flotsam"),
     ("flotsam", "port_balifor"),
     ("kalaman", "dargaard_keep"),
+    ("solace", "que_shu"),
+    ("hopeful_vale", "thorbardin"),
 ]
+
+# Milestone 131's other two new waypoints, Qualimori and Mount Nevermind,
+# deliberately get NO entry here -- their straight-line path to the nearest
+# already-placed location (southern_ergoth, sancrist_isle) crosses several
+# tiles of real open bay (Harkun Bay / Thalan Bay), not a fordable pixel or
+# two, same "don't fake a bridge across real water" rule Milestone 87
+# established. Both are reachable on foot from that neighbor's own tile
+# (confirmed by BFS over the classified grid) and are modeled as PORTAL-only
+# zones with no LOCATION/POS of their own instead -- same pattern Milestone
+# 127 used for Foghaven Vale. See docs/MAP_NOTES.md.
 
 # Hand-corrected tiles (Milestone 87): pixels the NUM_COLORS=32 quantization
 # bucketed into "ocean" even though they aren't part of any real open-sea

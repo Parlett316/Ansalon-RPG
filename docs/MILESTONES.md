@@ -4650,6 +4650,55 @@ now fully verified, nothing further outstanding.
      re-auditing `ROAD_PAIRS`: `docs/MAP_NOTES.md`'s "Shallow water pass"
      section.
 
+131. Four Atlas waypoints -- Que-shu, Hopeful Vale, Qualimori, Mount
+     Nevermind -- closing out NEXT UP item 7, the user's pick from this
+     session's backlog menu. Researched directly from `TSR 8448 The Atlas
+     of the Dragonlance World.pdf` (read page-by-page as images -- it has
+     no extractable text) plus `.research/dat_full.txt`/`dwn_full.txt` and
+     a full-resolution crop of `References/dragonlancemap2.png`.
+
+     **Que-shu** and **Hopeful Vale** are real overworld `LOCATION`s
+     (`("solace", "que_shu")` and `("hopeful_vale", "thorbardin")` added to
+     `ROAD_PAIRS`, both clean straight lines, zero impassable crossings).
+     **Qualimori** and **Mount Nevermind** are directly labeled on the
+     reference map but deliberately get no `LOCATION`/`POS` at all --
+     their straight line to the nearest existing location crosses several
+     tiles of real open bay, so both were built as `PORTAL`-only zones off
+     `southern_ergoth.txt`/`sancrist_isle.txt` instead, the same pattern
+     Milestone 127 used for Foghaven Vale. See `docs/MAP_NOTES.md`'s
+     matching section for the full placement writeup and the water-
+     crossing checks behind that call.
+
+     A real chronology correction came out of the Hopeful Vale research:
+     Milestone 126's re-dating pass had folded the Goldmoon/Riverwind
+     wedding into the existing `thorbardin 33 41` window, but the Atlas's
+     own day-by-day Pathways list puts it 16 days earlier and 13 days
+     long (day 17-29) -- closing the day-16-to-32 gap that same session's
+     own notes had flagged as a byproduct of the correction. Full
+     chronology writeup: `docs/TIMELINE_NOTES.md`'s matching section.
+
+     25 new `PRESENCE` blocks across 10 already-tracked characters (no new
+     `CHARACTER`s, no `SUBJECT` lines touched): all 8 core Heroes at
+     Que-shu (day 2, the on-page ruin scene) and Hopeful Vale (day 17-29,
+     the wedding) plus Laurana at Hopeful Vale; Sturm/Flint/Tasslehoff/
+     Fizban/Laurana/Silvara at Qualimori (day 70, a brief overnight stop);
+     Tasslehoff and Fizban at Mount Nevermind (day 104 -- genuinely
+     off-page in the source text, but a real, dated visit, not a
+     retrospective-only device).
+
+     Pure data change -- clean `/W4` rebuild, zero new warnings, no
+     `.cpp`/`.h` diff. `--check-timeline` produced zero new
+     keyword-collision warnings (only the one pre-existing, already-
+     documented Raistlin/Kitiara override fires, same as every prior
+     content milestone). Piped character-creation smoke test passed (real
+     `save1-3.txt` moved aside, restored after) -- caught and fixed a real
+     bug first (three hand-authored zone `GRID` rows one character too
+     wide/narrow, `world::ZoneLoader`'s fail-fast width check caught it
+     immediately). **Not interactively walked** -- same standing
+     `_getch()` limitation this project always discloses for zone-interior
+     content. Full writeups: `docs/MAP_NOTES.md`, `docs/TIMELINE_NOTES.md`,
+     and `docs/ZONE_NOTES.md`, each with their own matching section.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -4745,19 +4794,17 @@ session's work.
    (Brooch/Magic Missile/breath weapon/death-burst all still player-only,
    no opportunity attacks from companion movement, no "finish off a downed
    ally"). See `docs/COMBAT_NOTES.md`'s "Extending this later" section.
-7. **Four real, Atlas-named waypoints with no `LOCATION` yet**, surfaced
-   by Milestone 126's chronology research: Que-shu (Goldmoon/Riverwind's
-   home tribe, its destruction actually witnessed en route to Xak Tsaroth
-   -- not just backstory), Hopeful Vale (the refugee camp where Goldmoon
-   and Riverwind marry and the first Whitestone Council convenes),
-   Qualimori, and Mount Nevermind. Each needs real map-placement work
-   (pixel verification against `dragonlancemap2.png`, a
-   `docs/MAP_NOTES.md` entry) and a new zone file, not just a day number
-   -- a content milestone, not a follow-on to 126's pure renumbering
-   pass. ~~Dragon Mountain~~ shipped at Milestone 127 (as a portal-nested
-   zone off Southern Ergoth, no new overworld `LOCATION` needed).
-   ~~Skullcap~~ was removed from this list at Milestone 127 -- it isn't
-   actually sourced to any tracked novel; see that entry.
+7. ~~**Four real, Atlas-named waypoints with no `LOCATION` yet**~~ -- Que-
+   shu, Hopeful Vale, Qualimori, and Mount Nevermind all shipped at
+   Milestone 131. Que-shu and Hopeful Vale are real overworld `LOCATION`s;
+   Qualimori and Mount Nevermind turned out to need the same portal-nested
+   treatment as Dragon Mountain below (their nearest neighbor crosses real
+   open water in a straight line). See `docs/MILESTONES.md` entry 131 and
+   `docs/MAP_NOTES.md`/`docs/TIMELINE_NOTES.md`/`docs/ZONE_NOTES.md`'s
+   matching sections. ~~Dragon Mountain~~ shipped at Milestone 127 (as a
+   portal-nested zone off Southern Ergoth, no new overworld `LOCATION`
+   needed). ~~Skullcap~~ was removed from this list at Milestone 127 -- it
+   isn't actually sourced to any tracked novel; see that entry.
 8. **A "World Map" screen** -- a second, zoomed-out travel/overview mode
    distinct from the real-time walking viewport, mocked up (not built) in
    the same session as Milestone 128's terrain fix: the whole 480x320 grid
