@@ -1,37 +1,27 @@
 # Current work
 
-Nothing in flight. Milestone 133 (Astinus follow-up: comprehensive
-NPC/place/event `SUBJECT` coverage, an Intelligence+Wisdom check that can
-extend his 5-question patience to a hard cap of 10, a harder
-`SUBJECT_ENDS`-based refusal on direct identity questions that also locks
-him out for the rest of the day, a new `ASK_ANYTHING` flag that suppresses
-the hint list for a POI meant to feel like it can answer anything, a new
-`ASK_LIMIT_LOCKED` field so a named Aesthetic -- not Astinus himself --
-turns the player away once today's audience is used up, and a follow-up
-fix adding a missing `SUBJECT L laurana` entry the user caught by trying
-it) is implemented, documented, and verified (clean `/W4` rebuild x4, an
-extended throwaway `ZoneLoaderSelfTest.cpp` confirming the new grammar and
-every fail-fast pairing case, piped character-creation smoke test passed
-x4) -- see `docs/MILESTONES.md` entry 133 and the matching sections in
-`docs/ZONE_NOTES.md` for the full writeup.
-
-The user expects to keep expanding Astinus's `SUBJECT` pool incrementally
-across future sessions (more NPCs/places/events as gaps are noticed) --
-treat a request like "add X to Astinus" as expected, routine content work
-on an already-designed system, not a new feature needing its own
-architecture pass.
+Nothing in flight. Milestone 134 (World Map screen -- NEXT UP item 8: a
+read-only, zoomed-out overview of the whole continent, `'o'`, with a new
+`SIZE MEDIUM/LARGE` location grammar field, sourced this session against
+`References/portcities.txt`/the novels/this project's own already-
+researched location descriptions rather than fresh Atlas image research)
+is implemented, documented, and verified (a throwaway `WorldLoaderSelfTest
+.cpp` confirmed the new `SIZE` grammar and its fail-fast validation, clean
+`/W4` rebuild with zero new warnings, piped character-creation smoke test
+passed) -- see `docs/MILESTONES.md` entry 134 and `docs/MAP_NOTES.md`'s
+"World Map screen" section for the full sourcing writeup, including a real
+geography-driven layout problem (11 of the 25 locations cluster too
+tightly for inline map labels) resolved with the user's input as a side
+legend panel instead.
 
 **Not yet interactively walked** -- same standing `_getch()` limitation
-this project always discloses. Worth doing on the next playthrough: talk
-to Astinus at the Great Library in Palanthas and try asking about a
-Hero (e.g. "tanis"), a place (e.g. "thorbardin"), and Kitiara, to confirm
-the expanded pool answers and that the ask prompt shows no suggestion
-list at all; ask 5 questions and confirm the INT/WIS check attempt (roll
-outcome varies by character stats); if extended, keep asking to 10 and
-confirm the hard stop fires with no further check; then walk back into
-the library that same day and confirm an Aesthetic (not Astinus) turns you
-away with no ask option offered at all. Separately, in a fresh
-conversation, try "are you Gilean", "are you a god", or "who are you" to
-confirm each ends the conversation immediately *and* that walking back in
-the same day gets the Aesthetic's turned-away line too, while "tell me
-about Gilean" and "tell me about the gods" still get real answers.
+this project always discloses. Worth doing on the next playthrough: press
+`o` and confirm the continent's silhouette reads correctly, the side
+legend lists all 25 locations legibly, Palanthas/Thorbardin/Tarsis show a
+visibly bigger footprint than an ordinary town, Kalaman/Neraka/Port
+Balifor show a smaller (but still widened) footprint, the player's own
+position shows as `@`, and any key closes the screen cleanly back to the
+live view. Milestone 133's own still-unwalked ask-anything checklist
+(Astinus's INT/WIS check, the 10-question hard cap, the identity-question
+lockout, the Aesthetic's turn-away line -- see `docs/MILESTONES.md` entry
+133) remains open too; both are good candidates for the same play session.

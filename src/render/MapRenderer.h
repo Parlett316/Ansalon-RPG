@@ -72,6 +72,26 @@ public:
     // the whole frame to itself rather than sharing it with the map.
     static int kLogFrameWidth;
 
+    // World Map screen (see drawWorldMapFrame below) -- its own adaptive
+    // size, independent of kViewportWidth/Height above since it's a
+    // separate downsampled view of the whole 480x320 grid, not the
+    // real-time walking camera. kWorldMapColumns is always exactly
+    // 3 * kWorldMapRows (see drawWorldMapFrame's own comment for why
+    // that ratio), both recomputed by configureLayout. The legend column
+    // beside the map is a fixed, non-adaptive width -- sized to the
+    // longest authored location name ("High Clerist's Tower") -- since
+    // its content never changes size, unlike the map itself.
+    static constexpr int kWorldMapMinRows = 13;
+    static constexpr int kWorldMapPreferredRows = 25; // exactly data/locations.txt's location count, so the
+                                                        // legend needs no truncation at this size or above --
+                                                        // bump this if a future session adds a 26th location,
+                                                        // or the legend will start silently truncating again
+                                                        // even on a generously-sized console
+    static constexpr int kWorldMapLegendWidth = 24;
+    static constexpr int kWorldMapLegendGap = 3; // matches kLogPanelGap's literal " | " divider
+    static int kWorldMapRows;
+    static int kWorldMapColumns;
+
     // Recomputes kViewportWidth/Height/kLogPanelWidth/kLogFrameWidth (and
     // the prose-wrap/organic-box-width internals in MapRenderer.cpp) to
     // fit a console of `columns` x `rows`: map width defaults to
@@ -310,6 +330,24 @@ public:
     // GameLoop::handleLog's nested loop can keep adjusting it by a fixed
     // step across calls without duplicating the wrap/line-count math here.
     static int drawLogFrame(const std::vector<std::string>& log, int scrollOffset);
+
+    // Renders the read-only "World Map" overview screen ('o'): the whole
+    // 480x320 overworld grid downsampled to kWorldMapColumns x
+    // kWorldMapRows (box-majority-vote terrain sampling, same
+    // world::terrainFor colors drawOverworldFrame uses), every
+    // world::Location overlaid as its glyph (a footprint of 1/2/2x2 cells
+    // depending on world::MapSize -- see docs/MAP_NOTES.md), the
+    // player's own position overlaid last as '@' so it's never hidden by
+    // an overlapping location marker, and a side legend panel (glyph +
+    // name, alphabetical) listing every location -- the map itself never
+    // draws text, since roughly half the location set sits too close
+    // together at this resolution for inline labels to stay legible (see
+    // docs/MAP_NOTES.md). Not a live/scrolling view -- GameLoop::
+    // showWorldMap draws this once and blocks for a single keypress to
+    // dismiss it, same shape as drawHelpFrame/drawSpellbookFrame; no
+    // travel/fast-travel action is offered here, this is reference-only.
+    static void drawWorldMapFrame(const world::OverworldGrid& grid, const world::World& world,
+                                   const game::GameState& state);
 
     // One quest's journal entry, adapted by GameLoop::showJournal from
     // quest::Quest + game::GameState::quests/monsterKills -- MapRenderer

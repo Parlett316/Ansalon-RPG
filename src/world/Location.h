@@ -4,6 +4,14 @@
 
 namespace world {
 
+// Rough on-screen footprint for the World Map overview (see
+// render::MapRenderer::drawWorldMapFrame and docs/MAP_NOTES.md) --
+// Small (the default) draws a single cell, same as every location has
+// always occupied; Medium/Large widen that footprint to signal relative
+// importance. Unused by the real-time walking viewport, which always
+// draws a location as its single glyph regardless of this value.
+enum class MapSize { Small, Medium, Large };
+
 // A single named place on the overworld map. Plain data -- all behavior
 // (loading, rendering, movement) lives elsewhere. x/y are tile coordinates
 // in the SAME coordinate space as OverworldGrid (see docs/MAP_NOTES.md for
@@ -28,6 +36,7 @@ struct Location {
                             // near a sea-locked location strands the player somewhere
                             // they have no way back from (see game::GameLoop::
                             // nearestRefuge and docs/COMBAT_NOTES.md)
+    MapSize mapSize = MapSize::Small; // World Map footprint -- see MapSize above
 };
 
 } // namespace world

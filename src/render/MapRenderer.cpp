@@ -21,6 +21,8 @@ int MapRenderer::kViewportWidth = MapRenderer::kPreferredViewportWidth;
 int MapRenderer::kViewportHeight = MapRenderer::kPreferredViewportHeight;
 int MapRenderer::kLogPanelWidth = 40; // matches the original fixed default
 int MapRenderer::kLogFrameWidth = 110;
+int MapRenderer::kWorldMapRows = MapRenderer::kWorldMapPreferredRows;
+int MapRenderer::kWorldMapColumns = 3 * MapRenderer::kWorldMapPreferredRows;
 
 namespace {
 
@@ -376,6 +378,23 @@ bool MapRenderer::configureLayout(int columns, int rows) {
     // dialogue line even though the main frame fit fine.
     kSecondaryBoxMaxWidth = std::min(100, contentWidth);
     kProseWrapWidth = std::min(76, kSecondaryBoxMaxWidth);
+
+    // World Map screen sizing -- independent of the map/log split above.
+    // kWorldMapColumns is always exactly 3x kWorldMapRows (see
+    // drawWorldMapFrame), so rows is the one free variable: solve it from
+    // both the height budget and the width budget (columns = 3*rows +
+    // gap + legend + border/insurance overhead), then take whichever is
+    // smaller so the box is guaranteed to fit either way. A console below
+    // kAbsoluteMinColumns/Rows never reaches here at all (this function
+    // already returned false above), so kWorldMapMinRows is always
+    // reachable from both budgets -- see docs/MAP_NOTES.md for the
+    // numbers this was checked against.
+    int worldMapRowsFromHeight = std::clamp(rows - 3, kWorldMapMinRows, kWorldMapPreferredRows);
+    int widthOverhead = kChromeColumns + kWorldMapLegendGap + kWorldMapLegendWidth + 4; // 4 = writeBorder's "| "/" |"
+    int worldMapRowsFromWidth =
+        std::clamp((columns - widthOverhead) / 3, kWorldMapMinRows, kWorldMapPreferredRows);
+    kWorldMapRows = std::min(worldMapRowsFromHeight, worldMapRowsFromWidth);
+    kWorldMapColumns = 3 * kWorldMapRows;
 
     return true;
 }
@@ -1066,6 +1085,143 @@ int MapRenderer::drawLogFrame(const std::vector<std::string>& log, int scrollOff
     return offset;
 }
 
+void MapRenderer::drawWorldMapFrame(const world::OverworldGrid& grid, const world::World& world,
+                                     const game::GameState& state) {
+    const int C = kWorldMapColumns;
+    const int R = kWorldMapRows;
+
+    // Proportional box-sampling (not a fixed integer block size, so this
+    // works for whatever C/R configureLayout picked): output cell
+    // (col, row) covers source rectangle
+    // [width*col/C, width*(col+1)/C) x [height*row/R, height*(row+1)/R).
+    // C is always 3*R (see MapRenderer.h) -- with the source grid's own
+    // 3:2 (480:320) aspect ratio, that cancels a terminal's ~2:1-tall
+    // character cells so the continent's silhouette reads correctly
+    // against References/dragonlancemap2.png (see docs/MAP_NOTES.md).
+    // Terrain per cell is a majority vote (most frequent code) over its
+    // rectangle, colored via the same world::terrainFor table
+    // drawOverworldFrame uses -- no separate color data for this screen.
+    std::vector<char> cellTerrain(static_cast<size_t>(C) * static_cast<size_t>(R), '?');
+    for (int row = 0; row < R; ++row) {
+        int y0 = grid.height() * row / R;
+        int y1 = std::max(y0 + 1, grid.height() * (row + 1) / R);
+        for (int col = 0; col < C; ++col) {
+            int x0 = grid.width() * col / C;
+            int x1 = std::max(x0 + 1, grid.width() * (col + 1) / C);
+            int counts[256] = {};
+            for (int y = y0; y < y1; ++y) {
+                for (int x = x0; x < x1; ++x) {
+                    ++counts[static_cast<unsigned char>(grid.terrainCodeAt(x, y))];
+                }
+            }
+            char best = '?';
+            int bestCount = -1;
+            for (int i = 0; i < 256; ++i) {
+                if (counts[i] > bestCount) {
+                    bestCount = counts[i];
+                    best = static_cast<char>(i);
+                }
+            }
+            cellTerrain[static_cast<size_t>(row) * static_cast<size_t>(C) + static_cast<size_t>(col)] = best;
+        }
+    }
+
+    // Overlay every Location's glyph, footprint sized by its MapSize
+    // (Small = the single cell; Medium = that cell plus one horizontal
+    // neighbor; Large = a 2x2 block), clamped to the grid edge. Paint
+    // order follows world.allLocations() (file order in
+    // data/locations.txt) -- later entries win where two locations'
+    // footprints land on the same cell, which real geography does cause
+    // (see docs/MAP_NOTES.md's clustering note); this map never draws
+    // text over a cell, only glyphs, so a collision just shows one
+    // location's letter instead of two -- the side legend always lists
+    // every location regardless.
+    std::vector<char> cellGlyph(static_cast<size_t>(C) * static_cast<size_t>(R), '\0');
+    for (const world::Location& loc : world.allLocations()) {
+        int col = grid.width() > 0 ? std::clamp(loc.x * C / grid.width(), 0, C - 1) : 0;
+        int row = grid.height() > 0 ? std::clamp(loc.y * R / grid.height(), 0, R - 1) : 0;
+        int footprintCols = loc.mapSize == world::MapSize::Small ? 1 : 2;
+        int footprintRows = loc.mapSize == world::MapSize::Large ? 2 : 1;
+        for (int dy = 0; dy < footprintRows; ++dy) {
+            for (int dx = 0; dx < footprintCols; ++dx) {
+                int cc = std::min(col + dx, C - 1);
+                int rr = std::min(row + dy, R - 1);
+                cellGlyph[static_cast<size_t>(rr) * static_cast<size_t>(C) + static_cast<size_t>(cc)] = loc.glyph;
+            }
+        }
+    }
+
+    int playerCol = grid.width() > 0 ? std::clamp(state.x * C / grid.width(), 0, C - 1) : 0;
+    int playerRow = grid.height() > 0 ? std::clamp(state.y * R / grid.height(), 0, R - 1) : 0;
+
+    std::vector<std::string> mapRows;
+    mapRows.reserve(static_cast<size_t>(R));
+    for (int row = 0; row < R; ++row) {
+        std::ostringstream rowStream;
+        for (int col = 0; col < C; ++col) {
+            char displayChar;
+            const char* color;
+            char locGlyph = cellGlyph[static_cast<size_t>(row) * static_cast<size_t>(C) + static_cast<size_t>(col)];
+            if (col == playerCol && row == playerRow) {
+                displayChar = '@';
+                color = "\x1b[97m"; // bright white -- same "the player must always read clearly" convention
+                                    // drawOverworldFrame uses for this same glyph
+            } else if (locGlyph != '\0') {
+                displayChar = locGlyph;
+                color = "\x1b[93m"; // bright yellow -- matches drawOverworldFrame's location-glyph color
+            } else {
+                const world::TerrainInfo& terrain =
+                    world::terrainFor(cellTerrain[static_cast<size_t>(row) * static_cast<size_t>(C) +
+                                                   static_cast<size_t>(col)]);
+                displayChar = terrain.glyph;
+                color = terrain.ansiColor;
+            }
+            rowStream << color << displayChar << "\x1b[0m";
+        }
+        mapRows.push_back(rowStream.str());
+    }
+
+    // Legend: every location, alphabetically by display name, as
+    // "<glyph>  <Name>" -- the map itself never draws text (see the
+    // function comment in MapRenderer.h for why: roughly half the
+    // location set sits too close together at this resolution for
+    // inline labels to stay legible). kWorldMapPreferredRows (25) equals
+    // data/locations.txt's current location count, so this only
+    // truncates on a console too small to reach the preferred size.
+    std::vector<const world::Location*> byName;
+    for (const world::Location& loc : world.allLocations()) byName.push_back(&loc);
+    std::sort(byName.begin(), byName.end(),
+              [](const world::Location* a, const world::Location* b) { return a->name < b->name; });
+
+    bool truncated = static_cast<int>(byName.size()) > R;
+    int shownCount = truncated ? R - 1 : static_cast<int>(byName.size());
+    std::vector<std::string> legendLines;
+    for (int i = 0; i < shownCount; ++i) {
+        std::ostringstream entry;
+        entry << byName[static_cast<size_t>(i)]->glyph << "  " << byName[static_cast<size_t>(i)]->name;
+        legendLines.push_back(padPlain(entry.str(), kWorldMapLegendWidth));
+    }
+    if (truncated) {
+        std::ostringstream note;
+        note << "+" << (static_cast<int>(byName.size()) - shownCount) << " more (bigger terminal needed)";
+        legendLines.push_back(padPlain(note.str(), kWorldMapLegendWidth));
+    }
+    while (static_cast<int>(legendLines.size()) < R) legendLines.push_back(padPlain("", kWorldMapLegendWidth));
+
+    const int kContentWidth = C + kWorldMapLegendGap + kWorldMapLegendWidth;
+    std::vector<std::string> lines;
+    lines.reserve(static_cast<size_t>(R) + 1);
+    for (int row = 0; row < R; ++row) {
+        lines.push_back(mapRows[static_cast<size_t>(row)] + " | " + legendLines[static_cast<size_t>(row)]);
+    }
+    lines.push_back(padPlain("(press any key to close)", kContentWidth));
+
+    std::ostringstream out;
+    out << "\x1b[2J\x1b[H";
+    writeBorder(out, "World Map", kContentWidth, lines);
+    std::cout << out.str();
+}
+
 void MapRenderer::drawJournalFrame(const std::vector<JournalEntry>& entries) {
     std::vector<BoxLine> lines;
 
@@ -1115,7 +1271,7 @@ void MapRenderer::drawHelpFrame() {
     lines.push_back({"  p = shop (at a shop)    i = inventory / equip", nullptr});
     lines.push_back({"  v = full event log      g = quest journal", nullptr});
     lines.push_back({"  r = rest                z = bed rest (at a bed)", nullptr});
-    lines.push_back({"  ? = this help screen", nullptr});
+    lines.push_back({"  o = world map           ? = this help screen", nullptr});
     lines.push_back({"", nullptr});
     lines.push_back({"Combat:", kSectionLabelColor});
     lines.push_back({"  Enter = attack          m = cast (if a caster)", nullptr});

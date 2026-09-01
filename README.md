@@ -73,7 +73,13 @@ elven capital, inside Qualinesti — plus secret places reached only on
 foot from within a location rather than from the overworld: Foghaven
 Vale, hidden inland from Southern Ergoth's coast; Qualimori, a Qualinesti
 refugee camp reached the same way; and Mount Nevermind, the gnomes'
-mountain city reached on foot from Sancrist Isle. Standing at a location can also reveal
+mountain city reached on foot from Sancrist Isle. Press `o` at any time
+for a read-only World Map screen — the whole continent downsampled to
+fit your terminal, every location marked (a handful of the biggest,
+like Palanthas and Thorbardin, get a bigger footprint than an ordinary
+town) alongside a legend naming all of them, since several sit too
+close together at this scale for on-map labels to stay readable; it's a
+reference view only, with no way to travel from it. Standing at a location can also reveal
 canon Heroes of the Lance passing through on their own schedule — the
 "chance encounter" engine described above now spans three novels: all
 eight Heroes travel together through *Dragons of Autumn Twilight* (fleeing
@@ -523,6 +529,10 @@ needed:
   (Accept/Decline picker), shows a progress line on later visits, and
   turns it in with a reward once its objectives are met — see
   `docs/QUEST_NOTES.md`.
+- `o` — view a read-only "World Map" overview of the whole continent,
+  downsampled to fit the screen with a side legend listing every
+  location by name (any key dismisses it) — purely a reference view, no
+  way to travel or warp from it
 - `l` — look around (overworld: names the nearest notable place and its
   direction; inside a zone: everything is already on screen, so there's
   nothing further to reveal)

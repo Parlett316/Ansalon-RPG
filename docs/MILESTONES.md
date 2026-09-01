@@ -4894,6 +4894,68 @@ now fully verified, nothing further outstanding.
      need a real keyboard playthrough. Full writeup: `docs/ZONE_NOTES.md`'s
      "Ask about anything" and "Palanthas" sections.
 
+134. World Map screen -- NEXT UP item 8's mocked-up-but-never-built
+     zoomed-out continent overview, the user's pick from this session's
+     backlog menu. Bound to `'o'`: `GameLoop::showWorldMap()` draws
+     `render::MapRenderer::drawWorldMapFrame` once and blocks for a
+     single keypress to dismiss, the same shape as `showHelp()`/
+     `showSpellbook()` -- not a `GameState.mode`, not a travel/fast-travel
+     mechanic (see `docs/ARCHITECTURE.md`'s matching entry for why that's
+     deliberate).
+
+     The mockup's importance-tier placeholders were explicitly flagged as
+     unsourced; this session did that sourcing without needing fresh
+     Atlas page-image research (the Atlas PDF has no extractable text,
+     but every location's own `DESC` was already sourced at its own
+     placement milestone, and `References/portcities.txt` -- already
+     vetted, already used for prior port-town decisions -- covered the
+     rest): Palanthas (`portcities.txt`: "the greatest harbor on Krynn"),
+     Thorbardin (its own DESC: "a dwarven kingdom carved whole from the
+     Kharolis Mountains"), and Tarsis (`.research/dat_full.txt`:
+     "the legendary seaport city of Tarsis the Beautiful") got a new
+     `SIZE LARGE`; Kalaman ("major port, the anchor of the whole
+     northern trade route"), Neraka (its own DESC: "the dragonarmies of
+     half a continent are gathered here"), and Port Balifor ("the
+     eastern trade hub") got `SIZE MEDIUM`. Everything else, including
+     Solace, stays the default/`Small` -- matching the mockup's own
+     "Solace deliberately small" framing directly, since small is the
+     default rather than a value needing its own sourcing pass.
+
+     A real problem the mockup didn't account for: 11 of the 25
+     locations (the whole Abanasinia/Kharolis cluster) sit close enough
+     together on the 480x320 grid that any compression ratio fitting a
+     console screen collapses them onto a handful of cells, so the
+     mockup's planned inline text labels would overlap and garble there.
+     Raised with the user directly during planning; resolved with **a
+     side legend panel** (glyph + name, alphabetical, every location)
+     instead of inline map labels -- the map itself never draws text,
+     only glyphs on colored terrain, so it stays legible regardless of
+     clustering. Full sourcing, the downsample math (proportional
+     box-sampling, majority-vote terrain per cell, a 3:1 column:row
+     ratio derived from canceling a terminal's ~2:1-tall character cells
+     against the source grid's own 3:2 aspect), and the exact clustering
+     numbers: `docs/MAP_NOTES.md`'s "World Map screen" section.
+
+     New optional `SIZE <MEDIUM|LARGE>` line on `LOCATION` blocks
+     (`world::MapSize`, default `Small`), parsed by `WorldLoader` the
+     same fail-fast way as `TOWN`/`SEA_LOCKED`. `MapRenderer` gained its
+     own adaptive sizing (`kWorldMapRows`/`kWorldMapColumns`), solved
+     from both the console's height and width budgets the same way
+     `configureLayout` already sizes the walking viewport, so the screen
+     degrades to a smaller map + a truncated ("+N more") legend on a
+     tiny terminal rather than overflowing it.
+
+     Verified: a throwaway `WorldLoaderSelfTest.cpp` confirmed `SIZE
+     MEDIUM`/`SIZE LARGE` parse correctly, an omitted `SIZE` line still
+     defaults to `Small`, and `SIZE HUGE` throws the expected
+     `locations.txt:<line>:` message -- then deleted, along with its
+     temporary CMake target, per the standing self-test convention.
+     Clean `/W4` rebuild, zero new warnings. Piped character-creation
+     smoke test passed (no real save files existed this session to move
+     aside). **Not interactively walked** -- same standing `_getch()`
+     limitation this project always discloses; see `docs/CURRENT_WORK.md`
+     for the specific playtest checklist this leaves open.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -5000,17 +5062,12 @@ session's work.
    portal-nested zone off Southern Ergoth, no new overworld `LOCATION`
    needed). ~~Skullcap~~ was removed from this list at Milestone 127 -- it
    isn't actually sourced to any tracked novel; see that entry.
-8. **A "World Map" screen** -- a second, zoomed-out travel/overview mode
-   distinct from the real-time walking viewport, mocked up (not built) in
-   the same session as Milestone 128's terrain fix: the whole 480x320 grid
-   downsampled with a 3:1 horizontal:vertical sampling ratio (cancels the
-   terminal font's ~2:1 tall character cells so the continent's real shape
-   reads correctly, confirmed against `References/dragonlancemap2.png`'s
-   silhouette), plus multi-cell town footprints sized by rough importance
-   tier (Palanthas/Thorbardin/Tarsis large, Solace deliberately small --
-   a real treetop village, not a city) and inline name labels. Scope if
-   picked up: a new render function, a new keybind, and likely a new
-   per-location size field in `data/locations.txt`'s grammar. The
-   importance tiers used in the mockup are placeholder judgment calls, not
-   yet checked against the Atlas the way Milestone 128's terrain fix was --
-   would need the same sourcing discipline before shipping.
+8. ~~**A "World Map" screen**~~ -- shipped at Milestone 134: the whole
+   480x320 grid downsampled (proportional box-majority-vote sampling, 3:1
+   column:row ratio) with a side legend instead of the mockup's originally
+   planned inline labels (a real clustering problem in the actual location
+   data made those unreadable -- see that entry), `SIZE MEDIUM/LARGE`
+   footprints on Palanthas/Thorbardin/Tarsis/Kalaman/Neraka/Port Balifor
+   sourced against `References/portcities.txt` and the novels, bound to
+   `'o'`. See `docs/MILESTONES.md` entry 134 and `docs/MAP_NOTES.md`'s
+   "World Map screen" section.

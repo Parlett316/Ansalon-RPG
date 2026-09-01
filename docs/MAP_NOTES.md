@@ -1176,3 +1176,103 @@ distinctions — e.g. recovering glacier/bog/salt-flat as their own colors),
 or hand-paint specific tiles in `data/overworld.grid` directly (single
 ASCII characters, grammar in `world/Terrain.cpp`) — just remember hand-edits
 don't survive a regenerate.
+
+## World Map screen (Milestone 134)
+
+NEXT UP item 8's mocked-up-but-never-built "World Map" screen (`'o'`),
+finally shipped -- a read-only, zoomed-out overview of the whole
+480x320 `data/overworld.grid`, distinct from the real-time walking
+viewport. The mockup's importance-tier placeholders were explicitly
+flagged as "not yet checked against the Atlas" -- this milestone does
+that sourcing and finds a real layout problem the mockup never
+accounted for.
+
+**Downsampling**: proportional box-sampling, not a fixed integer block
+size -- output cell `(col, row)` in a `C`-wide x `R`-tall grid covers
+source rectangle `[width*col/C, width*(col+1)/C) x [height*row/R,
+height*(row+1)/R)`, terrain decided by majority vote (most frequent
+`terrainCodeAt` code) over that rectangle, colored via the same
+`world::terrainFor` table the walking viewport already uses. `C` is
+always `3 * R` -- the source grid's own 3:2 (480:320) aspect ratio,
+divided by a terminal's ~2:1-tall character cells, works out to a 3:1
+column:row ratio for the *output* grid to read as the correct real-world
+shape. Confirmed by eye against `References/dragonlancemap2.png`'s
+silhouette (the mountain spine, Blood Sea, and the tan Plains-of-
+Dust/Kharolis region are all still identifiable at this resolution, same
+landmarks Milestone 2's original placements were oriented against).
+
+**Adaptive size, same pattern as `MapRenderer::configureLayout`**:
+`kWorldMapRows`/`kWorldMapColumns` are solved from both the console's
+height budget and width budget (columns = `3 * rows` + a fixed
+24-column legend + gap + border overhead), taking whichever is smaller
+so the frame always fits -- `kWorldMapMinRows` (13) up to
+`kWorldMapPreferredRows` (25, chosen to equal `data/locations.txt`'s
+current location count exactly, so the legend needs no truncation at
+that size or above).
+
+**Sourcing the `SIZE` tiers** (new optional `SIZE <MEDIUM|LARGE>` line
+on a `LOCATION` block, `world::MapSize`, default `Small` = today's
+single-cell footprint, parsed by `WorldLoader` the same fail-fast way as
+`TOWN`/`SEA_LOCKED`). No fresh Atlas page-image research was needed --
+the Atlas PDF has no extractable text, but every location's own `DESC`
+in `data/locations.txt` already carries prose sourced from the novels at
+its own placement milestone, and `References/portcities.txt` (already
+vetted, already used for prior port-town decisions) covers the rest:
+- **Palanthas** -- `LARGE`. `portcities.txt` line 3: "the greatest
+  harbor on Krynn, a walled circular city."
+- **Thorbardin** -- `LARGE`. Its own `DESC`: "a dwarven kingdom carved
+  whole from the Kharolis Mountains."
+- **Tarsis** -- `LARGE`. `.research/dat_full.txt` lines 17442-17443
+  (Dragons of Autumn Twilight): "the legendary seaport city of Tarsis
+  the Beautiful."
+- **Kalaman** -- `MEDIUM`. `portcities.txt` line 4: "northeastern
+  Solamnia's major port, the anchor of the whole northern trade route."
+- **Neraka** -- `MEDIUM`. Its own `DESC`: "the dragonarmies of half a
+  continent are gathered here" -- functionally the enemy capital.
+- **Port Balifor** -- `MEDIUM`. `portcities.txt` line 35: "the eastern
+  trade hub."
+- **Port O'Call and Crossing** stay default/`Small` -- `portcities.txt`
+  line 20 explicitly groups them as "lesser Southlund and Solamnic
+  landings."
+- **Solace and everything else** stay default/`Small` too -- matching
+  the mockup's own "Solace deliberately small... not a city" framing;
+  small is the default, not a separate value that needed its own
+  sourcing pass.
+
+**A real clustering problem the mockup didn't account for.** The mockup
+called for inline name labels drawn directly on the downsampled map. But
+11 of the 25 locations -- Solace, Haven, Que-shu, Xak Tsaroth,
+Qualinesti, Pax Tharkas, Hopeful Vale, Thorbardin, Crossing, Port
+O'Call, Darken Wood -- sit within roughly an 18x60-tile box on the
+480x320 grid (Abanasinia and the northern Kharolis foothills). At any
+compression ratio that fits a console screen, that whole cluster
+collapses onto a handful of output cells, so inline text there would
+overlap and garble. Raised with the user directly (see the plan
+approved for this milestone); **resolved with a side legend panel**
+(glyph + name, alphabetical, every location) instead of inline labels --
+the map itself never draws text, only glyphs on colored terrain, so it
+stays legible regardless of how tightly locations cluster in real
+geography. This reuses the map+side-panel layout `drawOverworldFrame`/
+`drawZoneFrame` already established for the log column, just with a
+legend instead of a log.
+
+**Not a `GameState.mode`, not a travel/fast-travel mechanic.** Same
+shape as `GameLoop::showHelp()`/`showSpellbook()` -- `showWorldMap()`
+draws one frame and blocks for a single keypress to dismiss it. No
+`GameState` field changed, `tryMoveOverworld` is untouched. This matters
+specifically because chance encounters (this project's core pitch) only
+fire while actually walking -- a warp/fast-travel option here would let
+a player skip the very mechanic the whole game is built around. See
+`docs/ARCHITECTURE.md`'s matching entry.
+
+Verified: a throwaway `WorldLoaderSelfTest.cpp` confirmed `SIZE MEDIUM`/
+`SIZE LARGE` parse correctly, an omitted `SIZE` line still defaults to
+`Small`, and `SIZE HUGE` throws the expected `locations.txt:<line>:`
+message -- then deleted per the standing self-test convention. Clean
+`/W4` rebuild, zero new warnings. Piped character-creation smoke test
+passed (real `save1-3.txt` moved aside, restored after). **Not
+interactively walked** -- same standing `_getch()` limitation this
+project always discloses; the actual screen (does the silhouette read
+correctly, is the legend legible, do the Medium/Large footprints look
+right at real console sizes, does `'o'` open/close cleanly) needs a real
+playthrough.

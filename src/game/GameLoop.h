@@ -371,6 +371,10 @@ private:
     // Opens the '?' help screen listing every command, until one keypress
     // dismisses it -- same one-keypress-blocks shape as showCharacterSheet.
     void showHelp();
+    // Opens the 'o' World Map overview screen until one keypress dismisses
+    // it -- same one-keypress-blocks shape as showHelp. Read-only: offers
+    // no travel/fast-travel action, see render::MapRenderer::drawWorldMapFrame.
+    void showWorldMap();
     // Nearest world::Location with isTown or seaLocked set, by straight-line
     // tile distance from state_.x/state_.y (no pathfinding system exists --
     // same restraint as minutesToCross being flat-per-tile). Used by

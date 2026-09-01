@@ -69,6 +69,14 @@ void WorldLoader::loadFromFile(const std::string& path, World& outWorld) {
             current.isTown = true;
         } else if (keyword == "SEA_LOCKED") {
             current.seaLocked = true;
+        } else if (keyword == "SIZE") {
+            if (rest == "MEDIUM") {
+                current.mapSize = MapSize::Medium;
+            } else if (rest == "LARGE") {
+                current.mapSize = MapSize::Large;
+            } else {
+                fail(lineNumber, "invalid SIZE value '" + rest + "' (expected MEDIUM or LARGE)");
+            }
         } else if (keyword == "POS") {
             std::istringstream iss(rest);
             if (!(iss >> current.x >> current.y)) {

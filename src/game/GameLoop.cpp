@@ -385,6 +385,7 @@ void GameLoop::run() {
             case render::Key::Inventory: handleInventory(); break;
             case render::Key::Log:       handleLog(); break;
             case render::Key::Journal:   showJournal(); break;
+            case render::Key::WorldMap:  showWorldMap(); break;
             case render::Key::Flee:      break; // only meaningful inside runCombat's own loop
             case render::Key::Cast:      break; // only meaningful inside runCombat's own loop
             case render::Key::Rest:      handleRest(); break;
@@ -641,6 +642,11 @@ void GameLoop::showSpellbook() {
 
 void GameLoop::showHelp() {
     render::MapRenderer::drawHelpFrame();
+    render::Console::readKey(); // block for one keypress to dismiss, any key
+}
+
+void GameLoop::showWorldMap() {
+    render::MapRenderer::drawWorldMapFrame(grid_, world_, state_);
     render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 

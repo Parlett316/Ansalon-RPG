@@ -11,6 +11,11 @@
 #   TOWN                    (optional, no argument) marks this as a civilian settlement --
 #                          a knocked-out player respawns at the nearest TOWN location,
 #                          full-healed, instead of always Solace -- see docs/COMBAT_NOTES.md
+#   SIZE <MEDIUM|LARGE>     (optional) rough importance tier for the World Map overview
+#                          screen ('o') only -- widens that screen's footprint for this
+#                          location. Omitted means the default single-cell size; the
+#                          real-time walking viewport is unaffected either way. See
+#                          docs/MAP_NOTES.md's "World Map screen" for sourcing.
 #   POS <x> <y>            tile coordinates on the SAME grid as data/overworld.grid
 #                          (480 wide x 320 tall -- see docs/MAP_NOTES.md for how
 #                          these were placed: most are pixel-measured off a legible
@@ -117,6 +122,7 @@ REGION Kharolis
 TERRAIN dry-plains-city
 GLYPH T
 TOWN
+SIZE LARGE
 POS 197 274
 DESC A city stranded far from any sea, though its docks and rusting ship-hulks remain, half-buried in the dust. Old sailors still argue about which direction the water went.
 END
@@ -165,6 +171,7 @@ REGION Estwilde
 TERRAIN coastal-town
 GLYPH K
 TOWN
+SIZE MEDIUM
 POS 267 69
 DESC A walled harbor city on Kalaman Bay, its open-air bazaar and fish market spilling into streets built for a bigger, safer age. White-winged ships ride at anchor in its harbor -- the last real port left to whoever still controls it.
 END
@@ -175,6 +182,7 @@ REGION Solamnia
 TERRAIN walled-port-city
 GLYPH L
 TOWN
+SIZE LARGE
 POS 190 79
 DESC A wheel-shaped city of white marble ringing the Bay of Branchala, its dwarven-cut avenues radiating out from a central hub to the sea gates and the Old City Wall. The only deep-water port to survive the Cataclysm intact -- and, somewhere past its rooftops, a single black tower the whole city has learned not to look at.
 END
@@ -193,6 +201,7 @@ NAME Neraka
 REGION Taman-Busuk
 TERRAIN temple-war-camp
 GLYPH N
+SIZE MEDIUM
 POS 301 137
 DESC A walled compound built around the black Temple of the Queen of Darkness, its spires lost in the shadow of flying citadels that never let the sun through. Camp-tents and gallows crowd every open space between the walls; the dragonarmies of half a continent are gathered here, and not one of them trusts the others.
 END
@@ -202,6 +211,7 @@ NAME Thorbardin
 REGION Kharolis
 TERRAIN dwarven-kingdom
 GLYPH D
+SIZE LARGE
 POS 189 239
 DESC A dwarven kingdom carved whole from the Kharolis Mountains, its Southgate a forty-foot plug of stone that can seal the outside world away as if it never existed. Torchlit halls stretch back into the dark farther than any surface-dweller cares to walk alone.
 END
@@ -241,6 +251,7 @@ REGION Balifor
 TERRAIN occupied-trade-port
 GLYPH B
 TOWN
+SIZE MEDIUM
 POS 356 179
 DESC A trade town on the Bay of Balifor, dragonarmy patrols in its streets but its fishing fleet and taverns mostly left alone -- the Highlords have never cared much what happens on this stretch of coast. The Pig & Whistle still pours a decent ale for anyone not wearing a Highlord's colors.
 END

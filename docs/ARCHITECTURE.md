@@ -1449,6 +1449,36 @@ attach without reworking it:
   quest (`road_wolves`) is also open — see `docs/QUEST_NOTES.md`'s
   "Extending this later".
 
+## World Map screen: a read-only overview, not a mode or a travel mechanic (Milestone 134)
+
+`'o'` opens a zoomed-out, whole-continent view of `data/overworld.grid`
+distinct from the real-time walking viewport. **Not a `GameState.mode`,
+same reasoning as combat's own "Not a `GameState.mode`" note above**:
+`GameLoop::showWorldMap()` is a single `render::MapRenderer::
+drawWorldMapFrame` call followed by one blocking `Console::readKey()` to
+dismiss — the exact same one-keypress-blocks shape as `showHelp()`/
+`showSpellbook()`, not a nested loop, not a new `Mode` value. No
+`GameState` field changed, and `tryMoveOverworld` is completely
+untouched — this screen offers no way to select a destination or warp
+there. That's a deliberate scope boundary, not an oversight: this
+project's whole premise is chance encounters with canon characters while
+*walking* the real-time map (see `README.md`), so a fast-travel action
+on this screen would let a player skip the very mechanic the game is
+built around.
+
+`MapRenderer::drawWorldMapFrame` downsamples the same `world::
+OverworldGrid`/`world::World` the walking viewport already reads —
+proportional box-majority-vote terrain sampling (not a fixed integer
+block size), colored via the same `world::terrainFor` table, with every
+`world::Location` overlaid as its glyph (footprint size driven by a new
+`world::MapSize` field, default `Small` = today's single-cell size) and
+the player's own position drawn last as `@`. See `docs/MAP_NOTES.md`'s
+"World Map screen" section for the downsample math, the `SIZE` grammar
+addition and its sourcing, and a real geography-driven layout problem
+(11 of 25 locations cluster too tightly for inline text labels to stay
+legible) resolved with a side legend panel instead — the map itself
+never draws text, only glyphs on colored terrain.
+
 ## What's deliberately NOT abstracted yet
 
 No plugin system, no generic "event" bus, no data-driven scripting layer,

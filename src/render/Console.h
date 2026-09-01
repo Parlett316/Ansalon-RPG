@@ -18,6 +18,7 @@ enum class Key {
     Inventory, // carried items / equip-unequip -- see game::GameLoop::handleInventory
     Log,   // dedicated scrollable full-history log screen -- see game::GameLoop::handleLog
     Journal, // quest journal -- see game::GameLoop::showJournal
+    WorldMap, // read-only zoomed-out continent overview -- see game::GameLoop::showWorldMap
     Flee,  // retreat from combat -- see game::GameLoop::runCombat
     Cast,  // cast the character's one known spell in combat -- see game::GameLoop::runCombat
     Rest,  // rest to heal and (re)memorize spells -- see game::GameLoop::handleRest
