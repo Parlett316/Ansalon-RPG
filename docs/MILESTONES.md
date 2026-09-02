@@ -5097,11 +5097,10 @@ now fully verified, nothing further outstanding.
      changes). Piped character-creation smoke test passed (real
      `save1.txt` moved aside, restored after) -- confirms `main.cpp`'s
      cross-validation accepts the new `QUEST B what_the_tide_kept` zone
-     binding against the loaded `QuestCatalog`. **Not interactively
-     walked** -- same standing `_getch()` limitation this project always
-     discloses; talking to the Beachcomber, finding the Storm-Wrack,
-     delivering the locket, and confirming the reward/journal entry all
-     still need the user's own keyboard.
+     binding against the loaded `QuestCatalog`. **Interactively confirmed**
+     (2026-09-02, real `save1.txt`, quest shows `Complete` in-save): talked
+     to the Beachcomber, found the Storm-Wrack, delivered the locket, and
+     the reward/journal entry both read correctly.
 
 137. Day-gated Astinus SUBJECT content, plus 3 new topics -- what started
      as "add more subjects to Astinus's ask-anything pool" (routine
@@ -5263,10 +5262,9 @@ now fully verified, nothing further outstanding.
      --config Debug`), zero new `/W4` warnings, plus a piped
      character-creation smoke test confirming `World`/`ZoneCatalog`/
      `Timeline`/`MonsterCatalog` still load (this change touches no data
-     files, only two integer constants in `GameLoop.cpp`). **Not yet
-     interactively walked** -- same standing `_getch()` limitation;
-     confirm on the next play session that the wider starting gap feels
-     right in an actual fight.
+     files, only two integer constants in `GameLoop.cpp`). **Interactively
+     confirmed** (2026-09-02, real `save1.txt`, a wilderness encounter near
+     Solace): the wider starting gap reads correctly.
 
 141. Weapon Specialization for Fighters (PHB p.71-73, Tables 34/35,
      visually confirmed via rendered page images -- `phb.txt`'s OCR of
@@ -5310,10 +5308,12 @@ now fully verified, nothing further outstanding.
      empty slot, `save1.txt` left untouched) confirming the new prompt
      appears and works correctly for a Fighter (text, y/n handling, and
      the resulting summary screen all correct) and is correctly skipped
-     for a Mage. **Not yet interactively walked in a real fight** -- same
-     standing `_getch()` limitation; confirm on the next play session that
-     a specialized Fighter's to-hit/damage/attack-rate all read correctly
-     in actual combat.
+     for a Mage. **Interactively confirmed** (2026-09-02, a fresh
+     specialized Fighter, real fight vs. a Giant Spider): the log showed
+     "+2 = 18 vs THAC0 20 - AC 4" to-hit and "6 +5 = 11" damage --
+     STR 18/43 alone gives +1 to-hit/+3 damage
+     (`strengthToHitAdjustment`/`strengthDamageAdjustment`), so the
+     observed +2/+5 is exactly STR plus specialization's own +1/+2 on top.
 
 142. Three new Monster Manual monsters: Harpy, Griffon, Stirge. Continues
      the Milestone 107/112 pattern (a batch of three, each visually
@@ -5502,11 +5502,15 @@ now fully verified, nothing further outstanding.
      character-creation smoke test against the real save-slot menu (an
      empty slot used, `save1.txt` left untouched) confirming
      `Spellcasting`'s new spell list parses/loads cleanly end-to-end.
-     **Not yet interactively walked in a real fight** -- same standing
-     `_getch()` limitation; confirm on the next play session that casting
-     Haste doubles the logged attack count, and that casting Slow on a
-     monster shows both the THAC0 and AC math correctly in the "Showing
-     the math" bracketed breakdown.
+     **Interactively confirmed** (2026-09-02, a level-20 Mage vs. a group
+     of Kobold Skirmishers): Haste doubled the logged attack count (two
+     "You hit..." lines landed in the same round, killing two Skirmishers
+     before the survivors got a turn); Slow showed the target's AC jump
+     from its listed 7 to 11 in the bracket, exactly the sourced +4
+     penalty. The target died before it could attack, so the paired -4
+     THAC0 penalty wasn't directly observed, but it's set from the same
+     `result.amount` in the same `DebuffMonsterThac0AndAc` case
+     (`GameLoop.cpp`) as the now-confirmed AC penalty.
 
 145. Three more Astinus SUBJECT entries -- continuing the same ongoing
      ask-anything pass, but shifting from Milestone 138/139's race/pantheon
@@ -5595,7 +5599,9 @@ now fully verified, nothing further outstanding.
      character-creation smoke test (real `save1.txt` untouched, empty slot 2
      used) confirming `World`/`OverworldGrid` still parses the regenerated
      grid cleanly end to end. Zero `.cpp`/`.h` changes outside `tools/
-     generate_overworld.py`.
+     generate_overworld.py`. **Interactively confirmed** (2026-09-02, real
+     `save1.txt`, walking near Solace): terrain reads as coherent regions,
+     not scattered noise.
 
 147. Mountains get their own glyph -- a graphics-design review of `world/
      Terrain.cpp`'s glyph/color table (not tied to a bug report) found
@@ -5619,10 +5625,9 @@ now fully verified, nothing further outstanding.
      Single-character literal change to a static lookup table, no new logic
      -- no throwaway self-test needed. Verified via a clean rebuild (zero new
      `/W4` warnings) and a piped character-creation smoke test confirming
-     `World`/`OverworldGrid` still parse cleanly. **Not interactively
-     walked** -- worth confirming next play session that mountains and hills
-     now read as visually distinct regions, both on the overworld and the
-     World Map screen.
+     `World`/`OverworldGrid` still parse cleanly. **Interactively confirmed**
+     (2026-09-02, real `save1.txt`, World Map screen near the Kharolis/
+     Vingaard ranges): mountains and hills read as visually distinct.
 
 148. Region-boundary highlighting -- continuing the same graphics-design
      review, the user asked what more could be done to make the overworld
@@ -5664,10 +5669,8 @@ now fully verified, nothing further outstanding.
      real save/grid measuring the *actual* border density this time (5.0%
      on the overworld viewport, 21.5% on the World Map screen) and
      confirming it visually traces real coastlines/biome boundaries rather
-     than reading as noise. **Not interactively walked** -- a render probe
-     can approximate but not fully substitute for seeing this in a real
-     terminal; worth confirming next play session on both the overworld
-     viewport and the World Map screen.
+     than reading as noise. **Interactively confirmed** (2026-09-02, real
+     `save1.txt`, both the overworld viewport and the World Map screen).
 
 149. Three more Astinus SUBJECT entries -- continuing the same
      ask-anything pass, staying on Milestone 145's shift to named
