@@ -181,3 +181,17 @@ interactively walked** -- a render probe can approximate but not fully
 substitute for seeing this in a real terminal; worth confirming next play
 session, alongside 147's check, on both the overworld viewport and the
 World Map screen.
+
+Milestone 149 (three more Astinus SUBJECT entries -- `gilthanas`, `soth`,
+and `ariakas,emperor`, continuing Milestone 145's shift to named characters
+the player meets later in the story, each gated with a real `SUBJECT_WHEN`
+before/after pair sourced from `data/timeline.txt`'s own PRESENCE/TOPIC
+windows and verified against the actual `References/` PDFs; see
+`docs/MILESTONES.md` entry 149 and `docs/ZONE_NOTES.md`'s "Ask about
+anything" section) is implemented, documented, and verified via a piped
+character-creation smoke test confirming `ZoneCatalog`/`Timeline` still
+parse `data/zones/palanthas.txt` cleanly, but **not yet interactively
+walked**. Worth doing on the next play session: ask Astinus about
+Gilthanas, Lord Soth, and Ariakas both before and after the relevant day
+thresholds (day 69/190/193 respectively) and confirm all six variants read
+correctly.

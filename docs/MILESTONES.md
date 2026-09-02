@@ -5669,6 +5669,47 @@ now fully verified, nothing further outstanding.
      terminal; worth confirming next play session on both the overworld
      viewport and the World Map screen.
 
+149. Three more Astinus SUBJECT entries -- continuing the same
+     ask-anything pass, staying on Milestone 145's shift to named
+     characters the player meets later in the story: `gilthanas`
+     (Laurana's brother, an elflord wounded defending a Wilder-Elf/
+     Silvanesti/Qualinesti standoff at Southern Ergoth day 69 -- no
+     `CHARACTER` block of his own, same "named-but-untracked" precedent
+     Milestones 95/127 already set for him), `soth` (the death knight of
+     Dargaard Keep, first witnessed abducting Laurana at day 190 --
+     confirmed against `References/Dragons_of_Spring_Dawning_-
+     _Margaret_Weis.pdf`'s Knight-of-the-Black-Rose backstory, which
+     confirms Kitiara's existing in-game line about "some old debt of
+     his against an elfwoman" is the genuine three-century-old grudge,
+     not an invented detail; the game's own Dargaard Keep dialogue
+     deliberately never names him to the player, so Astinus is the first
+     place this project actually lets a player learn who that was), and
+     `ariakas,emperor` (the self-styled Emperor over all five Highlords,
+     killed by Tanis at Neraka day 193 for the Crown of Power -- also
+     confirmed against the same PDF, both his self-styling and his death
+     matching this project's own existing "The Crown of Power" dialogue
+     almost beat for beat). All three needed a real `SUBJECT_WHEN`
+     before/after pair, day-sourced directly from `data/timeline.txt`'s
+     own `PRESENCE`/`TOPIC` windows, same category as Milestone 145's
+     trio. No keyword collisions with any of Astinus's existing entries
+     (checked against the full list before writing; `soth` deliberately
+     doesn't reuse the `dargaard` keyword the location entry already
+     claims). Zero `.cpp`/`.h` changes -- pure data content, same shape
+     as Milestone 145. Full writeup: `docs/ZONE_NOTES.md`'s "Ask about
+     anything" section.
+
+     Verified via a piped character-creation smoke test (real
+     `save1.txt` untouched, empty slot 2 used) confirming
+     `ZoneCatalog`/`Timeline` still parse `data/zones/palanthas.txt`
+     cleanly with the 6 new lines added. No rebuild needed for source,
+     but the build was re-run to sync the updated zone file into
+     `build/Debug/data/` before the smoke test. **Not interactively
+     walked** -- same standing `_getch()` limitation; worth doing on the
+     next play session: ask Astinus about Gilthanas, Lord Soth, and
+     Ariakas both before and after the relevant day thresholds (day
+     69/190/193 respectively) and confirm all six variants read
+     correctly.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

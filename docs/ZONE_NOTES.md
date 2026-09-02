@@ -783,6 +783,56 @@ needed for source, but the build was re-run to sync the updated zone file
 into `build/Debug/data/` before the smoke test. **Not interactively
 walked** -- same standing `_getch()` limitation.
 
+**Milestone 149 added 3 more entries, continuing the same named-character
+shift Milestone 145 began**: `gilthanas`, `soth`, and `ariakas,emperor`.
+All three needed `SUBJECT_WHEN` gating, sourced from `data/timeline.txt`'s
+own `PRESENCE`/`TOPIC` windows: `gilthanas` splits at day 69 (`PRESENCE
+southern_ergoth 69 72`, where Sturm's "What Nearly Happened" and
+Laurana's own presence text place his wounding defending a Wilder-Elf/
+Silvanesti/Qualinesti standoff -- Gilthanas has no `CHARACTER` block of
+his own, referenced only secondhand through Tanis/Sturm/Laurana's
+dialogue, same "named-but-untracked" precedent Milestones 95/127 already
+established for him); `soth` splits at day 190 (`PRESENCE dargaard_keep
+190 190`, where Flint and Tasslehoff both witness Laurana's abduction by
+an unnamed, burned Solamnic-armored knight -- the game's own existing
+dialogue there deliberately withholds his name, "Never gave a name. I've
+decided I'm not eager to learn it" / "It never said what it was";
+Astinus is the first place in this project a player can actually learn
+who that was); `ariakas,emperor` splits at day 193 (`PRESENCE neraka 193
+195`, Tanis's own "The Crown of Power" `TOPIC`, where Tanis kills him and
+claims the Crown of Power).
+
+Verified against `References/Dragons_of_Spring_Dawning_-
+_Margaret_Weis.pdf` (`pdftotext -layout`) rather than written from
+memory: Lord Soth's full backstory (a Knight of the Black Rose who broke
+his marriage and knightly vows for an elfmaid, was offered redemption by
+Mishakal, and was cursed to undeath when the Cataclysm struck and
+jealousy destroyed him -- lines ~5747-5781) confirms Kitiara's existing
+in-game line about "some old debt of his against an elfwoman" is exactly
+this three-century-old grudge, not an invented detail; Ariakas's
+self-styled title ("The `Emperor,' as Ariakas styled himself," line
+11856) and his death at Tanis's hand in the throne room (lines
+~13130-13199, matching this project's own existing "The Crown of Power"
+dialogue almost beat for beat) confirm both new entries. Gilthanas's
+identity as Laurana's brother and "an elflord" is confirmed against
+`References/Dragons_of_Winter_Night_-_Margaret_Weis.pdf` (lines 815-819);
+his Southern Ergoth wounding relies on this project's own already-shipped,
+already-sourced `southern_ergoth 69 72` timeline content (Milestone 95)
+rather than re-deriving it.
+
+`soth` deliberately doesn't reuse the `dargaard` keyword already claimed
+by the location `SUBJECT` a few lines below it -- distinct topics, no
+collision either way. No keyword collisions with any of Astinus's
+existing entries (checked against the full list before writing). Zero
+`.cpp`/`.h` changes -- pure data content, same shape as Milestone 145.
+
+Verified via a piped character-creation smoke test (real `save1.txt`
+untouched, empty slot 2 used) confirming `ZoneCatalog`/`Timeline` still
+parse `data/zones/palanthas.txt` cleanly with the 6 new lines added. No
+rebuild needed for source, but the build was re-run to sync the updated
+zone file into `build/Debug/data/` before the smoke test. **Not
+interactively walked** -- same standing `_getch()` limitation.
+
 ## Zone-interior encounters (Milestone 23)
 
 `TIMELINE_ANCHOR <char>` layers a *third* kind of ability onto a POI,
