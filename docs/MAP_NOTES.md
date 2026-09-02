@@ -1326,3 +1326,130 @@ new warnings. Piped character-creation smoke test passed (no real
 `save1-3.txt` existed this session to move aside). **Not interactively
 walked** -- see `docs/CURRENT_WORK.md` for what a real playthrough
 still needs to confirm.
+
+## Terrain classification smoothing (Milestone 146)
+
+The classifier's salt-and-pepper misclassification (JPEG compression noise
+plus the reference map's own paint texture, see "Two separate data sources"
+above) has been a known, actively-managed property of this pipeline since
+Milestone 2 -- tolerable as a flat ANSI color, but glaringly obvious once a
+separate experimental session rendered the overworld as real pixel-art
+sprite tiles instead (a genuine mountain/tree/hill icon sitting alone in the
+wrong region reads very differently from a stray colored character). Pulling
+the raw grid directly confirmed it was real classification noise, not a
+rendering artifact.
+
+`tools/generate_overworld.py` gained `smooth_terrain(grid, self_weight=2)`:
+every tile becomes the plurality of itself (counted `self_weight` times)
+plus its 8 immediate neighbors. Three strengths were prototyped first as
+disposable Python scripts (never touching the real data) -- a conservative
+isolated-tile despeckle, and this majority vote at one and two iterations --
+rendered over the Solace region with the real tileset for a visual
+comparison. Majority vote / self-weight 2 / one iteration was picked (one
+more iteration was barely different -- diminishing returns).
+
+**Ordering is the one thing that matters here.** The call sits in `main()`
+immediately after `grid` is built from the raw classified `indices`, and
+*before* `MANUAL_TERRAIN_OVERRIDES` is applied -- those ~90 entries are each
+independently pixel-verified fixes for specific known misclassifications
+(see the Ice Wall/Kalaman/Palanthas/etc. entries above), and running
+smoothing after them would just vote them straight back to the wrong value.
+`shrink_river_to_coastal_fringe` and `ROAD_PAIRS` drawing stay after, exactly
+as before -- both already assume a finished, override-applied grid.
+
+Regenerated following this project's own established capture-before-
+regenerate discipline (same pattern as every prior classifier/`ROAD_PAIRS`
+change documented above): the pre-regenerate grid was saved off, then the
+new one diffed against it.
+
+- **12,056 / 153,600 tiles changed (7.85%)** -- matches the ~7.4% seen while
+  prototyping over just the Solace region.
+- **All 625 road tiles landed byte-for-byte identical.** Expected -- roads
+  are stamped after smoothing runs, completely unaffected by it.
+- **86 of 87 `MANUAL_TERRAIN_OVERRIDES` still hold their intended value.**
+  The 6 "mismatches" are all coordinates a road is legitimately drawn over
+  afterward (`grid[oy][ox]` ends up `'#'`, not the override's terrain key)
+  -- confirmed identical in the *old*, pre-smoothing grid too, so this is
+  pre-existing behavior (already documented near `MANUAL_TERRAIN_OVERRIDES`
+  itself), not a regression.
+- **Only 1 of the 25 `LOCATION` positions in `data/locations.txt` sits on a
+  tile that changed at all** -- Crossing (hills to forest; it's a
+  strait-ferry-town, not a terrain-sensitive placement). Every other
+  location's underlying tile is untouched.
+- **No terrain code collapsed toward zero.** Glacier (`:`) and Blood Sea
+  (`!`) both net *grew* slightly (4375->4467, 5129->5352) rather than
+  eroding -- smoothing cleans up a region's own fringe more than it eats
+  into small/rare features, at least at this map's actual noise levels.
+- River (`r`) tiles dropped the most proportionally (4708->3520, about
+  -25%) -- rivers are thin, one-tile-wide features, the single terrain type
+  most structurally at risk from a neighborhood-majority filter. Visually
+  spot-checked the Crossing river-strait specifically (the ferry crossing
+  this location is named for) and the Blood Sea region (documented history
+  of classification bleed near High Clerist's Tower, see above) on top of
+  the usual Solace check -- all three read clean, no broken connectivity or
+  bleeding into neighboring terrain.
+
+Verified via a full clean rebuild (zero new `/W4` warnings -- content-only
+change, the grid file's format is unchanged) and a piped character-creation
+smoke test (real `save1.txt` untouched, empty slot 2 used) confirming
+`World`/`OverworldGrid` still parses the regenerated grid cleanly end to
+end. Zero `.cpp`/`.h` changes outside `tools/generate_overworld.py` itself.
+
+## Region layer for boundary highlighting (Milestone 148)
+
+A graphics-design review asked for a CDDA-style visible boundary wherever
+two terrain regions meet on the overworld (see `docs/ARCHITECTURE.md`'s
+"Region-boundary highlighting" section for the renderer side). A first
+attempt compared each cell directly against its raw neighbors and flagged
+**46.5% of all land cells** on the real map -- confirmed via a headless
+render probe against the actual grid, not assumed. Even after this
+milestone's own smoothing above, 27% of horizontal terrain runs in the real
+grid are still only 1 tile wide (49% are ≤2) -- there's no large uniform
+"region" to trace at raw-tile resolution, so the highlight read as
+generalized static, not an outline.
+
+`tools/generate_overworld.py` gained `compute_region_layer(grid,
+radius=8)`: a second, much coarser classification of the same finished
+grid, used *only* to decide where a boundary is drawn -- never to pick a
+tile's own displayed glyph/color, which always stays the real `data/
+overworld.grid`. Every tile becomes the plurality of terrain codes across
+its 17x17 window, deliberately **unweighted** -- unlike `smooth_terrain`
+above, which self-weights to denoise while mostly preserving each tile's
+own likely-correct value, this pass ignores the tile's own raw value
+entirely in favor of pure neighborhood consensus, since the goal here is a
+coarse "what region is this part of" signal, not a corrected classification.
+`'#'` (road) is skipped both as a vote target and as a contributor, the same
+defensive pattern `smooth_terrain` already uses -- a road tile inherits
+whatever region it cuts through, so the boundary highlight lights up a road
+automatically wherever it crosses a real region boundary, with no
+special-casing anywhere else. Runs dead last in `main()`, after
+`smooth_terrain`, `MANUAL_TERRAIN_OVERRIDES`, `shrink_river_to_coastal_
+fringe`, and `ROAD_PAIRS` drawing -- on the truly finished grid, same
+ordering rationale those steps already document above. Written to a new
+sibling file, `data/overworld_regions.grid`, same plain-text row-per-line
+format as `data/overworld.grid`.
+
+Radius 8 was picked after comparing several against the real grid (not a
+synthetic one) with a throwaway Pillow mockup that renders the actual
+terrain colors: border density drops from the raw-cell approach's 46.5% to
+~11% map-wide at this radius, and the rendered result traces real mountain/
+forest/grassland boundaries cleanly on both a coastal sample and an inland
+one. A C++ timing check of computing this same window vote *at game load
+time instead* measured 150-220ms in Release but 894ms-1.3s in Debug (the
+config actually run day to day, per `CLAUDE.md`) -- too slow to compute on
+every launch, which is why this lives in the offline generator instead,
+paid once per map regeneration exactly like `smooth_terrain` already is.
+
+Regenerated following this project's own capture-before-regenerate
+discipline: the pre-change `data/overworld.grid` was diffed against the
+freshly-regenerated one and confirmed **byte-identical** -- this pass only
+ever adds the new `data/overworld_regions.grid` file, it never touches the
+terrain grid itself. Verified via a throwaway Python self-test
+(`compute_region_layer` against a hand-built grid with a single noisy
+speckle cell, confirming the speckle doesn't survive into the region layer
+-- the concrete mechanism that fixes the 46.5% problem), a C++ throwaway
+self-test of the renderer-side border predicate, a full clean rebuild (zero
+new `/W4` warnings), and a headless render probe against the real save and
+real grid confirming the *actual* border density (5.0% on the overworld
+viewport, 21.5% on the World Map screen's own coarser box-sampled view) and
+visual quality, not just a screenshot.

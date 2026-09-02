@@ -5550,6 +5550,125 @@ now fully verified, nothing further outstanding.
      Silvara, and Berem/the Everman both before and after the relevant day
      thresholds, and confirm all six variants read correctly.
 
+146. Terrain classification smoothing pass for `data/overworld.grid` --
+     triggered by a separate, experimental session thread that rendered the
+     overworld as real pixel-art sprite tiles instead of ANSI color (parked
+     on its own branch, fate undecided, unrelated to this milestone): doing
+     so made `tools/generate_overworld.py`'s long-standing salt-and-pepper
+     misclassification (JPEG compression noise plus the reference map's own
+     paint texture) glaringly obvious in a way flat color never was.
+     Confirmed genuine by pulling the raw grid directly, not a rendering
+     artifact.
+
+     `tools/generate_overworld.py` gained `smooth_terrain()`: a 3x3-
+     neighborhood weighted-majority vote (self counted twice, plus its 8
+     neighbors, replaced by the plurality code), run once, immediately after
+     the raw classification and *before* `MANUAL_TERRAIN_OVERRIDES` is
+     applied -- ordering matters, since those ~90 entries are independently
+     pixel-verified fixes for known misclassifications and would be smoothed
+     straight back to the wrong value if applied first. `road` tiles are
+     excluded from both the vote and as a target.
+
+     Three strengths were prototyped first as disposable Python scripts
+     (never touching the real data) -- a conservative isolated-tile
+     despeckle, and the majority vote at one and two iterations -- rendered
+     over the Solace region with the real tileset for visual comparison; the
+     user picked majority vote / self-weight 2 / one iteration.
+
+     Regenerated for real following this project's own established
+     capture-before-regenerate discipline (see the Ice Wall/Kalaman/
+     Palanthas entries above): 12,056/153,600 tiles changed (7.85%, matching
+     the ~7.4% seen prototyping); all 625 road tiles landed byte-for-byte
+     identical; all 87 `MANUAL_TERRAIN_OVERRIDES` still hold except 6 a road
+     is legitimately stamped over afterward (confirmed pre-existing, not a
+     regression); of 25 `LOCATION` positions only Crossing's underlying tile
+     changed at all (hills to forest, a strait-ferry-town, not concerning);
+     no terrain code collapsed toward zero (glacier and Blood Sea both net
+     *grew* slightly). Also visually spot-checked the Blood Sea region and
+     the Crossing river-strait specifically (rivers are the terrain type
+     most structurally at risk from a neighborhood-majority filter) -- both
+     read clean. Full writeup: `docs/MAP_NOTES.md`'s "Terrain classification
+     smoothing" section.
+
+     Verified via a full clean rebuild (zero new `/W4` warnings -- content-
+     only change, the grid's format is unchanged) and a piped
+     character-creation smoke test (real `save1.txt` untouched, empty slot 2
+     used) confirming `World`/`OverworldGrid` still parses the regenerated
+     grid cleanly end to end. Zero `.cpp`/`.h` changes outside `tools/
+     generate_overworld.py`.
+
+147. Mountains get their own glyph -- a graphics-design review of `world/
+     Terrain.cpp`'s glyph/color table (not tied to a bug report) found
+     mountains and hills sharing the same glyph (`^`), distinguished only by
+     color (`\x1b[90m` bright-black vs. `\x1b[33m` dim yellow) -- the
+     weakest-contrast pairing in the table, and one that got more visible
+     once Milestone 146's smoothing made same-terrain regions bigger and
+     more contiguous. Mountains now render as `M`; hills keep `^`. `M` was
+     chosen over reusing mountains' own data-code letter `A` because `A` is
+     already Que-shu's `GLYPH` in `data/locations.txt` (a different color,
+     so not a functional bug, but a needless shape collision); `M` collides
+     with nothing -- no terrain glyph and none of the 25 already-used
+     location glyphs. Color deliberately left unchanged; pure glyph swap.
+     Full writeup: `docs/ARCHITECTURE.md`'s "Mountains get their own glyph"
+     section. Also deleted two now-unneeded reference images from this
+     session's review (`References/CavesofQud.jpg`, `References/
+     Bobs_Game.png`) -- gitignored/local-only, still cited by path (as
+     historical record) in `docs/ARCHITECTURE.md`, this file, and a
+     `CharacterCreator.cpp` comment.
+
+     Single-character literal change to a static lookup table, no new logic
+     -- no throwaway self-test needed. Verified via a clean rebuild (zero new
+     `/W4` warnings) and a piped character-creation smoke test confirming
+     `World`/`OverworldGrid` still parse cleanly. **Not interactively
+     walked** -- worth confirming next play session that mountains and hills
+     now read as visually distinct regions, both on the overworld and the
+     World Map screen.
+
+148. Region-boundary highlighting -- continuing the same graphics-design
+     review, the user asked what more could be done to make the overworld
+     read more like Cataclysm: Dark Days Ahead's overmap screen
+     (`References/cataclysm-dark-days-ahead.avif`). A first implementation
+     (comparing each cell directly against its raw neighbors) was reverted
+     the same session after a headless render probe against the real save
+     and real grid showed it flagged 46.5% of all land cells -- the real map
+     still has 27% of horizontal terrain runs only 1 tile wide even after
+     Milestone 146's smoothing, so there's no large uniform region to trace
+     at raw-cell resolution. The fix: `tools/generate_overworld.py` gained
+     `compute_region_layer`, a second, much coarser classification of the
+     finished grid (a 17x17-tile sliding-window majority vote, deliberately
+     unweighted, decoupled from what's actually drawn) baked offline into a
+     new sibling file, `data/overworld_regions.grid` -- a C++ timing check
+     showed computing this at game load time instead would cost 894ms-1.3s
+     in Debug, too slow for every launch. `world::OverworldGrid` gained
+     `regionCodeAt()`; the border check now compares that instead of raw
+     terrain codes, while water exclusion still checks the raw grid (exact,
+     where the region layer's own vote can be fuzzy at a coastline). Roads
+     trigger the highlight automatically wherever they cross a real region
+     boundary, with no special-casing, since a road tile simply inherits
+     whatever region it cuts through. Same reverse-video (`\x1b[7m`)
+     rendering as the reverted attempt; `drawZoneFrame`'s decorative
+     backdrop still excluded. Full writeup: `docs/MAP_NOTES.md`'s "Region
+     layer for boundary highlighting" section (generator side) and
+     `docs/ARCHITECTURE.md`'s "Region-boundary highlighting" section
+     (renderer side, including the full story of why the first attempt
+     didn't work).
+
+     Verified thoroughly given the false start: a Python throwaway
+     self-test confirming a single noisy speckle cell doesn't survive into
+     the region layer (the concrete fix), a C++ throwaway self-test of the
+     renderer-side border predicate, the project's own capture-before-
+     regenerate discipline (confirmed `data/overworld.grid` comes out
+     byte-identical after regeneration -- this change only ever adds the
+     new regions file), a clean rebuild (zero new `/W4` warnings), a piped
+     character-creation smoke test, and a headless render probe against the
+     real save/grid measuring the *actual* border density this time (5.0%
+     on the overworld viewport, 21.5% on the World Map screen) and
+     confirming it visually traces real coastlines/biome boundaries rather
+     than reading as noise. **Not interactively walked** -- a render probe
+     can approximate but not fully substitute for seeing this in a real
+     terminal; worth confirming next play session on both the overworld
+     viewport and the World Map screen.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

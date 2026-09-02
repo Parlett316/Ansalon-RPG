@@ -111,7 +111,43 @@ struct MapCell {
     char glyph = ' ';
     const char* color = "\x1b[37m";
     bool occupied = false;
+    bool borderHighlight = false;
 };
+
+// Milestone 148: region-boundary highlighting, a graphics-design response to
+// References/cataclysm-dark-days-ahead.avif's dotted region outlines. A
+// first attempt compared each cell directly against its raw neighbors and
+// flagged 46.5% of all land cells on the real map -- even after Milestone
+// 146's smoothing, there's no large uniform "region" to trace at raw-cell
+// resolution (see docs/ARCHITECTURE.md's "Region-boundary highlighting"
+// section for the full story). This version compares each cell's much
+// coarser world::OverworldGrid::regionCodeAt() value instead (a sliding-
+// window majority vote baked offline by tools/generate_overworld.py's
+// compute_region_layer, decoupled from what's actually drawn) -- water
+// exclusion still checks the *raw* rawCodeAt, since the region layer's own
+// vote can be fuzzy right at a coastline but the raw grid's water/land
+// identity is exact.
+bool isWaterCode(char code) { return code == '~' || code == 'r' || code == '!'; }
+
+// rawCodeAt/regionCodeAt are injected so the same check serves both a raw
+// world::OverworldGrid lookup (drawOverworldFrame) and an already-
+// downsampled per-cell buffer pair (drawWorldMapFrame). Only orthogonal
+// neighbors are checked, matching the approved mockup -- no diagonals.
+template <typename RawCodeAt, typename RegionCodeAt>
+bool isTerrainBorder(RawCodeAt rawCodeAt, RegionCodeAt regionCodeAt, int x, int y, int width, int height) {
+    if (isWaterCode(rawCodeAt(x, y))) return false;
+    static constexpr int kDx[] = {-1, 1, 0, 0};
+    static constexpr int kDy[] = {0, 0, -1, 1};
+    char here = regionCodeAt(x, y);
+    for (int i = 0; i < 4; ++i) {
+        int nx = x + kDx[i];
+        int ny = y + kDy[i];
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        if (isWaterCode(rawCodeAt(nx, ny))) continue;
+        if (regionCodeAt(nx, ny) != here) return true;
+    }
+    return false;
+}
 
 // One visible location's own glyph position, recorded while the terrain/
 // glyph buffer is built so the label pass below doesn't need a second
@@ -496,7 +532,10 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
                 visibleLocations.push_back({row, col, loc->name});
             } else {
                 const world::TerrainInfo& terrain = world::terrainFor(grid.terrainCodeAt(gx, gy));
-                cell = MapCell{terrain.glyph, terrain.ansiColor, false};
+                auto rawAt = [&](int x, int y) { return grid.terrainCodeAt(x, y); };
+                auto regionAt = [&](int x, int y) { return grid.regionCodeAt(x, y); };
+                bool border = isTerrainBorder(rawAt, regionAt, gx, gy, grid.width(), grid.height());
+                cell = MapCell{terrain.glyph, terrain.ansiColor, false, border};
             }
             cells[static_cast<size_t>(row)][static_cast<size_t>(col)] = cell;
         }
@@ -521,7 +560,11 @@ void MapRenderer::drawOverworldFrame(const world::OverworldGrid& grid, const wor
         for (int col = 0; col < kViewportWidth; ++col) {
             const MapCell& cell = cells[static_cast<size_t>(row)][static_cast<size_t>(col)];
             // Every color-set code is paired with a reset immediately
-            // after -- see docs/GOTCHAS.md on why (color bleed).
+            // after -- see docs/GOTCHAS.md on why (color bleed). Milestone
+            // 148's border highlight is a `\x1b[7m` (reverse video) prefix
+            // layered on top of the cell's own color/glyph -- see MapCell's
+            // borderHighlight comment above.
+            if (cell.borderHighlight) rowStream << "\x1b[7m";
             rowStream << cell.color << cell.glyph << "\x1b[0m";
         }
         rowStream << " | " << statusPanel[static_cast<size_t>(row)];
@@ -618,6 +661,11 @@ void MapRenderer::drawZoneFrame(const world::OverworldGrid& grid, const world::Z
                     displayChar = corner ? '+' : (borderRow ? '-' : '|');
                     color = "\x1b[90m"; // dim gray -- a frame, not a walkable wall
                 } else {
+                    // Milestone 148's region-boundary highlight is
+                    // deliberately not applied here -- this backdrop is a
+                    // thin decorative strip outside the zone's own frame,
+                    // not a region-shape read, so reverse-video blocks here
+                    // would just be noise around the zone border.
                     const world::TerrainInfo& terrain =
                         world::terrainFor(grid.terrainCodeAt(backdropLeft + x, backdropTop + y));
                     displayChar = terrain.glyph;
@@ -1248,6 +1296,37 @@ void MapRenderer::drawWorldMapFrame(const world::OverworldGrid& grid, const worl
         }
     }
 
+    // Same box-majority-vote, sampling world::OverworldGrid::regionCodeAt()
+    // instead of terrainCodeAt() -- Milestone 148's region-boundary
+    // highlight below compares this buffer, not cellTerrain, for the same
+    // reason drawOverworldFrame does (see isTerrainBorder's own comment):
+    // there's no large uniform "region" to trace in the raw terrain codes
+    // alone, even after this screen's own downsampling.
+    std::vector<char> cellRegion(static_cast<size_t>(C) * static_cast<size_t>(R), '?');
+    for (int row = 0; row < R; ++row) {
+        int y0 = grid.height() * row / R;
+        int y1 = std::max(y0 + 1, grid.height() * (row + 1) / R);
+        for (int col = 0; col < C; ++col) {
+            int x0 = grid.width() * col / C;
+            int x1 = std::max(x0 + 1, grid.width() * (col + 1) / C);
+            int counts[256] = {};
+            for (int y = y0; y < y1; ++y) {
+                for (int x = x0; x < x1; ++x) {
+                    ++counts[static_cast<unsigned char>(grid.regionCodeAt(x, y))];
+                }
+            }
+            char best = '?';
+            int bestCount = -1;
+            for (int i = 0; i < 256; ++i) {
+                if (counts[i] > bestCount) {
+                    bestCount = counts[i];
+                    best = static_cast<char>(i);
+                }
+            }
+            cellRegion[static_cast<size_t>(row) * static_cast<size_t>(C) + static_cast<size_t>(col)] = best;
+        }
+    }
+
     // Overlay every Location's glyph, footprint sized by its MapSize
     // (Small = the single cell; Medium = that cell plus one horizontal
     // neighbor; Large = a 2x2 block), clamped to the grid edge. Paint
@@ -1297,6 +1376,17 @@ void MapRenderer::drawWorldMapFrame(const world::OverworldGrid& grid, const worl
                                                    static_cast<size_t>(col)]);
                 displayChar = terrain.glyph;
                 color = terrain.ansiColor;
+                // Milestone 148: same region-boundary highlight as
+                // drawOverworldFrame, checked against this screen's own
+                // already-downsampled cellTerrain/cellRegion buffers rather
+                // than the full-resolution grid.
+                auto rawAt = [&](int c, int r) {
+                    return cellTerrain[static_cast<size_t>(r) * static_cast<size_t>(C) + static_cast<size_t>(c)];
+                };
+                auto regionAt = [&](int c, int r) {
+                    return cellRegion[static_cast<size_t>(r) * static_cast<size_t>(C) + static_cast<size_t>(c)];
+                };
+                if (isTerrainBorder(rawAt, regionAt, col, row, C, R)) rowStream << "\x1b[7m";
             }
             rowStream << color << displayChar << "\x1b[0m";
         }

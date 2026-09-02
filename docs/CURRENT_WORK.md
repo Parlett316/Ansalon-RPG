@@ -1,10 +1,57 @@
 # Current work
 
-Nothing in flight. Milestones 133 (Astinus rebuilt), 134 (World Map
-screen), and 135 (full-screen presentation) are all implemented,
-documented, and interactively confirmed by the user (2026-09-01) -- see
-`docs/MILESTONES.md` entries 133/134/135 for what was walked and
-confirmed on each.
+Milestone 146 (terrain classification smoothing for `data/overworld.grid`)
+is implemented, documented, and verified via a full clean rebuild and a
+piped character-creation smoke test -- see `docs/MILESTONES.md` entry 146
+and `docs/MAP_NOTES.md`'s "Terrain classification smoothing" section. Landed
+on branch `terrain-smoothing` (off `master`), not yet merged. **Not yet
+interactively walked** -- worth doing on the next play session: walk the
+overworld near Solace and a couple of other regions and confirm the terrain
+reads as coherent regions rather than scattered noise, same as the mockups
+already visually approved this session.
+
+**One real open decision from this session, still unresolved:** an SFML
+rendering spike (real graphical window + real pixel-art sprite tiles +
+scrolling camera + per-tile animation, replacing the ASCII terminal for the
+overworld map only) was built, hit and fixed a real bug (a dangling
+`std::string&` reference in a hand-rolled JSON parser -- see the branch's own
+history), and the user's verdict after seeing it was "looks a bit better."
+That thread is parked, not abandoned or committed to: `git stash` on branch
+`sfml-trial-2` holds `CMakeLists.txt`'s new `ansalon_sfml_trial` target and
+`sfml_trial/main.cpp` (uncommitted). To resume: `git checkout sfml-trial-2 &&
+git stash pop`.
+
+Follow-on tile-art prototyping happened after that verdict, still purely as
+Python/Pillow mockups in `References/` (gitignored, nothing wired into real
+code): the user flagged that forest/grassland still looked like a repeating
+"wallpaper" (every terrain code is one fixed 32x32 tile, so a large
+same-terrain region shows the identical tree/mound/peak arrangement over and
+over -- worse now that Milestone 146's smoothing makes those regions bigger
+and more contiguous). Fixed in prototype by generating 6 art variants per
+terrain code (forest, grassland, hills, mountains, savannah, bog, salt flat,
+glacier -- every terrain whose motif is bold/icon-like enough to show the
+repeat; ocean/shallow-water/road/Blood Sea/uncharted were already fine as
+single tiles) and picking between them per-tile via a stable hash of grid
+position (`(x*73856093) ^ (y*19349663)`, deterministic so it doesn't flicker
+between renders). Visually confirmed a big improvement, especially on
+mountains. User's call after seeing it: **"good enough, stop here for
+now"** -- explicitly parked, not wired into `terrain_tileset.json` or the
+stashed SFML trial code. If this resumes, the variant art itself already
+exists (`References/variant_tiles6.png` = forest/grassland/hills,
+`References/variant_tiles_extra.png` = mountains/savannah/bog/salt-flat/
+glacier, each a 6-column strip) and the position-hash selection logic is
+proven in the mockup script -- porting both into `terrain_tileset.json`'s
+schema (single rect per code -> list of rects) and `sfml_trial/main.cpp`'s
+tile lookup is the concrete next step, not a re-derivation.
+
+Whether any of this (SFML itself, or the variant art on top of it) goes
+further or gets fully reverted is still the user's call -- don't propose a
+direction here without being asked; this project has a real history of
+visual-change attempts (SFML with no art, twice-rejected ANSI truecolor
+shading) that didn't land, and two more rounds this session ("just looking,
+no action" on the first tileset preview; this variant-art round) that were
+engaged with productively but still didn't convert into a commit-to-it
+decision.
 
 Milestone 136 (`what_the_tide_kept`, a new DELIVER quest at Port O'Call),
 Milestone 137 (`SUBJECT_WHEN` day-gated zone dialogue, fixing 12
@@ -100,3 +147,37 @@ respectively) and confirm all six variants read correctly.
 Ten milestones in a row (136-145) are now implemented but unplayed --
 worth a dedicated playtest pass on the next session before piling on
 more unverified content.
+
+Milestone 147 (mountains render as `M` instead of sharing hills' `^`
+glyph, found during a graphics-design review of `world/Terrain.cpp`'s
+glyph/color table -- see `docs/MILESTONES.md` entry 147 and
+`docs/ARCHITECTURE.md`'s "Mountains get their own glyph" section) is
+implemented and verified via a clean rebuild and a piped
+character-creation smoke test, but **not yet interactively walked**.
+Worth doing on the next play session: confirm mountains and hills now
+read as visually distinct regions, both on the overworld and the World
+Map screen (`'o'`) -- especially somewhere the two terrains sit
+adjacent, e.g. near the Kharolis/Vingaard ranges.
+
+Milestone 148 (region-boundary highlighting -- reverse-video (`\x1b[7m`)
+on any overworld cell bordering a different *region*, modeled on
+`References/cataclysm-dark-days-ahead.avif`'s dotted region outlines) is
+implemented, documented, and verified, on the second attempt: a first
+implementation (comparing raw adjacent terrain codes) was reverted the same
+session after a headless render probe showed it flagged 46.5% of all land
+cells -- pure static, not an outline. The fix bakes a much coarser "region"
+classification offline (`tools/generate_overworld.py`'s
+`compute_region_layer`, a new `data/overworld_regions.grid` file,
+`world::OverworldGrid::regionCodeAt()`) rather than computing anything from
+raw terrain codes or at game load time (a C++ timing check showed the
+latter costs 894ms-1.3s in Debug -- too slow). Re-verified via a headless
+render probe against the real save/grid: 5.0% border density on the
+overworld viewport, 21.5% on the World Map screen, both visually confirmed
+to trace real coastlines/biome boundaries cleanly. See `docs/MILESTONES.md`
+entry 148, `docs/MAP_NOTES.md`'s "Region layer for boundary highlighting"
+section, and `docs/ARCHITECTURE.md`'s "Region-boundary highlighting"
+section (which also tells the full first-attempt story). **Not yet
+interactively walked** -- a render probe can approximate but not fully
+substitute for seeing this in a real terminal; worth confirming next play
+session, alongside 147's check, on both the overworld viewport and the
+World Map screen.

@@ -60,8 +60,9 @@ endif()
 # Both branches are written now even though only MSVC is in use today, so
 # this file is already ready for a future GCC/Clang build.
 
-# The game loads data/locations.txt, data/overworld.grid, data/zones/*.txt,
-# data/timeline.txt, data/monsters.txt, and data/quests.txt at runtime, plus
+# The game loads data/locations.txt, data/overworld.grid,
+# data/overworld_regions.grid, data/zones/*.txt, data/timeline.txt,
+# data/monsters.txt, and data/quests.txt at runtime, plus
 # up to 3 save-slot files (save1.txt/save2.txt/save3.txt -- see
 # docs/ARCHITECTURE.md's "Save/load").
 # main.cpp resolves both primarily via render::Console::executableDirectory()

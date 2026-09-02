@@ -41,7 +41,16 @@ constexpr std::array<TerrainInfo, 12> kTable = {{
     // See docs/MAP_NOTES.md's "Shallow water pass" section.
     {'r', '~', "\x1b[36m", false, 0, "shallow water", 0},
     {':', '.', "\x1b[97m", true, 60, "glacier", 6},
-    {'A', '^', "\x1b[90m", true, 90, "mountains", 12},
+    // Milestone 147: mountains used to share hills' '^' glyph, distinguished
+    // only by color (bright-black vs. dim yellow) -- a weak-contrast pairing
+    // on many terminal themes, and one that got more visible once Milestone
+    // 146's smoothing made same-terrain regions bigger/more contiguous. 'M'
+    // was picked over reusing the mountain data-code letter 'A' because it
+    // collides with nothing: no other terrain glyph, and none of
+    // data/locations.txt's 25 already-used location glyphs (every letter
+    // except 'M') -- 'A' itself is already Que-shu's own location marker.
+    // Color deliberately left unchanged; this is a pure glyph swap.
+    {'A', 'M', "\x1b[90m", true, 90, "mountains", 12},
     {'^', '^', "\x1b[33m", true, 45, "hills", 8},
     {'%', '%', "\x1b[32m", true, 30, "forest", 11},
     {'*', '"', "\x1b[35m", true, 60, "bog", 9},

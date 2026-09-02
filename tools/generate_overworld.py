@@ -40,6 +40,7 @@ from PIL import Image
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE_IMAGE = REPO_ROOT / "References" / "dragonlancemap2.png"
 OUTPUT_GRID = REPO_ROOT / "data" / "overworld.grid"
+OUTPUT_REGIONS = REPO_ROOT / "data" / "overworld_regions.grid"
 PREVIEW_IMAGE = REPO_ROOT / "data" / "overworld_preview.png"  # inspection aid only, gitignored
 LOCATIONS_FILE = REPO_ROOT / "data" / "locations.txt"
 
@@ -480,6 +481,100 @@ def shrink_river_to_coastal_fringe(grid: list[list[str]]) -> None:
                 grid[y][x] = ocean_char
 
 
+def smooth_terrain(grid: list[list[str]], self_weight: int = 2) -> None:
+    """Denoises the raw per-pixel classification in place: every tile becomes
+    the plurality of itself (counted self_weight times) plus its 8 immediate
+    neighbors. Fixes the salt-and-pepper misclassification the box-downsample
+    in main() doesn't fully catch -- confirmed against the real grid this was
+    genuine noise, not deliberate small features, and prototyped at self_
+    weight=2/one pass against the reference map before landing on these
+    defaults (see docs/MAP_NOTES.md).
+
+    Must run on the *raw* classified grid, before MANUAL_TERRAIN_OVERRIDES is
+    applied -- those ~90 entries are independently pixel-verified fixes for
+    specific known misclassifications, and would just get smoothed back to
+    the wrong value if this ran after. 'road' is skipped both as a target and
+    as a vote: defensive, since roads aren't drawn onto the grid until after
+    this and MANUAL_TERRAIN_OVERRIDES both run, but keeps this function safe
+    if that ordering ever changes.
+    """
+    road_char = TERRAIN_CHARS["road"]
+    height = len(grid)
+    width = len(grid[0])
+    source = [row[:] for row in grid]
+
+    for y in range(height):
+        for x in range(width):
+            if source[y][x] == road_char:
+                continue
+            counts: dict[str, int] = {source[y][x]: self_weight}
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < width and 0 <= ny < height:
+                        nc = source[ny][nx]
+                        if nc == road_char:
+                            continue
+                        counts[nc] = counts.get(nc, 0) + 1
+            grid[y][x] = max(counts, key=counts.get)
+
+
+def compute_region_layer(grid: list[list[str]], radius: int = 8) -> list[list[str]]:
+    """A second, much coarser classification of the same finished grid, used
+    only to decide where MapRenderer draws a region-boundary highlight --
+    never to pick a tile's own displayed glyph/color (that's still raw
+    `grid`, unchanged). Written to its own file, data/overworld_regions.grid.
+
+    A first attempt at this highlight compared each tile directly against
+    its raw neighbors and lit up 46.5% of all land tiles -- even after
+    smooth_terrain, 27% of horizontal runs in the real grid are still only 1
+    tile wide (49% are <=2), so there's no large uniform "region" to trace at
+    raw-tile resolution. This function exists to produce that missing
+    coarser signal: every tile becomes the plurality of terrain codes across
+    its (2*radius+1)^2 window, deliberately *unweighted* (unlike
+    smooth_terrain's self-weighted denoise) -- the point here is pure
+    neighborhood consensus, ignoring the tile's own possibly-noisy raw value
+    entirely, not a corrected per-cell classification. At radius=8 (17x17),
+    real-grid border density (adjacent tiles with a differing region label)
+    drops to ~11%, and a Pillow mockup rendered directly from this grid
+    traces real mountain/forest/grassland boundaries cleanly -- see
+    docs/MAP_NOTES.md.
+
+    Must run dead last in main(), after smooth_terrain, MANUAL_TERRAIN_
+    OVERRIDES, shrink_river_to_coastal_fringe, and ROAD_PAIRS drawing -- on
+    the truly finished grid, same ordering rationale those steps already
+    document. Road ('#') is skipped both as a vote target and as a
+    contributor, the same defensive pattern smooth_terrain uses -- this
+    makes a road tile inherit whatever region it cuts through, so the
+    render-time border check lights up a road automatically wherever it
+    crosses a real region boundary, with no special-casing needed anywhere.
+    """
+    road_char = TERRAIN_CHARS["road"]
+    height = len(grid)
+    width = len(grid[0])
+
+    region = [[""] * width for _ in range(height)]
+    for y in range(height):
+        y0, y1 = max(0, y - radius), min(height, y + radius + 1)
+        for x in range(width):
+            x0, x1 = max(0, x - radius), min(width, x + radius + 1)
+            counts: dict[str, int] = {}
+            for yy in range(y0, y1):
+                row = grid[yy]
+                for xx in range(x0, x1):
+                    c = row[xx]
+                    if c == road_char:
+                        continue
+                    counts[c] = counts.get(c, 0) + 1
+            # Falls back to the tile's own raw code only if every tile in its
+            # window is road -- not reachable with this map's actual road
+            # density (roads are 1 tile wide), kept purely defensive.
+            region[y][x] = max(counts, key=counts.get) if counts else grid[y][x]
+    return region
+
+
 def main() -> None:
     if not SOURCE_IMAGE.exists():
         sys.exit(f"Reference image not found: {SOURCE_IMAGE}")
@@ -519,6 +614,8 @@ def main() -> None:
         row = [TERRAIN_CHARS[INDEX_TO_TERRAIN.get(indices[y * GRID_WIDTH + x], "unknown")] for x in range(GRID_WIDTH)]
         grid.append(row)
 
+    smooth_terrain(grid)
+
     for (ox, oy), terrain_key in MANUAL_TERRAIN_OVERRIDES.items():
         grid[oy][ox] = TERRAIN_CHARS[terrain_key]
 
@@ -542,6 +639,10 @@ def main() -> None:
     OUTPUT_GRID.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_GRID.write_text("\n".join("".join(row) for row in grid) + "\n", encoding="ascii")
     print(f"Wrote {GRID_WIDTH}x{grid_height} grid to {OUTPUT_GRID}")
+
+    regions = compute_region_layer(grid)
+    OUTPUT_REGIONS.write_text("\n".join("".join(row) for row in regions) + "\n", encoding="ascii")
+    print(f"Wrote {GRID_WIDTH}x{grid_height} region layer to {OUTPUT_REGIONS}")
 
 
 if __name__ == "__main__":

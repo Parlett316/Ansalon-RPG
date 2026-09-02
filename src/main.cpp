@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
 
     try {
         world::OverworldGrid grid =
-            world::OverworldGrid::loadFromFile(dataDir + "/overworld.grid");
+            world::OverworldGrid::loadFromFile(dataDir + "/overworld.grid", dataDir + "/overworld_regions.grid");
 
         world::World world;
         world::WorldLoader::loadFromFile(dataDir + "/locations.txt", world);

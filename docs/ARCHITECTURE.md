@@ -1564,6 +1564,93 @@ addition and its sourcing, and a real geography-driven layout problem
 legible) resolved with a side legend panel instead — the map itself
 never draws text, only glyphs on colored terrain.
 
+## Mountains get their own glyph (Milestone 147)
+
+A graphics-design review (not tied to any specific bug report) looked at
+`world::Terrain.cpp`'s glyph/color table as a whole and found mountains and
+hills rendering the *same* glyph (`^`), distinguished only by color
+(`\x1b[90m` bright-black vs. `\x1b[33m` dim yellow) — the weakest-contrast
+pairing in the table, and one terminal color themes can render even closer
+together than the default palette does. This mattered more once Milestone
+146's terrain-classification smoothing landed: bigger, more contiguous
+same-terrain regions mean a mountain range sitting next to a hill range now
+reads as one undifferentiated triangle-blob at a glance, where scattered
+single tiles used to at least break up the pattern.
+
+Mountains now render as `M` instead of `^`; hills keep `^`. `M` was chosen
+over reusing the mountain data-code letter `A` (`TerrainInfo::code`, stored
+in `data/overworld.grid` — see `Terrain.h`'s own field comments on why code
+and displayed glyph are already separate) because `A` is already Que-shu's
+own `GLYPH` in `data/locations.txt`; reusing it for mountains would trade a
+color-only ambiguity for a shape-only one against a real location marker
+(rendered in a different color, so not a functional bug, but a needless
+one). `M` collides with nothing: no other terrain glyph, and none of the 25
+location glyphs already in use (every letter except `M`). Color was
+deliberately left unchanged for both terrains — this is a pure glyph swap,
+so it also helps on terminal palettes where the two colors render close
+together, not just the default one.
+
+Every renderer that samples `world::terrainFor()` (the overworld viewport,
+a zone's decorative backdrop, the World Map screen's downsampled view)
+picks this up automatically — there is exactly one glyph/color table, no
+duplicated logic to update elsewhere.
+
+## Region-boundary highlighting (Milestone 148)
+
+Continuing the same graphics-design review that produced Milestone 147, the
+user asked what more could be done to make the overworld read more like
+Cataclysm: Dark Days Ahead's overmap screen (`References/
+cataclysm-dark-days-ahead.avif`, gitignored, dev-only) — specifically, a
+visible boundary wherever two terrain regions meet, instead of flat color
+abutting flat color directly.
+
+**First attempt, and why it was reverted.** The obvious implementation —
+flag a cell as a "border" whenever an adjacent raw terrain code differs —
+was implemented, then reverted the same session after a headless render
+probe (a throwaway program calling `drawOverworldFrame` directly against the
+real save and real grid, capturing stdout, since `_getch()` can't be driven
+by piped input) showed it flagged **46.5% of all land cells** on the actual
+map. A synthetic mockup used to sell the idea had looked clean because it
+used an artificially tidy hand-built grid; the real grid, even after
+Milestone 146's smoothing, still has 27% of horizontal terrain runs only 1
+tile wide — there's no large uniform region to trace at raw-cell resolution,
+so the highlight read as generalized static, not an outline.
+
+**What shipped instead.** The border decision now compares each cell's
+`world::OverworldGrid::regionCodeAt()` value — a much coarser classification
+baked offline by `tools/generate_overworld.py`'s `compute_region_layer` (a
+17x17-tile sliding-window majority vote, completely decoupled from what's
+actually drawn; see `docs/MAP_NOTES.md`'s "Region layer for boundary
+highlighting" section for the generator-side story and why this had to live
+offline rather than being computed at game startup). Water exclusion still
+checks the *raw* grid (`terrainCodeAt`, via the same `isWaterCode` helper
+used before) rather than the region layer, since the region layer's own
+vote can be fuzzy right at a coastline but the raw grid's water/land
+identity is exact. Rendering is unchanged from the first attempt: a
+`\x1b[7m` (reverse-video) prefix ahead of the cell's existing color/glyph,
+picked over underlining in an earlier mockup for legibility — nothing about
+what color or glyph any terrain renders as otherwise changes.
+
+`isTerrainBorder()` (the anonymous-namespace helper in `src/render/
+MapRenderer.cpp`, next to `MapCell`/`tryPlaceLabel`) takes two independent
+`codeAt`-style accessors — one for the raw grid, one for the region layer —
+so the identical logic serves both `drawOverworldFrame` (real
+`OverworldGrid` lookups) and `drawWorldMapFrame` (that screen's own
+already-downsampled box-majority-vote buffers: it already built `cellTerrain`
+by box-sampling raw terrain, and now builds a parallel `cellRegion` by
+box-sampling the region layer the same way, comparing the latter for
+borders while the former still gates water exclusion). Verified via a
+headless render probe against the real save/grid one more time before
+calling this done: **5.0% border density on the overworld viewport, 21.5%
+on the World Map screen's own coarser view** — both visually confirmed (not
+just measured) to trace real coastlines and biome boundaries cleanly rather
+than reading as noise.
+
+`drawZoneFrame`'s decorative real-terrain backdrop deliberately does **not**
+get this treatment — it's a thin strip outside the zone's own frame, not a
+region-shape read, and reverse-video blocks there would just be visual
+noise around the border.
+
 ## What's deliberately NOT abstracted yet
 
 No plugin system, no generic "event" bus, no data-driven scripting layer,
