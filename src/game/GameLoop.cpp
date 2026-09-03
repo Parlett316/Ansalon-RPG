@@ -2604,6 +2604,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         character::SpellCastResult result = character::castSpell(state_.character, spellId);
         if (!result.success) return; // defensive -- shouldn't happen, caller already checked
         bool needsTarget = result.effect == character::SpellEffect::DamageMonster ||
+                            result.effect == character::SpellEffect::DamageArea ||
                             result.effect == character::SpellEffect::BlockMonsterAttacks ||
                             result.effect == character::SpellEffect::DebuffMonsterThac0 ||
                             result.effect == character::SpellEffect::DebuffMonsterDamage ||
@@ -2621,6 +2622,45 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                     if (handleInstanceDeath(targetIndex)) fightAlreadyEnded = true;
                 }
                 break;
+            case character::SpellEffect::DamageArea: {
+                // Fireball/Delayed Blast Fireball (PHB p.193): the picked
+                // target's cell is the burst's epicenter (DQoK.pdf's own
+                // "CENTER" command precedent -- see docs/COMBAT_NOTES.md),
+                // and every alive instance within result.radius cells
+                // (Chebyshev distance, same metric combat::isAdjacent and
+                // the monster-AI targeting above already use) takes the
+                // same, single damage roll -- matching the PHB's "the DM
+                // rolls the blast's damage once" convention, and this
+                // file's existing no-monster-saving-throw simplification
+                // (every other damage spell already applies its roll
+                // unconditionally).
+                combat::GridPos epicenter = instancePositions[static_cast<size_t>(targetIndex)];
+                std::vector<int> hitTargets;
+                for (size_t i = 0; i < instances.size(); ++i) {
+                    if (instances[i].hp <= 0) continue;
+                    if (combat::chebyshevDistance(epicenter, instancePositions[i]) <= result.radius) {
+                        hitTargets.push_back(static_cast<int>(i));
+                    }
+                }
+                std::vector<std::string> hitNames;
+                for (int idx : hitTargets) hitNames.push_back(monsterLabel(idx));
+                std::string names;
+                for (size_t i = 0; i < hitNames.size(); ++i) {
+                    if (i > 0) names += (i + 1 == hitNames.size()) ? " and " : ", ";
+                    names += hitNames[i];
+                }
+                log.push_back("Your " + result.spellName + " engulfs the " + names + " for " +
+                               std::to_string(result.amount) + (hitNames.size() > 1 ? " each." : "."));
+                for (int idx : hitTargets) {
+                    if (fightAlreadyEnded) return;
+                    if (instances[static_cast<size_t>(idx)].hp <= 0) continue;
+                    instances[static_cast<size_t>(idx)].hp -= result.amount;
+                    if (instances[static_cast<size_t>(idx)].hp <= 0) {
+                        if (handleInstanceDeath(idx)) fightAlreadyEnded = true;
+                    }
+                }
+                break;
+            }
             case character::SpellEffect::HealCaster: {
                 int healed = std::min(result.amount, state_.character.maxHp - state_.character.currentHp);
                 state_.character.currentHp += healed;

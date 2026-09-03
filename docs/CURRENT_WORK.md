@@ -1,11 +1,20 @@
 # Current work
 
-Nothing in flight. Milestones 146-151 are all implemented and documented on
+Nothing in flight. Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
 highlighting, 150 header/border scroll-drift fix, 151 two more Astinus
-SUBJECT entries); 146-150 are also interactively confirmed. The
-`terrain-smoothing` branch is fully merged into `master` -- no longer an
-open decision.
+SUBJECT entries, 152 Fireball/Delayed Blast Fireball real area damage);
+146-150 are also interactively confirmed. The `terrain-smoothing` branch is
+fully merged into `master` -- no longer an open decision.
+
+This session also researched (but did not implement, at the user's choice
+of scope) two follow-on combat-visuals ideas raised alongside Milestone
+152: per-cell color on the combat grid (currently impossible -- `writeBoxed`/
+`BoxLine`, the "organic" screen family's rendering, only supports one color
+per whole line, see `docs/ARCHITECTURE.md`'s Milestone 32 note) and an
+animation/timing primitive (`<chrono>`/sleep, currently absent everywhere in
+`src/`). Neither is started; either is a reasonable next step if the user
+wants combat visuals to keep moving.
 
 Two things carry over to the next session:
 
@@ -16,6 +25,13 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **152** -- Fireball/Delayed Blast Fireball are now real area attacks
+  (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
+  (e.g. Goblins), memorize Fireball, cast it at one instance while a second
+  is within 2 cells, and confirm both take the same damage with both named
+  in the log; separately confirm a solo/isolated target still reads as a
+  clean single-target hit. Save slot 2 (`Regan`, level 20 Human Mage) should
+  already have Fireball available.
 - **137** -- day-gated Astinus dialogue, fixing 12 shipped spoilers. Talk to
   Astinus in Palanthas before day 2/3/12/17 and again after day 160; confirm
   both halves read correctly.

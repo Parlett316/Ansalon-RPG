@@ -112,6 +112,16 @@ enum class SpellEffect {
     // penalties, same shape as BuffPlayerAndDebuffMonsterThac0 above.
     DebuffMonsterThac0AndAc,
     InstantDefeat, // the monster is simply defeated -- sets monsterHp to 0
+    // Fireball/Delayed Blast Fireball (PHB p.193): amount is rolled once
+    // (the PHB has the DM roll a fireball's damage a single time for the
+    // whole blast, same convention this file already uses for every other
+    // damage spell's "no monster saving throw" simplification) and applied
+    // identically to every alive instance within `radius` (SpellCastResult
+    // below, Chebyshev distance in grid cells) of the chosen epicenter --
+    // see game::GameLoop::playerCasts. Not used for Lightning Bolt, whose
+    // real area of effect is a directional line, not a radius burst --
+    // deliberately left as DamageMonster; see Spellcasting.cpp.
+    DamageArea,
 };
 
 // amount == this sentinel (for BlockMonsterAttacks only) means "for the
@@ -123,6 +133,7 @@ struct SpellCastResult {
     std::string spellName;
     SpellEffect effect = SpellEffect::DamageMonster;
     int amount = 0;
+    int radius = 0; // grid cells, Chebyshev distance -- only meaningful for DamageArea
 };
 
 // Removes one occurrence of spellId from character.memorizedSpellIds and

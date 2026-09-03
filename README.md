@@ -346,6 +346,10 @@ comes back again even after you've sailed it once.
   Potion/Webnet/Brooch of Imog/Staff of Curing when more than one is
   usable — the grid, HP list, and log all stay on screen for every
   choice).
+- **Fireball and Delayed Blast Fireball are real area attacks**: pick a
+  target on the tactical grid the same way as any other spell, and every
+  enemy near that point takes the blast too, not just the one you aimed
+  at.
 - Every shop carries a **Potion of Healing** (2d4+2 hp, 200 stl,
   DMG-sourced and priced) — framed as a scavenged pre-Cataclysm relic
   rather than a merchant's own brew, since real clerical healing magic

@@ -1325,6 +1325,90 @@ needing a real playthrough (a Fighter sweeping a weak group; a Thief
 backstabbing while another party member holds a monster from the
 opposite grid side).
 
+## Fireball/Delayed Blast Fireball: a real area-effect burst (Milestone 152)
+
+Until this milestone, every damage spell in this roster -- including
+Fireball -- was single-target, even though the positional combat grid
+(Milestone 114) has carried everything a real burst needs since it shipped:
+`combat::GridPos`, `combat::chebyshevDistance`, and `instancePositions`.
+Fireball's damage math (`fireballLikeDamage`, PHB p.192/194: 1d6/level
+capped at 10d6) was already correct; only its shape was wrong.
+
+**Research, not assumption.** `References/phb.txt` (the checked-in OCR
+extraction) turned out to be page-bled right at Lightning Bolt's entry --
+its stat block was followed by an unrelated Meteor Swarm passage, not
+Lightning Bolt's own body text -- so the actual PHB page images (pp.193-194,
+201-202, 211-212) were read directly instead, per this project's own rule
+for OCR-unreliable content. Confirmed:
+
+- **Fireball** (PHB p.192): a true 20-ft-radius sphere, save for half (no
+  monster saving-throw system exists in this engine -- see this file's
+  "no monster saving throws" note elsewhere -- so, same as every other
+  damage spell here, the full roll always applies).
+- **Lightning Bolt** (PHB p.194): a directional **line** (a single 5ft x
+  80ft bolt, or forked 10ft x 40ft, caster's choice, bouncing off
+  unyielding barriers back toward the caster) -- not a radius at all.
+  `References/DQoK.pdf`'s own Lightning Bolt entry confirms the same
+  shape ("8 squares long in a line...send the bolt down a row of
+  opponents...also reflect off walls"). **Deliberately left untouched**
+  (still `SpellEffect::DamageMonster`, single-target) -- forcing it into
+  a radius burst would misrepresent the one thing that makes it a
+  lightning bolt rather than a small fireball (lining up a row, using
+  corridors/walls). Real line-shaped targeting is a separate, larger
+  follow-up (needs a direction, not just a center point), documented here
+  rather than silently dropped, same "not pursued absent a concrete
+  reason" posture as the deferred items below.
+- **Cloudkill/Cone of Cold/Ice Storm**: also real PHB area spells, also
+  **not touched** this pass. Cloudkill is a multi-round drifting poison
+  cloud with tiered-HD save-or-die, already modeled differently
+  (`SpellEffect::InstantDefeat`) -- not a fit for "add a radius" at all.
+  Cone of Cold is a directional cone, same geometry problem as Lightning
+  Bolt. Ice Storm is already a deliberate simplification to DQoK p.29's
+  own flat single-target number rather than the PHB's real dual-mode
+  (hail damage vs. sleet battlefield-effect) area version -- a prior
+  sourcing decision, not revisited here without a concrete reason to.
+
+**The targeting model, sourced from DQoK.pdf.** Rather than invent a new
+free-aim-at-an-empty-cell input, `References/DQoK.pdf`'s own Fireball entry
+describes exactly this project's actual precedent: "Use the CENTER command
+to determine who will be in the area of effect... the spell is targeted in
+the center of the screen." So `playerCasts` (`GameLoop.cpp`) reuses the
+*exact same* `pickTarget` picker every other targeted spell already uses --
+the chosen enemy's cell becomes the epicenter, and every alive instance
+within a new `SpellCastResult::radius` (Chebyshev distance) of it takes the
+same damage roll. No new input mode, no new picker.
+
+**The radius itself is invented, not a feet-per-cell conversion** (this
+project has never established such a scale -- the grid's own sizing is
+already documented as invented, see "Positional combat grid" above).
+`kFireballAreaRadius = 2` (`Spellcasting.cpp`) was chosen because
+Milestone 113's own group-spawn layout spaces instances exactly 2 cells
+apart, so a burst centered on one group member reliably also catches its
+neighbor without trivializing every group fight.
+
+**New `SpellEffect::DamageArea`** (`Spellcasting.h`), carrying the new
+`SpellCastResult::radius` field; `fireball`/`delayed_blast_fireball` are
+the only two spells using it. `playerCasts`'s new case mirrors the
+Fighter-sweep loop's shape (`fightAlreadyEnded` guard per iteration,
+`handleInstanceDeath` per kill) rather than duplicating that pattern
+differently, and logs one line naming every instance actually caught
+("Your Fireball engulfs the Goblin A and Goblin B for 18 each.") -- the
+player-visible "hits multiple squares" payoff for this milestone, in
+text. A colored/animated version of the same burst is separate, later
+rendering work, not part of this change.
+
+Verified via a clean `/W4` rebuild (zero new warnings) and the piped
+character-creation smoke test (real `save1.txt`/`save2.txt` untouched,
+empty slot 3 used). No throwaway self-test -- the new logic lives entirely
+inside `GameLoop::runCombat` (same standing `_getch()` limitation as every
+other combat milestone), and the one new pure piece used
+(`combat::chebyshevDistance`) is pre-existing, already covered by
+Milestone 117's own precedent. **Interactive verification still needed**:
+fight a multi-instance group, memorize Fireball, cast it at one instance
+while a second is within 2 cells, and confirm both take the same damage
+with both named in the log; separately confirm a solo target (or one with
+nothing else in range) still reads as a clean single-target hit.
+
 ## Extending this later
 
 - **A party of up to six characters.** The single biggest remaining gap

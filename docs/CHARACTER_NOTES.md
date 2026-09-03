@@ -867,7 +867,7 @@ killed" model means player characters never actually die).
 | Ray of Enfeeblement | 2 | -2 monster damage | PHB p.187 |
 | Stinking Cloud | 2 | block, 3 attacks | PHB p.188 |
 | Strength | 2 | +2 player damage | PHB p.188 |
-| Fireball | 3 | damage 1d6/level, capped 10d6 | PHB p.192, "a maximum of 10d6" |
+| Fireball | 3 | area damage (radius 2 cells), 1d6/level, capped 10d6 | PHB p.192 (see "Fireball: a real area effect" below) |
 | Haste | 3 | doubles player attacks/round, this fight | PHB p.192 |
 | Hold Person | 3 | block, rest of fight | PHB p.193 |
 | Lightning Bolt | 3 | damage 1d6/level, capped 10d6 | PHB p.194, "maximum ... of 10d6" |
@@ -957,6 +957,56 @@ simplification as backstab's own shield/Dex nuance); the -4 penalty to the
 target's saving throw (no monster saving-throw system exists at all --
 "No monster saving throws" is an established, repeated rule in
 `docs/COMBAT_NOTES.md`, not something this pass changes).
+
+### Fireball: a real area effect (a later content pass)
+
+Fireball/Delayed Blast Fireball moved from single-target
+(`character::SpellEffect::DamageMonster`) to a real area attack
+(`SpellEffect::DamageArea`, a new category) that damages every alive
+combat instance within a radius of the chosen target's cell, not just
+that one target -- the combat grid (`docs/COMBAT_NOTES.md`'s "Positional
+combat grid") has carried everything this needed (`combat::GridPos`,
+`combat::chebyshevDistance`, `instancePositions`) since Milestone 114; only
+Fireball's own effect category was still single-target.
+
+Re-verified directly against the scanned PHB (pp.191-192; the checked-in
+`References/phb.txt` OCR extraction turned out to be page-bled right at
+the neighboring Lightning Bolt entry, so page images were pulled instead
+of trusting the flat-text extraction, same "verify OCR-unreliable pages
+visually" rule Slow's page already required above): a true 20-ft-radius
+sphere, and "the DM rolls the damage, and each affected creature suffers
+either full damage or half damage... depending on whether the creature
+saved or not" -- confirming damage is rolled **once** for the whole burst,
+not once per target. Since this engine has no monster saving-throw system
+("No monster saving throws," above), that single roll is simply applied
+in full to every instance caught in the burst, same unconditional-full-
+effect convention every other damage spell here already uses.
+
+**The radius (2 grid cells, `kFireballAreaRadius` in `Spellcasting.cpp`)
+is an invented translation, not a feet-per-cell conversion** -- this
+project has never established such a scale, and the combat grid's own
+sizing is already documented as invented. Chosen because Milestone 113's
+group-spawn layout spaces instances exactly 2 cells apart, so a burst
+centered on one group member reliably also catches its neighbor.
+
+**Lightning Bolt was deliberately left untouched.** Its real area of
+effect (PHB p.194, confirmed via the same page-image check) is a
+directional line -- a single 5ft x 80ft bolt, or forked 10ft x 40ft,
+bouncing off unyielding barriers -- not a radius, and `References/DQoK.pdf`
+(this project's own Gold Box precedent for the combat grid) describes the
+same shape. Applying a radius burst to it would misrepresent the one
+thing that distinguishes a lightning bolt from a small fireball. Real
+line-shaped targeting is a separate, larger follow-up (it needs a
+direction, not just a center point) -- documented as deferred rather than
+silently skipped. Cloudkill (already a differently-modeled `InstantDefeat`,
+a multi-round drifting poison cloud with tiered-HD save-or-die in the real
+rules), Cone of Cold (a directional cone, same geometry problem as
+Lightning Bolt), and Ice Storm (already a deliberate simplification to
+DQoK p.29's flat single-target number rather than the PHB's real dual-mode
+area version) are untouched for the same reasons -- see
+`docs/COMBAT_NOTES.md`'s "Fireball/Delayed Blast Fireball: a real
+area-effect burst" section for the full per-spell research and the
+targeting-UI precedent (`References/DQoK.pdf`'s own "CENTER command").
 
 ### Rest and spell memorization
 

@@ -5782,6 +5782,70 @@ now fully verified, nothing further outstanding.
      doing on the next play session: ask Astinus about Alhana Starbreeze
      and Porthios both before and after day 51/70 respectively.
 
+152. Fireball/Delayed Blast Fireball became a real area-effect attack,
+     prompted by a conversation about whether combat visuals (a future
+     "fireball hitting multiple squares" animation pass) meant this
+     project needed a new rendering engine. Investigation found the real
+     gap wasn't rendering at all: Fireball was already single-target
+     (`character::SpellEffect::DamageMonster`) even though the positional
+     combat grid (Milestone 114) has carried everything a real burst
+     needed -- `combat::GridPos`, `combat::chebyshevDistance`,
+     `instancePositions` -- since it shipped.
+
+     Re-verified directly against the scanned PHB (pp.191-192 for
+     Fireball, p.194 for Lightning Bolt) after the checked-in
+     `References/phb.txt` OCR extraction turned out to be page-bled right
+     at Lightning Bolt's entry (its stat block was followed by an
+     unrelated Meteor Swarm passage, not Lightning Bolt's own body text)
+     -- page images pulled instead, per this project's standing rule for
+     OCR-unreliable content. Confirmed Fireball is a true 20-ft-radius
+     sphere with damage rolled once for the whole blast (not once per
+     target); confirmed Lightning Bolt is a directional line (single 5ft x
+     80ft bolt or forked 10ft x 40ft, bounces off barriers), not a radius
+     at all -- also confirmed against `References/DQoK.pdf`'s own entry
+     ("8 squares long in a line...reflect off walls"). Force-fitting
+     Lightning Bolt into a radius burst would have misrepresented the
+     spell, so it was **deliberately left untouched** (still single-target)
+     -- real line-shaped targeting is a separate, larger follow-up,
+     documented rather than silently dropped. Cloudkill (already a
+     differently-modeled multi-round poison-cloud/tiered-HD mechanic), Cone
+     of Cold (a directional cone, same geometry problem as Lightning Bolt),
+     and Ice Storm (already a deliberate DQoK-sourced flat-number
+     simplification, a prior sourcing decision) were also left untouched,
+     for the same reasons.
+
+     New `SpellEffect::DamageArea` (`character/Spellcasting.h/.cpp`) plus a
+     `radius` field on `SpellCastResult`; Fireball/Delayed Blast Fireball
+     are its only two users, with an invented `kFireballAreaRadius = 2`
+     (grid cells, Chebyshev distance -- not a feet-per-cell conversion,
+     chosen because Milestone 113's own group-spawn layout spaces
+     instances exactly 2 cells apart). `GameLoop::playerCasts` gained a
+     matching case: the epicenter is the enemy chosen through the exact
+     same `pickTarget` picker every other targeted spell already uses (no
+     new input mode) -- sourced from `References/DQoK.pdf`'s own Fireball
+     entry, which describes a "CENTER command" for exactly this. Every
+     alive instance within radius takes the same single damage roll
+     (matching the PHB's "the DM rolls the damage once" line, and this
+     project's existing no-monster-saving-throw simplification), and the
+     kill-handling loop mirrors Milestone 119's Fighter-sweep loop shape.
+     Full writeup: `docs/COMBAT_NOTES.md`'s "Fireball/Delayed Blast
+     Fireball: a real area-effect burst" section and
+     `docs/CHARACTER_NOTES.md`'s "Fireball: a real area effect" section.
+
+     No throwaway self-test -- the new logic lives entirely inside
+     `GameLoop::runCombat` (same standing `_getch()` limitation as every
+     other combat milestone), and the one new pure piece used
+     (`combat::chebyshevDistance`) is pre-existing, already covered by
+     Milestone 117's own precedent. Verified via a clean rebuild (zero new
+     `/W4` warnings) and a piped character-creation smoke test (real
+     `save1.txt`/`save2.txt` untouched, empty slot 3 used). **Not
+     interactively walked** -- same standing `_getch()` limitation; worth
+     doing on the next play session: fight a multi-instance group, memorize
+     Fireball, cast it at one instance while a second is within 2 cells,
+     and confirm both take the same damage with both named in the log;
+     separately confirm a solo/isolated target still reads as a clean
+     single-target hit.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

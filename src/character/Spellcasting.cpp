@@ -211,6 +211,18 @@ int fireballLikeDamage(int level) {
     return roll(dice, 6);
 }
 
+// Fireball/Delayed Blast Fireball's burst, in grid cells (Chebyshev
+// distance) -- PHB p.193's real shape is a 20-ft-radius sphere; this is an
+// *invented* translation to this project's combat grid, not a literal
+// feet-per-cell conversion (no such scale is established anywhere else in
+// this codebase -- see docs/COMBAT_NOTES.md's "Positional combat grid"
+// section, which already documents the grid's sizing as invented). Chosen
+// as 2 because Milestone 113's own group-spawn layout spaces instances
+// exactly 2 cells apart, so a burst centered on one group member reliably
+// also catches its neighbor -- big enough to read as a real area attack,
+// not so big it trivializes every group fight.
+constexpr int kFireballAreaRadius = 2;
+
 } // namespace
 
 SpellCastResult castSpell(Character& character, const std::string& spellId) {
@@ -290,9 +302,26 @@ SpellCastResult castSpell(Character& character, const std::string& spellId) {
         result.effect = SpellEffect::BuffPlayerDamage;
         result.amount = 2;
     } else if (spellId == "fireball" || spellId == "delayed_blast_fireball") {
-        result.effect = SpellEffect::DamageMonster;
+        // PHB p.193: a true 20-ft-radius sphere burst -- see
+        // SpellEffect::DamageArea's own doc comment and kFireballAreaRadius
+        // above for the grid-cell translation.
+        result.effect = SpellEffect::DamageArea;
         result.amount = fireballLikeDamage(level);
+        result.radius = kFireballAreaRadius;
     } else if (spellId == "lightning_bolt") {
+        // PHB p.194: real area of effect is a directional line (a single
+        // 5ft x 80ft bolt, or forked 10ft x 40ft, caster's choice --
+        // bounces off unyielding barriers), not a radius burst, so it's
+        // deliberately NOT SpellEffect::DamageArea -- that would misapply a
+        // sphere shape to a spell whose whole point (line up a row of
+        // enemies, use corridors/walls) a radius can't represent. Confirmed
+        // against References/DQoK.pdf's own Lightning Bolt entry too ("8
+        // squares long in a line...send the bolt down a row of
+        // opponents...also reflect off walls"). Stays single-target for
+        // now; real line-shaped targeting is a separate, larger follow-up,
+        // same "documented, not pursued absent a concrete reason" posture
+        // as this project's other deferred combat mechanics (see
+        // docs/COMBAT_NOTES.md's "Extending this later").
         result.effect = SpellEffect::DamageMonster;
         result.amount = fireballLikeDamage(level);
     } else if (spellId == "haste") {
