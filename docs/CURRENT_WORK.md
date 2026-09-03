@@ -1,9 +1,10 @@
 # Current work
 
-Nothing in flight. Milestones 146-150 are all implemented, documented, and
-interactively confirmed on `master` (146 terrain smoothing, 147 mountain
-glyph, 148 region-boundary highlighting, 150 header/border scroll-drift fix).
-The `terrain-smoothing` branch is fully merged into `master` -- no longer an
+Nothing in flight. Milestones 146-151 are all implemented and documented on
+`master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
+highlighting, 150 header/border scroll-drift fix, 151 two more Astinus
+SUBJECT entries); 146-150 are also interactively confirmed. The
+`terrain-smoothing` branch is fully merged into `master` -- no longer an
 open decision.
 
 Two things carry over to the next session:
@@ -29,6 +30,8 @@ piling on more unverified content. Full sourcing/detail for each is in its
   each day-gated. Ask before/after day 192/69/193 respectively.
 - **149** -- 3 Astinus SUBJECT topics (Gilthanas, Lord Soth, Ariakas), each
   day-gated. Ask before/after day 69/190/193 respectively.
+- **151** -- 2 more Astinus SUBJECT topics (Alhana Starbreeze, Porthios),
+  each day-gated. Ask before/after day 51/70 respectively.
 
 ## Parked: SFML rendering + variant tile art
 

@@ -5745,6 +5745,43 @@ now fully verified, nothing further outstanding.
      (2026-09-02, real cmd.exe console, extended play including several
      rest cycles): header/stats/border no longer drift out of view.
 
+151. Two more Astinus SUBJECT entries, closing a real gap rather than
+     continuing Milestones 145/149's named-but-untracked-antagonist
+     thread: `alhana,starbreeze` and `porthios`. Alhana is a fully
+     tracked `CHARACTER` (`PRESENCE silvanesti 51 63`, her own
+     SAY/TOPIC lines) that somehow never got an Astinus entry, even
+     though every other tracked companion already had one and Raistlin's
+     own `alhana,starbreeze` `SUBJECT_WHEN` has existed since Milestone
+     82. Porthios -- Solostaran's harsh elder son, referenced by four
+     different companions' dialogue at Qualimori but with no `CHARACTER`
+     block of his own -- is the same "named-but-untracked" shape
+     Gilthanas/Soth/Ariakas established. Both split days are anchored to
+     Astinus's own most narratively significant beat for that character
+     rather than reusing another NPC's split for the same name (Astinus's
+     `alhana,starbreeze` splits at day 51, her own Silvanesti PRESENCE,
+     not Raistlin's day 46 Tarsis-rescue split; `porthios` splits at day
+     70, `PRESENCE qualimori 70 70`). Confirmed against
+     `References/Dragons_of_Winter_Night_-_Margaret_Weis.pdf`
+     (`pdftotext -layout`): Alhana as Silvanesti's princess and heir "for
+     want of any brother," arrested in Tarsis trying to buy mercenaries;
+     Porthios as the son actually running Qualinesti's refugee camps
+     while his father defers to him on paper, convinced patience with the
+     Silvanesti/Kagonesti is a weakness his people can't afford --
+     confirming this project's existing `qualimori.txt` POI text wasn't
+     inventing his role. Full writeup: `docs/ZONE_NOTES.md`'s "Ask about
+     anything" section.
+
+     Zero `.cpp`/`.h` changes -- pure data content, same shape as
+     Milestones 145/149. Verified via a piped character-creation smoke
+     test (real `save1.txt`/`save2.txt` untouched, empty slot 3 used)
+     confirming `ZoneCatalog`/`Timeline` still parse
+     `data/zones/palanthas.txt` cleanly with the 4 new lines added, and a
+     clean rebuild (zero new `/W4` warnings, though no `.cpp`/`.h`
+     changed) to sync the zone file into `build/Debug/data/` first. **Not
+     interactively walked** -- same standing `_getch()` limitation; worth
+     doing on the next play session: ask Astinus about Alhana Starbreeze
+     and Porthios both before and after day 51/70 respectively.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

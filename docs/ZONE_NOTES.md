@@ -833,6 +833,60 @@ rebuild needed for source, but the build was re-run to sync the updated
 zone file into `build/Debug/data/` before the smoke test. **Not
 interactively walked** -- same standing `_getch()` limitation.
 
+**Milestone 151 added 2 more entries, closing a real gap this pass turned
+up rather than continuing the named-but-untracked antagonist thread**:
+`alhana,starbreeze` and `porthios`. Unlike Milestones 145/149's subjects,
+Alhana *is* a fully tracked `CHARACTER` (`data/timeline.txt:853`,
+`PRESENCE silvanesti 51 63`, her own SAY/TOPIC lines) -- Astinus simply
+never got an entry for her, even though every other tracked companion
+already had one and Raistlin's own `alhana,starbreeze` `SUBJECT_WHEN`
+(`data/timeline.txt:158-159`) has existed since Milestone 82. Porthios
+has no `CHARACTER` block of his own (referenced only secondhand through
+Sturm/Fizban/Laurana/Silvara's dialogue at Qualimori), the same
+"named-but-untracked" shape Gilthanas/Soth/Ariakas established.
+
+Both split days are anchored to Astinus's *own* most narratively
+significant beat for that character, not to any other NPC's existing
+split for the same name -- consistent with how Astinus's own
+`verminaard` split (day 12, Pax Tharkas/his death) already differs from
+Raistlin's `verminaard` split (day 3, first hearing the name at Xak
+Tsaroth). `alhana,starbreeze` splits at day 51 (her own `PRESENCE
+silvanesti 51 63`, when she's introduced kneeling at Lorac's side) rather
+than Raistlin's day 46 (when the party's own Tarsis rescue happens) --
+the pre-51 entry stays general (heir, absent from her father's court)
+without spoiling the Tarsis arrest scene the player hasn't necessarily
+reached yet. `porthios` splits at day 70 (`PRESENCE qualimori 70 70`,
+shared by all four companions who meet him there).
+
+Verified against `References/Dragons_of_Winter_Night_-
+_Margaret_Weis.pdf` (`pdftotext -layout`) rather than written from
+memory: Alhana as Silvanesti's princess and heir "for want of any
+brother" (lines ~1917-1919, ~6763) and her arrest in Tarsis trying to buy
+mercenaries (lines ~1905-1919); Porthios as Solostaran's elder son,
+already running Qualinesti's camps in practice while his father defers
+to him on paper, and convinced patience with the Silvanesti/Kagonesti is
+a weakness his people can't afford (lines ~6733-6759) -- also confirms
+this project's existing `qualimori.txt` POI text ("Speaker Solostaran's
+own son Porthios holds audience here now") wasn't inventing his role.
+Neither entry states the subject's own name in Astinus's dialogue text,
+matching the established convention across the whole pool (compare
+Gilthanas's "Laurana's own brother" or Kitiara's "Born to the same mother
+as two men..." -- the player already typed the name; Astinus's answer
+never echoes it back). No keyword collisions with any of Astinus's
+existing entries (checked against the full list before writing). Zero
+`.cpp`/`.h` changes -- pure data content, same shape as Milestones
+145/149.
+
+Verified via a piped character-creation smoke test (real `save1.txt`/
+`save2.txt` untouched, empty slot 3 used) confirming `ZoneCatalog`/
+`Timeline` still parse `data/zones/palanthas.txt` cleanly with the 4 new
+lines added. A clean rebuild was run first to sync the updated zone file
+into `build/Debug/data/` before the smoke test (zero new `/W4` warnings,
+though no `.cpp`/`.h` changed). **Not interactively walked** -- same
+standing `_getch()` limitation; worth doing on the next play session: ask
+Astinus about Alhana Starbreeze and Porthios both before and after day
+51/70 respectively and confirm all four variants read correctly.
+
 ## Zone-interior encounters (Milestone 23)
 
 `TIMELINE_ANCHOR <char>` layers a *third* kind of ability onto a POI,
