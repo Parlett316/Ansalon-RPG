@@ -48,17 +48,26 @@ public:
     // status panel (Milestone 43) -- not a bare gap anymore.
     static constexpr int kLogPanelGap = 3;
     // Non-map/log "chrome" every frame always has (Milestone 43): a
-    // one-line header, a '=' rule, a '-' rule, and a footer line (rows);
-    // one column of margin, kept as cheap insurance against an off-by-one
-    // in the detected terminal width rather than filling it exactly zero
-    // (columns).
-    static constexpr int kChromeRows = 4;
+    // one-line header, a '=' rule, a '-' rule, and a footer line (4 literal
+    // rows), plus one spare row of margin (Milestone 150) -- kept as cheap
+    // insurance against an off-by-one the same way kChromeColumns already
+    // was on the width axis (see its own comment), just missing here until
+    // now. Without it, a console whose height configureLayout measures
+    // exactly right still gets a frame that fills 100% of the window with
+    // no row to spare: the last line's trailing "\n" then asks the cursor
+    // to advance past the window's last row, and classic Windows conhost
+    // responds by scrolling the whole buffer (and its notion of "home")
+    // down by one -- which then compounds every redraw, since every
+    // subsequent frame re-triggers the same overflow. kChromeColumns
+    // avoids the equivalent auto-wrap trigger on the width axis; this is
+    // the missing row-axis counterpart.
+    static constexpr int kChromeRows = 5;
     static constexpr int kChromeColumns = 1;
     // Below these, configureLayout refuses to run at all -- see
     // docs/ARCHITECTURE.md and main.cpp's fail-fast check.
     static constexpr int kAbsoluteMinColumns =
         kMinViewportWidth + kLogPanelGap + kMinLogPanelWidth + kChromeColumns; // 72
-    static constexpr int kAbsoluteMinRows = kMinViewportHeight + kChromeRows; // 20
+    static constexpr int kAbsoluteMinRows = kMinViewportHeight + kChromeRows; // 21
 
     // The ACTIVE layout in use this run. Default-initialized (in
     // MapRenderer.cpp) to the preferred values above, so anything that

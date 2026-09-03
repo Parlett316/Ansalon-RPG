@@ -1124,6 +1124,20 @@ and "Inn of the Last Home" (21 chars) both overflow a 20-column floor.
 `kAbsoluteMinColumns`/`kAbsoluteMinRows` recompute from these
 automatically, 70×23 → **72×20**.
 
+**Correction, Milestone 150**: `kChromeRows`'s "no more blank spacer
+rows" reasoning above was about avoiding wasted visual space, not about
+the separate technical hazard `kChromeColumns` was already guarding
+against on the width axis (the off-by-one insurance margin called out
+two paragraphs up). That hazard stayed latent here for two weeks because
+`kPreferredViewportHeight` still capped the map below most consoles'
+actual height — only once Milestone 135 let the map absorb the *full*
+available height did any frame actually print exactly the console's row
+count, at which point `kChromeRows`'s zero spare rows became a real,
+reproducible "header scrolls out of view, worse every redraw" bug.
+Fixed by giving rows the same 1-unit insurance margin columns already
+had: `kChromeRows` 4→5, `kAbsoluteMinRows` 20→21. See `docs/MILESTONES.md`
+entry 150 for the full mechanism.
+
 **NPC announce/Look, the other half of this milestone.**
 `announceOverworldTile`/`announceZoneTile` (Milestone 30) used to push a
 present NPC's full flavor text/description straight to the log

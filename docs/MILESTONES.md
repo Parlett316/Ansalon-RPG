@@ -5713,6 +5713,38 @@ now fully verified, nothing further outstanding.
      69/190/193 respectively) and confirm all six variants read
      correctly.
 
+150. Fixed a real display bug found during this session's playtest pass:
+     over a long play session, the overworld/zone frame's header, stat
+     line, and top border would gradually scroll up out of view, leaving
+     only the bottom portion (map tail + footer) visible -- worse the
+     longer the session ran. Root cause: Milestone 135's "map absorbs the
+     full available height, no ceiling" change meant `configureLayout`'s
+     `kChromeRows` (Milestone 43, deliberately reduced from 7 to 4 as "no
+     more blank spacer rows") left **zero** spare rows once the map's
+     height was no longer capped -- every frame now prints exactly the
+     console's full row count. `drawOverworldFrame`/`drawZoneFrame`
+     terminate their last printed line with `"\n"`, so on a console whose
+     height configureLayout measured exactly right, that trailing newline
+     asks the cursor to advance past the window's last row; classic
+     Windows conhost responds by scrolling the whole buffer (and its
+     notion of where `\x1b[H` "home" is) down by one, and every subsequent
+     redraw re-triggers the same overflow, compounding the drift frame by
+     frame. `kChromeColumns` already carries an identical 1-column
+     insurance margin against the equivalent auto-wrap trigger on the
+     width axis (its own doc comment says so explicitly) -- `kChromeRows`
+     never got the row-axis counterpart. Fix: `kChromeRows` 4 -> 5 (one
+     spare row), `kAbsoluteMinRows` 20 -> 21 -- see `MapRenderer.h`'s
+     updated comment for the full mechanism. No `.cpp` logic changes,
+     `main.cpp`'s fail-fast check already reads `kAbsoluteMinRows`
+     symbolically rather than a hardcoded number.
+
+     Verified with a clean rebuild (zero new `/W4` warnings) and, since
+     this is a real Windows-console behavior no headless probe can
+     reproduce (same standing limitation as every other Console.cpp
+     concern -- see docs/GOTCHAS.md), **interactively confirmed**
+     (2026-09-02, real cmd.exe console, extended play including several
+     rest cycles): header/stats/border no longer drift out of view.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
