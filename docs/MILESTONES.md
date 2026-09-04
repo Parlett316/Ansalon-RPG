@@ -5886,6 +5886,26 @@ now fully verified, nothing further outstanding.
      test (real `save1.txt`/`save2.txt` untouched, empty slot 3 used),
      and terrain-validity checks on every moved coordinate.
 
+155. Third position correction: fixed Ice Wall Castle's `POS`, corrected
+     from `150 305` to `229 317`. Surfaced by the SFML trial's new
+     player-movement prototype -- walking the live marker around, the user
+     noticed it sitting on plain unlabeled glacier and asked if that was
+     really Ice Wall Castle. It wasn't: Milestone 154's "no direct label"
+     finding for Ice Wall Castle was a search-area mistake, not a fact
+     about the map -- its crops never reached far enough east. The map
+     does directly label it, "Icewall Castle (Brackenrock)", near
+     "Khormesh" on the glacier's northern fringe. Pixel-measured its icon
+     precisely (a tight upscaled crop, bounding-box center at pixel
+     (3917, 5420) of 8192x5461) and confirmed the resulting tile lands on
+     real, walkable glacier in the generated grid -- same verification
+     standard as every prior placement. Full writeup: `docs/MAP_NOTES.md`'s
+     "Third position correction: Ice Wall Castle's real label" section.
+
+     Zero `.cpp`/`.h` changes -- pure data content. Verified via a clean
+     rebuild (zero new `/W4` warnings), a piped character-creation smoke
+     test (real save files untouched), and a terrain-validity check on the
+     new coordinate.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

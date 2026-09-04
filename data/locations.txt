@@ -19,9 +19,12 @@
 #   POS <x> <y>            tile coordinates on the SAME grid as data/overworld.grid
 #                          (480 wide x 320 tall -- see docs/MAP_NOTES.md for how
 #                          these were placed: most are pixel-measured off a legible
-#                          label/icon on the reference image, per Milestone 85;
-#                          Darken Wood and Ice Wall Castle have no direct label on
-#                          that image either and stay placed by relative geography)
+#                          label/icon on the reference image, per Milestone 85.
+#                          Darken Wood has no direct label on that image and stays
+#                          placed by relative geography; Ice Wall Castle was believed
+#                          to be in the same boat until Milestone 155 found its actual
+#                          "Icewall Castle (Brackenrock)" label further east than any
+#                          prior search had cropped)
 #   DESC <text>            one-line description shown by 'look'
 #   END                    closes the block
 #
@@ -152,7 +155,7 @@ REGION Icereach
 TERRAIN glacial-ruin
 GLYPH I
 SEA_LOCKED
-POS 150 305
+POS 229 317
 DESC A half-ruined keep on a frozen, wind-scoured coast far south of anywhere charted. No road reaches it -- only the sea does. Ice has crept into its broken halls faster than anyone left could clear it out.
 END
 

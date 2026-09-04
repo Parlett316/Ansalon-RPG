@@ -518,6 +518,14 @@ glacier landmass southwest of Tarsis, in the same relative direction the
 old placement used. Both remain disclosed as approximate, per this file's
 standing honesty rule.
 
+**Correction (Milestone 155): the Ice Wall Castle half of this was
+wrong.** The crops checked here were all centered on the old placeholder
+position and never extended far enough east to find it, but the map
+*does* directly label it -- "Icewall Castle (Brackenrock)", with its own
+icon, near "Khormesh" on the glacier's northern fringe. See "Third
+position correction" below. Darken Wood's "no direct label" finding is
+untouched by this -- it wasn't re-checked.
+
 Every location's `POS` (`x y`, old -> new):
 
 | Location | Old | New | Basis |
@@ -531,7 +539,7 @@ Every location's `POS` (`x y`, old -> new):
 | Plains of Dust | 205,285 | 254,258 | region label |
 | Tarsis | 170,300 | 197,274 | direct label |
 | High Clerist's Tower | 173,100 | 194,95 | direct label |
-| Ice Wall Castle | 110,307 | 150,305 | approximate (re-anchored) |
+| Ice Wall Castle | 110,307 | ~~150,305~~ 229,317 | ~~approximate (re-anchored)~~ direct label (Milestone 155) |
 | Silvanesti | 312,231 | 341,236 | direct label ("Silvanost") |
 | Kalaman | 262,73 | 267,69 | direct label |
 | Palanthas | 167,85 | 190,79 | direct label |
@@ -555,6 +563,46 @@ inside the glacier landmass, not an isolated tile.
 The old reference JPEG stays in `References/` -- this milestone's writeup
 and every earlier one in this file still cite it, and there's no reason
 to delete a still-referenced historical asset.
+
+## Third position correction: Ice Wall Castle's real label (Milestone 155)
+
+Surfaced by the SFML trial's new player-movement/collision prototype
+(`sfml-trial-3` branch, `docs/CURRENT_WORK.md`): walking the live marker
+around the real map, the user noticed the red dot sitting on plain
+unlabeled glacier and asked whether that was supposed to be Ice Wall
+Castle. It was -- but the Milestone 154 pass's "no direct label, checked
+multiple crops" finding turned out to be a search-area mistake, not a
+fact about the map: every crop that pass took was centered on the old
+placeholder tile (`150 305`), and the real label sits about 79 tiles
+(~1350px) east of there, past where any of those crops reached.
+
+A fresh wide crop of the map's southern edge (`References/dragonlancemap2.png`,
+full 8192x5461 resolution) found it immediately: **"Icewall Castle
+(Brackenrock)"**, in the same bold labeled-place style as every other
+town, sitting on the glacier's northern fringe near "Khormesh" (an
+unlabeled-in-`locations.txt` place name, not currently tracked). Its
+icon -- a small ring, same style as other place markers -- was isolated
+with a tight, upscaled, pixel-gridded crop and its bounding-box center
+measured directly (a short throwaway Pillow script, not eyeballed):
+**pixel (3917, 5420)** of 8192x5461, converting via the same
+`px/tile = image_size / grid_size` scale every other Milestone
+85/153/154 placement used (~17.07 px/tile both axes) to **grid
+`POS 229 317`**. Confirmed directly against the live generated
+`data/overworld.grid`: row 317, column 229 is `:` (glacier), and
+`world::terrainFor(':').passable` is `true` -- lands solidly on real,
+walkable terrain with no nudge needed, same verification standard as
+every prior placement.
+
+`POS` corrected from `150 305` to `229 317` in `data/locations.txt`.
+Nothing else references Ice Wall Castle's raw coordinates -- every other
+data file (`data/timeline.txt`'s `PRESENCE` lines, `data/zones/tarsis.txt`'s
+`BOAT` line) keys off the `ice_wall` location id, not its `POS` -- so no
+other file needed a change. Milestone 95's Southern Ergoth writeup above
+also references Ice Wall Castle's old `150 305` position, but only as a
+historical description of where that milestone's own crop search was
+centered, not as a dependency of Southern Ergoth's own (independently
+pixel-derived) placement -- left as-is, same as it was already left
+unedited when Milestone 154 moved Ice Wall from `110 307` to `150 305`.
 
 ## Thorbardin and Sancrist Isle (Milestone 86)
 
