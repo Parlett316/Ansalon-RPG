@@ -100,11 +100,23 @@ graduate out of `References/` into a real shipped asset location --
 no forcing function yet, defer until/unless the full-migration shape is
 chosen.
 
-Also still open: `master` is several commits ahead of `origin/master` and
-hasn't successfully pushed yet -- the `git push` hang from earlier this
-session (looked like a credential/write-scope issue, distinct from the
-unrelated VPN/RDP problem also worked through this session) was never
-resolved. Worth retrying now that the user is back at the keyboard.
+Also still open: `git push origin master` still hangs and was retried
+again this session with the user at the keyboard -- confirmed more
+precisely this time: `git ls-remote origin` (read) returns instantly, so
+it's specifically the push/write path hanging, not general connectivity.
+Credential helper is `manager` (Git Credential Manager) with no cached
+write-scope token and no `GITHUB_TOKEN`/`GH_TOKEN` env var found -- GCM is
+almost certainly trying to launch an interactive re-auth prompt (browser
+or Windows Hello) that this session cannot see or complete (no desktop/
+GUI access, confirmed hard limit -- see the `feedback_no_desktop_gui_access`
+memory). `master` is currently 1 commit ahead of `origin/master`
+(Milestone 155). Likely needs the user to either run the push themselves
+from a real interactive terminal (so GCM's prompt has somewhere to go),
+or set up a token-based non-interactive auth path if they want future
+sessions able to push directly. `sfml-trial-3` has also diverged from
+`origin/sfml-trial-3` (rebased locally after Milestone 155's cherry-pick)
+-- would need a force-push to reconcile; not attempted, needs explicit
+go-ahead first.
 
 Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
