@@ -1510,3 +1510,75 @@ labels (the other three weren't re-captured live, since the same
 fine-grid crop that produced their corrected coordinates already showed
 the icon sitting on the target tile -- the identical check the live
 capture provides for Solace/Haven).
+
+## Second position-correction pass: the remaining 16 non-town locations (Milestone 154)
+
+Follow-up to Milestone 153, once the user had the SFML trial running
+interactively and could see all 25 markers at once (not just the 9
+towns). Same labeled-tile-grid methodology, applied to the remaining
+non-town locations.
+
+**Real bug found and fixed: Southern Ergoth.** `POS 91 193` landed in
+open ocean -- not just imprecise, genuinely unreachable/wrong. Corrected
+to `POS 95 190`, on the coast directly at "Beit," matching the location's
+own `DESC` text ("A wind-bent stretch of coastal wood on Southern
+Ergoth's western shore, the Elderwild at its back") -- the Elderwild
+Wood is visibly just inland to the east of this point on
+`dragonlancemap2.png`.
+
+**Pax Tharkas** nudged 2 tiles east, `POS 192 221` -> `194 221`, onto its
+labeled fortress icon.
+
+**Qualinesti moved onto Qualinost's icon specifically**, `POS 184 217` ->
+`184 215` -- the user asked for this explicitly (the nation/region
+`LOCATION` represented by its capital city's precise map position, the
+same convention Silvanesti already uses at Silvanost's icon). Milestone
+85's own citation table already claimed this was placed via "direct
+label ('Qualinost')," so this is a 2-tile refinement of an
+already-correctly-sourced point, not a new sourcing question.
+
+**Confirmed already accurate, no change:** High Clerist's Tower,
+Godshome, Silvanesti, Thorbardin, Dargaard Keep, Que-shu, Xak Tsaroth,
+Neraka (all within a tile of their labeled icons). **Sancrist Isle**
+briefly looked wrong (a first, tight crop showed dense forest with no
+"Sancrist Isle" text) but a wider-area crop showed it sitting exactly on
+"Castle Uth Wistan," well inside the island -- the tight crop just hadn't
+captured the region-name banner further north. Plains of Dust and
+Qualinesti (before its move above) are broad regions already positioned
+inside their labeled areas, not single-point locations needing icon
+alignment.
+
+**Darken Wood and Hopeful Vale: re-verified against `References/TSR 8448
+The Atlas of the Dragonlance World.pdf` directly, at the user's request
+-- no coordinate change, but meaningfully stronger sourcing than before.**
+Both were flagged at Milestone 85 as "no direct label on this map,
+re-anchored using relative-geography" (the *community* map,
+`dragonlancemap2.png`, genuinely never draws either). The Atlas itself
+does, though:
+
+- **Darken Wood** (`POS 189 208`, unchanged): Atlas p.1/PDF pg.22 ("The
+  South" -> "Abanasinia" text) states "Two major tributary branches to
+  the White-rage River partially encircled Darken Wood: Solace Stream,
+  which flowed south from Crystalmir Lake by Solace, and
+  Elfstream/Darkwater River which entered the White-rage near Haven" --
+  i.e. the wood sits *between and touching both* Solace and Haven, which
+  is exactly what `189 208` already is: the literal midpoint of Solace
+  `191 203` and Haven `188 213` ((191+188)/2, (203+213)/2) = (189.5,
+  208). Atlas p.4/PDF pg.25, captioned "Solace to Pax Tharkas," is a real
+  regional map drawing Darken Wood as a large forest mass with Haven at
+  its western edge and Qualinost to its south -- confirms the same
+  relative shape.
+- **Hopeful Vale** (`POS 187 230`, unchanged): the same Atlas page (p.1/
+  PDF pg.22) states refugees "found a temporary home in 'Hopeful Vale'"
+  in one of the uninhabited mountain valleys "to the west" of Pax
+  Tharkas `194 221`, on the only pass between Qualinost `184 215` and
+  Thorbardin `189 239` -- `187 230` is west of Pax Tharkas and sits
+  between Qualinost's and Thorbardin's latitude, matching the text.
+  Identical citation Milestone 131 already used; this session
+  independently re-read the primary source rather than trusting the
+  existing citation at face value.
+
+Re-verified the same way as Milestone 153: no `POS` collisions, all
+three moved coordinates confirmed on walkable terrain (`%` forest at
+Southern Ergoth's new spot, `^` hills at Pax Tharkas, `A` mountains at
+Qualinost), a clean rebuild, and a piped character-creation smoke test.

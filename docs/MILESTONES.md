@@ -5866,6 +5866,26 @@ now fully verified, nothing further outstanding.
      SFML trial capture confirming Solace's and Haven's markers now land
      exactly on their real map labels.
 
+154. Follow-up to Milestone 153: corrected the remaining 16 non-town
+     locations against the SFML trial's live marker overlay. Found and
+     fixed a real bug -- Southern Ergoth's `POS` was sitting in open
+     ocean, not just imprecise -- plus a 2-tile nudge for Pax Tharkas and
+     moving Qualinesti onto Qualinost's specific icon (user-requested).
+     Darken Wood and Hopeful Vale were independently re-verified directly
+     against `References/TSR 8448 The Atlas of the Dragonlance World.pdf`
+     (a pure scanned-image PDF, no extractable text -- page-image
+     research, same method as prior Atlas-sourced milestones): both
+     already matched the Atlas's own regional map and text exactly, so
+     neither coordinate changed, but the citation is now much stronger
+     than the "no direct label, relative-geography" placeholder Milestone
+     85 originally left. Full writeup: `docs/MAP_NOTES.md`'s "Second
+     position-correction pass" section.
+
+     Zero `.cpp`/`.h` changes -- pure data content. Verified via a clean
+     rebuild (zero new `/W4` warnings), a piped character-creation smoke
+     test (real `save1.txt`/`save2.txt` untouched, empty slot 3 used),
+     and terrain-validity checks on every moved coordinate.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

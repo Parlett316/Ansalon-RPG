@@ -85,7 +85,7 @@ NAME Qualinesti
 REGION Qualinesti
 TERRAIN elven-forest
 GLYPH Q
-POS 184 217
+POS 184 215
 DESC The elven forest kingdom, its trees grown and shaped over centuries into living halls. Elves eye outsiders here with quiet, practiced wariness.
 END
 
@@ -94,7 +94,7 @@ NAME Pax Tharkas
 REGION Kharolis
 TERRAIN mountain-fortress
 GLYPH P
-POS 192 221
+POS 194 221
 DESC A vast fortress carved into a mountain pass, its twin towers guarding the only easy road south. The stonework here predates the kingdoms that now claim it.
 END
 
@@ -241,7 +241,7 @@ REGION Southern Ergoth
 TERRAIN elf-refuge-wilds
 GLYPH E
 SEA_LOCKED
-POS 91 193
+POS 95 190
 DESC A wind-bent stretch of coastal wood on Southern Ergoth's western shore, the Elderwild at its back -- home now to three scattered peoples of elves who all fled here from somewhere else and never quite agreed on who's in charge. Ship's wreckage and old bonfire-scars mark where the sea last put someone ashore uninvited.
 END
 
