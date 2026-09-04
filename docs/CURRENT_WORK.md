@@ -123,9 +123,38 @@ same convention as every other partially-verified feature in this project):
 Flee, a multi-instance group encounter's in-frame target picker, and a
 recruited companion fighting alongside the player.
 
-**Next step:** decide what's next (the roadmap below lists every screen
-still ASCII-only; clearing the Phase 3 playtest-backlog items above first is
-also a reasonable choice) -- the user's call, not to be assumed.
+**Character sheet shipped this session, same `sfml_phase1/main.cpp`.** User
+picked it off the full-migration roadmap below. A read-only, full-window
+overlay bound to `C` (works from Overworld or Zone, dismissed by any key,
+matching every console overlay's blocking-`readKey()` convention), toggled
+via a new local `sheetOpen` bool -- same "transient UI state, not a third
+`game::Mode` value" reasoning `CombatSession` itself already established.
+Composited as a final draw-on-top layer rather than branching the existing
+map/sidebar draw chains, so those needed no changes at all.
+
+Content mirrors `render::MapRenderer::drawCharacterSheet`
+(`MapRenderer.cpp:689-840`) field-for-field -- race/subrace, class, level,
+XP, alignment, knight order, robe affiliation, all 6 ability scores
+(exceptional-strength percentile included), HP/AC/THAC0, weapon/armor, all
+5 saving throws, steel, carried items, a spells-memorized summary (casters
+only), and recruited companions -- laid out as two real pixel-space columns
+across the full window instead of one long list squeezed into the 320px
+sidebar, plus a small HP bar (a genuine visual the console version
+structurally can't do). **Deliberately dropped**: the console sheet's `'s'`
+full-spellbook drill-down (`GameLoop::showSpellbook()`) -- spellbook is its
+own separate roadmap item below, out of scope here; the memorized-spells
+summary line alone still shows what's prepared.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` (Regan, level 20 Human Mage -- a caster, so the
+robe/spells-summary paths get exercised) confirming no crash/exception on
+startup -- this session again had no desktop/GUI access to press `C` and
+see the panel itself. **Not yet interactively confirmed** -- moved to the
+Playtest backlog below.
+
+**Next step:** the user's call, not to be assumed -- confirm the character
+sheet live (playtest backlog below), keep working down the full-migration
+roadmap (9 screens left), or something else.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -137,9 +166,11 @@ this order:
 - ~~Zone interiors (`drawZoneFrame`)~~ -- done, see above.
 - ~~Combat (`drawCombatFrame`)~~ -- core melee loop done, see above;
   spellcasting/item use/backstab/sweep still deferred to a later phase.
-- Character sheet, spellbook, dialogue, generic picker, ask-input, shop,
-  inventory, full log, world map, journal, help -- 10 more screens, each
-  smaller than zones/combat.
+- ~~Character sheet~~ -- done, see above; not yet interactively confirmed
+  (Playtest backlog below).
+- Spellbook, dialogue, generic picker, ask-input, shop, inventory, full
+  log, world map, journal, help -- 9 more screens, each smaller than
+  zones/combat.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -180,6 +211,14 @@ piling on more unverified content. Full sourcing/detail for each is in its
   `sfml_phase1/main.cpp` and this file's Phase 3 writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
+- **SFML character sheet** -- press `C` from the overworld and again from
+  inside a zone; confirm every field renders correctly (ability scores,
+  saves, weapon/armor, steel/inventory, the spells-memorized summary
+  against save2's caster, companions if save1/save2 has one recruited),
+  the HP bar reflects current/max HP, and any key dismisses back to the
+  prior screen without also moving the character or opening combat. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
   (e.g. Goblins), memorize Fireball, cast it at one instance while a second

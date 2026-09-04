@@ -16,10 +16,15 @@
 // same "not yet in this build" convention Phase 1 already established for
 // Look/Talk/Shop/etc. See docs/CURRENT_WORK.md for the full scope writeup.
 
+#include "character/Alignment.h"
 #include "character/CharClass.h"
 #include "character/Dice.h"
+#include "character/Equipment.h"
+#include "character/Knighthood.h"
 #include "character/Leveling.h"
 #include "character/Race.h"
+#include "character/Spellcasting.h"
+#include "character/WizardOrder.h"
 #include "combat/Combat.h"
 #include "combat/CombatGrid.h"
 #include "combat/Monster.h"
@@ -486,7 +491,7 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Movement, Enter (zones/combat), and Flee (combat) work. Other keys are placeholders for now.");
+    pushLog("Movement, Enter (zones/combat), Flee (combat), and C (character sheet) work. Other keys are placeholders for now.");
 
     // --- Combat (Phase 3): all state is CombatSession above; every lambda
     // below is a non-blocking port of the matching piece of
@@ -497,6 +502,13 @@ int runPhase1(const std::string& savePath) {
     // constraint GameLoop::runCombat's own lambdas are bound by (see
     // docs/ARCHITECTURE.md).
     CombatSession combatSession;
+
+    // Character sheet ('C'): a transient full-window UI overlay, not world
+    // state -- same reasoning CombatSession's own comment above gives for
+    // staying local rather than becoming a third game::Mode value. Dismissed
+    // by any key, matching the console's blocking-readKey() convention for
+    // this and every other console overlay (Sheet/Spellbook/Help/WorldMap).
+    bool sheetOpen = false;
 
     auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
 
@@ -1015,6 +1027,219 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // Character sheet ('C') -- a read-only, full-window overlay drawn on top
+    // of whatever's already rendered this frame (the map+sidebar draw keeps
+    // running underneath every frame the sheet is open; this is purely a
+    // final compositing layer, so no branch was needed in either of the
+    // draw chains above). Content mirrors render::MapRenderer::
+    // drawCharacterSheet (MapRenderer.cpp:689-840) field-for-field, minus
+    // its 's' = full-spellbook drill-down (spellbook is its own separate
+    // roadmap item, out of scope here) -- laid out in two real pixel-space
+    // columns instead of one long vertical dump, since covering the whole
+    // window means there's no 320px sidebar constraint to work within.
+    constexpr unsigned kSheetTitleCharSize = 26;
+    constexpr unsigned kSheetHeaderCharSize = 16;
+    constexpr unsigned kSheetBodyCharSize = 15;
+    const sf::Color kSheetSectionColor(230, 220, 160);
+    const sf::Color kSheetBodyColor(210, 210, 210);
+    const float kSheetMarginX = 40.f;
+    const float kSheetRightX = static_cast<float>(windowW) / 2.f + 20.f;
+    const float kSheetColumnWidth = static_cast<float>(windowW) / 2.f - kSheetMarginX - 20.f;
+    const std::size_t kSheetMaxChars = static_cast<std::size_t>((kSheetColumnWidth - 10.f) / kSidebarCharWidth);
+
+    auto drawCharacterSheetOverlay = [&]() {
+        sf::RectangleShape sheetBg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        sheetBg.setFillColor(sf::Color(18, 18, 24));
+        window.draw(sheetBg);
+
+        const character::Character& c = state.character;
+        const auto& race = character::raceInfo(c.race);
+        const auto& cls = character::classInfo(c.charClass);
+        const character::SubraceInfo* sub = character::subraceInfo(c.subrace);
+        const long long currentDay = state.hoursElapsed / 24;
+
+        auto drawAt = [&](float x, float& yRef, const std::string& text, sf::Color color, unsigned size) {
+            sf::Text sfText(font, text, size);
+            sfText.setFillColor(color);
+            sfText.setPosition(sf::Vector2f(x, yRef));
+            window.draw(sfText);
+            yRef += static_cast<float>(size) + 6.f;
+        };
+
+        float headY = 20.f;
+        drawAt(kSheetMarginX, headY, c.name, sf::Color::White, kSheetTitleCharSize);
+
+        std::ostringstream classLine;
+        classLine << (sub != nullptr ? sub->name : race.name) << " " << cls.name << ", level " << c.level << " ("
+                   << c.experience << " XP)";
+        drawAt(kSheetMarginX, headY, classLine.str(), kSheetBodyColor, kSheetHeaderCharSize);
+        drawAt(kSheetMarginX, headY, character::alignmentName(c.alignment), kSheetBodyColor, kSheetHeaderCharSize);
+        if (c.knightOrder != character::KnightOrder::None) {
+            drawAt(kSheetMarginX, headY, character::knightOrderName(c.knightOrder), kSheetBodyColor,
+                   kSheetHeaderCharSize);
+        }
+        if (c.charClass == character::ClassId::Mage) {
+            if (c.robeColor == character::RobeColor::None) {
+                drawAt(kSheetMarginX, headY, "Unaffiliated student of the arcane", kSheetBodyColor,
+                       kSheetHeaderCharSize);
+            } else {
+                std::ostringstream robeLine;
+                robeLine << character::robeColorName(c.robeColor) << ", sworn to "
+                         << character::robeMoonName(c.robeColor);
+                drawAt(kSheetMarginX, headY, robeLine.str(), kSheetBodyColor, kSheetHeaderCharSize);
+            }
+        }
+
+        sf::RectangleShape divider(sf::Vector2f(static_cast<float>(windowW) - 2.f * kSheetMarginX, 2.f));
+        divider.setFillColor(sf::Color(70, 70, 85));
+        divider.setPosition(sf::Vector2f(kSheetMarginX, headY + 6.f));
+        window.draw(divider);
+
+        float leftY = headY + 24.f;
+        float rightY = headY + 24.f;
+
+        // -- Left column: abilities, HP/AC/THAC0 (with a real pixel-space HP
+        // bar -- the one piece of this screen the console version couldn't
+        // do), weapon/armor.
+        drawAt(kSheetMarginX, leftY, "Abilities:", kSheetSectionColor, kSheetHeaderCharSize);
+        std::ostringstream abilities1;
+        abilities1 << "STR " << c.scores.strength;
+        if (c.exceptionalStrengthPercentile > 0) {
+            // 18/01-18/99 zero-pad to two digits; 18/00 is the top bracket,
+            // conventionally written "00" rather than "100" -- same
+            // formatting as the console version.
+            int pct = c.exceptionalStrengthPercentile;
+            abilities1 << "/" << (pct == 100 ? "00" : (pct < 10 ? "0" : "")) << (pct == 100 ? "" : std::to_string(pct));
+        }
+        abilities1 << "   DEX " << c.scores.dexterity << "   CON " << c.scores.constitution;
+        drawAt(kSheetMarginX, leftY, abilities1.str(), kSheetBodyColor, kSheetBodyCharSize);
+        std::ostringstream abilities2;
+        abilities2 << "INT " << c.scores.intelligence << "   WIS " << c.scores.wisdom << "   CHA "
+                   << c.scores.charisma;
+        drawAt(kSheetMarginX, leftY, abilities2.str(), kSheetBodyColor, kSheetBodyCharSize);
+        leftY += 14.f;
+
+        drawAt(kSheetMarginX, leftY, "Combat:", kSheetSectionColor, kSheetHeaderCharSize);
+        std::ostringstream hpLine;
+        hpLine << "HP " << c.currentHp << "/" << c.maxHp << "   AC " << c.armorClass << "   THAC0 " << c.thac0;
+        drawAt(kSheetMarginX, leftY, hpLine.str(), kSheetBodyColor, kSheetBodyCharSize);
+
+        constexpr float kHpBarWidth = 200.f;
+        constexpr float kHpBarHeight = 14.f;
+        const float hpFrac = c.maxHp > 0
+                                  ? std::clamp(static_cast<float>(c.currentHp) / static_cast<float>(c.maxHp), 0.f, 1.f)
+                                  : 0.f;
+        sf::RectangleShape hpBarBg(sf::Vector2f(kHpBarWidth, kHpBarHeight));
+        hpBarBg.setFillColor(sf::Color(60, 30, 30));
+        hpBarBg.setPosition(sf::Vector2f(kSheetMarginX, leftY));
+        window.draw(hpBarBg);
+        sf::RectangleShape hpBarFill(sf::Vector2f(kHpBarWidth * hpFrac, kHpBarHeight));
+        hpBarFill.setFillColor(sf::Color(190, 60, 60));
+        hpBarFill.setPosition(sf::Vector2f(kSheetMarginX, leftY));
+        window.draw(hpBarFill);
+        leftY += kHpBarHeight + 10.f;
+
+        std::ostringstream weaponLine;
+        weaponLine << "Weapon: " << c.weaponName;
+        if (c.specializedWeapon) weaponLine << " (specialized)";
+        drawAt(kSheetMarginX, leftY, weaponLine.str(), kSheetBodyColor, kSheetBodyCharSize);
+        if (c.equippedArmor != character::ArmorId::None || c.hasShield) {
+            std::ostringstream armorLine;
+            armorLine << "Armor: ";
+            if (c.equippedArmor != character::ArmorId::None) {
+                armorLine << character::armorInfo(c.equippedArmor).name;
+                if (c.hasShield) armorLine << " + Shield";
+            } else {
+                armorLine << "Shield only";
+            }
+            drawAt(kSheetMarginX, leftY, armorLine.str(), kSheetBodyColor, kSheetBodyCharSize);
+        }
+
+        // -- Right column: saving throws, steel/inventory, spells-memorized
+        // summary (no spellbook drill-down -- see this lambda's own top
+        // comment), companions.
+        drawAt(kSheetRightX, rightY, "Saving Throws:", kSheetSectionColor, kSheetHeaderCharSize);
+        for (int i = 0; i < static_cast<int>(character::SaveCategory::Count); ++i) {
+            auto category = static_cast<character::SaveCategory>(i);
+            std::ostringstream saveLine;
+            saveLine << character::saveCategoryName(category) << ": " << c.saves.at(category);
+            drawAt(kSheetRightX, rightY, saveLine.str(), kSheetBodyColor, kSheetBodyCharSize);
+        }
+        rightY += 14.f;
+
+        drawAt(kSheetRightX, rightY, "Steel: " + std::to_string(c.steelPieces) + " stl", kSheetBodyColor,
+               kSheetBodyCharSize);
+        std::ostringstream carriedLine;
+        carriedLine << "Carried: ";
+        if (c.inventory.empty()) {
+            carriedLine << "nothing";
+        } else {
+            for (size_t i = 0; i < c.inventory.size(); ++i) {
+                if (i > 0) carriedLine << ", ";
+                carriedLine << character::inventoryItemLabel(c.inventory[i]);
+            }
+        }
+        for (const std::string& wrapped : wrapToWidth(carriedLine.str(), kSheetMaxChars)) {
+            drawAt(kSheetRightX, rightY, wrapped, kSheetBodyColor, kSheetBodyCharSize);
+        }
+        rightY += 14.f;
+
+        if (character::canCastSpells(c.charClass)) {
+            std::string spellsLine;
+            if (character::maxAccessibleSpellLevel(c) == 0) {
+                spellsLine = "Spells: cannot cast arcane magic";
+            } else if (c.spellsCastDay != currentDay) {
+                spellsLine = "Spells: not memorized today -- rest to prepare";
+            } else if (c.memorizedSpellIds.empty()) {
+                spellsLine = "Spells: none remaining today -- rest to re-prepare";
+            } else {
+                std::vector<std::string> distinctIds;
+                for (const auto& id : c.memorizedSpellIds) {
+                    if (std::find(distinctIds.begin(), distinctIds.end(), id) == distinctIds.end()) {
+                        distinctIds.push_back(id);
+                    }
+                }
+                std::ostringstream spellLine;
+                spellLine << "Spells memorized: ";
+                for (size_t i = 0; i < distinctIds.size(); ++i) {
+                    if (i > 0) spellLine << ", ";
+                    const character::SpellInfo* spell = character::findSpell(c.charClass, distinctIds[i]);
+                    int count = static_cast<int>(
+                        std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), distinctIds[i]));
+                    spellLine << (spell != nullptr ? spell->name : distinctIds[i]);
+                    if (count > 1) spellLine << " (x" << count << ")";
+                }
+                spellsLine = spellLine.str();
+            }
+            for (const std::string& wrapped : wrapToWidth(spellsLine, kSheetMaxChars)) {
+                drawAt(kSheetRightX, rightY, wrapped, kSheetBodyColor, kSheetBodyCharSize);
+            }
+            rightY += 14.f;
+        }
+
+        if (!state.companions.empty()) {
+            drawAt(kSheetRightX, rightY, "Companions:", kSheetSectionColor, kSheetHeaderCharSize);
+            for (const game::RecruitedCompanion& rc : state.companions) {
+                const character::Character& companion = rc.character;
+                const auto& compRace = character::raceInfo(companion.race);
+                const character::SubraceInfo* compSub = character::subraceInfo(companion.subrace);
+                std::ostringstream compLine1;
+                compLine1 << companion.name << ", " << (compSub != nullptr ? compSub->name : compRace.name) << " "
+                           << character::classInfo(companion.charClass).name << ", level " << companion.level;
+                drawAt(kSheetRightX, rightY, compLine1.str(), kSheetBodyColor, kSheetBodyCharSize);
+                std::ostringstream compLine2;
+                compLine2 << "HP " << companion.currentHp << "/" << companion.maxHp << "   AC "
+                           << companion.armorClass << "   THAC0 " << companion.thac0;
+                drawAt(kSheetRightX, rightY, compLine2.str(), kSheetBodyColor, kSheetBodyCharSize);
+            }
+        }
+
+        sf::Text footer(font, "(press any key to return)", kSheetHeaderCharSize);
+        footer.setFillColor(sf::Color(150, 150, 160));
+        footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 40.f));
+        window.draw(footer);
+    };
+
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
     while (window.isOpen()) {
@@ -1042,9 +1267,7 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::L: placeholder = "Look: not yet implemented in this build."; break;
                         case sf::Keyboard::Key::T: placeholder = "Talk: not yet implemented in this build."; break;
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
-                        case sf::Keyboard::Key::C:
-                            placeholder = "Character sheet: not yet implemented in this build.";
-                            break;
+                        case sf::Keyboard::Key::C: break; // handled explicitly below via sheetOpen
                         case sf::Keyboard::Key::P: placeholder = "Shop: not yet implemented in this build."; break;
                         case sf::Keyboard::Key::I:
                             placeholder = "Inventory: not yet implemented in this build.";
@@ -1064,7 +1287,13 @@ int runPhase1(const std::string& savePath) {
                         default: break;
                     }
 
-                    if (combatSession.active) {
+                    if (sheetOpen) {
+                        // Dismiss on any key -- see sheetOpen's own comment
+                        // above. Deliberately swallows dx/dy/handleEnter too,
+                        // so the same keypress that closes the sheet never
+                        // also moves the character or opens combat.
+                        sheetOpen = false;
+                    } else if (combatSession.active) {
                         // Combat's own input dispatch -- see CombatSession/
                         // CombatUiState's doc comments above for the state
                         // machine this drives. Reuses the same dx/dy/
@@ -1155,6 +1384,8 @@ int runPhase1(const std::string& savePath) {
                                 pushLog("Nothing to step through here.");
                             }
                         }
+                    } else if (key == sf::Keyboard::Key::C) {
+                        sheetOpen = true;
                     } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
@@ -1453,6 +1684,11 @@ int runPhase1(const std::string& savePath) {
                         drawLine(wrapped, sf::Color(190, 190, 200));
                     }
                 }
+            }
+
+            if (sheetOpen) {
+                window.setView(uiView);
+                drawCharacterSheetOverlay();
             }
 
             window.display();
