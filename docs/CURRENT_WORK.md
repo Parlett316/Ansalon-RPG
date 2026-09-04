@@ -1,120 +1,70 @@
 # Current work
 
-**Round 3 SFML spike confirmed positive -- "continue down this path" --
-still in trial form, real engine migration not yet scoped.** On branch
-`sfml-trial-3` (off `master`; do not merge without an explicit go-ahead).
-Context: `References/dragonlancemap2.png`'s author (paercebal) gave
-explicit permission to use the map this session (see `docs/MAP_NOTES.md`'s
-"Source and attribution"), the user asked to see the actual map image
-rendered as the overworld rather than round 2's hand-drawn tile atlas (see
-the `feedback_dragonlance_sprites_deferred` memory for the full two-round
-history), and after seeing a live capture the user said to continue.
+**Full SFML engine migration -- decided and started, Phase 1 shipped and
+confirmed.** On branch `sfml-trial-3` (off `master`; do not merge without
+an explicit go-ahead). History: the round-3 real-map spike (real
+`dragonlancemap2.png` as the overworld, `sfml_trial/main.cpp`) got a
+"continue down this path" verdict, which led to two real production data
+fixes shipped straight to `master` (Milestone 153/154, then a follow-on
+Milestone 155 -- see `docs/MAP_NOTES.md` and `docs/MILESTONES.md`, not
+repeated here), then real collision-checked player movement in the trial.
+Full history is in git log / `docs/MILESTONES.md`, not repeated here --
+this file only tracks what's still actionable.
 
-What's built: a purely additive `ansalon_sfml_trial` CMake target (SFML
-3.0.0 `FetchContent` -- same `-DCMAKE_POLICY_VERSION_MINIMUM=3.5`
-configure-step note as round 2, see "Parked: SFML rendering + variant tile
-art" below) and `sfml_trial/main.cpp`: loads the real grid
-(`world::OverworldGrid`, just for `width()`/`height()`) and real locations
-(`world::World`/`WorldLoader`), draws `References/dragonlancemap2.png`
-directly as one `sf::Sprite` (no tile atlas), arrow-key-panned camera
-clamped to image bounds starting centered on Solace, a colored marker per
-`Location` (green towns, red otherwise), a gold camera-start marker, and a
-**self-capture**: since this session runs without desktop access (external
-GDI/`PrintWindow` capture can't see the SFML window's OpenGL content --
-confirmed both ways, `PrintWindow`'s `PW_RENDERFULLCONTENT` only grabs the
-window chrome, black client area), the app screenshots its own framebuffer
-~1s after launch to `sfml_trial3_capture.png` (gitignored) so the user
---physically away from this PC this session-- can review it as an image
-instead of the live window.
+**The user then committed to a full migration** (overworld, zones, and
+combat all move to SFML -- not the "hybrid" alternative, which research
+found would need an SFML window and the Windows console coexisting
+mid-session, no precedent in this codebase) and to **real pixel-space
+rendering per screen**, not a monospace-grid recreation (already tried
+once in August, rejected as "looks almost exactly the same"). See
+`docs/ARCHITECTURE.md`'s SFML section for the architecture this unlocked
+and the one real wrinkle it surfaced (`Console`'s methods are `static` on
+a concrete class, not an interface -- a true drop-in swap needs `Console.h`
+restructured via PIMPL, deferred until a phase actually needs
+`GameLoop::run()`'s full dispatch).
 
-The live capture surfaced a real, useful side effect: markers overlaid on
-the actual map let the user's own tile-derived `POS` values be checked
-against the map's real painted labels for the first time. That became two
-milestones (real production data, not spike-scoped, both shipped on
-`master`, `sfml-trial-3` rebased past both):
+**Phase 1 shipped this session: a real, pixel-space overworld screen.**
+New standalone target `ansalon_sfml_phase1` (`sfml_phase1/main.cpp`, not
+reusing `GameLoop::run()` -- see the `Console` wrinkle above) that loads a
+real save file read-only via `game::SaveGame`, walks the real map with
+real collision (extending what the trial proved), and renders a real
+pixel-space sidebar (character name/level/race/class, HP, in-game day/
+time, a short event log) using SFML text against a placeholder Consolas
+system font -- not a terminal recreation. Unimplemented keys (zone entry,
+talk, shop, inventory, journal, rest, etc.) log a plain "not yet in this
+build" line instead of doing anything. Verified: clean rebuild (zero new
+`/W4` warnings) and the user testing it live at the keyboard against a
+real save. **User's verdict: "looks good."**
 
-- **Milestone 153** -- 5 of 9 `TOWN` locations corrected.
-- **Milestone 154** -- the remaining 16 non-town locations. Found and
-  fixed a real bug (Southern Ergoth's `POS` was in open ocean), nudged Pax
-  Tharkas, moved Qualinesti onto Qualinost's icon (user-requested).
-  Darken Wood and Hopeful Vale independently re-verified against
-  `References/TSR 8448 The Atlas of the Dragonlance World.pdf` (page-image
-  research -- no extractable text layer) at the user's request; both
-  already matched exactly, no coordinate change, just a much stronger
-  citation than Milestone 85's original placeholder.
+**Not yet committed.** `CMakeLists.txt` (new `ansalon_sfml_phase1` target)
+and `sfml_phase1/main.cpp` are sitting uncommitted in the working tree.
 
-See `docs/MAP_NOTES.md`'s "Town position correction against
-dragonlancemap2.png" and "Second position-correction pass" sections.
+**Next step:** decide Phase 2's scope (the roadmap below lists every
+screen still ASCII-only, in no particular committed order -- zone
+interiors are the natural next one, being the other overworld-adjacent
+screen and reusable-map-rendering-adjacent) and commit Phase 1's code.
+Per this project's "don't start the next milestone without being asked"
+rule, that's a decision for the user to make, not to assume.
 
-**User's verdict after seeing all 25 corrected markers live: "looks
-good."** All location-position work for that round was done and
-confirmed -- but see Milestone 155 below, a follow-on correction that
-same live-marker view enabled later.
+## Full-migration roadmap (screens still ASCII/terminal-only)
 
-**Real player movement now implemented in the trial.** Planned via `EnterPlanMode` after the
-user chose "scope a real plan now" from a menu of next-step options.
-`sfml_trial/main.cpp` now tracks a real player grid position, moved one
-tile per arrow-key press (event-based, not the old continuous pan) and
-collision-checked against `world::terrainFor(...).passable` -- the same
-table `game::GameLoop::tryMoveOverworld` uses in the real game
-(`src/world/Terrain.cpp` added to the `ansalon_sfml_trial` CMake target,
-zero dependencies, no `Console` coupling). The camera now follows the
-player instead of free-panning; the gold marker is the live player
-position; blocked moves and location arrivals print to stdout. Verified
-by clean rebuild (zero new `/W4` warnings) and the user driving it
-live at the keyboard.
+Each needs its own real pixel-space design pass -- not a mechanical port,
+same reasoning that ruled out the monospace-grid approach above. Rough
+size/complexity noted from this session's research, not a commitment to
+this order:
 
-That live walkthrough immediately paid off again: the user noticed the
-marker sitting on unlabeled glacier and asked if that was really Ice
-Wall Castle. It wasn't -- **Milestone 155** found Milestone 154's
-"no direct label" conclusion for Ice Wall Castle was a search-area
-mistake (crops never reached far enough east); the map does label it,
-"Icewall Castle (Brackenrock)" near "Khormesh". Pixel-measured and
-corrected `POS` from `150 305` to `229 317` in `data/locations.txt`.
-See `docs/MAP_NOTES.md`'s "Third position correction" section and
-`docs/MILESTONES.md` entry 155. Verified via clean `ansalon_rpg`
-rebuild, a piped character-creation smoke test (real `save1.txt`/
-`save2.txt` untouched, empty slot 3 used), and a direct
-terrain-passability check (`:` glacier, passable) on the new tile.
-
-Milestone 155 (real production data, same category as 153/154) was
-committed on `sfml-trial-3` then cherry-picked to `master` directly,
-same split as 153/154; `sfml-trial-3` rebased past it, same as before.
-The movement code above stays trial-only, not part of this cherry-pick.
-**Not yet re-confirmed live in the SFML trial itself** -- next time it's
-run, the marker should land on the actual "Icewall Castle" icon instead
-of open glacier; worth a quick look.
-
-Next step, still not started: the user's earlier "continue down this
-path" verdict is now backed by a real movement prototype, but the
-zones/combat-hybrid-vs-full-migration decision from the approved plan is
-still open. Two real shapes exist: full engine migration (SFML for
-overworld *and* zones *and* combat, matching `docs/ARCHITECTURE.md`'s
-existing "contained swap" framing) vs. a hybrid (SFML overworld only,
-ASCII zones/combat) -- the hybrid has no precedent in this codebase and
-raises real, unscoped problems (an SFML window and the Windows console
-coexisting mid-session; input ownership; flicker-free handoff between
-the two). Revisit this now that movement has actually been tried. Also
-still open, lower-stakes: whether `dragonlancemap2.png` needs to
-graduate out of `References/` into a real shipped asset location --
-no forcing function yet, defer until/unless the full-migration shape is
-chosen.
-
-**Resolved this session:** the `git push` hang was a Git Credential
-Manager write-scope issue (confirmed: `git ls-remote origin`, read-only,
-always returned instantly; only push hung -- GCM had no cached
-write-scope credential and was almost certainly waiting on an
-interactive re-auth prompt this session can't see, no desktop/GUI
-access). Fixed by the user generating a fine-grained GitHub PAT
-(`Ansalon-RPG` repo only, Contents: Read and write, 90-day expiry) and
-handing it to `git credential approve` (stored in Windows Credential
-Manager via the existing `manager` helper -- never written to any file
-in the repo). Both `master` and `sfml-trial-3` are now pushed and fully
-synced with `origin` (the latter needed `--force-with-lease`, since
-Milestone 155's cherry-pick + rebase had rewritten its history -- done
-with explicit user go-ahead). Future sessions should be able to push
-directly without hitting this again, as long as the PAT hasn't expired
-or been revoked.
+- Zone interiors (`drawZoneFrame`) -- likely next; shares the overworld's
+  map-rendering foundation.
+- Combat (`drawCombatFrame`) -- the biggest and most complex remaining
+  screen (tactical grid, HP roster, target/spell pickers).
+- Character sheet, spellbook, dialogue, generic picker, ask-input, shop,
+  inventory, full log, world map, journal, help -- 10 more screens, each
+  smaller than zones/combat.
+- Character creation and the save-slot menu use plain `std::cin`/
+  `std::cout` before any window exists -- can stay as-is indefinitely,
+  not part of this migration.
+- Deciding when (if ever) this code gets promoted to replace `ansalon_rpg`
+  outright -- only once enough of the above is real, not before.
 
 Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
@@ -165,7 +115,14 @@ piling on more unverified content. Full sourcing/detail for each is in its
 - **151** -- 2 more Astinus SUBJECT topics (Alhana Starbreeze, Porthios),
   each day-gated. Ask before/after day 51/70 respectively.
 
-## Parked: SFML rendering + variant tile art
+## Parked: SFML rendering + variant tile art (round 2, `sfml-trial-2`)
+
+**Superseded in direction, not necessarily obsolete.** This is round 2's
+tile-atlas approach (hand-drawn 32px terrain tiles); the active migration
+above instead renders the real map image directly, pixel-space. Still
+worth keeping this note around in case tile-based art becomes relevant
+again for a screen the real map can't represent (a zone interior, say) --
+just don't assume it's the plan for the active migration above.
 
 Not abandoned, not committed to -- purely the user's call whenever (or if)
 they revisit it. Don't propose pushing this further unprompted; this project

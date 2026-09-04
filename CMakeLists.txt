@@ -124,3 +124,42 @@ if (MSVC)
 else()
     target_compile_options(ansalon_sfml_trial PRIVATE -Wall -Wextra)
 endif()
+
+# ansalon_sfml_phase1 -- full-migration Phase 1 (see docs/CURRENT_WORK.md and
+# the plan this was built from): a real, pixel-space overworld screen driven
+# by real save data, proving the rendering approach before any of
+# zones/combat/menus are attempted. Deliberately standalone rather than
+# reusing game::GameLoop::run() -- that dispatch loop is hardcoded to
+# render::Console's static methods, and restructuring Console for a true
+# swap is real work worth doing only once a phase actually needs GameLoop's
+# full input dispatch (zones, most likely). Loads a real save file read-only
+# via game::SaveGame -- never writes back. Reads References/dragonlancemap2.png
+# and data/*.txt straight from the source tree at run time, same as
+# ansalon_sfml_trial.
+add_executable(ansalon_sfml_phase1
+    sfml_phase1/main.cpp
+    src/world/OverworldGrid.cpp
+    src/world/World.cpp
+    src/world/WorldLoader.cpp
+    src/world/Terrain.cpp
+    src/game/SaveGame.cpp
+    src/character/Dice.cpp
+    src/character/Ability.cpp
+    src/character/Race.cpp
+    src/character/CharClass.cpp
+    src/character/Alignment.cpp
+    src/character/Knighthood.cpp
+    src/character/WizardOrder.cpp
+    src/character/Leveling.cpp
+    src/character/Spellcasting.cpp
+    src/character/Equipment.cpp
+    src/character/Companion.cpp
+)
+target_include_directories(ansalon_sfml_phase1 PRIVATE src)
+target_compile_features(ansalon_sfml_phase1 PRIVATE cxx_std_17)
+target_link_libraries(ansalon_sfml_phase1 PRIVATE SFML::Graphics SFML::Window SFML::System)
+if (MSVC)
+    target_compile_options(ansalon_sfml_phase1 PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(ansalon_sfml_phase1 PRIVATE -Wall -Wextra)
+endif()

@@ -118,18 +118,37 @@ all untouched — the same "the executor was always source-agnostic; only
 the loader needed to learn the new grammar" precedent Milestones 26 and 71
 both already established.
 
-**Flagged future direction, not a commitment:** if real cross-platform
-builds or sprite rendering ever become an actual goal, this isolation is
-exactly what would make an SFML-backed `Console`/renderer a contained
-swap rather than a rewrite — SFML was chosen over SDL2 for fitting this
-codebase's existing modern-C++ (RAII) style more closely. It would touch
-only `render/Console.cpp`, `render/MapRenderer.cpp`, and the input-polling
-call sites in `game/GameLoop.cpp`; `World`, `ZoneCatalog`, `Timeline`,
-`MonsterCatalog`, and every data loader are untouched either way, since
-none of them depend on `render/`. The one real cost: this project
-currently has zero external dependencies, and SFML would be the first —
-bringing in vcpkg or `FetchContent` is a bigger step than it sounds for a
-repo this deliberately minimal. See `docs/MILESTONES.md`'s "NEXT UP".
+**No longer just a flagged direction — an active, in-progress migration
+as of the "full SFML migration" plan (branch `sfml-trial-3`, see
+`docs/CURRENT_WORK.md`).** The isolation described below is exactly what
+made this possible to start incrementally rather than as one giant
+rewrite: `game::GameLoop` (3,050 lines, 24 distinct input-loop contexts)
+calls only `render::Console::readKey()`/`readLine()`/`flushInput()` and
+switches on the abstract `render::Key` enum — nothing outside
+`render/Console.cpp` touches a Windows API directly (confirmed by a full
+grep pass). `World`, `ZoneCatalog`, `Timeline`, `MonsterCatalog`, and
+every data loader are untouched either way, since none of them depend on
+`render/`. SFML was chosen over SDL2 for fitting this codebase's existing
+modern-C++ (RAII) style more closely; it's now the project's first
+external dependency, via `FetchContent`.
+
+One real wrinkle a first migration pass surfaced: `render::Console`'s
+methods are `static` on a concrete class, not an injectable interface, so
+`GameLoop.cpp` can't simply link against a different backend without
+`Console.h` itself being restructured (PIMPL, hiding backend-specific
+state currently exposed as `#ifdef _WIN32` private members) — a real
+change, deferred until a phase actually needs to reuse `GameLoop::run()`'s
+full dispatch (zones, most likely). Phase 1 (the real map + a real,
+pixel-space HUD sidebar showing live save data, `sfml_phase1/main.cpp`)
+deliberately stayed a standalone loop instead, same shape as the
+`sfml_trial` spike before it. **Rendering style is pixel-space, not a
+monospace-grid recreation** — a straight glyph-grid port was already
+tried once (August) and rejected as "looks almost exactly the same" as
+the terminal; every screen this migration touches gets real pixel
+positioning instead (placeholder shapes/text for now, ready for real
+sprite art later). See `docs/CURRENT_WORK.md` for exactly which screens
+are done vs. still-ASCII-only at any given time — this section describes
+the architecture, not the current progress checkpoint.
 
 ## Why location data is a hand-rolled text format, not JSON
 
