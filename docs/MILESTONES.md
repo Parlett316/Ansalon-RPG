@@ -5846,6 +5846,26 @@ now fully verified, nothing further outstanding.
      separately confirm a solo/isolated target still reads as a clean
      single-target hit.
 
+153. Corrected 5 of the 9 `TOWN` locations' `POS` coordinates
+     (Solace, Haven, Port O'Call, Port Balifor, Flotsam) to precisely
+     match `dragonlancemap2.png`'s own painted town labels, surfaced by
+     round 3 of the SFML real-map-rendering spike (see
+     `docs/CURRENT_WORK.md`): rendering the actual map image as the
+     overworld with a marker at every location made it possible, for the
+     first time, to visually check the game's tile-derived positions
+     against the map's own labels directly. Used a labeled-tile-grid
+     overlay script for precision rather than eyeballing a plain crop; new
+     positions confirmed to still land on walkable terrain. Full writeup:
+     `docs/MAP_NOTES.md`'s "Town position correction against
+     dragonlancemap2.png" section.
+
+     Zero `.cpp`/`.h` changes -- pure data content. Verified via a clean
+     rebuild (zero new `/W4` warnings), a piped character-creation smoke
+     test (real `save1.txt`/`save2.txt` untouched, empty slot 3 used)
+     confirming `data/locations.txt` still parses cleanly, and a rebuilt
+     SFML trial capture confirming Solace's and Haven's markers now land
+     exactly on their real map labels.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

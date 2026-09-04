@@ -39,7 +39,7 @@ REGION Abanasinia
 TERRAIN forest-town
 GLYPH S
 TOWN
-POS 191 200
+POS 191 203
 DESC A town built high in the branches of ancient vallenwood trees, linked by swaying bridges and stairways. The Inn of the Last Home sits atop the tallest trunk, its chimney never quite cold.
 END
 
@@ -58,7 +58,7 @@ REGION Abanasinia
 TERRAIN plains-town
 GLYPH H
 TOWN
-POS 189 213
+POS 188 213
 DESC A modest farming town on the edge of the Abanasinia plains, its market square usually busy with wagons and rumor alike.
 END
 
@@ -142,7 +142,7 @@ REGION Solamnia
 TERRAIN coastal-fishing-town
 GLYPH R
 TOWN
-POS 202 180
+POS 203 180
 DESC A modest fishing town on the Strait of Schallsea's northern shore, net-hung piers and low stone houses climbing the headland toward the foothills. The Tower road picks up just past the last house, running north into Solamnia proper.
 END
 
@@ -252,7 +252,7 @@ TERRAIN occupied-trade-port
 GLYPH B
 TOWN
 SIZE MEDIUM
-POS 356 179
+POS 357 182
 DESC A trade town on the Bay of Balifor, dragonarmy patrols in its streets but its fishing fleet and taverns mostly left alone -- the Highlords have never cared much what happens on this stretch of coast. The Pig & Whistle still pours a decent ale for anyone not wearing a Highlord's colors.
 END
 
@@ -262,7 +262,7 @@ REGION Blood Bay
 TERRAIN wreck-built-port
 GLYPH O
 TOWN
-POS 371 152
+POS 372 153
 DESC A wretched port on Blood Bay, thrown together from salvage and bad luck since the day the Cataclysm made this coastline what it is. Whoever holds the sharpest blade or the most steel runs things here today -- lately, that's the dragonarmies.
 END
 

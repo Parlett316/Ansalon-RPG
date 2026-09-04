@@ -1464,3 +1464,49 @@ new `/W4` warnings), and a headless render probe against the real save and
 real grid confirming the *actual* border density (5.0% on the overworld
 viewport, 21.5% on the World Map screen's own coarser box-sampled view) and
 visual quality, not just a screenshot.
+
+## Town position correction against dragonlancemap2.png (Milestone 153)
+
+Prompted by round 3 of the SFML real-map-rendering spike (see
+`docs/CURRENT_WORK.md` and the `feedback_dragonlance_sprites_deferred`
+memory): once the real map image was rendered as the overworld background
+with a marker at every `LOCATION`'s `POS`, it became possible to visually
+check the game's tile-derived positions against the map's own painted
+town labels/icons directly, for the first time -- Milestone 85's original
+placement pass read labels by eye against a static crop, but never had a
+live, precise, markers-on-the-real-map view like this to check against.
+
+All 9 `TOWN`-flagged locations were checked. Methodology matched Milestone
+85's "pixel-measured against the reference map" discipline, made more
+precise with tooling: a throwaway Python script (`crop_town_fine.py`,
+scratch-only, not checked in) cropped `References/dragonlancemap2.png`
+around each town's current position and overlaid a 1-tile-spaced,
+tile-coordinate-labeled magenta grid plus a red crosshair marking the
+exact current `POS`, so the real settlement icon's tile coordinate could
+be read directly off the grid rather than estimated. Five needed a real
+correction (new position confirmed to still land on walkable terrain in
+`data/overworld.grid`, checked directly, not assumed):
+
+| Location | Old `POS` | New `POS` | Shift |
+|---|---|---|---|
+| Solace | 191 200 | 191 203 | 3 south |
+| Haven | 189 213 | 188 213 | 1 west |
+| Port O'Call | 202 180 | 203 180 | 1 east |
+| Port Balifor | 356 179 | 357 182 | 1 east, 3 south |
+| Flotsam | 371 152 | 372 153 | 1 east, 1 south |
+
+Tarsis, Kalaman, Palanthas, and Crossing were already accurate (Kalaman's
+first-pass reading suggested a 4-tile error, but that turned out to be a
+misread of the coarse-grid overlay's rotated pixel-coordinate labels --
+the fine-grid follow-up crop confirmed the original position was correct
+all along; recorded here since it's the kind of measurement mistake this
+tooling exists to catch before it reaches the data file).
+
+Re-verified after editing `data/locations.txt`: no duplicate `POS`
+collisions with any other location, a piped character-creation smoke test
+confirming the file still parses cleanly, and a rebuilt SFML trial capture
+confirming Solace's and Haven's markers now land exactly on their real map
+labels (the other three weren't re-captured live, since the same
+fine-grid crop that produced their corrected coordinates already showed
+the icon sitting on the target tile -- the identical check the live
+capture provides for Solace/Haven).
