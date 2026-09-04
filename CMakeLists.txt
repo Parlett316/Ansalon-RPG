@@ -85,3 +85,41 @@ add_custom_command(TARGET ansalon_rpg POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:ansalon_rpg>/data"
 )
+
+# ---------------------------------------------------------------------------
+# ansalon_sfml_trial -- round 3 de-risking spike (see docs/CURRENT_WORK.md
+# and the sprites-deferred history it links to): an isolated, throwaway
+# target proving the real map image (References/dragonlancemap2.png, used
+# with the artist's permission -- see docs/MAP_NOTES.md) can be rendered
+# directly as the overworld, with a scrolling camera and location markers,
+# instead of a hand-drawn tile atlas. Purely additive -- never touches the
+# ansalon_rpg target above. Reuses the real world::OverworldGrid/World/
+# WorldLoader loading code directly rather than reimplementing it. Reads
+# References/dragonlancemap2.png and data/*.txt straight from the source
+# tree at run time (no post-build copy step -- never intended to leave this
+# repo).
+include(FetchContent)
+FetchContent_Declare(
+    SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 3.0.0
+    GIT_SHALLOW ON
+)
+set(SFML_BUILD_AUDIO OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SFML)
+
+add_executable(ansalon_sfml_trial
+    sfml_trial/main.cpp
+    src/world/OverworldGrid.cpp
+    src/world/World.cpp
+    src/world/WorldLoader.cpp
+)
+target_include_directories(ansalon_sfml_trial PRIVATE src)
+target_compile_features(ansalon_sfml_trial PRIVATE cxx_std_17)
+target_link_libraries(ansalon_sfml_trial PRIVATE SFML::Graphics SFML::Window SFML::System)
+if (MSVC)
+    target_compile_options(ansalon_sfml_trial PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(ansalon_sfml_trial PRIVATE -Wall -Wextra)
+endif()

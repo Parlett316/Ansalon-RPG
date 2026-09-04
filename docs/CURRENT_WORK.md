@@ -1,6 +1,50 @@
 # Current work
 
-Nothing in flight. Milestones 146-152 are all implemented and documented on
+**Round 3 SFML spike confirmed positive -- "continue down this path" --
+still in trial form, real engine migration not yet scoped.** On branch
+`sfml-trial-3` (off `master`; do not merge without an explicit go-ahead).
+Context: `References/dragonlancemap2.png`'s author (paercebal) gave
+explicit permission to use the map this session (see `docs/MAP_NOTES.md`'s
+"Source and attribution"), the user asked to see the actual map image
+rendered as the overworld rather than round 2's hand-drawn tile atlas (see
+the `feedback_dragonlance_sprites_deferred` memory for the full two-round
+history), and after seeing a live capture the user said to continue.
+
+What's built: a purely additive `ansalon_sfml_trial` CMake target (SFML
+3.0.0 `FetchContent` -- same `-DCMAKE_POLICY_VERSION_MINIMUM=3.5`
+configure-step note as round 2, see "Parked: SFML rendering + variant tile
+art" below) and `sfml_trial/main.cpp`: loads the real grid
+(`world::OverworldGrid`, just for `width()`/`height()`) and real locations
+(`world::World`/`WorldLoader`), draws `References/dragonlancemap2.png`
+directly as one `sf::Sprite` (no tile atlas), arrow-key-panned camera
+clamped to image bounds starting centered on Solace, a colored marker per
+`Location` (green towns, red otherwise), a gold camera-start marker, and a
+**self-capture**: since this session runs without desktop access (external
+GDI/`PrintWindow` capture can't see the SFML window's OpenGL content --
+confirmed both ways, `PrintWindow`'s `PW_RENDERFULLCONTENT` only grabs the
+window chrome, black client area), the app screenshots its own framebuffer
+~1s after launch to `sfml_trial3_capture.png` (gitignored) so the user
+--physically away from this PC this session-- can review it as an image
+instead of the live window.
+
+The live capture surfaced a real, useful side effect: markers overlaid on
+the actual map let the user's own tile-derived `POS` values be checked
+against the map's real painted labels for the first time. That became
+Milestone 153 (real production data, not spike-scoped) -- 5 of 9 `TOWN`
+locations corrected, already shipped on `master`, see
+`docs/MAP_NOTES.md`'s "Town position correction against
+dragonlancemap2.png". `sfml-trial-3` is fast-forwarded past that commit.
+
+Next step, not yet started: the user's "continue down this path" hasn't
+been scoped into a concrete plan yet. Open questions before that plan:
+player movement/collision hookup (the trial only pans a free camera, no
+player-state or walking), whether `dragonlancemap2.png` needs to graduate
+out of the now-partially-gitignored `References/` into a real shipped
+asset location, whether zones/combat stay ASCII. Per this project's "don't
+start the next milestone without being asked" rule, plan this properly
+(likely `EnterPlanMode`) rather than assuming scope from "continue."
+
+Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
 highlighting, 150 header/border scroll-drift fix, 151 two more Astinus
 SUBJECT entries, 152 Fireball/Delayed Blast Fireball real area damage);
