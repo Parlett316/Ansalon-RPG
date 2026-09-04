@@ -80,8 +80,13 @@ std::vector<std::string> wrapToWidth(const std::string& text, std::size_t maxCha
 }
 
 // Placeholder fill color per zone tile code -- plain colored rectangles,
-// not art (see kZoneTilePx above). Magenta for anything unrecognized so a
-// gap in this table is obvious rather than silently blending in.
+// not art (see kZoneTilePx above). POI/portal tiles hold their own POI
+// letter code in the grid (not '.'), so they fall through to default here
+// too; ZoneLoader::loadFromFile already fails fast unless every grid
+// character is either one of the codes below or a declared POI, so
+// `default` is unreachable for any zone that loaded at all -- just a
+// plain-floor fallback, not a "spot the gap" signal. The POI's own icon
+// (see PoiKind/drawPoiIcon below) is what actually distinguishes it.
 sf::Color colorForZoneTile(char code) {
     switch (code) {
         case '.': return sf::Color(200, 190, 160); // open ground
@@ -89,7 +94,131 @@ sf::Color colorForZoneTile(char code) {
         case '#': return sf::Color(70, 70, 78);    // wall
         case '~': return sf::Color(60, 100, 180);  // water
         case '+': return sf::Color(120, 85, 50);   // doorway
-        default: return sf::Color(255, 0, 255);
+        default: return sf::Color(200, 190, 160);  // POI/portal tile -- same as open ground
+    }
+}
+
+// What a POI tile visually is, for icon selection -- computed at draw
+// time from data already on world::PointOfInterest/world::Zone, not a
+// stored field. Order matters only in the (currently never-hit, per a
+// grep across every data/zones/*.txt) case where a POI is more than one
+// of these at once.
+enum class PoiKind { Door, Shop, Bed, Person, Landmark };
+
+PoiKind poiKindFor(bool isPortal, const world::PointOfInterest& poi) {
+    if (isPortal) return PoiKind::Door;
+    if (poi.isShop) return PoiKind::Shop;
+    if (poi.isBed) return PoiKind::Bed;
+    if (!poi.dialogue.empty()) return PoiKind::Person;
+    return PoiKind::Landmark;
+}
+
+// Small reusable shape pool for drawPoiIcon -- declared once and mutated
+// per cell, same "declare outside the loop" convention as zoneTileShape/
+// locationMarker below. Each icon is 1-2 primitives so the placeholder
+// reads as a distinct shape, not just a distinct color.
+struct PoiIconShapes {
+    sf::RectangleShape rectA;
+    sf::RectangleShape rectB;
+    sf::ConvexShape triangle;
+    sf::ConvexShape diamond;
+    sf::CircleShape circle;
+
+    explicit PoiIconShapes(float tilePx) : circle(tilePx * 0.22f) {
+        triangle.setPointCount(3);
+        diamond.setPointCount(4);
+        circle.setOrigin(sf::Vector2f(tilePx * 0.22f, tilePx * 0.22f));
+    }
+};
+
+// Draws a 1-2 primitive placeholder icon for `kind`, centered on
+// (centerX, centerY). No image assets exist for zone interiors yet (see
+// docs/ARCHITECTURE.md's SFML section) -- this is placeholder shape/color
+// vocabulary, ready to swap for real sprite art later.
+void drawPoiIcon(sf::RenderWindow& window, PoiIconShapes& shapes, PoiKind kind, float tilePx, float centerX,
+                  float centerY) {
+    switch (kind) {
+        case PoiKind::Door: {
+            const float frameW = tilePx * 0.5f;
+            const float frameH = tilePx * 0.8f;
+            shapes.rectA.setSize(sf::Vector2f(frameW, frameH));
+            shapes.rectA.setOrigin(sf::Vector2f(frameW / 2.f, frameH / 2.f));
+            shapes.rectA.setPosition(sf::Vector2f(centerX, centerY));
+            shapes.rectA.setFillColor(sf::Color(101, 67, 33)); // wood frame
+            window.draw(shapes.rectA);
+
+            const float openW = frameW * 0.55f;
+            const float openH = frameH * 0.7f;
+            shapes.rectB.setSize(sf::Vector2f(openW, openH));
+            shapes.rectB.setOrigin(sf::Vector2f(openW / 2.f, openH / 2.f));
+            shapes.rectB.setPosition(sf::Vector2f(centerX, centerY + frameH * 0.06f));
+            shapes.rectB.setFillColor(sf::Color(235, 205, 150)); // lit opening
+            window.draw(shapes.rectB);
+            break;
+        }
+        case PoiKind::Shop: {
+            const float counterW = tilePx * 0.7f;
+            const float counterH = tilePx * 0.35f;
+            shapes.rectA.setSize(sf::Vector2f(counterW, counterH));
+            shapes.rectA.setOrigin(sf::Vector2f(counterW / 2.f, counterH / 2.f));
+            shapes.rectA.setPosition(sf::Vector2f(centerX, centerY + tilePx * 0.2f));
+            shapes.rectA.setFillColor(sf::Color(150, 130, 100)); // counter
+            window.draw(shapes.rectA);
+
+            const float awningW = tilePx * 0.8f;
+            const float awningH = tilePx * 0.3f;
+            shapes.triangle.setPoint(0, sf::Vector2f(-awningW / 2.f, 0.f));
+            shapes.triangle.setPoint(1, sf::Vector2f(awningW / 2.f, 0.f));
+            shapes.triangle.setPoint(2, sf::Vector2f(0.f, -awningH));
+            shapes.triangle.setPosition(sf::Vector2f(centerX, centerY - tilePx * 0.05f));
+            shapes.triangle.setFillColor(sf::Color(70, 150, 150)); // awning
+            window.draw(shapes.triangle);
+            break;
+        }
+        case PoiKind::Bed: {
+            const float mattressW = tilePx * 0.75f;
+            const float mattressH = tilePx * 0.4f;
+            shapes.rectA.setSize(sf::Vector2f(mattressW, mattressH));
+            shapes.rectA.setOrigin(sf::Vector2f(mattressW / 2.f, mattressH / 2.f));
+            shapes.rectA.setPosition(sf::Vector2f(centerX, centerY));
+            shapes.rectA.setFillColor(sf::Color(180, 160, 210)); // mattress
+            window.draw(shapes.rectA);
+
+            const float pillowW = mattressW * 0.3f;
+            const float pillowH = mattressH * 0.7f;
+            shapes.rectB.setSize(sf::Vector2f(pillowW, pillowH));
+            shapes.rectB.setOrigin(sf::Vector2f(pillowW / 2.f, pillowH / 2.f));
+            shapes.rectB.setPosition(sf::Vector2f(centerX - mattressW / 2.f + pillowW / 2.f + 2.f, centerY));
+            shapes.rectB.setFillColor(sf::Color(230, 225, 240)); // pillow
+            window.draw(shapes.rectB);
+            break;
+        }
+        case PoiKind::Person: {
+            shapes.circle.setPosition(sf::Vector2f(centerX, centerY - tilePx * 0.2f));
+            shapes.circle.setFillColor(sf::Color(230, 180, 90)); // head
+            window.draw(shapes.circle);
+
+            const float bodyBottomW = tilePx * 0.32f;
+            const float bodyH = tilePx * 0.4f;
+            shapes.triangle.setPoint(0, sf::Vector2f(0.f, 0.f));
+            shapes.triangle.setPoint(1, sf::Vector2f(-bodyBottomW, bodyH));
+            shapes.triangle.setPoint(2, sf::Vector2f(bodyBottomW, bodyH));
+            shapes.triangle.setPosition(sf::Vector2f(centerX, centerY));
+            shapes.triangle.setFillColor(sf::Color(190, 130, 60)); // body/robe
+            window.draw(shapes.triangle);
+            break;
+        }
+        case PoiKind::Landmark: {
+            const float r = tilePx * 0.28f;
+            shapes.diamond.setPoint(0, sf::Vector2f(0.f, -r));
+            shapes.diamond.setPoint(1, sf::Vector2f(r, 0.f));
+            shapes.diamond.setPoint(2, sf::Vector2f(0.f, r));
+            shapes.diamond.setPoint(3, sf::Vector2f(-r, 0.f));
+            shapes.diamond.setPosition(sf::Vector2f(centerX, centerY));
+            shapes.diamond.setFillColor(sf::Color(110, 130, 90)); // quiet scenery marker
+            window.draw(shapes.diamond);
+            break;
+        }
     }
 }
 
@@ -171,13 +300,7 @@ int runPhase1(const std::string& savePath) {
 
     sf::RectangleShape zoneTileShape(sf::Vector2f(kZoneTilePx, kZoneTilePx));
 
-    sf::CircleShape poiMarker(kZoneTilePx * 0.3f);
-    poiMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.3f, kZoneTilePx * 0.3f));
-    poiMarker.setFillColor(sf::Color(230, 150, 40));
-
-    sf::CircleShape portalMarker(kZoneTilePx * 0.3f);
-    portalMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.3f, kZoneTilePx * 0.3f));
-    portalMarker.setFillColor(sf::Color(170, 90, 220));
+    PoiIconShapes poiIconShapes(kZoneTilePx);
 
     sf::CircleShape entryMarker(kZoneTilePx * 0.35f);
     entryMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.35f, kZoneTilePx * 0.35f));
@@ -377,12 +500,9 @@ int runPhase1(const std::string& savePath) {
                         const float centerY = (static_cast<float>(zy) + 0.5f) * kZoneTilePx;
                         const std::string* portalTarget = currentZone->portalAt(zx, zy);
                         const world::PointOfInterest* poi = currentZone->poiAt(zx, zy);
-                        if (portalTarget) {
-                            portalMarker.setPosition(sf::Vector2f(centerX, centerY));
-                            window.draw(portalMarker);
-                        } else if (poi) {
-                            poiMarker.setPosition(sf::Vector2f(centerX, centerY));
-                            window.draw(poiMarker);
+                        if (poi) {
+                            const PoiKind kind = poiKindFor(portalTarget != nullptr, *poi);
+                            drawPoiIcon(window, poiIconShapes, kind, kZoneTilePx, centerX, centerY);
                         }
                         if (poi && !poi->name.empty()) {
                             sf::Text label(font, poi->name, kPoiLabelCharSize);

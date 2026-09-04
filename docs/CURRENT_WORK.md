@@ -54,6 +54,28 @@ zone. Verified: clean rebuild (zero new `/W4` warnings), user tested live
 -- walked into Solace, into its Inn via the portal, and back out through
 both exits. **Confirmed working.**
 
+Phase 2 committed as `4ff3bfb`.
+
+**Zone-interior placeholder visuals reworked this session, same
+`sfml_phase1/main.cpp`.** Phase 2's POI tiles fell through
+`colorForZoneTile`'s unhandled-code branch (every POI sits on its own
+letter code in the grid, not `.`) straight to a flat magenta square --
+user's word for the result: "yellow and pink squares." Fixed two ways:
+the fallback now renders as plain open-ground floor instead of magenta
+(confirmed via `ZoneLoader.cpp`'s fail-fast grid validation that this
+branch is otherwise unreachable for any zone that loaded at all), and
+each POI now draws a small 2-primitive placeholder icon instead of a
+flat colored dot -- shape *and* color now carry meaning: a doorway for
+portals, a counter+awning for shops, a mattress+pillow for beds, a
+head+robe figure for talkable NPCs, a small muted diamond for pure
+scenery (so non-interactive landmarks recede behind things the player
+can actually do something with). Classified purely from data already on
+`world::PointOfInterest`/`world::Zone` (`isShop`/`isBed`/`dialogue`-
+non-empty/`portalAt`) -- no data-file or `world::` changes needed.
+Verified: clean rebuild (zero new `/W4` warnings); user tested live in
+Solace and the Inn (all 5 icon kinds). **User's verdict: "much better, a
+decent starting spot."**
+
 **Not yet committed.**
 
 **Next step:** decide what's next (the roadmap below lists every screen
