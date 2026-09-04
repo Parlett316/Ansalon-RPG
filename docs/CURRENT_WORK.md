@@ -78,16 +78,16 @@ decent starting spot."**
 
 Icon rework committed as `ef1ac77`.
 
-**Phase 3 (combat) implemented this session, same `sfml_phase1/main.cpp` --
-NOT YET interactively verified, not committed.** User picked combat off the
-roadmap below. `GameLoop::runCombat` (the console reference, ~1300 lines) is
-one big blocking `for(;;) { draw(); readKey(); }` loop with nested blocking
-pickers; this build replaces that with a non-blocking `CombatSession`/
-`CombatUiState` state machine (see main.cpp's own doc comments) driven by
-the same per-KeyPressed-event loop Phase 1/2 already use, reusing every
-sourced combat primitive (`combat::resolvePlayerAttack`/`resolveMonsterAttack`/
-`playerActsFirst`/`rollSavingThrow`, `combat::isAdjacent`/`chebyshevDistance`/
-`stepToward`, `combat::rollGroupSize`/`MonsterCatalog::randomMonster`,
+**Phase 3 (combat) shipped this session, same `sfml_phase1/main.cpp`.**
+User picked combat off the roadmap below. `GameLoop::runCombat` (the console
+reference, ~1300 lines) is one big blocking `for(;;) { draw(); readKey(); }`
+loop with nested blocking pickers; this build replaces that with a
+non-blocking `CombatSession`/`CombatUiState` state machine (see main.cpp's
+own doc comments) driven by the same per-KeyPressed-event loop Phase 1/2
+already use, reusing every sourced combat primitive
+(`combat::resolvePlayerAttack`/`resolveMonsterAttack`/`playerActsFirst`/
+`rollSavingThrow`, `combat::isAdjacent`/`chebyshevDistance`/`stepToward`,
+`combat::rollGroupSize`/`MonsterCatalog::randomMonster`,
 `character::meleeAttacksThisRound`/`applyPendingLevelUps`) completely
 unchanged.
 
@@ -107,29 +107,25 @@ print "not yet implemented in this build" during combat, matching Phase 1's
 existing placeholder convention -- thief backstab and Fighter sweep are
 deferred the same way (no key currently maps to them either).
 
-Verified so far: clean rebuild of `ansalon_sfml_phase1` (zero new `/W4`
-warnings, `CMakeLists.txt` gained `src/combat/Combat.cpp`/`Monster.cpp`/
-`MonsterLoader.cpp`/`CombatGrid.cpp`), and a launch smoke test (loads save2,
-all catalogs including the new monster one load, window opens, no crash).
-**NOT yet interactively played at the keyboard** -- this session has no
-desktop/GUI access, so the actual combat loop (walking into a real
-encounter, fighting it to a win and to a knockout, the target picker,
-flee, a recruited companion fighting alongside) is unverified. Still
-100% safe to test freely: this build never writes back to the save file
-(confirmed unchanged), so nothing about the user's real save is at risk.
+Verified: clean rebuild of `ansalon_sfml_phase1` (zero new `/W4` warnings,
+`CMakeLists.txt` gained `src/combat/Combat.cpp`/`Monster.cpp`/
+`MonsterLoader.cpp`/`CombatGrid.cpp`), a launch smoke test (loads save2, all
+catalogs including the new monster one load, window opens, no crash) --
+this session had no desktop/GUI access to go further itself -- and then the
+user testing it live at the keyboard: **won a fight and lost one (knockout),
+both confirmed working.** This build still never writes back to the save
+file, so nothing about the user's real save was ever at risk.
 
-**Next step:** the user plays it. Concretely: run
-`.\build\Debug\ansalon_sfml_phase1.exe .\build\Debug\save2.txt` (or save1),
-walk wilderness terrain (not a town tile) until a random encounter fires,
-fight it to a win (check the log's to-hit/damage math, steel/XP, and a
-level-up if XP crosses a threshold), try a group encounter's target picker
-if the roster rolls one, test Flee, and take one fight to a loss (confirm
-full heal + teleport to the nearest town). If save2 (Regan) has no
-companion, save1 might -- worth checking both. Once confirmed, this needs a
-commit, a `docs/MILESTONES.md` entry, and this section rewritten back down
-to "nothing in flight," per this project's normal hand-off convention. If
-the playtest surfaces bugs, fix them in `sfml_phase1/main.cpp` before any of
-that.
+Phase 3 committed as `a3e30fc`.
+
+**Not yet interactively confirmed** (moved to the Playtest backlog below,
+same convention as every other partially-verified feature in this project):
+Flee, a multi-instance group encounter's in-frame target picker, and a
+recruited companion fighting alongside the player.
+
+**Next step:** decide what's next (the roadmap below lists every screen
+still ASCII-only; clearing the Phase 3 playtest-backlog items above first is
+also a reasonable choice) -- the user's call, not to be assumed.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -139,8 +135,8 @@ size/complexity noted from this session's research, not a commitment to
 this order:
 
 - ~~Zone interiors (`drawZoneFrame`)~~ -- done, see above.
-- Combat (`drawCombatFrame`) -- the biggest and most complex remaining
-  screen (tactical grid, HP roster, target/spell pickers).
+- ~~Combat (`drawCombatFrame`)~~ -- core melee loop done, see above;
+  spellcasting/item use/backstab/sweep still deferred to a later phase.
 - Character sheet, spellbook, dialogue, generic picker, ask-input, shop,
   inventory, full log, world map, journal, help -- 10 more screens, each
   smaller than zones/combat.
@@ -175,6 +171,15 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
+  untested: Flee (`f` during an idle combat round), a multi-instance group
+  encounter's in-frame target picker (up/down to cycle, Enter to confirm --
+  needs a monster with a `GROUP` line in `data/monsters.txt` to roll more
+  than one instance), and a recruited companion fighting alongside the
+  player (check whether save1/save2 has one recruited first). See
+  `sfml_phase1/main.cpp` and this file's Phase 3 writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
   (e.g. Goblins), memorize Fireball, cast it at one instance while a second
