@@ -29,20 +29,40 @@ instead of the live window.
 
 The live capture surfaced a real, useful side effect: markers overlaid on
 the actual map let the user's own tile-derived `POS` values be checked
-against the map's real painted labels for the first time. That became
-Milestone 153 (real production data, not spike-scoped) -- 5 of 9 `TOWN`
-locations corrected, already shipped on `master`, see
-`docs/MAP_NOTES.md`'s "Town position correction against
-dragonlancemap2.png". `sfml-trial-3` is fast-forwarded past that commit.
+against the map's real painted labels for the first time. That became two
+milestones (real production data, not spike-scoped, both shipped on
+`master`, `sfml-trial-3` rebased past both):
 
-Next step, not yet started: the user's "continue down this path" hasn't
-been scoped into a concrete plan yet. Open questions before that plan:
-player movement/collision hookup (the trial only pans a free camera, no
-player-state or walking), whether `dragonlancemap2.png` needs to graduate
-out of the now-partially-gitignored `References/` into a real shipped
-asset location, whether zones/combat stay ASCII. Per this project's "don't
-start the next milestone without being asked" rule, plan this properly
-(likely `EnterPlanMode`) rather than assuming scope from "continue."
+- **Milestone 153** -- 5 of 9 `TOWN` locations corrected.
+- **Milestone 154** -- the remaining 16 non-town locations. Found and
+  fixed a real bug (Southern Ergoth's `POS` was in open ocean), nudged Pax
+  Tharkas, moved Qualinesti onto Qualinost's icon (user-requested).
+  Darken Wood and Hopeful Vale independently re-verified against
+  `References/TSR 8448 The Atlas of the Dragonlance World.pdf` (page-image
+  research -- no extractable text layer) at the user's request; both
+  already matched exactly, no coordinate change, just a much stronger
+  citation than Milestone 85's original placeholder.
+
+See `docs/MAP_NOTES.md`'s "Town position correction against
+dragonlancemap2.png" and "Second position-correction pass" sections.
+
+**User's verdict after seeing all 25 corrected markers live: "looks
+good."** All location-position work for this round is done and confirmed.
+
+Next step, not yet started: the user's earlier "continue down this path"
+hasn't been scoped into a concrete plan yet. Open questions before that
+plan: player movement/collision hookup (the trial only pans a free
+camera, no player-state or walking), whether `dragonlancemap2.png` needs
+to graduate out of the now-partially-gitignored `References/` into a real
+shipped asset location, whether zones/combat stay ASCII. Per this
+project's "don't start the next milestone without being asked" rule, plan
+this properly (likely `EnterPlanMode`) rather than assuming scope.
+
+Also still open: `master` is several commits ahead of `origin/master` and
+hasn't successfully pushed yet -- the `git push` hang from earlier this
+session (looked like a credential/write-scope issue, distinct from the
+unrelated VPN/RDP problem also worked through this session) was never
+resolved. Worth retrying now that the user is back at the keyboard.
 
 Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
