@@ -8,6 +8,7 @@
 // code) but touches nothing else in render/ or game/.
 
 #include "world/OverworldGrid.h"
+#include "world/Terrain.h"
 #include "world/World.h"
 #include "world/WorldLoader.h"
 
@@ -60,8 +61,15 @@ int runTrial() {
     const float pxPerTileY = static_cast<float>(mapSize.y) / static_cast<float>(grid.height());
     std::cout << "step 5: scale " << pxPerTileX << "x" << pxPerTileY << " px/tile" << std::endl;
 
-    float camX = (static_cast<float>(solace->x) + 0.5f) * pxPerTileX;
-    float camY = (static_cast<float>(solace->y) + 0.5f) * pxPerTileY;
+    // Player state: a real grid position, moved one tile at a time and
+    // collision-checked against world::terrainFor -- the same passability
+    // table game::GameLoop::tryMoveOverworld uses in the real game (see
+    // src/world/Terrain.h). Starts at Solace, same as the camera always has.
+    int playerGridX = solace->x;
+    int playerGridY = solace->y;
+
+    float camX = (static_cast<float>(playerGridX) + 0.5f) * pxPerTileX;
+    float camY = (static_cast<float>(playerGridY) + 0.5f) * pxPerTileY;
 
     sf::View view(sf::Vector2f(camX, camY), sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
     window.setView(view);
@@ -74,12 +82,10 @@ int runTrial() {
     sf::CircleShape locationMarker(6.f);
     locationMarker.setOrigin(sf::Vector2f(6.f, 6.f));
 
-    sf::CircleShape startMarker(9.f);
-    startMarker.setOrigin(sf::Vector2f(9.f, 9.f));
-    startMarker.setFillColor(sf::Color(255, 215, 0)); // gold -- camera/player start (Solace)
-    startMarker.setPosition(sf::Vector2f(camX, camY));
-
-    sf::Clock frameClock;
+    sf::CircleShape playerMarker(9.f);
+    playerMarker.setOrigin(sf::Vector2f(9.f, 9.f));
+    playerMarker.setFillColor(sf::Color(255, 215, 0)); // gold -- live player position
+    playerMarker.setPosition(sf::Vector2f(camX, camY));
 
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH
               << ", " << world.allLocations().size() << " location markers" << std::endl;
@@ -96,21 +102,45 @@ int runTrial() {
                     newSize.y = std::max(newSize.y, 1.f);
                     view.setSize(newSize);
                     window.setView(view);
+                } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+                    // One grid tile per keypress (relying on OS key-repeat
+                    // for holding a direction down) rather than continuous
+                    // pixel panning -- matches the real game's turn-based
+                    // movement feel instead of a free-scrolling camera.
+                    int dx = 0;
+                    int dy = 0;
+                    switch (keyPressed->code) {
+                        case sf::Keyboard::Key::Left:  dx = -1; break;
+                        case sf::Keyboard::Key::Right: dx = 1;  break;
+                        case sf::Keyboard::Key::Up:    dy = -1; break;
+                        case sf::Keyboard::Key::Down:  dy = 1;  break;
+                        default: break;
+                    }
+                    if (dx != 0 || dy != 0) {
+                        const int nx = playerGridX + dx;
+                        const int ny = playerGridY + dy;
+                        const world::TerrainInfo& terrain = world::terrainFor(grid.terrainCodeAt(nx, ny));
+                        if (terrain.passable) {
+                            playerGridX = nx;
+                            playerGridY = ny;
+                            if (const world::Location* here = world.locationAt(playerGridX, playerGridY)) {
+                                std::cout << "arrived at " << here->name << std::endl;
+                            }
+                        } else {
+                            std::cout << "blocked: cannot walk onto " << terrain.name << std::endl;
+                        }
+                    }
                 }
             }
 
-            const float dt = frameClock.restart().asSeconds();
-            const float panSpeed = 700.f; // world pixels/sec -- faster than round 2 since the world is much bigger
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) camX -= panSpeed * dt;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) camX += panSpeed * dt;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) camY -= panSpeed * dt;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) camY += panSpeed * dt;
+            const float playerPxX = (static_cast<float>(playerGridX) + 0.5f) * pxPerTileX;
+            const float playerPxY = (static_cast<float>(playerGridY) + 0.5f) * pxPerTileY;
 
             const sf::Vector2f viewSize = view.getSize();
             const float halfW = viewSize.x / 2.f;
             const float halfH = viewSize.y / 2.f;
-            camX = std::clamp(camX, halfW, std::max(halfW, worldW - halfW));
-            camY = std::clamp(camY, halfH, std::max(halfH, worldH - halfH));
+            camX = std::clamp(playerPxX, halfW, std::max(halfW, worldW - halfW));
+            camY = std::clamp(playerPxY, halfH, std::max(halfH, worldH - halfH));
             view.setCenter(sf::Vector2f(camX, camY));
             window.setView(view);
 
@@ -124,7 +154,8 @@ int runTrial() {
                 locationMarker.setPosition(sf::Vector2f(px, py));
                 window.draw(locationMarker);
             }
-            window.draw(startMarker);
+            playerMarker.setPosition(sf::Vector2f(playerPxX, playerPxY));
+            window.draw(playerMarker);
 
             window.display();
 

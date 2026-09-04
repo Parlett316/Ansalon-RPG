@@ -47,16 +47,58 @@ See `docs/MAP_NOTES.md`'s "Town position correction against
 dragonlancemap2.png" and "Second position-correction pass" sections.
 
 **User's verdict after seeing all 25 corrected markers live: "looks
-good."** All location-position work for this round is done and confirmed.
+good."** All location-position work for that round was done and
+confirmed -- but see Milestone 155 below, a follow-on correction that
+same live-marker view enabled later.
 
-Next step, not yet started: the user's earlier "continue down this path"
-hasn't been scoped into a concrete plan yet. Open questions before that
-plan: player movement/collision hookup (the trial only pans a free
-camera, no player-state or walking), whether `dragonlancemap2.png` needs
-to graduate out of the now-partially-gitignored `References/` into a real
-shipped asset location, whether zones/combat stay ASCII. Per this
-project's "don't start the next milestone without being asked" rule, plan
-this properly (likely `EnterPlanMode`) rather than assuming scope.
+**Real player movement now implemented in the trial.** Planned via `EnterPlanMode` after the
+user chose "scope a real plan now" from a menu of next-step options.
+`sfml_trial/main.cpp` now tracks a real player grid position, moved one
+tile per arrow-key press (event-based, not the old continuous pan) and
+collision-checked against `world::terrainFor(...).passable` -- the same
+table `game::GameLoop::tryMoveOverworld` uses in the real game
+(`src/world/Terrain.cpp` added to the `ansalon_sfml_trial` CMake target,
+zero dependencies, no `Console` coupling). The camera now follows the
+player instead of free-panning; the gold marker is the live player
+position; blocked moves and location arrivals print to stdout. Verified
+by clean rebuild (zero new `/W4` warnings) and the user driving it
+live at the keyboard.
+
+That live walkthrough immediately paid off again: the user noticed the
+marker sitting on unlabeled glacier and asked if that was really Ice
+Wall Castle. It wasn't -- **Milestone 155** found Milestone 154's
+"no direct label" conclusion for Ice Wall Castle was a search-area
+mistake (crops never reached far enough east); the map does label it,
+"Icewall Castle (Brackenrock)" near "Khormesh". Pixel-measured and
+corrected `POS` from `150 305` to `229 317` in `data/locations.txt`.
+See `docs/MAP_NOTES.md`'s "Third position correction" section and
+`docs/MILESTONES.md` entry 155. Verified via clean `ansalon_rpg`
+rebuild, a piped character-creation smoke test (real `save1.txt`/
+`save2.txt` untouched, empty slot 3 used), and a direct
+terrain-passability check (`:` glacier, passable) on the new tile.
+
+Milestone 155 (real production data, same category as 153/154) was
+committed on `sfml-trial-3` then cherry-picked to `master` directly,
+same split as 153/154; `sfml-trial-3` rebased past it, same as before.
+The movement code above stays trial-only, not part of this cherry-pick.
+**Not yet re-confirmed live in the SFML trial itself** -- next time it's
+run, the marker should land on the actual "Icewall Castle" icon instead
+of open glacier; worth a quick look.
+
+Next step, still not started: the user's earlier "continue down this
+path" verdict is now backed by a real movement prototype, but the
+zones/combat-hybrid-vs-full-migration decision from the approved plan is
+still open. Two real shapes exist: full engine migration (SFML for
+overworld *and* zones *and* combat, matching `docs/ARCHITECTURE.md`'s
+existing "contained swap" framing) vs. a hybrid (SFML overworld only,
+ASCII zones/combat) -- the hybrid has no precedent in this codebase and
+raises real, unscoped problems (an SFML window and the Windows console
+coexisting mid-session; input ownership; flicker-free handoff between
+the two). Revisit this now that movement has actually been tried. Also
+still open, lower-stakes: whether `dragonlancemap2.png` needs to
+graduate out of `References/` into a real shipped asset location --
+no forcing function yet, defer until/unless the full-migration shape is
+chosen.
 
 Also still open: `master` is several commits ahead of `origin/master` and
 hasn't successfully pushed yet -- the `git push` hang from earlier this

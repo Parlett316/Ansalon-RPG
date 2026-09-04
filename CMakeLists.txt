@@ -114,6 +114,7 @@ add_executable(ansalon_sfml_trial
     src/world/OverworldGrid.cpp
     src/world/World.cpp
     src/world/WorldLoader.cpp
+    src/world/Terrain.cpp
 )
 target_include_directories(ansalon_sfml_trial PRIVATE src)
 target_compile_features(ansalon_sfml_trial PRIVATE cxx_std_17)
