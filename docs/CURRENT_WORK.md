@@ -76,13 +76,60 @@ Verified: clean rebuild (zero new `/W4` warnings); user tested live in
 Solace and the Inn (all 5 icon kinds). **User's verdict: "much better, a
 decent starting spot."**
 
-**Not yet committed.**
+Icon rework committed as `ef1ac77`.
 
-**Next step:** decide what's next (the roadmap below lists every screen
-still ASCII-only -- combat is the natural next one, being the biggest
-remaining gap, but it's the user's call). Per this project's "don't start
-the next milestone without being asked" rule, that's a decision for the
-user to make, not to assume.
+**Phase 3 (combat) implemented this session, same `sfml_phase1/main.cpp` --
+NOT YET interactively verified, not committed.** User picked combat off the
+roadmap below. `GameLoop::runCombat` (the console reference, ~1300 lines) is
+one big blocking `for(;;) { draw(); readKey(); }` loop with nested blocking
+pickers; this build replaces that with a non-blocking `CombatSession`/
+`CombatUiState` state machine (see main.cpp's own doc comments) driven by
+the same per-KeyPressed-event loop Phase 1/2 already use, reusing every
+sourced combat primitive (`combat::resolvePlayerAttack`/`resolveMonsterAttack`/
+`playerActsFirst`/`rollSavingThrow`, `combat::isAdjacent`/`chebyshevDistance`/
+`stepToward`, `combat::rollGroupSize`/`MonsterCatalog::randomMonster`,
+`character::meleeAttacksThisRound`/`applyPendingLevelUps`) completely
+unchanged.
+
+**Scoped to the core melee loop, real spellcasting/item use deferred** (see
+the approved plan and main.cpp's top-of-file comment for the full
+reasoning): real random encounters (data/monsters.txt now loaded by this
+target too), positional movement, target picking (one target per round --
+this phase's own simplification of the console version's mid-round
+retarget-on-kill, since that needs real resumable state to redo non-
+blockingly), monster AI including each monster's *passive* on-turn/on-death
+specials (Bozak Magic Missile, Aurak breath weapon, Sivak death-burst, Baaz
+stone-death, Giant Spider poison -- all automatic, no chooser, so they cost
+nothing extra), companion AI (present and fighting, no sweep), flee,
+victory/XP/leveling/knockout-to-nearest-refuge, and the two free wins
+(Frostreaver glacier bonus, Weapon Specialization). `M` (Cast) and `I` (Item)
+print "not yet implemented in this build" during combat, matching Phase 1's
+existing placeholder convention -- thief backstab and Fighter sweep are
+deferred the same way (no key currently maps to them either).
+
+Verified so far: clean rebuild of `ansalon_sfml_phase1` (zero new `/W4`
+warnings, `CMakeLists.txt` gained `src/combat/Combat.cpp`/`Monster.cpp`/
+`MonsterLoader.cpp`/`CombatGrid.cpp`), and a launch smoke test (loads save2,
+all catalogs including the new monster one load, window opens, no crash).
+**NOT yet interactively played at the keyboard** -- this session has no
+desktop/GUI access, so the actual combat loop (walking into a real
+encounter, fighting it to a win and to a knockout, the target picker,
+flee, a recruited companion fighting alongside) is unverified. Still
+100% safe to test freely: this build never writes back to the save file
+(confirmed unchanged), so nothing about the user's real save is at risk.
+
+**Next step:** the user plays it. Concretely: run
+`.\build\Debug\ansalon_sfml_phase1.exe .\build\Debug\save2.txt` (or save1),
+walk wilderness terrain (not a town tile) until a random encounter fires,
+fight it to a win (check the log's to-hit/damage math, steel/XP, and a
+level-up if XP crosses a threshold), try a group encounter's target picker
+if the roster rolls one, test Flee, and take one fight to a loss (confirm
+full heal + teleport to the nearest town). If save2 (Regan) has no
+companion, save1 might -- worth checking both. Once confirmed, this needs a
+commit, a `docs/MILESTONES.md` entry, and this section rewritten back down
+to "nothing in flight," per this project's normal hand-off convention. If
+the playtest surfaces bugs, fix them in `sfml_phase1/main.cpp` before any of
+that.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 

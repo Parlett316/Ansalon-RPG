@@ -1,14 +1,29 @@
-// Full-migration Phase 1+2 -- see docs/CURRENT_WORK.md and the plans this
-// was built from. A real, pixel-space overworld + zone-interior screen
-// driven by real save data: proves the rendering/collision approach end to
-// end before combat/menus are attempted. Deliberately standalone rather
-// than reusing game::GameLoop::run() -- see this file's CMakeLists.txt
-// comment for why. Loads a save file read-only via game::SaveGame --
-// never writes back, never touches the real ansalon_rpg target's code
-// path.
+// Full-migration Phase 1+2+3 -- see docs/CURRENT_WORK.md and the plans this
+// was built from. A real, pixel-space overworld + zone-interior + combat
+// screen driven by real save data: proves the rendering/collision/round-
+// resolution approach end to end. Deliberately standalone rather than
+// reusing game::GameLoop::run() -- see this file's CMakeLists.txt comment
+// for why. Loads a save file read-only via game::SaveGame -- never writes
+// back, never touches the real ansalon_rpg target's code path.
+//
+// Phase 3 (combat) intentionally ports only the core melee loop -- real
+// random encounters, positional movement, target picking, monster/companion
+// AI (including each monster's own passive on-turn/on-death specials, which
+// cost nothing extra since they're not chooser-driven), flee, victory/
+// leveling, and knockout. Spellcasting, item use, thief backstab, and
+// Fighter sweep are each a real chunk of new chooser UI or extra positional
+// bookkeeping on top of `GameLoop::runCombat` -- deferred to a later phase,
+// same "not yet in this build" convention Phase 1 already established for
+// Look/Talk/Shop/etc. See docs/CURRENT_WORK.md for the full scope writeup.
 
 #include "character/CharClass.h"
+#include "character/Dice.h"
+#include "character/Leveling.h"
 #include "character/Race.h"
+#include "combat/Combat.h"
+#include "combat/CombatGrid.h"
+#include "combat/Monster.h"
+#include "combat/MonsterLoader.h"
 #include "game/GameState.h"
 #include "game/SaveGame.h"
 #include "world/OverworldGrid.h"
@@ -22,6 +37,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <deque>
 #include <iostream>
 #include <optional>
@@ -43,6 +59,69 @@ constexpr float kSidebarCharWidth = 9.5f;
 // (docs/ZONE_NOTES.md), so at this scale every zone fits the map viewport
 // with no scrolling needed.
 constexpr float kZoneTilePx = 20.f;
+// Combat's tactical grid -- same 15x9 dimensions render::MapRenderer::
+// kCombatGridWidth/Height use for the console version (GameLoop::runCombat
+// centers the player and spreads monster instances symmetrically around
+// width/2, so width MUST stay odd). Redefined locally rather than including
+// render/MapRenderer.h -- that header pulls in render::Console, which isn't
+// linked into this target and shouldn't become a dependency just for two
+// ints (this file's presentation code already stays independent of
+// render::, same boundary Phase 1/2 established).
+constexpr int kCombatGridWidth = 15;
+constexpr int kCombatGridHeight = 9;
+constexpr float kCombatTilePx = 56.f;
+
+// Pluralizes a monster's display name for the group-arrival/victory summary
+// lines -- copied verbatim from game::pluralMonsterName (GameLoop.cpp),
+// which isn't itself exported (GameLoop.cpp isn't linked into this target).
+std::string pluralMonsterName(const std::string& name) {
+    if (name == "Timber Wolf") return "Timber Wolves";
+    if (name == "Lizard Man") return "Lizard Men";
+    return name + "s";
+}
+
+// Renders an AttackOutcome's roll math, e.g. "[d20 14 +2 = 16 vs THAC0 18 -
+// AC 6 (need 12)]" -- copied verbatim from game::describeToHit
+// (GameLoop.cpp), same "not exported, GameLoop.cpp isn't linked here"
+// reasoning as pluralMonsterName above.
+std::string describeToHit(const combat::AttackOutcome& outcome) {
+    std::ostringstream out;
+    out << "[d20 " << outcome.naturalRoll;
+    if (outcome.naturalRoll == 20) {
+        out << " -- natural 20, automatic hit]";
+        return out.str();
+    }
+    if (outcome.naturalRoll == 1) {
+        out << " -- natural 1, automatic miss]";
+        return out.str();
+    }
+    if (outcome.toHitBonus != 0) {
+        out << (outcome.toHitBonus > 0 ? " +" : " ") << outcome.toHitBonus << " = "
+            << (outcome.naturalRoll + outcome.toHitBonus);
+    }
+    out << " vs THAC0 " << outcome.attackerThac0 << " - AC " << outcome.defenderArmorClass << " (need "
+        << outcome.targetNumber << ")]";
+    return out.str();
+}
+
+// Renders the damage-roll math the same way describeToHit renders the
+// attack roll -- copied verbatim from game::describeDamage (GameLoop.cpp).
+std::string describeDamage(const combat::AttackOutcome& outcome) {
+    std::ostringstream out;
+    out << "[" << outcome.damageDiceCount << "d" << outcome.damageDiceSides << " "
+        << (outcome.damageMultiplier != 1 ? outcome.damageRoll / outcome.damageMultiplier : outcome.damageRoll);
+    if (outcome.damageMultiplier != 1) {
+        out << " x" << outcome.damageMultiplier;
+    }
+    if (outcome.damageBonus != 0) {
+        out << (outcome.damageBonus > 0 ? " +" : " ") << outcome.damageBonus;
+    }
+    if (outcome.damageBonus != 0 || outcome.damageMultiplier != 1) {
+        out << " = " << (outcome.damageRoll + outcome.damageBonus);
+    }
+    out << "]";
+    return out.str();
+}
 
 std::string formatDayTime(long long hoursElapsed) {
     const long long day = hoursElapsed / 24;
@@ -222,6 +301,66 @@ void drawPoiIcon(sf::RenderWindow& window, PoiIconShapes& shapes, PoiKind kind, 
     }
 }
 
+// Drives the non-blocking combat state machine -- the console version's
+// GameLoop::runCombat is one big blocking `for(;;) { draw(); readKey(); }`
+// loop with nested blocking pickers; this SFML build instead advances one
+// KeyPressed event at a time, so "what's the screen waiting on right now"
+// has to be explicit state instead of a call stack. AwaitContinue covers
+// both the opening "X appears!" beat and the closing Won/Lost/Fled beats --
+// only Enter dismisses any of them, same "don't let a held movement key
+// silently act" discipline docs/GOTCHAS.md documents for the console
+// version. PickingTarget is the only *mid-round* pause: this phase commits
+// to choosing one target per round (see CombatSession::pendingTargetIsFirst
+// below) rather than porting GameLoop::runCombat's mid-round retarget-on-
+// kill loop, which would need real cross-frame resumable state to redo
+// non-blockingly -- a deliberate scope cut, not an oversight.
+enum class CombatUiState { AwaitContinue, Idle, PickingTarget, Won, Lost, Fled };
+
+struct CombatInstance {
+    int hp = 0;
+    int maxHp = 0;
+};
+
+// All state for one fight, local to this file -- deliberately NOT part of
+// game::GameState (combat isn't saved there either; GameLoop::runCombat's
+// own instances/positions/log are just as local to its one call). See this
+// file's top-of-file comment and docs/CURRENT_WORK.md for why this stays
+// its own struct rather than a third game::Mode value.
+struct CombatSession {
+    bool active = false;
+    combat::Monster monster;
+    bool useLetters = false; // group of 2+ -- see GameLoop::runCombat's own useLetters
+    std::vector<CombatInstance> instances;
+    std::vector<combat::GridPos> instancePositions;
+    std::vector<combat::GridPos> companionPositions;
+    combat::GridPos playerPos;
+    char floorTerrainCode = '.';
+    std::vector<std::string> log;
+    CombatUiState uiState = CombatUiState::AwaitContinue;
+
+    // Target-picker state -- only meaningful while uiState == PickingTarget.
+    std::vector<int> pickCandidates;
+    int pickSelected = 0;
+    // Whether the player's side acts before the monsters this round
+    // (combat::playerActsFirst(), rolled once at the top of the round and
+    // remembered here so it's still known once the picker -- which may
+    // span several frames -- finally confirms a target).
+    bool pendingGoFirst = true;
+
+    int roundNumber = 1;
+
+    // Fight-start-only bonuses (Frostreaver's glacier edge, Weapon
+    // Specialization) plus Aurak's blind-on-failed-save debuff, which
+    // further adjusts playerThac0Bonus mid-fight -- same "this-fight-only
+    // local, never written to the real Character" precedent
+    // GameLoop::runCombat's own identically-named locals establish. Every
+    // other this-fight buff/debuff in the console version (Bless, Prayer,
+    // Slow, Haste, ...) is spell-driven and out of this phase's scope, so
+    // there's nothing else to carry here yet.
+    int playerThac0Bonus = 0;
+    int playerDamageBonus = 0;
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -241,6 +380,10 @@ int runPhase1(const std::string& savePath) {
     world::ZoneCatalog zones = world::ZoneCatalog::loadForWorld(world, "data/zones");
     std::cout << "step 2b: zones loaded, " << zones.allZones().size() << " zones" << std::endl;
 
+    combat::MonsterCatalog monsterCatalog;
+    combat::MonsterLoader::loadFromFile("data/monsters.txt", monsterCatalog);
+    std::cout << "step 2c: monsters loaded, " << monsterCatalog.size() << " entries" << std::endl;
+
     game::GameState state = game::SaveGame::load(savePath);
     std::cout << "step 3: save loaded -- " << state.character.name << ", level "
               << state.character.level << " " << character::raceInfo(state.character.race).name << " "
@@ -248,7 +391,7 @@ int runPhase1(const std::string& savePath) {
               << state.y << ")" << std::endl;
 
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(windowW, windowH)),
-                             "Ansalon SFML Phase 1+2 -- Real Overworld + Zones (WIP)");
+                             "Ansalon SFML Phase 1+2+3 -- Real Overworld + Zones + Combat (WIP)");
     window.setFramerateLimit(60);
 
     sf::Texture mapTexture;
@@ -310,6 +453,27 @@ int runPhase1(const std::string& savePath) {
     sidebarBg.setPosition(sf::Vector2f(mapWidth, 0.f));
     sidebarBg.setFillColor(sf::Color(20, 20, 28));
 
+    // Combat grid + marker shapes -- same "declare once, mutate per cell/
+    // entity" convention as zoneTileShape/locationMarker above. No sprite
+    // art for combat either (same reasoning as zone interiors) -- flat
+    // color plus a letter label distinguishes each monster/companion.
+    sf::RectangleShape combatTileShape(sf::Vector2f(kCombatTilePx - 2.f, kCombatTilePx - 2.f));
+    combatTileShape.setFillColor(sf::Color(70, 65, 55));
+    sf::RectangleShape combatGridBorder;
+    combatGridBorder.setFillColor(sf::Color::Transparent);
+    combatGridBorder.setOutlineColor(sf::Color(150, 140, 110));
+    combatGridBorder.setOutlineThickness(2.f);
+    sf::CircleShape combatMonsterMarker(kCombatTilePx * 0.32f);
+    combatMonsterMarker.setOrigin(sf::Vector2f(kCombatTilePx * 0.32f, kCombatTilePx * 0.32f));
+    combatMonsterMarker.setFillColor(sf::Color(200, 60, 60));
+    sf::CircleShape combatCompanionMarker(kCombatTilePx * 0.32f);
+    combatCompanionMarker.setOrigin(sf::Vector2f(kCombatTilePx * 0.32f, kCombatTilePx * 0.32f));
+    combatCompanionMarker.setFillColor(sf::Color(80, 150, 220));
+    sf::RectangleShape combatPickHighlight(sf::Vector2f(kCombatTilePx - 6.f, kCombatTilePx - 6.f));
+    combatPickHighlight.setFillColor(sf::Color::Transparent);
+    combatPickHighlight.setOutlineColor(sf::Color(255, 230, 120));
+    combatPickHighlight.setOutlineThickness(3.f);
+
     std::deque<std::string> log;
     auto pushLog = [&log](const std::string& text) {
         log.push_back(text);
@@ -322,7 +486,534 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Movement + Enter (zones) work. Other keys are placeholders for now.");
+    pushLog("Movement, Enter (zones/combat), and Flee (combat) work. Other keys are placeholders for now.");
+
+    // --- Combat (Phase 3): all state is CombatSession above; every lambda
+    // below is a non-blocking port of the matching piece of
+    // GameLoop::runCombat (see that function, src/game/GameLoop.cpp:1762-
+    // 3050, and this file's top-of-file comment for the scope this phase
+    // ports vs. defers). Declared in dependency order -- a lambda body can
+    // only see names already declared earlier in the source, same
+    // constraint GameLoop::runCombat's own lambdas are bound by (see
+    // docs/ARCHITECTURE.md).
+    CombatSession combatSession;
+
+    auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
+
+    auto combatNearestRefuge = [&]() -> const world::Location* {
+        const world::Location* best = nullptr;
+        long long bestDistSq = 0;
+        for (const world::Location& loc : world.allLocations()) {
+            if (!loc.isTown && !loc.seaLocked) continue;
+            long long ddx = loc.x - state.x;
+            long long ddy = loc.y - state.y;
+            long long distSq = ddx * ddx + ddy * ddy;
+            if (best == nullptr || distSq < bestDistSq) {
+                best = &loc;
+                bestDistSq = distSq;
+            }
+        }
+        return best != nullptr ? best : world.getLocation("solace");
+    };
+
+    auto combatMonsterLabel = [&](int idx) -> std::string {
+        if (!combatSession.useLetters) return combatSession.monster.name;
+        return combatSession.monster.name + " " + std::string(1, static_cast<char>('A' + idx));
+    };
+
+    auto combatAliveCount = [&]() {
+        int count = 0;
+        for (const CombatInstance& inst : combatSession.instances) {
+            if (inst.hp > 0) ++count;
+        }
+        return count;
+    };
+
+    // Knockout ending -- not a real death (this project never permadeaths
+    // the player, see docs/COMBAT_NOTES.md): full-heals the player and
+    // every companion, then carries them to the nearest town/sea-locked
+    // refuge, mirroring GameLoop::nearestRefuge/knockedOutBy exactly.
+    auto combatKnockedOutBy = [&](const std::string& cause) {
+        const world::Location* refuge = combatNearestRefuge();
+        const std::string refugeName = refuge != nullptr ? refuge->name : "town";
+        state.character.currentHp = state.character.maxHp;
+        for (game::RecruitedCompanion& companion : state.companions) {
+            companion.character.currentHp = companion.character.maxHp;
+        }
+        combatSession.log.push_back("You are struck down... and wake up back in " + refugeName +
+                                     ", battered but alive.");
+        if (refuge != nullptr) {
+            state.x = refuge->x;
+            state.y = refuge->y;
+        }
+        pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
+        combatSession.uiState = CombatUiState::Lost;
+    };
+
+    // Checks the player's HP after any step that could have dropped it
+    // (an opportunity attack, a death-burst, a monster's own turn) and
+    // applies the knockout ending exactly once if so -- the non-blocking
+    // equivalent of GameLoop::runCombat's `fightAlreadyEnded` flag, which
+    // exists there so a blocking call stack can unwind early; here it's
+    // just "is uiState already Lost."
+    auto combatCheckPlayerDown = [&](const std::string& cause) -> bool {
+        if (state.character.currentHp > 0) return false;
+        if (combatSession.uiState != CombatUiState::Lost) combatKnockedOutBy(cause);
+        return true;
+    };
+
+    // Awards steel/XP (and applies any resulting level-up) the moment one
+    // instance's HP reaches 0, then Sivak's real death-burst (Dragonlance
+    // Adventures p.75) if this monster has one. Returns true if the burst
+    // just knocked the player out, so callers stop swinging immediately --
+    // mirrors GameLoop::handleInstanceDeath exactly.
+    auto combatHandleInstanceDeath = [&](int idx) -> bool {
+        state.monsterKills[combatSession.monster.id] += 1;
+        int steel = std::max(0, character::roll(combatSession.monster.steelDiceCount,
+                                                  combatSession.monster.steelDiceSides) +
+                                     combatSession.monster.steelFlatBonus);
+        state.character.steelPieces += steel;
+        std::string name = combatMonsterLabel(idx);
+        if (combatSession.monster.id == "baaz") {
+            combatSession.log.push_back("The " + name + " falls and its body crumbles to stone! You find " +
+                                         std::to_string(steel) + " steel among the rubble.");
+        } else {
+            combatSession.log.push_back("The " + name + " falls! You find " + std::to_string(steel) + " steel.");
+        }
+        if (combatSession.monster.xpValue > 0) {
+            state.character.experience += combatSession.monster.xpValue;
+            combatSession.log.push_back("You gain " + std::to_string(combatSession.monster.xpValue) +
+                                         " experience.");
+            character::applyPendingLevelUps(state.character, combatSession.log);
+        }
+        if (combatSession.monster.burstsIntoFlameOnDeath) {
+            int burstDamage = character::roll(2, 4);
+            state.character.currentHp -= burstDamage;
+            combatSession.log.push_back("As it falls, the " + name + " bursts into flame! You take " +
+                                         std::to_string(burstDamage) + " damage.");
+            if (state.character.currentHp <= 0) {
+                combatKnockedOutBy(combatSession.monster.name);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // Real, sourced opportunity attack (DQoK.pdf's own manual): retreating
+    // from an instance you were adjacent to gives it one free swing.
+    auto combatTriggerOpportunityAttacks = [&](combat::GridPos destination) {
+        for (size_t i = 0; i < combatSession.instances.size() && state.character.currentHp > 0; ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            bool leavingReach = combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i]) &&
+                                 !combat::isAdjacent(destination, combatSession.instancePositions[i]);
+            if (!leavingReach) continue;
+            std::string name = combatMonsterLabel(static_cast<int>(i));
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(combatSession.monster, state.character);
+            if (outcome.hit) {
+                state.character.currentHp -= outcome.damage;
+                combatSession.log.push_back("As you pull back, the " + name + " gets a free strike! It hits you for " +
+                                             std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
+                                             describeDamage(outcome));
+            } else {
+                combatSession.log.push_back("The " + name + " lunges as you pull back, but misses.");
+            }
+        }
+    };
+
+    // Closes out a round: victory (every instance down), knockout (player
+    // at 0 HP), or just advances to the next round -- mirrors the tail end
+    // of GameLoop::runCombat's own `for(;;)` body.
+    auto combatWrapUpRound = [&]() {
+        if (combatAliveCount() == 0) {
+            combatSession.log.push_back(combatSession.useLetters
+                                             ? ("The " + pluralMonsterName(combatSession.monster.name) + " are defeated!")
+                                             : ("You defeated the " + combatSession.monster.name + "."));
+            pushLog(combatSession.useLetters
+                        ? ("You defeated the " + pluralMonsterName(combatSession.monster.name) + ".")
+                        : ("You defeated the " + combatSession.monster.name + "."));
+            combatSession.uiState = CombatUiState::Won;
+            return;
+        }
+        if (combatCheckPlayerDown(combatSession.monster.name)) return;
+        ++combatSession.roundNumber;
+        combatSession.uiState = CombatUiState::Idle;
+    };
+
+    // Every alive companion's own turn, AI-controlled (player-directed
+    // party control stays out of scope project-wide -- see
+    // docs/COMBAT_NOTES.md's "Extending this later"): attacks the first
+    // adjacent alive instance found, or takes one combat::stepToward step
+    // toward the nearest alive instance if none is adjacent yet. No sweep
+    // (Fighter-type sweep is deferred, see this file's top-of-file
+    // comment) and no mid-round retarget-on-kill (this phase's one-target-
+    // per-round simplification, see CombatUiState's own doc comment) --
+    // both real simplifications versus GameLoop::companionActs.
+    auto combatCompanionActs = [&]() {
+        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
+            if (combatSession.uiState == CombatUiState::Lost) return;
+            if (!combatCompanionAlive(ci)) continue;
+            character::Character& companion = state.companions[ci].character;
+            combat::GridPos& companionPos = combatSession.companionPositions[ci];
+            int targetIndex = -1;
+            for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                if (combatSession.instances[i].hp > 0 &&
+                    combat::isAdjacent(companionPos, combatSession.instancePositions[i])) {
+                    targetIndex = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (targetIndex < 0) {
+                combat::GridPos nearest{};
+                int nearestDist = -1;
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    if (combatSession.instances[i].hp <= 0) continue;
+                    int dist = combat::chebyshevDistance(companionPos, combatSession.instancePositions[i]);
+                    if (nearestDist < 0 || dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = combatSession.instancePositions[i];
+                    }
+                }
+                if (nearestDist < 0) continue;
+                std::vector<combat::GridPos> blocked{combatSession.playerPos};
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    if (combatSession.instances[i].hp > 0) blocked.push_back(combatSession.instancePositions[i]);
+                }
+                for (size_t oi = 0; oi < state.companions.size(); ++oi) {
+                    if (oi != ci && combatCompanionAlive(oi)) blocked.push_back(combatSession.companionPositions[oi]);
+                }
+                combat::GridPos next =
+                    combat::stepToward(companionPos, nearest, kCombatGridWidth, kCombatGridHeight, blocked);
+                if (next.x != companionPos.x || next.y != companionPos.y) companionPos = next;
+                continue;
+            }
+            int attacks = character::meleeAttacksThisRound(companion.charClass, companion.level,
+                                                             combatSession.roundNumber, false);
+            for (int i = 0; i < attacks; ++i) {
+                if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) break;
+                std::string targetName = combatMonsterLabel(targetIndex);
+                combat::AttackOutcome outcome = combat::resolvePlayerAttack(companion, combatSession.monster);
+                if (outcome.hit) {
+                    combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
+                    combatSession.log.push_back(companion.name + " hits the " + targetName + " for " +
+                                                 std::to_string(outcome.damage) + ". " + describeToHit(outcome) +
+                                                 " " + describeDamage(outcome));
+                    if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                        if (combatHandleInstanceDeath(targetIndex)) return;
+                    }
+                } else {
+                    combatSession.log.push_back(companion.name + " misses the " + targetName + ". " +
+                                                 describeToHit(outcome));
+                }
+            }
+        }
+    };
+
+    // Every alive monster instance's own turn: Bozak's Magic Missile and
+    // Aurak's breath weapon (both real, sourced, passive specials that
+    // fire on their own turn with no player choice involved -- see this
+    // file's top-of-file comment for why these stay in scope despite
+    // spellcasting itself being deferred) take priority over its plain
+    // weapon attack; otherwise it attacks whichever of the player/alive
+    // companions it's adjacent to (uniformly at random if more than one),
+    // or closes on whichever is nearest. Mirrors GameLoop::monstersAct.
+    struct CombatPartyTarget {
+        combat::GridPos pos;
+        character::Character* character;
+        bool isPlayer;
+    };
+    auto combatMonstersAct = [&]() {
+        for (size_t i = 0; i < combatSession.instances.size() && state.character.currentHp > 0; ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            std::string name = combatMonsterLabel(static_cast<int>(i));
+            const combat::Monster& monster = combatSession.monster;
+            if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
+                int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
+                state.character.currentHp -= missileDamage;
+                combatSession.log.push_back("The " + name + " casts Magic Missile! It strikes you for " +
+                                             std::to_string(missileDamage) + " -- no saving throw.");
+                continue;
+            }
+            if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
+                if (combat::rollSavingThrow(state.character, character::SaveCategory::BreathWeapon)) {
+                    state.character.currentHp -= 10;
+                    combatSession.log.push_back("The " + name + " breathes a noxious cloud! You resist -- 10 damage.");
+                } else {
+                    state.character.currentHp -= 20;
+                    combatSession.playerThac0Bonus -= 4;
+                    combatSession.log.push_back("The " + name +
+                                                 " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
+                }
+                continue;
+            }
+            std::vector<CombatPartyTarget> party{{combatSession.playerPos, &state.character, true}};
+            for (size_t pi = 0; pi < state.companions.size(); ++pi) {
+                if (combatCompanionAlive(pi)) {
+                    party.push_back({combatSession.companionPositions[pi], &state.companions[pi].character, false});
+                }
+            }
+            std::vector<size_t> adjacentTargets;
+            for (size_t pi = 0; pi < party.size(); ++pi) {
+                if (combat::isAdjacent(combatSession.instancePositions[i], party[pi].pos)) adjacentTargets.push_back(pi);
+            }
+            if (adjacentTargets.empty()) {
+                size_t nearest = 0;
+                int nearestDist = -1;
+                for (size_t pi = 0; pi < party.size(); ++pi) {
+                    int dist = combat::chebyshevDistance(combatSession.instancePositions[i], party[pi].pos);
+                    if (nearestDist < 0 || dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = pi;
+                    }
+                }
+                std::vector<combat::GridPos> blocked;
+                for (const CombatPartyTarget& target : party) blocked.push_back(target.pos);
+                for (size_t j = 0; j < combatSession.instances.size(); ++j) {
+                    if (j != i && combatSession.instances[j].hp > 0) blocked.push_back(combatSession.instancePositions[j]);
+                }
+                combat::GridPos next = combat::stepToward(combatSession.instancePositions[i], party[nearest].pos,
+                                                            kCombatGridWidth, kCombatGridHeight, blocked);
+                if (next.x != combatSession.instancePositions[i].x || next.y != combatSession.instancePositions[i].y) {
+                    combatSession.instancePositions[i] = next;
+                    combatSession.log.push_back("The " + name + " closes in.");
+                }
+                continue;
+            }
+            size_t chosen = adjacentTargets.size() == 1
+                                 ? adjacentTargets.front()
+                                 : adjacentTargets[static_cast<size_t>(
+                                       character::roll(1, static_cast<int>(adjacentTargets.size())) - 1)];
+            const CombatPartyTarget& target = party[chosen];
+            std::string targetName = target.isPlayer ? "you" : target.character->name;
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, *target.character);
+            if (outcome.hit) {
+                target.character->currentHp -= outcome.damage;
+                combatSession.log.push_back("The " + name + " hits " + targetName + " for " +
+                                             std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
+                                             describeDamage(outcome));
+                if (monster.poisonOnHit) {
+                    if (combat::rollSavingThrow(*target.character, character::SaveCategory::ParalyzationPoisonDeath)) {
+                        combatSession.log.push_back(target.isPlayer ? "You resist the poison."
+                                                                     : targetName + " resists the poison.");
+                    } else {
+                        combatSession.log.push_back("The poison overwhelms " + targetName + "!");
+                        target.character->currentHp = 0;
+                    }
+                }
+                if (!target.isPlayer && target.character->currentHp <= 0) {
+                    target.character->currentHp = 0;
+                    combatSession.log.push_back(targetName + " is knocked out!");
+                }
+            } else {
+                combatSession.log.push_back("The " + name + " misses " + targetName + ". " + describeToHit(outcome));
+            }
+        }
+    };
+
+    // PHB p.124: rolls which side acts first, and if the monsters do, runs
+    // their turn immediately (before the player has even chosen an
+    // action) -- mirrors GameLoop::runCombat's own dispatch. Returns false
+    // if that already ended the fight, so the caller (about to resolve a
+    // move/attack) knows to stop.
+    auto combatRollGoFirstAndMaybeActMonsters = [&]() -> bool {
+        combatSession.pendingGoFirst = combat::playerActsFirst();
+        if (!combatSession.pendingGoFirst) {
+            combatMonstersAct();
+            if (combatCheckPlayerDown(combatSession.monster.name)) return false;
+        }
+        return true;
+    };
+
+    // Runs the rest of the round once the player's own action (move,
+    // attack, or an attack's target confirmation) has resolved: companions
+    // act, then -- only if the player's side went FIRST, since otherwise
+    // monsters already acted before the player's turn even began -- the
+    // monsters act, then the round is closed out.
+    auto combatFinishPlayerAction = [&](bool goFirst) {
+        combatCompanionActs();
+        if (combatSession.uiState == CombatUiState::Lost) return;
+        if (goFirst) {
+            if (combatAliveCount() > 0) combatMonstersAct();
+            if (combatCheckPlayerDown(combatSession.monster.name)) return;
+        }
+        combatWrapUpRound();
+    };
+
+    // Resolves every swing of the player's real attacks-per-round (PHB
+    // Table 15/35) against one already-chosen target, stopping early if it
+    // falls -- this phase's one-target-per-round simplification (see
+    // CombatUiState's doc comment) means a swing that would have retargeted
+    // onto a fresh instance in the console version is simply skipped here
+    // instead.
+    auto combatResolveAttackAgainstTarget = [&](int targetIndex) {
+        int attacks = character::meleeAttacksThisRound(state.character.charClass, state.character.level,
+                                                         combatSession.roundNumber, state.character.specializedWeapon);
+        for (int i = 0; i < attacks; ++i) {
+            if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) break;
+            std::string targetName = combatMonsterLabel(targetIndex);
+            combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                state.character, combatSession.monster, combatSession.playerThac0Bonus, combatSession.playerDamageBonus);
+            if (outcome.hit) {
+                combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
+                combatSession.log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) +
+                                             ". " + describeToHit(outcome) + " " + describeDamage(outcome));
+                if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                    if (combatHandleInstanceDeath(targetIndex)) return;
+                }
+            } else {
+                combatSession.log.push_back("You miss the " + targetName + ". " + describeToHit(outcome));
+            }
+        }
+    };
+
+    // Enter pressed while Idle: commit to attacking this round. Melee-locked
+    // (must be adjacent) unless wielding the Light Crossbow, which can hit
+    // anyone on the grid but is disabled outright the instant an enemy
+    // closes to melee range (DQoK.pdf's own manual) -- mirrors
+    // GameLoop::playerAttacks. 0 eligible targets or 2+ both still consume
+    // the round (a wasted swing costs your action just like a real one);
+    // exactly 1 resolves immediately, 2+ opens the in-frame picker.
+    auto combatBeginPlayerAttack = [&]() {
+        if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        bool hasRangedWeapon = state.character.weaponName == character::kLightCrossbowName;
+        bool adjacentToAny = false;
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp > 0 &&
+                combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i])) {
+                adjacentToAny = true;
+                break;
+            }
+        }
+        if (hasRangedWeapon && adjacentToAny) {
+            combatSession.log.push_back("An enemy is too close to fire your crossbow!");
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        std::vector<int> candidates;
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            if (!hasRangedWeapon && !combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i])) continue;
+            candidates.push_back(static_cast<int>(i));
+        }
+        if (candidates.empty()) {
+            combatSession.log.push_back("You're too far away to attack.");
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        if (candidates.size() == 1) {
+            combatResolveAttackAgainstTarget(candidates.front());
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        combatSession.pickCandidates = candidates;
+        combatSession.pickSelected = 0;
+        combatSession.uiState = CombatUiState::PickingTarget;
+    };
+
+    // A direction key pressed while Idle: commit to moving this round.
+    // Validated up front (bounds/occupancy) before it ever costs a round,
+    // same as the console version; a valid move still triggers opportunity
+    // attacks from anyone being left adjacent.
+    auto combatBeginPlayerMove = [&](int dx, int dy) {
+        combat::GridPos destination{combatSession.playerPos.x + dx, combatSession.playerPos.y + dy};
+        if (destination.x < 0 || destination.x >= kCombatGridWidth || destination.y < 0 ||
+            destination.y >= kCombatGridHeight) {
+            combatSession.log.push_back("You can't move that way.");
+            return;
+        }
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp > 0 && combatSession.instancePositions[i].x == destination.x &&
+                combatSession.instancePositions[i].y == destination.y) {
+                combatSession.log.push_back("Something's in the way.");
+                return;
+            }
+        }
+        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
+            if (combatCompanionAlive(ci) && combatSession.companionPositions[ci].x == destination.x &&
+                combatSession.companionPositions[ci].y == destination.y) {
+                combatSession.log.push_back("Something's in the way.");
+                return;
+            }
+        }
+        if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        combatTriggerOpportunityAttacks(destination);
+        if (combatCheckPlayerDown(combatSession.monster.name)) return;
+        std::string dirLabel = destination.y < combatSession.playerPos.y   ? "north"
+                                : destination.y > combatSession.playerPos.y ? "south"
+                                : destination.x < combatSession.playerPos.x ? "west"
+                                                                             : "east";
+        combatSession.playerPos = destination;
+        combatSession.log.push_back("You move " + dirLabel + ".");
+        combatFinishPlayerAction(combatSession.pendingGoFirst);
+    };
+
+    // F pressed while Idle: an unconditional escape -- unlike attack/move,
+    // this never goes through the initiative dispatch above (mirrors
+    // GameLoop::runCombat, where Flee is checked and handled before
+    // anything else in its round loop), so no monster gets a free action.
+    auto combatBeginFlee = [&]() {
+        combatSession.log.push_back("You break off and retreat.");
+        pushLog("You fled from the " + combatSession.monster.name + ".");
+        combatSession.uiState = CombatUiState::Fled;
+    };
+
+    // Enter pressed while PickingTarget: commit to the highlighted
+    // candidate and resolve the rest of the round exactly as the
+    // immediate (0/1-candidate) path in combatBeginPlayerAttack does.
+    auto combatConfirmTarget = [&]() {
+        int target = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
+        combatResolveAttackAgainstTarget(target);
+        if (combatSession.uiState == CombatUiState::Lost) return;
+        combatFinishPlayerAction(combatSession.pendingGoFirst);
+    };
+
+    // A real random encounter fires (see the movement handling below):
+    // builds a fresh CombatSession exactly the way GameLoop::runCombat's
+    // own opening lines do (group size, starting grid layout, fight-start
+    // bonuses), then hands off to the AwaitContinue dismissal beat.
+    auto combatStartEncounter = [&](const combat::Monster& monster) {
+        combatSession = CombatSession{};
+        combatSession.active = true;
+        combatSession.monster = monster;
+        int groupSize = combat::rollGroupSize(monster);
+        combatSession.useLetters = groupSize > 1;
+        combatSession.instances.assign(static_cast<size_t>(groupSize), CombatInstance{});
+        for (CombatInstance& inst : combatSession.instances) {
+            inst.maxHp = character::roll(monster.hpDiceCount, monster.hpDiceSides) + monster.hpFlatBonus;
+            inst.hp = inst.maxHp;
+        }
+        combatSession.floorTerrainCode = grid.terrainCodeAt(state.x, state.y);
+        combatSession.playerPos = {kCombatGridWidth / 2, kCombatGridHeight - 1};
+        combatSession.instancePositions.resize(static_cast<size_t>(groupSize));
+        constexpr int kMonsterSpacing = 2;
+        const int centerX = kCombatGridWidth / 2;
+        for (int i = 0; i < groupSize; ++i) {
+            int offsetIndex = i - (groupSize - 1) / 2;
+            combatSession.instancePositions[static_cast<size_t>(i)] = {centerX + offsetIndex * kMonsterSpacing, 0};
+        }
+        combatSession.companionPositions.resize(state.companions.size());
+        for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
+            int offset = (i % 2 == 0) ? static_cast<int>(i / 2) + 1 : -(static_cast<int>(i / 2) + 1);
+            combatSession.companionPositions[i] = {combatSession.playerPos.x + offset, combatSession.playerPos.y};
+        }
+        if (state.character.weaponName == character::kFrostreaverName &&
+            std::string(world::terrainFor(combatSession.floorTerrainCode).name) == "glacier") {
+            combatSession.playerThac0Bonus += character::kFrostreaverMagicBonus;
+            combatSession.playerDamageBonus += character::kFrostreaverMagicBonus;
+            combatSession.log.push_back("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
+        }
+        if (state.character.charClass == character::ClassId::Fighter && state.character.specializedWeapon) {
+            combatSession.playerThac0Bonus += character::kWeaponSpecializationToHitBonus;
+            combatSession.playerDamageBonus += character::kWeaponSpecializationDamageBonus;
+        }
+        if (combatSession.useLetters) {
+            combatSession.log.push_back(std::to_string(groupSize) + " " + pluralMonsterName(monster.name) +
+                                         " appear! " + monster.description);
+            pushLog(std::to_string(groupSize) + " " + pluralMonsterName(monster.name) + " appear!");
+        } else {
+            combatSession.log.push_back("A " + monster.name + " appears! " + monster.description);
+            pushLog("A " + monster.name + " appears!");
+        }
+    };
 
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
@@ -373,7 +1064,51 @@ int runPhase1(const std::string& savePath) {
                         default: break;
                     }
 
-                    if (handleEnter) {
+                    if (combatSession.active) {
+                        // Combat's own input dispatch -- see CombatSession/
+                        // CombatUiState's doc comments above for the state
+                        // machine this drives. Reuses the same dx/dy/
+                        // handleEnter the switch above already computed;
+                        // F/M/I are read straight off `key` since the
+                        // switch's own placeholder text for them only
+                        // applies outside combat (see the `else` branch
+                        // below).
+                        switch (combatSession.uiState) {
+                            case CombatUiState::AwaitContinue:
+                                if (handleEnter) combatSession.uiState = CombatUiState::Idle;
+                                break;
+                            case CombatUiState::PickingTarget: {
+                                const int candidateCount = static_cast<int>(combatSession.pickCandidates.size());
+                                if (dy < 0) {
+                                    combatSession.pickSelected =
+                                        (combatSession.pickSelected - 1 + candidateCount) % candidateCount;
+                                } else if (dy > 0) {
+                                    combatSession.pickSelected = (combatSession.pickSelected + 1) % candidateCount;
+                                } else if (handleEnter) {
+                                    combatConfirmTarget();
+                                }
+                                break;
+                            }
+                            case CombatUiState::Won:
+                            case CombatUiState::Lost:
+                            case CombatUiState::Fled:
+                                if (handleEnter) combatSession.active = false;
+                                break;
+                            case CombatUiState::Idle:
+                                if (key == sf::Keyboard::Key::F) {
+                                    combatBeginFlee();
+                                } else if (key == sf::Keyboard::Key::M) {
+                                    combatSession.log.push_back("Cast: not yet implemented in this build.");
+                                } else if (key == sf::Keyboard::Key::I) {
+                                    combatSession.log.push_back("Item use: not yet implemented in this build.");
+                                } else if (handleEnter) {
+                                    combatBeginPlayerAttack();
+                                } else if (dx != 0 || dy != 0) {
+                                    combatBeginPlayerMove(dx, dy);
+                                }
+                                break;
+                        }
+                    } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
                             const world::Location* here = world.locationAt(state.x, state.y);
                             const world::Zone* zone = here ? zones.getZone(here->id) : nullptr;
@@ -430,8 +1165,32 @@ int runPhase1(const std::string& savePath) {
                             if (terrain.passable) {
                                 state.x = nx;
                                 state.y = ny;
-                                if (const world::Location* here = world.locationAt(state.x, state.y)) {
+                                const world::Location* here = world.locationAt(state.x, state.y);
+                                if (here != nullptr) {
                                     pushLog("Arrived at " + here->name + ".");
+                                }
+                                // Random encounters (see GameLoop::
+                                // tryMoveOverworld): towns/named places stay
+                                // safe, everywhere else has a per-terrain
+                                // chance per move. Computed the same way --
+                                // straight-line distance to the nearest town,
+                                // so MonsterCatalog can keep high-danger
+                                // monsters away from starting towns.
+                                if (here == nullptr && monsterCatalog.size() > 0 &&
+                                    character::roll(1, 100) <= terrain.encounterChancePercent) {
+                                    long long bestDistSq = -1;
+                                    for (const world::Location& loc : world.allLocations()) {
+                                        if (!loc.isTown) continue;
+                                        long long ddx = loc.x - state.x;
+                                        long long ddy = loc.y - state.y;
+                                        long long distSq = ddx * ddx + ddy * ddy;
+                                        if (bestDistSq < 0 || distSq < bestDistSq) bestDistSq = distSq;
+                                    }
+                                    int townDistance =
+                                        bestDistSq < 0
+                                            ? 0
+                                            : static_cast<int>(std::llround(std::sqrt(static_cast<double>(bestDistSq))));
+                                    combatStartEncounter(monsterCatalog.randomMonster(terrain.code, townDistance));
                                 }
                             } else {
                                 pushLog("Blocked: cannot walk onto " + std::string(terrain.name) + ".");
@@ -458,7 +1217,73 @@ int runPhase1(const std::string& savePath) {
             window.clear(sf::Color::Black);
             window.setView(mapView);
 
-            if (state.mode == game::Mode::Overworld) {
+            if (combatSession.active) {
+                // Whole grid always fits the viewport, same "no scrolling
+                // needed" approach as zone interiors -- kCombatGridWidth x
+                // kCombatGridHeight is fixed and small (15x9). No sprite art
+                // here either (same reasoning as zones): a uniform floor
+                // color plus each entity's own marker color/letter is the
+                // full visual vocabulary for this phase.
+                const float combatPxW = static_cast<float>(kCombatGridWidth) * kCombatTilePx;
+                const float combatPxH = static_cast<float>(kCombatGridHeight) * kCombatTilePx;
+                mapView.setCenter(sf::Vector2f(combatPxW / 2.f, combatPxH / 2.f));
+                window.setView(mapView);
+
+                for (int gy = 0; gy < kCombatGridHeight; ++gy) {
+                    for (int gx = 0; gx < kCombatGridWidth; ++gx) {
+                        const float cx = (static_cast<float>(gx) + 0.5f) * kCombatTilePx;
+                        const float cy = (static_cast<float>(gy) + 0.5f) * kCombatTilePx;
+                        combatTileShape.setPosition(
+                            sf::Vector2f(cx - (kCombatTilePx - 2.f) / 2.f, cy - (kCombatTilePx - 2.f) / 2.f));
+                        window.draw(combatTileShape);
+                    }
+                }
+                combatGridBorder.setSize(sf::Vector2f(combatPxW, combatPxH));
+                combatGridBorder.setPosition(sf::Vector2f(0.f, 0.f));
+                window.draw(combatGridBorder);
+
+                if (combatSession.uiState == CombatUiState::PickingTarget && !combatSession.pickCandidates.empty()) {
+                    const int pickedIdx = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
+                    const combat::GridPos pos = combatSession.instancePositions[static_cast<size_t>(pickedIdx)];
+                    const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+                    combatPickHighlight.setPosition(
+                        sf::Vector2f(cx - (kCombatTilePx - 6.f) / 2.f, cy - (kCombatTilePx - 6.f) / 2.f));
+                    window.draw(combatPickHighlight);
+                }
+
+                constexpr unsigned kCombatGlyphCharSize = 16;
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    if (combatSession.instances[i].hp <= 0) continue;
+                    const combat::GridPos pos = combatSession.instancePositions[i];
+                    const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+                    combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
+                    window.draw(combatMonsterMarker);
+                    sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kCombatGlyphCharSize);
+                    glyph.setFillColor(sf::Color::White);
+                    glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                    window.draw(glyph);
+                }
+                for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
+                    if (!combatCompanionAlive(i)) continue;
+                    const combat::GridPos pos = combatSession.companionPositions[i];
+                    const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+                    combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
+                    window.draw(combatCompanionMarker);
+                    sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kCombatGlyphCharSize);
+                    glyph.setFillColor(sf::Color::White);
+                    glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                    window.draw(glyph);
+                }
+                {
+                    const float cx = (static_cast<float>(combatSession.playerPos.x) + 0.5f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(combatSession.playerPos.y) + 0.5f) * kCombatTilePx;
+                    playerMarker.setPosition(sf::Vector2f(cx, cy));
+                    window.draw(playerMarker);
+                }
+            } else if (state.mode == game::Mode::Overworld) {
                 const float playerPxX = (static_cast<float>(state.x) + 0.5f) * pxPerTileX;
                 const float playerPxY = (static_cast<float>(state.y) + 0.5f) * pxPerTileY;
 
@@ -537,25 +1362,96 @@ int runPhase1(const std::string& savePath) {
                 lineY += lineHeight;
             };
 
-            drawLine(state.character.name + ", level " + std::to_string(state.character.level) + " " +
-                          std::string(character::raceInfo(state.character.race).name) + " " +
-                          std::string(character::classInfo(state.character.charClass).name),
-                      sf::Color::White);
-            drawLine("HP: " + std::to_string(state.character.currentHp) + "/" +
-                          std::to_string(state.character.maxHp),
-                      sf::Color(220, 90, 90));
-            drawLine(formatDayTime(state.hoursElapsed), sf::Color(200, 200, 140));
-            if (state.mode == game::Mode::Zone && currentZone) {
-                drawLine("Indoors -- " + currentZone->name(), sf::Color(150, 200, 230));
-            }
-            lineY += lineHeight * 0.5f;
-            drawLine("-- Log --", sf::Color(140, 140, 160));
-
             const std::size_t maxLineChars =
                 static_cast<std::size_t>((sidebarWidth - 32.f) / kSidebarCharWidth);
-            for (const std::string& entry : log) {
-                for (const std::string& wrapped : wrapToWidth(entry, maxLineChars)) {
-                    drawLine(wrapped, sf::Color(190, 190, 200));
+
+            if (combatSession.active) {
+                const world::TerrainInfo& floorTerrain = world::terrainFor(combatSession.floorTerrainCode);
+                drawLine("Battlefield: " + std::string(floorTerrain.name), sf::Color(200, 200, 140));
+                lineY += lineHeight * 0.3f;
+
+                drawLine(state.character.name + " -- HP " + std::to_string(state.character.currentHp) + "/" +
+                              std::to_string(state.character.maxHp) + "  AC " +
+                              std::to_string(state.character.armorClass),
+                          sf::Color(255, 215, 0));
+                for (const game::RecruitedCompanion& rc : state.companions) {
+                    const character::Character& c = rc.character;
+                    std::string line = c.name + " -- HP " + std::to_string(std::max(0, c.currentHp)) + "/" +
+                                        std::to_string(c.maxHp) + "  AC " + std::to_string(c.armorClass);
+                    if (c.currentHp <= 0) line += " (knocked out)";
+                    drawLine(line, sf::Color(80, 150, 220));
+                }
+                lineY += lineHeight * 0.3f;
+
+                const bool showRosterCursor = combatSession.uiState == CombatUiState::PickingTarget;
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    std::string line;
+                    if (showRosterCursor) {
+                        const bool isSelected =
+                            !combatSession.pickCandidates.empty() &&
+                            combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)] ==
+                                static_cast<int>(i);
+                        line += isSelected ? "> " : "  ";
+                    }
+                    line += combatMonsterLabel(static_cast<int>(i)) + " -- HP " +
+                            std::to_string(std::max(0, combatSession.instances[i].hp)) + "/" +
+                            std::to_string(combatSession.instances[i].maxHp);
+                    if (combatSession.instances[i].hp <= 0) line += " (defeated)";
+                    drawLine(line, sf::Color(220, 100, 100));
+                }
+                lineY += lineHeight * 0.3f;
+
+                drawLine("-- Log --", sf::Color(140, 140, 160));
+                constexpr std::size_t kCombatLogTail = 10;
+                const std::size_t combatLogStart =
+                    combatSession.log.size() > kCombatLogTail ? combatSession.log.size() - kCombatLogTail : 0;
+                for (std::size_t i = combatLogStart; i < combatSession.log.size(); ++i) {
+                    for (const std::string& wrapped : wrapToWidth(combatSession.log[i], maxLineChars)) {
+                        drawLine(wrapped, sf::Color(190, 190, 200));
+                    }
+                }
+                lineY += lineHeight * 0.3f;
+
+                switch (combatSession.uiState) {
+                    case CombatUiState::AwaitContinue:
+                        drawLine("Press Enter to continue.", sf::Color(230, 220, 160));
+                        break;
+                    case CombatUiState::PickingTarget:
+                        drawLine("Attack which enemy?", sf::Color(230, 220, 160));
+                        drawLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
+                        break;
+                    case CombatUiState::Won:
+                        drawLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
+                        break;
+                    case CombatUiState::Lost:
+                        drawLine("Press Enter to continue.", sf::Color(220, 120, 120));
+                        break;
+                    case CombatUiState::Fled:
+                        drawLine("Press Enter to continue.", sf::Color(220, 190, 120));
+                        break;
+                    case CombatUiState::Idle:
+                        drawLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)", sf::Color(190, 190, 200));
+                        break;
+                }
+            } else {
+                drawLine(state.character.name + ", level " + std::to_string(state.character.level) + " " +
+                              std::string(character::raceInfo(state.character.race).name) + " " +
+                              std::string(character::classInfo(state.character.charClass).name),
+                          sf::Color::White);
+                drawLine("HP: " + std::to_string(state.character.currentHp) + "/" +
+                              std::to_string(state.character.maxHp),
+                          sf::Color(220, 90, 90));
+                drawLine(formatDayTime(state.hoursElapsed), sf::Color(200, 200, 140));
+                if (state.mode == game::Mode::Zone && currentZone) {
+                    drawLine("Indoors -- " + currentZone->name(), sf::Color(150, 200, 230));
+                }
+                lineY += lineHeight * 0.5f;
+                drawLine("-- Log --", sf::Color(140, 140, 160));
+
+                for (const std::string& entry : log) {
+                    for (const std::string& wrapped : wrapToWidth(entry, maxLineChars)) {
+                        drawLine(wrapped, sf::Color(190, 190, 200));
+                    }
                 }
             }
 

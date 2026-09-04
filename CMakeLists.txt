@@ -125,16 +125,18 @@ else()
     target_compile_options(ansalon_sfml_trial PRIVATE -Wall -Wextra)
 endif()
 
-# ansalon_sfml_phase1 -- full-migration Phase 1+2 (see docs/CURRENT_WORK.md
-# and the plans this was built from): a real, pixel-space overworld AND
-# zone-interior screen driven by real save data, proving the rendering
-# approach before combat/menus are attempted. Deliberately standalone rather
-# than reusing game::GameLoop::run() -- that dispatch loop is hardcoded to
-# render::Console's static methods, and restructuring Console for a true
-# swap is real work worth doing only once a phase actually needs GameLoop's
-# full input dispatch. Loads a real save file read-only via game::SaveGame --
-# never writes back. Reads References/dragonlancemap2.png and data/*.txt
-# straight from the source tree at run time, same as ansalon_sfml_trial.
+# ansalon_sfml_phase1 -- full-migration Phase 1+2+3 (see docs/CURRENT_WORK.md
+# and the plans this was built from): a real, pixel-space overworld, zone-
+# interior, AND combat screen driven by real save data, proving the
+# rendering/round-resolution approach before the remaining menu screens are
+# attempted. Deliberately standalone rather than reusing game::GameLoop::run()
+# -- that dispatch loop is hardcoded to render::Console's static methods, and
+# restructuring Console for a true swap is real work worth doing only once a
+# phase actually needs GameLoop's full input dispatch. Loads a real save file
+# read-only via game::SaveGame -- never writes back. Reads
+# References/dragonlancemap2.png and data/*.txt (including data/monsters.txt
+# for real random encounters) straight from the source tree at run time, same
+# as ansalon_sfml_trial.
 add_executable(ansalon_sfml_phase1
     sfml_phase1/main.cpp
     src/world/OverworldGrid.cpp
@@ -157,6 +159,10 @@ add_executable(ansalon_sfml_phase1
     src/character/Spellcasting.cpp
     src/character/Equipment.cpp
     src/character/Companion.cpp
+    src/combat/Combat.cpp
+    src/combat/Monster.cpp
+    src/combat/MonsterLoader.cpp
+    src/combat/CombatGrid.cpp
 )
 target_include_directories(ansalon_sfml_phase1 PRIVATE src)
 target_compile_features(ansalon_sfml_phase1 PRIVATE cxx_std_17)
