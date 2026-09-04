@@ -100,23 +100,21 @@ graduate out of `References/` into a real shipped asset location --
 no forcing function yet, defer until/unless the full-migration shape is
 chosen.
 
-Also still open: `git push origin master` still hangs and was retried
-again this session with the user at the keyboard -- confirmed more
-precisely this time: `git ls-remote origin` (read) returns instantly, so
-it's specifically the push/write path hanging, not general connectivity.
-Credential helper is `manager` (Git Credential Manager) with no cached
-write-scope token and no `GITHUB_TOKEN`/`GH_TOKEN` env var found -- GCM is
-almost certainly trying to launch an interactive re-auth prompt (browser
-or Windows Hello) that this session cannot see or complete (no desktop/
-GUI access, confirmed hard limit -- see the `feedback_no_desktop_gui_access`
-memory). `master` is currently 1 commit ahead of `origin/master`
-(Milestone 155). Likely needs the user to either run the push themselves
-from a real interactive terminal (so GCM's prompt has somewhere to go),
-or set up a token-based non-interactive auth path if they want future
-sessions able to push directly. `sfml-trial-3` has also diverged from
-`origin/sfml-trial-3` (rebased locally after Milestone 155's cherry-pick)
--- would need a force-push to reconcile; not attempted, needs explicit
-go-ahead first.
+**Resolved this session:** the `git push` hang was a Git Credential
+Manager write-scope issue (confirmed: `git ls-remote origin`, read-only,
+always returned instantly; only push hung -- GCM had no cached
+write-scope credential and was almost certainly waiting on an
+interactive re-auth prompt this session can't see, no desktop/GUI
+access). Fixed by the user generating a fine-grained GitHub PAT
+(`Ansalon-RPG` repo only, Contents: Read and write, 90-day expiry) and
+handing it to `git credential approve` (stored in Windows Credential
+Manager via the existing `manager` helper -- never written to any file
+in the repo). Both `master` and `sfml-trial-3` are now pushed and fully
+synced with `origin` (the latter needed `--force-with-lease`, since
+Milestone 155's cherry-pick + rebase had rewritten its history -- done
+with explicit user go-ahead). Future sessions should be able to push
+directly without hitting this again, as long as the PAT hasn't expired
+or been revoked.
 
 Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
