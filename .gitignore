@@ -4,14 +4,20 @@ build/
 # Staged/zipped output from tools/package_release.ps1
 dist/
 
-# Reference material -- the Ansalon map image, source rulebook PDFs (PHB,
-# DMG, Dragonlance sourcebooks/modules), and the Chronicles novels, all
-# copyrighted TSR/Wizards of the Coast (or Weis/Hickman) material kept
-# locally only to verify map/rules/lore content against. Not meant to be
-# committed or redistributed. See docs/MAP_NOTES.md and
-# docs/CHARACTER_NOTES.md.
-References/
+# Reference material -- source rulebook PDFs (PHB, DMG, Dragonlance
+# sourcebooks/modules) and the Chronicles novels, all copyrighted TSR/
+# Wizards of the Coast (or Weis/Hickman) material kept locally only to
+# verify rules/lore content against. Not meant to be committed or
+# redistributed. See docs/CHARACTER_NOTES.md.
+References/*
 *.pdf
+
+# Exception: dragonlancemap2.png is used with the explicit permission of
+# its author (paercebal, building on AtenOkke's original), obtained
+# 2026-09-03 -- see docs/MAP_NOTES.md's "Source and attribution". Unlike
+# the copyrighted material above, it's fine to track and redistribute as
+# long as both are credited (already done in README.md/MAP_NOTES.md).
+!References/dragonlancemap2.png
 
 # Generated preview from tools/generate_overworld.py -- an inspection aid,
 # not game data (data/overworld.grid is the real output and IS committed).

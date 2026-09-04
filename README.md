@@ -12,6 +12,12 @@ they happen to be in the same place at the same in-game time.
 This is a fan project built for fun, not for profit, and is not affiliated
 with or endorsed by Wizards of the Coast / the Dragonlance IP holders.
 
+The overworld map (`References/dragonlancemap2.png`) used to place every
+`LOCATION` in `data/locations.txt` is used with permission of its author,
+**paercebal** ([www.paercebal.org](https://www.paercebal.org/HtmlKrynnMaps/index.html)),
+built on the original map by **AtenOkke**. Both are credited here per the
+terms of that permission.
+
 ## Status
 
 ### Character creation & saves

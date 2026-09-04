@@ -1,5 +1,16 @@
 # Map notes
 
+## Source and attribution
+
+`References/dragonlancemap2.png` is used with the explicit permission of
+its author, **paercebal**, obtained 2026-09-03 (via Bluesky reply to a
+direct ask), conditioned on crediting both him and **AtenOkke**, the
+original map's creator, upon whose work paercebal's map is built. See
+[www.paercebal.org/HtmlKrynnMaps](https://www.paercebal.org/HtmlKrynnMaps/index.html)
+for the latest maps and more information. This credit is echoed in
+`README.md`. If this map is ever swapped for a newer version from the
+same source, keep this attribution.
+
 ## Two separate data sources
 
 As of Milestone 2 the world is described by two independent files that
