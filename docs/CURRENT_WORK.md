@@ -36,15 +36,31 @@ build" line instead of doing anything. Verified: clean rebuild (zero new
 `/W4` warnings) and the user testing it live at the keyboard against a
 real save. **User's verdict: "looks good."**
 
-**Not yet committed.** `CMakeLists.txt` (new `ansalon_sfml_phase1` target)
-and `sfml_phase1/main.cpp` are sitting uncommitted in the working tree.
+Phase 1 committed as `778a57c`.
 
-**Next step:** decide Phase 2's scope (the roadmap below lists every
-screen still ASCII-only, in no particular committed order -- zone
-interiors are the natural next one, being the other overworld-adjacent
-screen and reusable-map-rendering-adjacent) and commit Phase 1's code.
-Per this project's "don't start the next milestone without being asked"
-rule, that's a decision for the user to make, not to assume.
+**Phase 2 shipped this session too: zone interiors, in the same
+`ansalon_sfml_phase1`/`sfml_phase1/main.cpp`** (extended in place, not a
+new target -- this is the one growing prototype the migration
+accumulates into). Added `world::Zone`/`ZoneTile`/`ZoneLoader`/
+`ZoneCatalog` to the target; `state.mode` now genuinely switches between
+Overworld and Zone rendering/movement, matching `game::GameState` exactly.
+Real collision (`zoneTileFor`, POIs always passable), real entry/exit via
+`Enter` (including `PORTAL`-nested sub-zones like Solace's Inn, pushing/
+popping `GameState::zoneStack`), placeholder pixel-space tile colors (no
+reference art exists for interiors, unlike the overworld's real map) with
+a small name label at each POI marker. Talk/Shop/etc. stay the same
+"not yet in this build" placeholders Phase 1 already had, even inside a
+zone. Verified: clean rebuild (zero new `/W4` warnings), user tested live
+-- walked into Solace, into its Inn via the portal, and back out through
+both exits. **Confirmed working.**
+
+**Not yet committed.**
+
+**Next step:** decide what's next (the roadmap below lists every screen
+still ASCII-only -- combat is the natural next one, being the biggest
+remaining gap, but it's the user's call). Per this project's "don't start
+the next milestone without being asked" rule, that's a decision for the
+user to make, not to assume.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -53,8 +69,7 @@ same reasoning that ruled out the monospace-grid approach above. Rough
 size/complexity noted from this session's research, not a commitment to
 this order:
 
-- Zone interiors (`drawZoneFrame`) -- likely next; shares the overworld's
-  map-rendering foundation.
+- ~~Zone interiors (`drawZoneFrame`)~~ -- done, see above.
 - Combat (`drawCombatFrame`) -- the biggest and most complex remaining
   screen (tactical grid, HP roster, target/spell pickers).
 - Character sheet, spellbook, dialogue, generic picker, ask-input, shop,

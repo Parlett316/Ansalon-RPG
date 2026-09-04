@@ -1,10 +1,11 @@
-// Full-migration Phase 1 -- see docs/CURRENT_WORK.md and the plan this was
-// built from. A real, pixel-space overworld screen driven by real save
-// data: proves the rendering/collision approach end-to-end before any of
-// zones/combat/menus are attempted. Deliberately standalone rather than
-// reusing game::GameLoop::run() -- see this file's CMakeLists.txt comment
-// for why. Loads a save file read-only via game::SaveGame -- never writes
-// back, never touches the real ansalon_rpg target's code path.
+// Full-migration Phase 1+2 -- see docs/CURRENT_WORK.md and the plans this
+// was built from. A real, pixel-space overworld + zone-interior screen
+// driven by real save data: proves the rendering/collision approach end to
+// end before combat/menus are attempted. Deliberately standalone rather
+// than reusing game::GameLoop::run() -- see this file's CMakeLists.txt
+// comment for why. Loads a save file read-only via game::SaveGame --
+// never writes back, never touches the real ansalon_rpg target's code
+// path.
 
 #include "character/CharClass.h"
 #include "character/Race.h"
@@ -14,6 +15,9 @@
 #include "world/Terrain.h"
 #include "world/World.h"
 #include "world/WorldLoader.h"
+#include "world/Zone.h"
+#include "world/ZoneCatalog.h"
+#include "world/ZoneTile.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -33,6 +37,12 @@ constexpr unsigned kSidebarCharSize = 16;
 // only to wrap placeholder log text to the sidebar's pixel width, not for
 // precise layout. Recalibrate if the font or character size changes.
 constexpr float kSidebarCharWidth = 9.5f;
+// Placeholder pixel-per-tile scale for zone interiors -- there's no real
+// reference image for these like the overworld has, so this is a plain
+// colored-tile placeholder, not art. Zones are capped at 44x16
+// (docs/ZONE_NOTES.md), so at this scale every zone fits the map viewport
+// with no scrolling needed.
+constexpr float kZoneTilePx = 20.f;
 
 std::string formatDayTime(long long hoursElapsed) {
     const long long day = hoursElapsed / 24;
@@ -69,6 +79,20 @@ std::vector<std::string> wrapToWidth(const std::string& text, std::size_t maxCha
     return lines;
 }
 
+// Placeholder fill color per zone tile code -- plain colored rectangles,
+// not art (see kZoneTilePx above). Magenta for anything unrecognized so a
+// gap in this table is obvious rather than silently blending in.
+sf::Color colorForZoneTile(char code) {
+    switch (code) {
+        case '.': return sf::Color(200, 190, 160); // open ground
+        case '%': return sf::Color(55, 120, 55);   // vallenwood / dense growth
+        case '#': return sf::Color(70, 70, 78);    // wall
+        case '~': return sf::Color(60, 100, 180);  // water
+        case '+': return sf::Color(120, 85, 50);   // doorway
+        default: return sf::Color(255, 0, 255);
+    }
+}
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -85,6 +109,9 @@ int runPhase1(const std::string& savePath) {
     world::WorldLoader::loadFromFile("data/locations.txt", world);
     std::cout << "step 2: world loaded, " << world.allLocations().size() << " locations" << std::endl;
 
+    world::ZoneCatalog zones = world::ZoneCatalog::loadForWorld(world, "data/zones");
+    std::cout << "step 2b: zones loaded, " << zones.allZones().size() << " zones" << std::endl;
+
     game::GameState state = game::SaveGame::load(savePath);
     std::cout << "step 3: save loaded -- " << state.character.name << ", level "
               << state.character.level << " " << character::raceInfo(state.character.race).name << " "
@@ -92,7 +119,7 @@ int runPhase1(const std::string& savePath) {
               << state.y << ")" << std::endl;
 
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(windowW, windowH)),
-                             "Ansalon SFML Phase 1 -- Real Overworld (WIP)");
+                             "Ansalon SFML Phase 1+2 -- Real Overworld + Zones (WIP)");
     window.setFramerateLimit(60);
 
     sf::Texture mapTexture;
@@ -115,12 +142,20 @@ int runPhase1(const std::string& savePath) {
     const float worldW = static_cast<float>(mapSize.x);
     const float worldH = static_cast<float>(mapSize.y);
 
-    int playerGridX = state.x;
-    int playerGridY = state.y;
+    // Real GameState fields drive position in both modes (state.x/y for
+    // Overworld, state.zoneX/zoneY for Zone) -- never written back to
+    // savePath, but mutated in memory exactly like game::GameLoop does.
+    const world::Zone* currentZone = nullptr;
+    if (state.mode == game::Mode::Zone) {
+        currentZone = zones.getZone(state.currentZoneId);
+        if (!currentZone) {
+            std::cerr << "Warning: save's zone '" << state.currentZoneId
+                      << "' not found -- falling back to overworld.\n";
+            state.mode = game::Mode::Overworld;
+        }
+    }
 
-    sf::View mapView(sf::Vector2f((static_cast<float>(playerGridX) + 0.5f) * pxPerTileX,
-                                   (static_cast<float>(playerGridY) + 0.5f) * pxPerTileY),
-                      sf::Vector2f(mapWidth, static_cast<float>(windowH)));
+    sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
     const sf::View uiView = window.getDefaultView();
@@ -133,6 +168,20 @@ int runPhase1(const std::string& savePath) {
     sf::CircleShape playerMarker(9.f);
     playerMarker.setOrigin(sf::Vector2f(9.f, 9.f));
     playerMarker.setFillColor(sf::Color(255, 215, 0));
+
+    sf::RectangleShape zoneTileShape(sf::Vector2f(kZoneTilePx, kZoneTilePx));
+
+    sf::CircleShape poiMarker(kZoneTilePx * 0.3f);
+    poiMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.3f, kZoneTilePx * 0.3f));
+    poiMarker.setFillColor(sf::Color(230, 150, 40));
+
+    sf::CircleShape portalMarker(kZoneTilePx * 0.3f);
+    portalMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.3f, kZoneTilePx * 0.3f));
+    portalMarker.setFillColor(sf::Color(170, 90, 220));
+
+    sf::CircleShape entryMarker(kZoneTilePx * 0.35f);
+    entryMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.35f, kZoneTilePx * 0.35f));
+    entryMarker.setFillColor(sf::Color(60, 200, 220));
 
     sf::RectangleShape sidebarBg(sf::Vector2f(sidebarWidth, static_cast<float>(windowH)));
     sidebarBg.setPosition(sf::Vector2f(mapWidth, 0.f));
@@ -147,11 +196,10 @@ int runPhase1(const std::string& savePath) {
     };
 
     pushLog("Loaded " + state.character.name + ".");
-    if (state.mode == game::Mode::Zone) {
-        pushLog("Note: save is mid-zone (" + state.currentZoneId +
-                "); showing last overworld position -- zones aren't in this build yet.");
+    if (currentZone) {
+        pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Movement only. Other keys are placeholders for now.");
+    pushLog("Movement + Enter (zones) work. Other keys are placeholders for now.");
 
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
@@ -165,6 +213,7 @@ int runPhase1(const std::string& savePath) {
                     int dx = 0;
                     int dy = 0;
                     std::string placeholder;
+                    bool handleEnter = false;
                     switch (key) {
                         case sf::Keyboard::Key::W:
                         case sf::Keyboard::Key::Up: dy = -1; break;
@@ -178,9 +227,7 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Escape: window.close(); break;
                         case sf::Keyboard::Key::L: placeholder = "Look: not yet implemented in this build."; break;
                         case sf::Keyboard::Key::T: placeholder = "Talk: not yet implemented in this build."; break;
-                        case sf::Keyboard::Key::Enter:
-                            placeholder = "Enter: zones aren't in this build yet.";
-                            break;
+                        case sf::Keyboard::Key::Enter: handleEnter = true; break;
                         case sf::Keyboard::Key::C:
                             placeholder = "Character sheet: not yet implemented in this build.";
                             break;
@@ -202,48 +249,159 @@ int runPhase1(const std::string& savePath) {
                             break;
                         default: break;
                     }
-                    if (!placeholder.empty()) {
+
+                    if (handleEnter) {
+                        if (state.mode == game::Mode::Overworld) {
+                            const world::Location* here = world.locationAt(state.x, state.y);
+                            const world::Zone* zone = here ? zones.getZone(here->id) : nullptr;
+                            if (zone) {
+                                state.mode = game::Mode::Zone;
+                                state.currentZoneId = here->id;
+                                state.zoneX = zone->entryX();
+                                state.zoneY = zone->entryY();
+                                currentZone = zone;
+                                pushLog("You step into " + zone->name() + ".");
+                            } else {
+                                pushLog("There's nothing to enter here.");
+                            }
+                        } else if (currentZone) {
+                            if (const std::string* portalTarget = currentZone->portalAt(state.zoneX, state.zoneY)) {
+                                const world::Zone* target = zones.getZone(*portalTarget);
+                                if (target) {
+                                    state.zoneStack.push_back({state.currentZoneId, state.zoneX, state.zoneY});
+                                    state.currentZoneId = *portalTarget;
+                                    state.zoneX = target->entryX();
+                                    state.zoneY = target->entryY();
+                                    currentZone = target;
+                                    pushLog("You step into " + target->name() + ".");
+                                } else {
+                                    pushLog("That doorway doesn't lead anywhere in this build.");
+                                }
+                            } else if (state.zoneX == currentZone->entryX() &&
+                                       state.zoneY == currentZone->entryY()) {
+                                if (!state.zoneStack.empty()) {
+                                    const game::ZoneReturnPoint back = state.zoneStack.back();
+                                    state.zoneStack.pop_back();
+                                    state.currentZoneId = back.zoneId;
+                                    state.zoneX = back.x;
+                                    state.zoneY = back.y;
+                                    currentZone = zones.getZone(state.currentZoneId);
+                                    pushLog("You step back out into " +
+                                            (currentZone ? currentZone->name() : back.zoneId) + ".");
+                                } else {
+                                    pushLog("You step back outside.");
+                                    state.mode = game::Mode::Overworld;
+                                    currentZone = nullptr;
+                                }
+                            } else {
+                                pushLog("Nothing to step through here.");
+                            }
+                        }
+                    } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
-                        const int nx = playerGridX + dx;
-                        const int ny = playerGridY + dy;
-                        const world::TerrainInfo& terrain = world::terrainFor(grid.terrainCodeAt(nx, ny));
-                        if (terrain.passable) {
-                            playerGridX = nx;
-                            playerGridY = ny;
-                            if (const world::Location* here = world.locationAt(playerGridX, playerGridY)) {
-                                pushLog("Arrived at " + here->name + ".");
+                        if (state.mode == game::Mode::Overworld) {
+                            const int nx = state.x + dx;
+                            const int ny = state.y + dy;
+                            const world::TerrainInfo& terrain = world::terrainFor(grid.terrainCodeAt(nx, ny));
+                            if (terrain.passable) {
+                                state.x = nx;
+                                state.y = ny;
+                                if (const world::Location* here = world.locationAt(state.x, state.y)) {
+                                    pushLog("Arrived at " + here->name + ".");
+                                }
+                            } else {
+                                pushLog("Blocked: cannot walk onto " + std::string(terrain.name) + ".");
                             }
-                        } else {
-                            pushLog("Blocked: cannot walk onto " + std::string(terrain.name) + ".");
+                        } else if (currentZone) {
+                            const int nx = state.zoneX + dx;
+                            const int ny = state.zoneY + dy;
+                            const bool isPoi = currentZone->poiAt(nx, ny) != nullptr;
+                            const world::ZoneTileInfo& tile = world::zoneTileFor(currentZone->tileCodeAt(nx, ny));
+                            if (isPoi || tile.passable) {
+                                state.zoneX = nx;
+                                state.zoneY = ny;
+                                if (const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY)) {
+                                    pushLog("Here: " + poi->name + ".");
+                                }
+                            } else {
+                                pushLog("Blocked: cannot walk onto " + std::string(tile.name) + ".");
+                            }
                         }
                     }
                 }
             }
 
-            const float playerPxX = (static_cast<float>(playerGridX) + 0.5f) * pxPerTileX;
-            const float playerPxY = (static_cast<float>(playerGridY) + 0.5f) * pxPerTileY;
-
-            const sf::Vector2f viewSize = mapView.getSize();
-            const float halfW = viewSize.x / 2.f;
-            const float halfH = viewSize.y / 2.f;
-            const float camX = std::clamp(playerPxX, halfW, std::max(halfW, worldW - halfW));
-            const float camY = std::clamp(playerPxY, halfH, std::max(halfH, worldH - halfH));
-            mapView.setCenter(sf::Vector2f(camX, camY));
-
             window.clear(sf::Color::Black);
-
             window.setView(mapView);
-            window.draw(mapSprite);
-            for (const world::Location& loc : world.allLocations()) {
-                const float px = (static_cast<float>(loc.x) + 0.5f) * pxPerTileX;
-                const float py = (static_cast<float>(loc.y) + 0.5f) * pxPerTileY;
-                locationMarker.setFillColor(loc.isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
-                locationMarker.setPosition(sf::Vector2f(px, py));
-                window.draw(locationMarker);
+
+            if (state.mode == game::Mode::Overworld) {
+                const float playerPxX = (static_cast<float>(state.x) + 0.5f) * pxPerTileX;
+                const float playerPxY = (static_cast<float>(state.y) + 0.5f) * pxPerTileY;
+
+                const sf::Vector2f viewSize = mapView.getSize();
+                const float halfW = viewSize.x / 2.f;
+                const float halfH = viewSize.y / 2.f;
+                const float camX = std::clamp(playerPxX, halfW, std::max(halfW, worldW - halfW));
+                const float camY = std::clamp(playerPxY, halfH, std::max(halfH, worldH - halfH));
+                mapView.setCenter(sf::Vector2f(camX, camY));
+                window.setView(mapView);
+
+                window.draw(mapSprite);
+                for (const world::Location& loc : world.allLocations()) {
+                    const float px = (static_cast<float>(loc.x) + 0.5f) * pxPerTileX;
+                    const float py = (static_cast<float>(loc.y) + 0.5f) * pxPerTileY;
+                    locationMarker.setFillColor(loc.isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
+                    locationMarker.setPosition(sf::Vector2f(px, py));
+                    window.draw(locationMarker);
+                }
+                playerMarker.setPosition(sf::Vector2f(playerPxX, playerPxY));
+                window.draw(playerMarker);
+            } else if (currentZone) {
+                // Whole zone always fits the viewport (see kZoneTilePx) --
+                // centered, not scrolled, unlike the overworld.
+                const float zonePxW = static_cast<float>(currentZone->width()) * kZoneTilePx;
+                const float zonePxH = static_cast<float>(currentZone->height()) * kZoneTilePx;
+                mapView.setCenter(sf::Vector2f(zonePxW / 2.f, zonePxH / 2.f));
+                window.setView(mapView);
+
+                constexpr unsigned kPoiLabelCharSize = 11;
+                for (int zy = 0; zy < currentZone->height(); ++zy) {
+                    for (int zx = 0; zx < currentZone->width(); ++zx) {
+                        zoneTileShape.setFillColor(colorForZoneTile(currentZone->tileCodeAt(zx, zy)));
+                        zoneTileShape.setPosition(
+                            sf::Vector2f(static_cast<float>(zx) * kZoneTilePx, static_cast<float>(zy) * kZoneTilePx));
+                        window.draw(zoneTileShape);
+
+                        const float centerX = (static_cast<float>(zx) + 0.5f) * kZoneTilePx;
+                        const float centerY = (static_cast<float>(zy) + 0.5f) * kZoneTilePx;
+                        const std::string* portalTarget = currentZone->portalAt(zx, zy);
+                        const world::PointOfInterest* poi = currentZone->poiAt(zx, zy);
+                        if (portalTarget) {
+                            portalMarker.setPosition(sf::Vector2f(centerX, centerY));
+                            window.draw(portalMarker);
+                        } else if (poi) {
+                            poiMarker.setPosition(sf::Vector2f(centerX, centerY));
+                            window.draw(poiMarker);
+                        }
+                        if (poi && !poi->name.empty()) {
+                            sf::Text label(font, poi->name, kPoiLabelCharSize);
+                            label.setFillColor(sf::Color(240, 240, 220));
+                            label.setPosition(sf::Vector2f(centerX + kZoneTilePx * 0.4f, centerY - kZoneTilePx * 0.5f));
+                            window.draw(label);
+                        }
+                        if (zx == currentZone->entryX() && zy == currentZone->entryY()) {
+                            entryMarker.setPosition(sf::Vector2f(centerX, centerY));
+                            window.draw(entryMarker);
+                        }
+                    }
+                }
+
+                const float playerPxX = (static_cast<float>(state.zoneX) + 0.5f) * kZoneTilePx;
+                const float playerPxY = (static_cast<float>(state.zoneY) + 0.5f) * kZoneTilePx;
+                playerMarker.setPosition(sf::Vector2f(playerPxX, playerPxY));
+                window.draw(playerMarker);
             }
-            playerMarker.setPosition(sf::Vector2f(playerPxX, playerPxY));
-            window.draw(playerMarker);
 
             window.setView(uiView);
             window.draw(sidebarBg);
@@ -267,6 +425,9 @@ int runPhase1(const std::string& savePath) {
                           std::to_string(state.character.maxHp),
                       sf::Color(220, 90, 90));
             drawLine(formatDayTime(state.hoursElapsed), sf::Color(200, 200, 140));
+            if (state.mode == game::Mode::Zone && currentZone) {
+                drawLine("Indoors -- " + currentZone->name(), sf::Color(150, 200, 230));
+            }
             lineY += lineHeight * 0.5f;
             drawLine("-- Log --", sf::Color(140, 140, 160));
 
