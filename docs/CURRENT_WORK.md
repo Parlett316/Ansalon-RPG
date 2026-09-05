@@ -156,6 +156,20 @@ Playtest backlog below.
 sheet live (playtest backlog below), keep working down the full-migration
 roadmap (9 screens left), or something else.
 
+**Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
+(sibling to `tools/package_release.ps1`, which packages the older console
+target instead). Builds Release `ansalon_sfml_phase1` and stages a folder
+under `dist/` with the exe, `data/`, `References/dragonlancemap2.png`, a
+copy of `save2.txt` as `demo_save.txt` (Regan, level 20 Human Mage --
+read-only, never written back), a `RunDemo.bat` launcher, and a
+`README.txt` (WIP disclaimer, controls, map attribution) -- lets someone
+outside this source tree run the SFML build without a terminal. Verified
+via a launch smoke test of the staged folder in isolation (all catalogs +
+save + map texture loaded, window opened, stayed running); no interactive
+playtest of the packaged copy itself. Zips to
+`dist/AnsalonSFMLDemo-v<N>.zip` (~76MB, dominated by the map PNG);
+`dist/` stays gitignored as before.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
