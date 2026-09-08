@@ -214,9 +214,54 @@ against real `save2.txt` confirming every catalog -- including the new
 talk to anyone. **Not yet interactively confirmed** -- moved to the
 Playtest backlog below.
 
-**Next step:** the user's call, not to be assumed -- confirm dialogue and/or
-the character sheet live (playtest backlog below), keep working down the
-full-migration roadmap (8 screens left), or something else.
+**Free-text "Ask about something else..." shipped this session, same
+`sfml_phase1/main.cpp`.** User picked it off the full-migration roadmap --
+the smallest genuinely new engine capability still open (every other
+roadmap screen is a pure UI-state port; this one needed this codebase's
+first real `sf::Event::TextEntered` handling) and it directly unblocks
+something the dialogue phase left waiting on it: `DialogueSpeech`'s own
+comment said `ASK_LIMIT_LOCKED` "can only ever fire once that free-text
+flow has exhausted a daily question cap" -- restored along with the input
+box itself, not just the typing UI.
+
+`DialogueSpeech`/`speechFromWindow`/`speechFromPoi` regained full parity
+with `game::Speech`/`game::speechFromWindow`/`game::speechFromPoi`
+(`subjects`/`subjectUnknown`/`askLimit*`/`suppressAskHints`/
+`askLimitLocked*`, all previously dropped as unreachable dead code -- see
+those functions' own comments in `sfml_phase1/main.cpp`). `tokenizeAskInput`/
+`matchSubject` are copied verbatim from `GameLoop.cpp`, same idiom as
+`conditionMatches`/`pluralMonsterName` already established. Two new
+`DialogueUiState` values (`AskInput` for typing, `AskResponse` for the
+result -- 1 or 2 queued messages, covering the reached/extended-cap
+follow-up) drive a non-blocking port of `GameLoop::talkTo`'s ask-anything
+block (`GameLoop.cpp:1160-1298`) and its `askLimitLocked` greeting override
+(`GameLoop.cpp:1010-1023`), including the homebrew Intelligence+Wisdom
+hard-cap-extension check, unchanged.
+
+**One real behavior fix discovered during implementation, beyond the
+approved plan's scope:** this build's established rule is "Escape/Q always
+closes the whole window, no per-screen cancel" (true for every other picker
+here) -- but during free-text typing, 'q' is an ordinary letter a player may
+need to type, not a quit key, so closing the app on it would have been a
+real bug, not just a UX inconsistency. Fixed by deferring Q/Escape's
+`window.close()` out of the raw key switch into a guarded check: while the
+ask-input box is open, Q is swallowed (harmless -- the actual character
+still reaches the buffer via `TextEntered`) and Escape cancels the box
+(returns to the topic picker) instead of closing the window. Every other
+screen's Escape/Q behavior is unchanged. Empty-buffer Enter also cancels
+(mirrors `Console::readLine`'s own Esc-returns-empty behavior), so there
+are now two equivalent ways out, matching the console exactly either way.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` confirming every catalog still loads and the
+window opens with no crash/exception -- this session again had no desktop/
+GUI access to actually type a question. **Not yet interactively
+confirmed** -- moved to the Playtest backlog below.
+
+**Next step:** the user's call, not to be assumed -- confirm dialogue,
+the character sheet, and/or ask-input live (playtest backlog below), keep
+working down the full-migration roadmap (7 screens left), or something
+else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -244,11 +289,15 @@ this order:
   spellcasting/item use/backstab/sweep still deferred to a later phase.
 - ~~Character sheet~~ -- done, see above; not yet interactively confirmed
   (Playtest backlog below).
-- ~~Dialogue~~ -- core conversation loop done, see above; free-text ask/
-  quest/boat/recruit choosers still deferred to a later phase; not yet
+- ~~Dialogue~~ -- core conversation loop done, see above; quest/boat/recruit
+  choosers still deferred to a later phase; not yet interactively confirmed
+  (Playtest backlog below).
+- ~~Ask-input (free-text "Ask about something else...")~~ -- done, see
+  above, including the `askLimitLocked` greeting override this unblocked;
+  quest/boat/recruit choosers stay deferred, unaffected by this; not yet
   interactively confirmed (Playtest backlog below).
-- Spellbook, generic picker, ask-input, shop, inventory, full log, world
-  map, journal, help -- 8 more screens, each smaller than zones/combat.
+- Spellbook, generic picker, shop, inventory, full log, world map, journal,
+  help -- 7 more screens, each smaller than zones/combat.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -306,6 +355,24 @@ piling on more unverified content. Full sourcing/detail for each is in its
   for `BOAT`, Haven or Solace for `RECRUIT`). See `sfml_phase1/main.cpp` and
   this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
   this branch isn't merged to `master` yet.
+- **SFML ask-input (free-text "Ask about something else...")** -- press `T`
+  at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
+  he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus
+  `ASK_LIMIT_LOCKED`/`ASK_ANYTHING`, so a single NPC exercises the whole
+  feature. Confirm: the "Ask about something else..." option appears in his
+  topic picker (note `ASK_ANYTHING` means no hint list is shown -- expected,
+  not a bug); typing a real keyword (or an unrelated word, to hit
+  `SUBJECT_UNKNOWN`) gets a real response; Backspace edits the buffer and
+  empty-Enter cancels back to the topic picker; asking 5 questions in one
+  day shows the Int+Wis extension roll (`ASK_LIMIT_EXTENDED` text on a pass)
+  or the reached-limit message (`ASK_LIMIT` text on a fail) and, on a fail,
+  ends the conversation; talking to him again the same day after the limit
+  is reached shows the Aesthetic's `ASK_LIMIT_LOCKED` line instead of
+  Astinus's own greeting. Also worth a quick check against any ordinary
+  zone-native NPC or canon Hero with a plain (unlimited) `SUBJECT` pool, to
+  confirm the common case works without any of Astinus's limit machinery.
+  See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
   (e.g. Goblins), memorize Fireball, cast it at one instance while a second

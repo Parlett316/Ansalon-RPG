@@ -44,6 +44,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <deque>
 #include <iostream>
@@ -130,21 +131,36 @@ std::string describeDamage(const combat::AttackOutcome& outcome) {
     return out.str();
 }
 
-// A talk interaction's content -- trimmed local counterpart to
-// game::Speech (GameLoop.h), which isn't linkable here (GameLoop.cpp is
-// built on render::Console/render::MapRenderer, which this target
-// deliberately excludes -- see this file's own top-of-file comment).
-// Deliberately omits game::Speech's subjects/subjectUnknown/askLimit*/
-// suppressAskHints/askLimitLocked* fields: free-text "ask about
-// something else..." is deferred to a later phase (see docs/CURRENT_WORK.md),
-// and askLimitLocked can only ever fire once that free-text flow has
-// exhausted a daily question cap -- with no such flow here, it can never
-// trigger, so it's dropped rather than carried as dead code.
+// A talk interaction's content -- local counterpart to game::Speech
+// (GameLoop.h), which isn't linkable here (GameLoop.cpp is built on
+// render::Console/render::MapRenderer, which this target deliberately
+// excludes -- see this file's own top-of-file comment). Full parity with
+// game::Speech, including subjects/subjectUnknown/askLimit*/
+// suppressAskHints/askLimitLocked* -- free-text "ask about something
+// else..." (this phase) needs all of them, see docs/CURRENT_WORK.md.
 struct DialogueSpeech {
+    // One SUBJECT (or SUBJECT_ENDS) entry -- see game::Speech::SubjectEntry
+    // (GameLoop.h) for the full matching-semantics doc comment, copied
+    // verbatim in spirit here.
+    struct SubjectEntry {
+        std::vector<std::vector<std::string>> keywords;
+        std::string text;
+        bool endsConversation = false;
+    };
+
     std::string greeting;                                          // plain SAY/TALK
     std::vector<std::pair<std::string, std::string>> conditional;  // SAY_IF
     std::string again;                                             // SAY_AGAIN/TALK_AGAIN
     std::vector<std::pair<std::string, std::string>> topics;       // TOPIC
+    std::vector<SubjectEntry> subjects;                            // SUBJECT (timeline or zone)
+    std::string subjectUnknown;    // SUBJECT_UNKNOWN override; empty means fall back to a generic line
+    int askLimit = 0;              // ASK_LIMIT -- zone-only, 0 means unlimited
+    std::string askLimitReachedText;
+    int askLimitHardCap = 0;       // ASK_LIMIT's Int+Wis-check extension cap -- zone-only
+    std::string askLimitExtendedText;
+    bool suppressAskHints = false; // zone-only
+    std::string askLimitLockedSpeaker;
+    std::string askLimitLockedText;
 };
 
 // One talkable candidate at the player's current tile -- trimmed local
@@ -209,28 +225,110 @@ bool conditionMatches(const std::string& condition, const character::Character& 
     return false;
 }
 
-// Adapts a timeline::PresenceWindow into DialogueSpeech -- trimmed local
-// counterpart to game::speechFromWindow (GameLoop.cpp), dropping the
-// subjects/subjectUnknown fields per DialogueSpeech's own comment above.
-DialogueSpeech speechFromWindow(const timeline::PresenceWindow& window) {
+// Adapts a timeline::PresenceWindow into DialogueSpeech -- local
+// counterpart to game::speechFromWindow (GameLoop.cpp:110-128).
+// subjects/subjectUnknown come from Timeline::subjectsFor/
+// subjectUnknownFor (Milestone 72) rather than reading `window` directly,
+// so a character's day-gated subject pool layers in underneath that
+// window's own SUBJECT entries. askLimit*/suppressAskHints/
+// askLimitLocked* stay default -- always false/empty for a timeline
+// window, same as console.
+DialogueSpeech speechFromWindow(const timeline::Timeline& timeline, const timeline::CanonCharacter& character,
+                                 const timeline::PresenceWindow& window, int day) {
     DialogueSpeech speech;
     speech.greeting = window.dialogue;
     speech.conditional = window.conditionalDialogue;
     speech.again = window.dialogueAgain;
     speech.topics = window.topics;
+    for (const auto& subject : timeline.subjectsFor(character, window, day)) {
+        std::vector<std::vector<std::string>> groups;
+        for (const std::string& keyword : subject.keywords) groups.push_back({keyword});
+        speech.subjects.push_back(DialogueSpeech::SubjectEntry{std::move(groups), subject.text, false});
+    }
+    speech.subjectUnknown = timeline.subjectUnknownFor(character, window);
     return speech;
 }
 
 // Adapts a world::PointOfInterest into DialogueSpeech -- the zone-native
-// counterpart to speechFromWindow above, trimmed local counterpart to
-// game::speechFromPoi (GameLoop.cpp).
-DialogueSpeech speechFromPoi(const world::PointOfInterest& poi) {
+// counterpart to speechFromWindow above, local counterpart to
+// game::speechFromPoi (GameLoop.cpp:138-157). `day` filters poi.subjects
+// down to entries whose SUBJECT_WHEN day range (or the implicit
+// always-available 0/-1 range plain SUBJECT/SUBJECT_ENDS carry) actually
+// contains it.
+DialogueSpeech speechFromPoi(const world::PointOfInterest& poi, int day) {
     DialogueSpeech speech;
     speech.greeting = poi.dialogue;
     speech.conditional = poi.conditionalDialogue;
     speech.again = poi.dialogueAgain;
     speech.topics = poi.topics;
+    for (const auto& [keywords, text, endsConversation, dayStart, dayEnd] : poi.subjects) {
+        if (day < dayStart || (dayEnd != -1 && day > dayEnd)) continue;
+        speech.subjects.push_back(DialogueSpeech::SubjectEntry{keywords, text, endsConversation});
+    }
+    speech.subjectUnknown = poi.subjectUnknown;
+    speech.askLimit = poi.askLimit;
+    speech.askLimitReachedText = poi.askLimitReachedText;
+    speech.askLimitHardCap = poi.askLimitHardCap;
+    speech.askLimitExtendedText = poi.askLimitExtendedText;
+    speech.suppressAskHints = poi.suppressAskHints;
+    speech.askLimitLockedSpeaker = poi.askLimitLockedSpeaker;
+    speech.askLimitLockedText = poi.askLimitLockedText;
     return speech;
+}
+
+// Lowercases `raw`, strips anything that isn't a letter/digit/hyphen/
+// apostrophe, and splits on the remaining whitespace -- the free-typed
+// "ask about..." input's tokenization. Copied verbatim from
+// game::tokenizeAskInput (GameLoop.cpp:265-280), same "not linkable here"
+// reasoning as conditionMatches above.
+std::vector<std::string> tokenizeAskInput(const std::string& raw) {
+    std::vector<std::string> tokens;
+    std::string current;
+    for (char c : raw) {
+        char lower = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        bool isWordChar = std::isalnum(static_cast<unsigned char>(lower)) != 0 || lower == '-' || lower == '\'';
+        if (isWordChar) {
+            current.push_back(lower);
+        } else if (!current.empty()) {
+            tokens.push_back(current);
+            current.clear();
+        }
+    }
+    if (!current.empty()) tokens.push_back(current);
+    return tokens;
+}
+
+// The first SubjectEntry (authored order, "first match wins") any of whose
+// keyword groups is fully satisfied by words tokenized from `raw` -- every
+// word in the group present somewhere among the tokens, not necessarily
+// adjacent or in order -- or nullptr if none match. Copied verbatim from
+// game::matchSubject (GameLoop.cpp:282-315).
+const DialogueSpeech::SubjectEntry* matchSubject(const std::vector<DialogueSpeech::SubjectEntry>& subjects,
+                                                   const std::string& raw) {
+    std::vector<std::string> tokens = tokenizeAskInput(raw);
+    for (const auto& subject : subjects) {
+        for (const std::vector<std::string>& group : subject.keywords) {
+            bool allWordsPresent = true;
+            for (const std::string& word : group) {
+                std::string lowerWord = word;
+                std::transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(),
+                               [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                bool wordPresent = false;
+                for (const std::string& token : tokens) {
+                    if (token == lowerWord) {
+                        wordPresent = true;
+                        break;
+                    }
+                }
+                if (!wordPresent) {
+                    allWordsPresent = false;
+                    break;
+                }
+            }
+            if (allWordsPresent) return &subject;
+        }
+    }
+    return nullptr;
 }
 
 std::string formatDayTime(long long hoursElapsed) {
@@ -472,12 +570,15 @@ struct CombatSession {
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
-// "core conversation" slice (see docs/CURRENT_WORK.md's scope writeup for
-// this phase; free-text ask/quest/boat/recruit choosers are deferred, each
-// getting a single placeholder log line instead). PickingCandidate mirrors
-// GameLoop::pickAndTalk's "more than one candidate here" picker; Greeting/
-// TopicText/TopicPicker mirror talkTo's own greeting-then-topic-menu flow.
-enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker };
+// conversation loop (see docs/CURRENT_WORK.md's scope writeup; quest/boat/
+// recruit choosers stay deferred, each getting a single placeholder log
+// line instead). PickingCandidate mirrors GameLoop::pickAndTalk's "more
+// than one candidate here" picker; Greeting/TopicText/TopicPicker mirror
+// talkTo's own greeting-then-topic-menu flow. AskInput/AskResponse are the
+// free-text "ask about something else..." flow -- AskInput is the typing
+// box, AskResponse shows the resulting response (and, when today's ask
+// limit is reached or extended, a queued 2nd message).
+enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker, AskInput, AskResponse };
 
 // All state for one conversation, local to this file -- same "not part of
 // game::GameState" reasoning as CombatSession above (a conversation is
@@ -489,8 +590,15 @@ struct DialogueSession {
     DialogueUiState uiState = DialogueUiState::PickingCandidate;
     DialogueCandidate current;             // the candidate actually being talked to
     std::string bodyText;                  // text currently on screen
-    std::vector<std::string> topicLabels;  // topics + "Nothing, thanks"
+    std::string displaySpeaker;            // usually current.name; overridden by askLimitLocked's speaker
+    std::vector<std::string> topicLabels;  // topics [+ "Ask about..."] + "Nothing, thanks"
     int topicSelected = 0;
+    int askAnythingIndex = -1;             // index into topicLabels, or -1 if not offered this visit
+    std::string askInputBuffer;            // free-typed text, built up from TextEntered events
+    std::vector<std::string> askInputHints;
+    std::vector<std::string> askMessages;  // 1 or 2 queued response lines to show in AskResponse
+    int askMessageIndex = 0;
+    bool askQueueEndsConversation = false; // true for SUBJECT_ENDS or a reached (non-extended) ask limit
 };
 
 int runPhase1(const std::string& savePath) {
@@ -650,7 +758,8 @@ int runPhase1(const std::string& savePath) {
                     DialogueCandidate candidate;
                     candidate.id = presence.character->id;
                     candidate.name = presence.character->name;
-                    candidate.speech = speechFromWindow(*presence.window);
+                    candidate.speech =
+                        speechFromWindow(timeline, *presence.character, *presence.window, static_cast<int>(dayNow));
                     candidates.push_back(std::move(candidate));
                 }
             }
@@ -663,7 +772,7 @@ int runPhase1(const std::string& savePath) {
                 DialogueCandidate candidate;
                 candidate.id = state.currentZoneId + ":" + std::string(1, poi->code);
                 candidate.name = poi->name;
-                candidate.speech = speechFromPoi(*poi);
+                candidate.speech = speechFromPoi(*poi, static_cast<int>(dayNow));
                 candidate.grantsItemId = poi->grantsItemId;
                 candidate.grantsItemName = poi->grantsItemName;
                 candidate.hasQuest = currentZone->questAt(state.zoneX, state.zoneY) != nullptr;
@@ -687,7 +796,8 @@ int runPhase1(const std::string& savePath) {
                     DialogueCandidate candidate;
                     candidate.id = presence.character->id;
                     candidate.name = presence.character->name;
-                    candidate.speech = speechFromWindow(*presence.window);
+                    candidate.speech =
+                        speechFromWindow(timeline, *presence.character, *presence.window, static_cast<int>(dayNow));
                     candidates.push_back(std::move(candidate));
                 }
             }
@@ -707,21 +817,60 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // Whether today's free-text ask limit is used up for `speech` -- same
+    // formula as GameLoop.cpp:990-995. A pure query over state.character +
+    // speech, safe to call every frame from multiple places (rebuilding the
+    // topic picker, the askLimitLocked greeting override).
+    auto askLimitExhaustedFor = [&](const DialogueSpeech& speech) -> bool {
+        const long long today = state.hoursElapsed / 24;
+        const bool sameDay = state.character.lastAstinusAskDay == today;
+        const int effectiveLimitToday =
+            (sameDay && state.character.astinusDailyLimit > 0) ? state.character.astinusDailyLimit : speech.askLimit;
+        return speech.askLimit > 0 && sameDay && state.character.astinusQuestionsToday >= effectiveLimitToday;
+    };
+
+    // Builds the "ask <name> about..." picker's labels -- topics, then
+    // "Ask about something else..." (only when this candidate still has
+    // SUBJECT content left to ask about today), then "Nothing, thanks".
+    // Mirrors GameLoop.cpp:1160-1176. Called both when a conversation
+    // starts and whenever AskResponse returns to TopicPicker, since a
+    // just-answered question may have changed askLimitExhaustedFor's
+    // result.
+    auto rebuildTopicLabels = [&](const DialogueCandidate& candidate) {
+        dialogueSession.topicLabels.clear();
+        for (const auto& [label, topicText] : candidate.speech.topics) dialogueSession.topicLabels.push_back(label);
+        const bool canAskAnything = !candidate.speech.subjects.empty() && !askLimitExhaustedFor(candidate.speech);
+        if (canAskAnything) {
+            dialogueSession.askAnythingIndex = static_cast<int>(dialogueSession.topicLabels.size());
+            dialogueSession.topicLabels.push_back("Ask about something else...");
+        } else {
+            dialogueSession.askAnythingIndex = -1;
+        }
+        dialogueSession.topicLabels.push_back("Nothing, thanks");
+        dialogueSession.topicSelected = 0;
+    };
+
     // Mirrors GameLoop::talkTo's greeting-resolution precedence exactly
-    // (GameLoop.cpp:1002-1046), minus the askLimitLocked branch (see
-    // DialogueSpeech's own comment for why) and minus boat/quest/recruit's
-    // real handling (a single placeholder log line each instead).
+    // (GameLoop.cpp:1002-1046), including the askLimitLocked override, minus
+    // boat/quest/recruit's real handling (a single placeholder log line
+    // each instead).
     auto dialogueStartTalk = [&](const DialogueCandidate& candidate) {
         dialogueSession.current = candidate;
+        dialogueSession.displaySpeaker = candidate.name;
         const std::string afterId = candidate.id + ":after";
         const bool showAfter = !candidate.dialogueAfter.empty() && state.metCharacters.count(afterId) == 0;
         const bool alreadyMet = state.metCharacters.count(candidate.id) > 0;
+        const bool askLimitLocked =
+            askLimitExhaustedFor(candidate.speech) && !candidate.speech.askLimitLockedText.empty();
         std::string text;
         if (showAfter) {
             text = candidate.dialogueAfter;
             state.metCharacters.insert(afterId);
         } else if (!candidate.dialogueBefore.empty()) {
             text = candidate.dialogueBefore;
+        } else if (askLimitLocked) {
+            text = candidate.speech.askLimitLockedText;
+            dialogueSession.displaySpeaker = candidate.speech.askLimitLockedSpeaker;
         } else if (alreadyMet) {
             text = !candidate.speech.again.empty()
                        ? candidate.speech.again
@@ -749,10 +898,7 @@ int runPhase1(const std::string& savePath) {
         if (candidate.hasBoat) pushLog("(Boat voyages aren't wired up in this build yet.)");
         if (candidate.hasRecruit) pushLog("(Recruiting companions isn't wired up in this build yet.)");
 
-        dialogueSession.topicLabels.clear();
-        for (const auto& [label, topicText] : candidate.speech.topics) dialogueSession.topicLabels.push_back(label);
-        dialogueSession.topicLabels.push_back("Nothing, thanks");
-        dialogueSession.topicSelected = 0;
+        rebuildTopicLabels(candidate);
         dialogueSession.uiState = DialogueUiState::Greeting;
     };
 
@@ -781,12 +927,36 @@ int runPhase1(const std::string& savePath) {
         dialogueStartTalk(dialogueSession.candidates[static_cast<size_t>(dialogueSession.candidateSelected)]);
     };
 
+    // "Ask about something else..." selected in TopicPicker -- mirrors
+    // GameLoop.cpp:1187-1214's hint-building: skip SUBJECT_ENDS entries
+    // (meant to be discovered, not nudged toward) and skip the whole list
+    // when suppressAskHints is set (ASK_ANYTHING POIs, see
+    // docs/ZONE_NOTES.md's "Ask about anything").
+    auto dialogueBeginAsk = [&]() {
+        dialogueSession.askInputHints.clear();
+        if (!dialogueSession.current.speech.suppressAskHints) {
+            for (const auto& subject : dialogueSession.current.speech.subjects) {
+                if (subject.endsConversation) continue;
+                std::string hint = subject.keywords.front().front();
+                if (!hint.empty()) hint[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(hint[0])));
+                dialogueSession.askInputHints.push_back(hint);
+            }
+        }
+        dialogueSession.askInputBuffer.clear();
+        dialogueSession.uiState = DialogueUiState::AskInput;
+    };
+
     // Enter on the "ask <name> about..." picker -- "Nothing, thanks" is
-    // always the last label (see dialogueStartTalk above).
+    // always the last label; askAnythingIndex (see rebuildTopicLabels) is
+    // only valid when >= 0.
     auto dialogueConfirmTopic = [&]() {
         const int nothingThanksIndex = static_cast<int>(dialogueSession.topicLabels.size()) - 1;
         if (dialogueSession.topicSelected == nothingThanksIndex) {
             dialogueEnd();
+            return;
+        }
+        if (dialogueSession.topicSelected == dialogueSession.askAnythingIndex) {
+            dialogueBeginAsk();
             return;
         }
         dialogueSession.bodyText =
@@ -794,19 +964,109 @@ int runPhase1(const std::string& savePath) {
         dialogueSession.uiState = DialogueUiState::TopicText;
     };
 
+    // Enter on the free-text ask-input box -- mirrors GameLoop.cpp:1215-
+    // 1296. Empty input silently cancels back to the topic picker with no
+    // bookkeeping, the same net effect Console::readLine's Esc produces in
+    // the console build (both return "", and the caller does nothing with
+    // an empty result) -- this build has no per-screen cancel key (Escape
+    // always closes the whole window, see the event loop below), so this
+    // is the only cancel path, and it's a faithful one.
+    auto dialogueSubmitAsk = [&]() {
+        if (dialogueSession.askInputBuffer.empty()) {
+            dialogueSession.uiState = DialogueUiState::TopicPicker;
+            return;
+        }
+        const DialogueSpeech& speech = dialogueSession.current.speech;
+        const DialogueSpeech::SubjectEntry* match = matchSubject(speech.subjects, dialogueSession.askInputBuffer);
+        std::string response;
+        bool endsConversation = false;
+        if (match != nullptr) {
+            response = match->text;
+            endsConversation = match->endsConversation;
+        } else if (!speech.subjectUnknown.empty()) {
+            response = speech.subjectUnknown;
+        } else {
+            response =
+                dialogueSession.current.name + " gives you a blank look. \"I'm not sure what you mean by that.\"";
+        }
+        dialogueSession.askMessages.clear();
+        dialogueSession.askMessages.push_back(response);
+        dialogueSession.askQueueEndsConversation = false;
+
+        const long long today = state.hoursElapsed / 24;
+        if (endsConversation) {
+            // SUBJECT_ENDS exhausts today's audience entirely (same as
+            // running out the ordinary question count) rather than just
+            // ending this one visit.
+            if (speech.askLimit > 0) {
+                state.character.lastAstinusAskDay = today;
+                if (state.character.astinusDailyLimit <= 0) state.character.astinusDailyLimit = speech.askLimit;
+                state.character.astinusQuestionsToday = state.character.astinusDailyLimit;
+            }
+            dialogueSession.askQueueEndsConversation = true;
+        } else if (speech.askLimit > 0) {
+            if (state.character.lastAstinusAskDay != today) {
+                state.character.lastAstinusAskDay = today;
+                state.character.astinusQuestionsToday = 0;
+                state.character.astinusDailyLimit = speech.askLimit;
+            } else if (state.character.astinusDailyLimit <= 0) {
+                state.character.astinusDailyLimit = speech.askLimit;
+            }
+            ++state.character.astinusQuestionsToday;
+            if (state.character.astinusQuestionsToday >= state.character.astinusDailyLimit) {
+                bool extended = false;
+                if (state.character.astinusDailyLimit < speech.askLimitHardCap) {
+                    // Homebrew Int+Wis proficiency-check combination, not a
+                    // printed 2e mechanic -- see docs/ZONE_NOTES.md's "Ask
+                    // about anything" and GameLoop.cpp:1268-1287.
+                    const int intRoll = character::roll(1, 20);
+                    const int wisRoll = character::roll(1, 20);
+                    const bool passedInt = intRoll <= state.character.scores.intelligence && intRoll != 20;
+                    const bool passedWis = wisRoll <= state.character.scores.wisdom && wisRoll != 20;
+                    if (passedInt && passedWis) {
+                        state.character.astinusDailyLimit = speech.askLimitHardCap;
+                        extended = true;
+                        dialogueSession.askMessages.push_back(speech.askLimitExtendedText);
+                    }
+                }
+                if (!extended) {
+                    dialogueSession.askMessages.push_back(speech.askLimitReachedText);
+                    dialogueSession.askQueueEndsConversation = true;
+                }
+            }
+        }
+        dialogueSession.askMessageIndex = 0;
+        dialogueSession.bodyText = dialogueSession.askMessages.front();
+        dialogueSession.uiState = DialogueUiState::AskResponse;
+    };
+
     // Enter (or any key, per the console's "press any key to continue") on
-    // a plain dialogue box -- Greeting goes to the topic menu if there is
-    // one, else ends the conversation; TopicText always returns to the
-    // topic menu (mirroring talkTo's own topic loop).
+    // a plain dialogue box. Greeting goes to the topic menu if there's
+    // anything to pick (a topic or the ask-anything option), else ends the
+    // conversation; TopicText always returns to the topic menu (mirroring
+    // talkTo's own topic loop); AskResponse advances to the next queued
+    // message if there is one, else ends the conversation or returns to a
+    // freshly-rebuilt topic menu, per dialogueSubmitAsk's bookkeeping.
     auto dialogueContinue = [&]() {
         if (dialogueSession.uiState == DialogueUiState::Greeting) {
-            if (!dialogueSession.current.speech.topics.empty()) {
+            if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
                 dialogueSession.uiState = DialogueUiState::TopicPicker;
             } else {
                 dialogueEnd();
             }
         } else if (dialogueSession.uiState == DialogueUiState::TopicText) {
             dialogueSession.uiState = DialogueUiState::TopicPicker;
+        } else if (dialogueSession.uiState == DialogueUiState::AskResponse) {
+            ++dialogueSession.askMessageIndex;
+            if (dialogueSession.askMessageIndex < static_cast<int>(dialogueSession.askMessages.size())) {
+                dialogueSession.bodyText =
+                    dialogueSession.askMessages[static_cast<size_t>(dialogueSession.askMessageIndex)];
+            } else if (dialogueSession.askQueueEndsConversation) {
+                dialogueEnd();
+            } else {
+                rebuildTopicLabels(dialogueSession.current);
+                dialogueSession.uiState = DialogueUiState::TopicPicker;
+            }
         }
     };
 
@@ -1583,7 +1843,16 @@ int runPhase1(const std::string& savePath) {
         switch (dialogueSession.uiState) {
             case DialogueUiState::Greeting:
             case DialogueUiState::TopicText:
-                drawLine(dialogueSession.current.name, sf::Color::White, kSheetTitleCharSize);
+            case DialogueUiState::AskResponse: {
+                // Only Greeting can differ from the NPC's own name (the
+                // askLimitLocked override, see dialogueStartTalk) --
+                // TopicText/AskResponse always speak as the NPC itself,
+                // matching GameLoop::talkTo's own `name` vs `speakerName`
+                // split.
+                const std::string& speaker = dialogueSession.uiState == DialogueUiState::Greeting
+                                                  ? dialogueSession.displaySpeaker
+                                                  : dialogueSession.current.name;
+                drawLine(speaker, sf::Color::White, kSheetTitleCharSize);
                 y += 10.f;
                 for (const std::string& wrapped : wrapToWidth(dialogueSession.bodyText, maxChars)) {
                     drawLine(wrapped, kSheetBodyColor, kSheetBodyCharSize);
@@ -1591,6 +1860,7 @@ int runPhase1(const std::string& savePath) {
                 y += 10.f;
                 drawLine("(press Enter to continue)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
                 break;
+            }
             case DialogueUiState::PickingCandidate:
                 drawLine("Talk to whom?", kSheetSectionColor, kSheetTitleCharSize);
                 y += 10.f;
@@ -1614,6 +1884,30 @@ int runPhase1(const std::string& savePath) {
                 y += 10.f;
                 drawLine("(up/down = select, Enter = ask)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
                 break;
+            case DialogueUiState::AskInput:
+                drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
+                         kSheetTitleCharSize);
+                y += 10.f;
+                if (!dialogueSession.askInputHints.empty()) {
+                    std::string hintLine = "You could ask about: ";
+                    for (std::size_t i = 0; i < dialogueSession.askInputHints.size(); ++i) {
+                        if (i > 0) hintLine += ", ";
+                        hintLine += dialogueSession.askInputHints[i];
+                    }
+                    for (const std::string& wrapped : wrapToWidth(hintLine, maxChars)) {
+                        drawLine(wrapped, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                    }
+                    y += 10.f;
+                }
+                // Static trailing cursor glyph, no blink -- this project has
+                // no animation/timing primitive yet (see
+                // docs/CURRENT_WORK.md's "Parked" section) and this box
+                // doesn't need one.
+                drawLine("> " + dialogueSession.askInputBuffer + "_", sf::Color::White, kSheetBodyCharSize);
+                y += 10.f;
+                drawLine("(type a subject, Enter to ask -- empty Enter cancels)", sf::Color(150, 150, 160),
+                         kSheetHeaderCharSize);
+                break;
         }
     };
 
@@ -1631,6 +1925,8 @@ int runPhase1(const std::string& savePath) {
                     std::string placeholder;
                     bool handleEnter = false;
                     bool wantsTalk = false;
+                    bool wantsQuit = false;
+                    bool wantsBackspace = false;
                     switch (key) {
                         case sf::Keyboard::Key::W:
                         case sf::Keyboard::Key::Up: dy = -1; break;
@@ -1640,8 +1936,13 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Left: dx = -1; break;
                         case sf::Keyboard::Key::D:
                         case sf::Keyboard::Key::Right: dx = 1; break;
+                        // Deferred, not closed inline here -- while the ask-input
+                        // text box is open, 'q' is an ordinary letter a player may
+                        // need to type (see the ask-input guard below), not a quit
+                        // key, and Escape cancels that box instead of the window.
                         case sf::Keyboard::Key::Q:
-                        case sf::Keyboard::Key::Escape: window.close(); break;
+                        case sf::Keyboard::Key::Escape: wantsQuit = true; break;
+                        case sf::Keyboard::Key::Backspace: wantsBackspace = true; break;
                         case sf::Keyboard::Key::L: placeholder = "Look: not yet implemented in this build."; break;
                         case sf::Keyboard::Key::T: wantsTalk = true; break;
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
@@ -1665,7 +1966,21 @@ int runPhase1(const std::string& savePath) {
                         default: break;
                     }
 
-                    if (sheetOpen) {
+                    // Ask-input is the one screen where an ordinary letter
+                    // (e.g. 'q', part of a typed question) must not quit the
+                    // game, and where Escape means "cancel this box" rather
+                    // than "close the window" -- see the switch's own comment
+                    // on Q/Escape above. Every other screen keeps the
+                    // established "Escape/Q always closes the window, no
+                    // per-screen cancel key" rule unchanged (PickingCandidate/
+                    // PickingTarget/TopicPicker still have none).
+                    const bool askInputActive =
+                        dialogueSession.active && dialogueSession.uiState == DialogueUiState::AskInput;
+                    if (askInputActive && key == sf::Keyboard::Key::Escape) {
+                        dialogueSession.uiState = DialogueUiState::TopicPicker;
+                    } else if (wantsQuit && !askInputActive) {
+                        window.close();
+                    } else if (sheetOpen) {
                         // Dismiss on any key -- see sheetOpen's own comment
                         // above. Deliberately swallows dx/dy/handleEnter too,
                         // so the same keypress that closes the sheet never
@@ -1720,14 +2035,12 @@ int runPhase1(const std::string& savePath) {
                         // DialogueSession/DialogueUiState's doc comments
                         // above. Same "reuse dx/dy/handleEnter the switch
                         // above already computed" shape as combat's own
-                        // dispatch. Deliberately no cancel key: Q/Escape
-                        // already close the whole window unconditionally
-                        // (see the switch above), so -- same as combat's
-                        // own PickingTarget -- there's no room to also mean
-                        // "back out of this menu" here; the always-present
-                        // "Nothing, thanks" entry is TopicPicker's only way
-                        // out, and PickingCandidate has no cancel at all,
-                        // matching PickingTarget's precedent.
+                        // dispatch. No cancel key on PickingCandidate/
+                        // TopicPicker (matching combat's own PickingTarget
+                        // precedent -- the always-present "Nothing, thanks"
+                        // entry is TopicPicker's only way out); AskInput is
+                        // the one exception, handled by the Escape guard
+                        // above and by Backspace/empty-Enter here.
                         switch (dialogueSession.uiState) {
                             case DialogueUiState::PickingCandidate: {
                                 const int candidateCount = static_cast<int>(dialogueSession.candidates.size());
@@ -1744,6 +2057,7 @@ int runPhase1(const std::string& savePath) {
                             }
                             case DialogueUiState::Greeting:
                             case DialogueUiState::TopicText:
+                            case DialogueUiState::AskResponse:
                                 if (handleEnter) dialogueContinue();
                                 break;
                             case DialogueUiState::TopicPicker: {
@@ -1758,6 +2072,15 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                             }
+                            case DialogueUiState::AskInput:
+                                if (wantsBackspace) {
+                                    if (!dialogueSession.askInputBuffer.empty()) {
+                                        dialogueSession.askInputBuffer.pop_back();
+                                    }
+                                } else if (handleEnter) {
+                                    dialogueSubmitAsk();
+                                }
+                                break;
                         }
                     } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
@@ -1865,6 +2188,19 @@ int runPhase1(const std::string& savePath) {
                                 pushLog("Blocked: cannot walk onto " + std::string(tile.name) + ".");
                             }
                         }
+                    }
+                } else if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
+                    // The only source of real typed characters in this build
+                    // (KeyPressed carries a physical key code, not text) --
+                    // only acts while the ask-input box is open. True 7-bit
+                    // ASCII only (CLAUDE.md), same printable range and length
+                    // cap (60) as Console::readLine; Enter/Escape/Backspace
+                    // all report codepoints below 0x20 here and are already
+                    // handled via KeyPressed, so they're naturally excluded.
+                    if (dialogueSession.active && dialogueSession.uiState == DialogueUiState::AskInput &&
+                        textEntered->unicode >= 0x20 && textEntered->unicode < 0x7F &&
+                        dialogueSession.askInputBuffer.size() < 60) {
+                        dialogueSession.askInputBuffer.push_back(static_cast<char>(textEntered->unicode));
                     }
                 }
             }
