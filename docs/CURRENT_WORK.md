@@ -258,10 +258,48 @@ window opens with no crash/exception -- this session again had no desktop/
 GUI access to actually type a question. **Not yet interactively
 confirmed** -- moved to the Playtest backlog below.
 
+**Generic picker overlay shipped this session, same `sfml_phase1/main.cpp`.**
+User picked it off the full-migration roadmap. The console build's
+`render::MapRenderer::drawPickerFrame` (`MapRenderer.cpp:1149`) is its
+single most-reused screen primitive -- a "title + cursor list + footer"
+frame shared by Talk-to-whom, topic menus, Look-at-whom, quest offer/
+accept, boat departure, companion recruit, and spell-memorization
+keep-loadout (see `GameLoop.cpp`'s own callers). The SFML port had no
+equivalent shared component: dialogue's `PickingCandidate`/`TopicPicker`
+states each hand-rolled their own near-identical title/cursor-list/
+footer rendering block inside `drawDialogueOverlay`, real duplication
+between just those two cases alone.
+
+Added a new `drawPickerOverlay(title, items, selectedIndex, footer)`
+lambda alongside the other overlay draws (`main.cpp`, right before
+`drawDialogueOverlay`), mirroring `drawPickerFrame`'s signature and
+reusing the character sheet's own `kSheet*` color/size constants for
+visual consistency. `PickingCandidate`/`TopicPicker` now both delegate
+to it instead of rendering their own list -- pure extraction, no new
+visual or input behavior. **Deliberately not used by combat's
+`PickingTarget`**: that picker's cursor is drawn embedded in the roster
+panel, a structurally different shape from this full-window overlay: left
+as-is, with a comment explaining why. Shop, Inventory, and Spellbook (the
+roadmap's remaining picker-shaped screens) weren't built this session --
+they can now call `drawPickerOverlay` directly instead of each
+duplicating the loop a third, fourth, and fifth time.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` (run from the repo root -- `References/` isn't
+copied next to the exe the way `data/` is, so the map texture only loads
+when the CWD is the repo root, same as this project's documented
+`ansalon_rpg.exe` invocation convention) confirming every catalog and the
+map texture still load and the window opens with no crash/exception --
+this session again had no desktop/GUI access to see the picker render.
+Since the render path for dialogue's two pickers changed even though
+behavior shouldn't have, that pair is flagged for a re-check alongside
+dialogue's own still-open playtest item below, not treated as newly at
+risk.
+
 **Next step:** the user's call, not to be assumed -- confirm dialogue,
 the character sheet, and/or ask-input live (playtest backlog below), keep
-working down the full-migration roadmap (7 screens left), or something
-else.
+working down the full-migration roadmap (7 screens left: spellbook, shop,
+inventory, full log, world map, journal, help), or something else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -296,8 +334,12 @@ this order:
   above, including the `askLimitLocked` greeting override this unblocked;
   quest/boat/recruit choosers stay deferred, unaffected by this; not yet
   interactively confirmed (Playtest backlog below).
-- Spellbook, generic picker, shop, inventory, full log, world map, journal,
-  help -- 7 more screens, each smaller than zones/combat.
+- ~~Generic picker overlay~~ -- done, see above (`drawPickerOverlay`,
+  used by dialogue's `PickingCandidate`/`TopicPicker`); not a screen of
+  its own, but unlocks Shop/Inventory/Spellbook below to reuse it instead
+  of each re-deriving the picker loop.
+- Spellbook, shop, inventory, full log, world map, journal, help -- 7
+  more screens, each smaller than zones/combat.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -352,9 +394,13 @@ piling on more unverified content. Full sourcing/detail for each is in its
   confirm a multi-candidate tile picks correctly (up/down, Enter); confirm
   the quest/boat/recruit placeholder log lines appear at a POI marked with
   each (e.g. Kalaman's Curiosities Cart for `QUEST`, Crossing/Port O'Call
-  for `BOAT`, Haven or Solace for `RECRUIT`). See `sfml_phase1/main.cpp` and
-  this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
-  this branch isn't merged to `master` yet.
+  for `BOAT`, Haven or Solace for `RECRUIT`). Also covers the generic
+  picker overlay below -- `PickingCandidate`/`TopicPicker` now render via
+  `drawPickerOverlay`, a render-path change with no intended visual
+  difference, so confirming these two still look right (title, cursor
+  list, footer) doubles as that item's confirmation too. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **SFML ask-input (free-text "Ask about something else...")** -- press `T`
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus

@@ -1817,12 +1817,53 @@ int runPhase1(const std::string& savePath) {
         window.draw(footer);
     };
 
+    // Generic picker overlay -- pixel-space equivalent of
+    // render::MapRenderer::drawPickerFrame (MapRenderer.cpp:1149), the
+    // console build's single most-reused screen primitive (Talk-to-whom,
+    // topic menus, Look-at-whom, quest offer/accept, boat departure,
+    // companion recruit, spell-memorization keep-loadout -- see
+    // GameLoop.cpp's own callers). Extracted here because dialogue's
+    // PickingCandidate/TopicPicker cases below were the first two real
+    // call sites and already duplicated this exact title/cursor-list/
+    // footer shape; future picker-shaped screens (shop, inventory,
+    // spellbook) can call this directly instead of re-deriving it again.
+    // Deliberately NOT used by combat's PickingTarget -- that picker's
+    // cursor is drawn embedded in the roster panel, a structurally
+    // different visual shape from this full-window overlay.
+    auto drawPickerOverlay = [&](const std::string& title, const std::vector<std::string>& items,
+                                  int selectedIndex, const std::string& footer) {
+        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        bg.setFillColor(sf::Color(18, 18, 24));
+        window.draw(bg);
+
+        float y = 40.f;
+        auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
+            sf::Text sfText(font, text, size);
+            sfText.setFillColor(color);
+            sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
+            window.draw(sfText);
+            y += static_cast<float>(size) + 10.f;
+        };
+
+        drawLine(title, kSheetSectionColor, kSheetTitleCharSize);
+        y += 10.f;
+        for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+            const bool isSelected = i == selectedIndex;
+            drawLine((isSelected ? "> " : "  ") + items[static_cast<size_t>(i)],
+                      isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
+        }
+        y += 10.f;
+        drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+    };
+
     // Dialogue -- a full-window overlay, same compositing approach as
     // drawCharacterSheetOverlay above (drawn as a final layer on top of
     // the map/sidebar, gated on dialogueSession.active). Pixel-space
-    // equivalent of render::MapRenderer::drawDialogueFrame/drawPickerFrame,
-    // reusing the character sheet's own color/size constants above for
-    // visual consistency across overlays.
+    // equivalent of render::MapRenderer::drawDialogueFrame, reusing the
+    // character sheet's own color/size constants above for visual
+    // consistency across overlays. PickingCandidate/TopicPicker below
+    // delegate to drawPickerOverlay above instead of rendering their own
+    // list.
     auto drawDialogueOverlay = [&]() {
         sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
         bg.setFillColor(sf::Color(18, 18, 24));
@@ -1861,28 +1902,17 @@ int runPhase1(const std::string& savePath) {
                 drawLine("(press Enter to continue)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
                 break;
             }
-            case DialogueUiState::PickingCandidate:
-                drawLine("Talk to whom?", kSheetSectionColor, kSheetTitleCharSize);
-                y += 10.f;
-                for (int i = 0; i < static_cast<int>(dialogueSession.candidates.size()); ++i) {
-                    const bool isSelected = i == dialogueSession.candidateSelected;
-                    drawLine((isSelected ? "> " : "  ") + dialogueSession.candidates[static_cast<size_t>(i)].name,
-                             isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
-                }
-                y += 10.f;
-                drawLine("(up/down = select, Enter = talk)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+            case DialogueUiState::PickingCandidate: {
+                std::vector<std::string> names;
+                names.reserve(dialogueSession.candidates.size());
+                for (const auto& candidate : dialogueSession.candidates) names.push_back(candidate.name);
+                drawPickerOverlay("Talk to whom?", names, dialogueSession.candidateSelected,
+                                   "(up/down = select, Enter = talk)");
                 break;
+            }
             case DialogueUiState::TopicPicker:
-                drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
-                         kSheetTitleCharSize);
-                y += 10.f;
-                for (int i = 0; i < static_cast<int>(dialogueSession.topicLabels.size()); ++i) {
-                    const bool isSelected = i == dialogueSession.topicSelected;
-                    drawLine((isSelected ? "> " : "  ") + dialogueSession.topicLabels[static_cast<size_t>(i)],
-                             isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
-                }
-                y += 10.f;
-                drawLine("(up/down = select, Enter = ask)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                drawPickerOverlay("Ask " + dialogueSession.current.name + " about...", dialogueSession.topicLabels,
+                                   dialogueSession.topicSelected, "(up/down = select, Enter = ask)");
                 break;
             case DialogueUiState::AskInput:
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
