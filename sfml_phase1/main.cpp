@@ -1168,6 +1168,13 @@ int runPhase1(const std::string& savePath) {
     // this and every other console overlay (Sheet/Spellbook/Help/WorldMap).
     bool sheetOpen = false;
 
+    // Spellbook ('s', only while the sheet is open and the character is a
+    // caster): the sheet's own full-spellbook drill-down
+    // (GameLoop::showSpellbook, GameLoop.cpp:644-647), same transient-UI
+    // reasoning as sheetOpen above. Any key returns to the sheet (which
+    // stays open), matching the console's showCharacterSheet loop.
+    bool spellbookOpen = false;
+
     auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
 
     auto combatNearestRefuge = [&]() -> const world::Location* {
@@ -1690,9 +1697,9 @@ int runPhase1(const std::string& savePath) {
     // running underneath every frame the sheet is open; this is purely a
     // final compositing layer, so no branch was needed in either of the
     // draw chains above). Content mirrors render::MapRenderer::
-    // drawCharacterSheet (MapRenderer.cpp:689-840) field-for-field, minus
-    // its 's' = full-spellbook drill-down (spellbook is its own separate
-    // roadmap item, out of scope here) -- laid out in two real pixel-space
+    // drawCharacterSheet (MapRenderer.cpp:689-840) field-for-field --
+    // including its 's' = full-spellbook drill-down, see spellbookOpen and
+    // drawSpellbookOverlay below -- laid out in two real pixel-space
     // columns instead of one long vertical dump, since covering the whole
     // window means there's no 320px sidebar constraint to work within.
     constexpr unsigned kSheetTitleCharSize = 26;
@@ -1814,8 +1821,7 @@ int runPhase1(const std::string& savePath) {
         }
 
         // -- Right column: saving throws, steel/inventory, spells-memorized
-        // summary (no spellbook drill-down -- see this lambda's own top
-        // comment), companions.
+        // summary, companions.
         drawAt(kSheetRightX, rightY, "Saving Throws:", kSheetSectionColor, kSheetHeaderCharSize);
         for (int i = 0; i < static_cast<int>(character::SaveCategory::Count); ++i) {
             auto category = static_cast<character::SaveCategory>(i);
@@ -1892,7 +1898,10 @@ int runPhase1(const std::string& savePath) {
             }
         }
 
-        sf::Text footer(font, "(press any key to return)", kSheetHeaderCharSize);
+        const std::string sheetFooterText = character::canCastSpells(c.charClass)
+                                                 ? "(s=view spells known, any other key to continue)"
+                                                 : "(press any key to continue)";
+        sf::Text footer(font, sheetFooterText, kSheetHeaderCharSize);
         footer.setFillColor(sf::Color(150, 150, 160));
         footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 40.f));
         window.draw(footer);
@@ -1906,8 +1915,8 @@ int runPhase1(const std::string& savePath) {
     // GameLoop.cpp's own callers). Extracted here because dialogue's
     // PickingCandidate/TopicPicker cases below were the first two real
     // call sites and already duplicated this exact title/cursor-list/
-    // footer shape; future picker-shaped screens (shop, inventory,
-    // spellbook) can call this directly instead of re-deriving it again.
+    // footer shape; picker-shaped screens added since (Shop, Inventory,
+    // Spellbook) call this directly instead of re-deriving it again.
     // Deliberately NOT used by combat's PickingTarget -- that picker's
     // cursor is drawn embedded in the roster panel, a structurally
     // different visual shape from this full-window overlay.
@@ -1946,6 +1955,51 @@ int runPhase1(const std::string& savePath) {
         }
         y += 10.f;
         drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+    };
+
+    // Spellbook ('s' from the character sheet, casters only) -- the
+    // sheet's own full-spellbook drill-down, pixel-space equivalent of
+    // render::MapRenderer::drawSpellbookFrame (MapRenderer.cpp:842-885).
+    // Purely informational (no selection at all, unlike every other
+    // drawPickerOverlay caller), so it always passes selectedIndex -1 --
+    // the same "no cursor, nothing to select" idiom drawInventoryOverlay
+    // already uses for its own leading header rows.
+    auto drawSpellbookOverlay = [&]() {
+        const character::Character& c = state.character;
+        const long long currentDay = state.hoursElapsed / 24;
+        std::vector<std::string> rows;
+        const int maxLevel = character::maxAccessibleSpellLevel(c);
+        if (maxLevel == 0) {
+            rows.push_back("Cannot cast arcane magic.");
+        } else {
+            const bool memorizedToday = c.spellsCastDay == currentDay;
+            for (int lvl = 1; lvl <= maxLevel; ++lvl) {
+                std::vector<const character::SpellInfo*> atLevel;
+                for (const auto& spell : character::spellListFor(c.charClass)) {
+                    if (spell.level == lvl) atLevel.push_back(&spell);
+                }
+                if (atLevel.empty()) continue;
+                const int slots = character::spellSlotsPerDay(c, lvl);
+                std::ostringstream header;
+                header << "Level " << lvl << " (" << slots << " slot" << (slots == 1 ? "" : "s") << "/day):";
+                rows.push_back(header.str());
+                for (const auto* spell : atLevel) {
+                    std::ostringstream line;
+                    line << "  " << spell->name;
+                    if (memorizedToday) {
+                        const int count = static_cast<int>(
+                            std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
+                        if (count > 0) {
+                            line << " (memorized";
+                            if (count > 1) line << " x" << count;
+                            line << ")";
+                        }
+                    }
+                    rows.push_back(line.str());
+                }
+            }
+        }
+        drawPickerOverlay("Spells Known", rows, -1, "(press any key to return)");
     };
 
     // Dialogue -- a full-window overlay, same compositing approach as
@@ -2192,14 +2246,35 @@ int runPhase1(const std::string& savePath) {
                         // local loop (GameLoop.cpp:1671-1672), closing the
                         // screen, not the whole game.
                         inventorySession.active = false;
+                    } else if (spellbookOpen) {
+                        // Any key returns to the sheet -- spellbookOpen is
+                        // only ever true while sheetOpen is too. Checked
+                        // ahead of the general quit branch below for the
+                        // same reason sheetOpen's own guard just under this
+                        // one is: Q/Escape should return to the sheet, not
+                        // close the whole window.
+                        spellbookOpen = false;
+                    } else if (sheetOpen && dy > 0 && character::canCastSpells(state.character.charClass)) {
+                        // 's'/Down opens the spellbook drill-down instead of
+                        // dismissing the sheet -- GameLoop::
+                        // showCharacterSheet's own South dispatch
+                        // (GameLoop.cpp:632-639), offered to casters only.
+                        spellbookOpen = true;
+                    } else if (sheetOpen) {
+                        // Dismiss on any other key -- see sheetOpen's own
+                        // top comment. Deliberately swallows dx/dy/
+                        // handleEnter too, so the same keypress that closes
+                        // the sheet never also moves the character or opens
+                        // combat. Checked ahead of the general quit branch
+                        // below (same placement shop/inventory's own Quit
+                        // overrides use above) so Q/Escape dismiss the sheet
+                        // instead of closing the whole window -- "dismissed
+                        // by any key" includes Quit, matching the console's
+                        // showCharacterSheet loop, which has no special
+                        // Quit handling of its own either.
+                        sheetOpen = false;
                     } else if (wantsQuit && !askInputActive) {
                         window.close();
-                    } else if (sheetOpen) {
-                        // Dismiss on any key -- see sheetOpen's own comment
-                        // above. Deliberately swallows dx/dy/handleEnter too,
-                        // so the same keypress that closes the sheet never
-                        // also moves the character or opens combat.
-                        sheetOpen = false;
                     } else if (combatSession.active) {
                         // Combat's own input dispatch -- see CombatSession/
                         // CombatUiState's doc comments above for the state
@@ -2730,7 +2805,10 @@ int runPhase1(const std::string& savePath) {
                 }
             }
 
-            if (sheetOpen) {
+            if (spellbookOpen) {
+                window.setView(uiView);
+                drawSpellbookOverlay();
+            } else if (sheetOpen) {
                 window.setView(uiView);
                 drawCharacterSheetOverlay();
             }

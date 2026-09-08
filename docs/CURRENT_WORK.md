@@ -390,11 +390,59 @@ catalog still loads and the window opens with no crash/exception --
 this session again had no desktop/GUI access to press `I` live. **Not
 yet interactively confirmed** -- moved to the Playtest backlog below.
 
+**Spellbook shipped this session, same `sfml_phase1/main.cpp`.** User
+picked it off the full-migration roadmap -- the cheapest of the 5
+remaining screens, and the one already named and explicitly deferred when
+the character sheet shipped (`main.cpp`'s own comment at the time: "minus
+its 's' = full-spellbook drill-down"). **Zero `CMakeLists.txt` changes
+needed** -- `src/character/Spellcasting.cpp` was already linked in for
+the character sheet's own spells-memorized summary line.
+
+Ports `GameLoop::showCharacterSheet`/`showSpellbook`
+(`GameLoop.cpp:626-647`) and `render::MapRenderer::drawSpellbookFrame`
+(`MapRenderer.cpp:842-885`) faithfully: while the sheet (`C`) is open,
+`s`/Down -- offered only when `character::canCastSpells` -- opens a new
+`spellbookOpen` overlay listing every known spell grouped by level
+("Level N (X slots/day):" headers) with "(memorized)"/"(memorized xN)"
+annotations when `spellsCastDay` matches today, or "Cannot cast arcane
+magic." for the level-0 case; any key returns to the sheet, which stays
+open (matching the console's own showCharacterSheet loop, not a full
+dismiss). Reuses `drawPickerOverlay` with `selectedIndex` always `-1`
+(pure information, no selection at all -- the same idiom
+`drawInventoryOverlay`'s own non-selectable header rows already
+established) rather than adding a new overlay-drawing shape. The sheet's
+own footer now also matches the console's conditional wording
+(`"(s=view spells known, any other key to continue)"` for casters,
+`"(press any key to continue)"` otherwise), which the SFML port had
+skipped entirely up to now.
+
+**One real bug found and fixed while touching this exact code, beyond
+the approved plan's narrow scope:** the key-dispatch chain's general
+`wantsQuit && !askInputActive -> window.close()` branch was checked
+*before* `sheetOpen`'s own dismiss branch, meaning Q/Escape while the
+character sheet was open closed the whole window instead of just
+dismissing the sheet -- contradicted the sheet's own "dismissed by any
+key" doc comment and the console's behavior (its `showCharacterSheet`
+loop has no special Quit handling, so Quit falls through to "any other
+key -> dismiss" same as everything else). Fixed by moving the
+sheet/spellbook dismiss guards ahead of the general quit branch, the
+same placement Shop's and Inventory's own Quit overrides already use
+just above it -- not a new pattern, just applying the existing one to a
+third screen. This means the character sheet's own Q/Escape behavior is
+also now correct, not just spellbook's.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+test against real `save2.txt` (Regan, level 20 Human Mage -- a caster,
+so the new path is exercised) confirming every catalog still loads and
+the window opens with no crash/exception -- this session again had no
+desktop/GUI access to press `C` then `s` live. **Not yet interactively
+confirmed** -- moved to the Playtest backlog below.
+
 **Next step:** the user's call, not to be assumed -- confirm dialogue,
-the character sheet, ask-input, shop, and/or inventory live (playtest
-backlog below), keep working down the full-migration roadmap (5 screens
-left: spellbook, full log, world map, journal, help), or something
-else.
+the character sheet (including the Q/Escape fix and spellbook), ask-
+input, shop, and/or inventory live (playtest backlog below), keep
+working down the full-migration roadmap (4 screens left: full log, world
+map, journal, help), or something else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -440,9 +488,13 @@ this order:
 - ~~Inventory~~ -- done, see above (equip/drink/no-op, reusing
   `drawPickerOverlay` the same way Shop did); not yet interactively
   confirmed (Playtest backlog below).
-- Spellbook, full log, world map, journal, help -- 5 more screens, each
-  smaller than zones/combat; spellbook can also reuse
-  `drawPickerOverlay` the way Shop/Inventory did.
+- ~~Spellbook~~ -- done, see above (the sheet's `s`-key drill-down,
+  reusing `drawPickerOverlay` with no selection at all, same as
+  Shop/Inventory's own reuse); also fixed a pre-existing Q/Escape bug on
+  the character sheet itself while implementing it (see writeup above);
+  not yet interactively confirmed (Playtest backlog below).
+- Full log, world map, journal, help -- 4 more screens, each smaller than
+  zones/combat.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -483,13 +535,23 @@ piling on more unverified content. Full sourcing/detail for each is in its
   `sfml_phase1/main.cpp` and this file's Phase 3 writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
-- **SFML character sheet** -- press `C` from the overworld and again from
-  inside a zone; confirm every field renders correctly (ability scores,
-  saves, weapon/armor, steel/inventory, the spells-memorized summary
-  against save2's caster, companions if save1/save2 has one recruited),
-  the HP bar reflects current/max HP, and any key dismisses back to the
-  prior screen without also moving the character or opening combat. See
-  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+- **SFML character sheet (+ spellbook)** -- press `C` from the overworld
+  and again from inside a zone; confirm every field renders correctly
+  (ability scores, saves, weapon/armor, steel/inventory, the
+  spells-memorized summary against save2's caster, companions if
+  save1/save2 has one recruited), the HP bar reflects current/max HP, and
+  an ordinary key (e.g. Enter/W/A/D) dismisses back to the prior screen
+  without also moving the character or opening combat. On a caster,
+  confirm the footer reads "(s=view spells known, any other key to
+  continue)" and pressing `s`/Down opens the spellbook overlay -- check
+  its per-level grouping and memorized annotations match the sheet's own
+  summary line, and that any key returns to the (still-open) sheet rather
+  than closing it. On a non-caster (if one exists in a save slot), confirm
+  the footer omits the `s` hint and the spellbook shows "Cannot cast
+  arcane magic." if somehow reached. Also confirm the just-fixed bug:
+  pressing `Q`/Escape while the sheet (or spellbook) is open dismisses
+  just that screen, not the whole window. See `sfml_phase1/main.cpp` and
+  this file's Character Sheet and Spellbook writeups above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **SFML dialogue (core conversation)** -- press `T` at a zone-native NPC
   (greeting, then topics if any, `TALK_AGAIN` on a second visit) and at a
