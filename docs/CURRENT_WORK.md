@@ -296,10 +296,63 @@ behavior shouldn't have, that pair is flagged for a re-check alongside
 dialogue's own still-open playtest item below, not treated as newly at
 risk.
 
+**Shop shipped this session, same `sfml_phase1/main.cpp`.** User picked it
+off the full-migration roadmap -- confirmed as the cheapest of the three
+picker-overlay-shaped screens (`drawPickerOverlay` was extracted from
+dialogue specifically to unlock this), since all of the buy/sell mechanics
+already live in `src/character/Equipment.h`/`.cpp`, which was *already*
+compiled into this CMake target for the character sheet's steel/weapon/
+armor lines. **Zero `CMakeLists.txt` changes needed** -- a real
+simplification versus every prior phase, each of which added new source
+files.
+
+Ports `GameLoop::handleShop` (`GameLoop.cpp:1570-1636`) faithfully: browse
+a shop's catalog (buy), toggle to the sell view (`I`), purchase/sell with
+the same insufficient-steel/already-owned/cannot-use/cannot-sell checks
+and feedback messages, all computed fresh each call via
+`character::availableShopItems`/`sellableItems`/`purchaseItem`/`sellItem`
+(unchanged) -- no caching, matching those functions' own "compute on
+demand" comment. `drawPickerOverlay` gained one optional trailing
+`message` parameter (default `""`, drawn between the item list and
+footer) so Shop's post-transaction feedback could reuse it too; dialogue's
+two existing call sites are unaffected. New local `shopCatalogFor` and
+`ShopSession` (a flat struct, no `UiState` enum -- unlike Dialogue/Combat,
+Shop has exactly one screen shape throughout, just a `sellMode` toggle,
+matching `handleShop`'s own single loop).
+
+**One real gap, flagged rather than faked:** `SHOP_LOCKED`
+(`docs/ZONE_NOTES.md`) gates a shop behind a quest being Complete --
+exactly one POI project-wide, Flint's Smithy in Solace
+(`data/zones/solace.txt:41`). This build tracks no quest state at all yet
+(same gap dialogue's own deferred quest/boat/recruit offers already
+flag), so that one shop prints "(This shop is quest-locked -- that isn't
+tracked in this build yet.)" instead of silently always-locking (reads as
+"no shop here") or silently unlocking (lets the player buy before
+earning it) it.
+
+**One deliberate deviation from this build's own established convention,
+called out explicitly:** every other overlay here (character sheet,
+combat, dialogue) follows "Q/Escape always closes the whole window, no
+per-screen cancel." But `GameLoop::handleShop` explicitly documents
+`Key::Quit here exits the shop, not the whole game` (`GameLoop.cpp:1611`),
+and backing in and out of a shop repeatedly is the normal case, not an
+edge case -- closing the whole app on `Q` would be an immediate
+regression a player would hit on their very first visit, not a style
+nit. So Shop gets a local Quit override (same shape as ask-input's
+existing Escape override), checked before the general "Q closes the
+window" branch.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` confirming every catalog still loads and the
+window opens with no crash/exception -- this session again had no
+desktop/GUI access to press `P` live. **Not yet interactively
+confirmed** -- moved to the Playtest backlog below.
+
 **Next step:** the user's call, not to be assumed -- confirm dialogue,
-the character sheet, and/or ask-input live (playtest backlog below), keep
-working down the full-migration roadmap (7 screens left: spellbook, shop,
-inventory, full log, world map, journal, help), or something else.
+the character sheet, ask-input, and/or shop live (playtest backlog
+below), keep working down the full-migration roadmap (6 screens left:
+spellbook, inventory, full log, world map, journal, help), or something
+else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -338,8 +391,13 @@ this order:
   used by dialogue's `PickingCandidate`/`TopicPicker`); not a screen of
   its own, but unlocks Shop/Inventory/Spellbook below to reuse it instead
   of each re-deriving the picker loop.
-- Spellbook, shop, inventory, full log, world map, journal, help -- 7
-  more screens, each smaller than zones/combat.
+- ~~Shop~~ -- done, see above (buy/sell, reusing `drawPickerOverlay`); one
+  quest-locked shop (Flint's Smithy) shows a placeholder instead of
+  opening, no quest state tracked in this build yet; not yet
+  interactively confirmed (Playtest backlog below).
+- Spellbook, inventory, full log, world map, journal, help -- 6 more
+  screens, each smaller than zones/combat; inventory and spellbook can
+  now also reuse `drawPickerOverlay` the way Shop just did.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -418,6 +476,18 @@ piling on more unverified content. Full sourcing/detail for each is in its
   zone-native NPC or canon Hero with a plain (unlimited) `SUBJECT` pool, to
   confirm the common case works without any of Astinus's limit machinery.
   See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- **SFML shop** -- press `P` at a shop POI (e.g. Flint's Smithy in Solace
+  once `ore_for_the_forge` is complete, or any other shop -- see
+  `docs/CHARACTER_NOTES.md`'s "Six shops, six catalogs" for the full
+  list); confirm the buy list shows real prices and correctly marks
+  already-owned/cannot-use items; buy something and confirm steel is
+  deducted and the item lands in inventory; press `I` to switch to the
+  sell view, sell something back, confirm steel increases and the
+  cannot-sell flag appears on a starting weapon; confirm `Q` returns to
+  the zone (not the whole window); confirm Flint's Smithy shows the
+  quest-locked placeholder line instead of opening. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group

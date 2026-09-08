@@ -14,7 +14,7 @@
 // Fighter sweep are each a real chunk of new chooser UI or extra positional
 // bookkeeping on top of `GameLoop::runCombat` -- deferred to a later phase,
 // same "not yet in this build" convention Phase 1 already established for
-// Look/Talk/Shop/etc. See docs/CURRENT_WORK.md for the full scope writeup.
+// Look/Inventory/etc. See docs/CURRENT_WORK.md for the full scope writeup.
 
 #include "character/Alignment.h"
 #include "character/CharClass.h"
@@ -86,6 +86,20 @@ std::string pluralMonsterName(const std::string& name) {
     if (name == "Timber Wolf") return "Timber Wolves";
     if (name == "Lizard Man") return "Lizard Men";
     return name + "s";
+}
+
+// Translates a zone file's plain SHOP catalog name into
+// character::ShopCatalog -- copied verbatim from game::shopCatalogFor
+// (GameLoop.cpp:32-40), same "not exported, GameLoop.cpp isn't linked
+// here" reasoning as pluralMonsterName above.
+character::ShopCatalog shopCatalogFor(const std::string& name) {
+    if (name == "armory") return character::ShopCatalog::Armory;
+    if (name == "market") return character::ShopCatalog::MarketGoods;
+    if (name == "salvage") return character::ShopCatalog::Salvage;
+    if (name == "bazaar") return character::ShopCatalog::Bazaar;
+    if (name == "harbor") return character::ShopCatalog::HarborTrade;
+    if (name == "magic") return character::ShopCatalog::Magic;
+    return character::ShopCatalog::General;
 }
 
 // Renders an AttackOutcome's roll math, e.g. "[d20 14 +2 = 16 vs THAC0 18 -
@@ -601,6 +615,21 @@ struct DialogueSession {
     bool askQueueEndsConversation = false; // true for SUBJECT_ENDS or a reached (non-extended) ask limit
 };
 
+// All state for one shop visit, local to this file -- same "transient UI
+// state, not part of game::GameState" reasoning as CombatSession/
+// DialogueSession above. Unlike those two, a shop has exactly one screen
+// shape throughout (a buy or sell list, toggled by sellMode), so there's no
+// UiState enum here -- matches game::GameLoop::handleShop's own single
+// for(;;) loop with no phase distinction beyond the sellMode toggle.
+struct ShopSession {
+    bool active = false;
+    std::string shopName;
+    character::ShopCatalog catalog = character::ShopCatalog::General;
+    bool sellMode = false;
+    int selected = 0;
+    std::string message; // post-transaction feedback, cleared on mode toggle
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -743,6 +772,7 @@ int runPhase1(const std::string& savePath) {
     // line via dialogueStartTalk's hasQuest/hasBoat/hasRecruit checks
     // instead of silently doing nothing).
     DialogueSession dialogueSession;
+    ShopSession shopSession;
 
     // Mirrors GameLoop::handleTalk exactly -- see that function's own
     // comments for why the Overworld/Zone branches differ and what
@@ -916,6 +946,36 @@ int runPhase1(const std::string& savePath) {
         }
         dialogueSession.candidateSelected = 0;
         dialogueSession.uiState = DialogueUiState::PickingCandidate;
+    };
+
+    // 'P' -- mirrors GameLoop::handleShop's opening checks
+    // (GameLoop.cpp:1570-1596) verbatim, including its two pushLog
+    // messages. shopLockAt (SHOP_LOCKED, docs/ZONE_NOTES.md) can't be
+    // resolved here -- this build tracks no quest state at all yet, same
+    // gap dialogueStartTalk's hasQuest/hasBoat/hasRecruit checks already
+    // flag -- so a locked shop gets its own honest placeholder instead of
+    // silently always-locking (reads as "no shop here") or silently
+    // unlocking (lets the player buy before earning it).
+    auto shopBegin = [&]() {
+        if (state.mode != game::Mode::Zone || currentZone == nullptr) {
+            pushLog("There's nothing to buy here.");
+            return;
+        }
+        const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY);
+        if (poi == nullptr || !poi->isShop) {
+            pushLog("There's nothing to buy here.");
+            return;
+        }
+        if (currentZone->shopLockAt(state.zoneX, state.zoneY) != nullptr) {
+            pushLog("(This shop is quest-locked -- that isn't tracked in this build yet.)");
+            return;
+        }
+        shopSession.active = true;
+        shopSession.shopName = poi->name;
+        shopSession.catalog = shopCatalogFor(poi->shopCatalog);
+        shopSession.sellMode = false;
+        shopSession.selected = 0;
+        shopSession.message.clear();
     };
 
     // Enter on the "talk to whom?" picker.
@@ -1830,8 +1890,15 @@ int runPhase1(const std::string& savePath) {
     // Deliberately NOT used by combat's PickingTarget -- that picker's
     // cursor is drawn embedded in the roster panel, a structurally
     // different visual shape from this full-window overlay.
+    //
+    // The optional trailing `message` (default "") is drawn between the
+    // item list and the footer -- added for Shop's post-transaction
+    // feedback (e.g. "Bought Chain Mail" / "You don't have enough steel
+    // for that."), mirroring render::MapRenderer::drawShopFrame's own
+    // message placement (MapRenderer.cpp:1089-1092). Dialogue's two
+    // existing call sites are unaffected -- they just take the default.
     auto drawPickerOverlay = [&](const std::string& title, const std::vector<std::string>& items,
-                                  int selectedIndex, const std::string& footer) {
+                                  int selectedIndex, const std::string& footer, const std::string& message = "") {
         sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
         bg.setFillColor(sf::Color(18, 18, 24));
         window.draw(bg);
@@ -1851,6 +1918,10 @@ int runPhase1(const std::string& savePath) {
             const bool isSelected = i == selectedIndex;
             drawLine((isSelected ? "> " : "  ") + items[static_cast<size_t>(i)],
                       isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
+        }
+        if (!message.empty()) {
+            y += 10.f;
+            drawLine(message, sf::Color::White, kSheetBodyCharSize);
         }
         y += 10.f;
         drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
@@ -1941,6 +2012,44 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // Shop -- pixel-space equivalent of render::MapRenderer::drawShopFrame
+    // (MapRenderer.cpp:1052-1103), delegating to drawPickerOverlay above
+    // instead of rendering its own list (this screen is exactly the
+    // "picker-shaped" case that lambda was extracted for). Recomputes
+    // availableShopItems/sellableItems fresh every call rather than caching
+    // on ShopSession -- matches those functions' own "compute on demand,
+    // don't cache" comment in Equipment.h, since a purchase/sale changes
+    // the character's inventory and steel out from under a cached list.
+    auto drawShopOverlay = [&]() {
+        std::ostringstream title;
+        title << shopSession.shopName << (shopSession.sellMode ? " -- Selling   " : " -- Buying   ")
+              << "Steel: " << state.character.steelPieces << " stl";
+        std::vector<std::string> rows;
+        if (shopSession.sellMode) {
+            for (const character::SellItem& item : character::sellableItems(state.character)) {
+                std::ostringstream row;
+                row << item.label << " -- " << item.valueStl << " stl";
+                if (!item.sellable) row << "  (cannot sell)";
+                rows.push_back(row.str());
+            }
+        } else {
+            for (const character::ShopItem& item : character::availableShopItems(state.character, shopSession.catalog)) {
+                std::ostringstream row;
+                row << item.label << " -- " << item.costStl << " stl";
+                if (item.alreadyOwned) {
+                    row << "  (owned)";
+                } else if (!item.buyable) {
+                    row << "  (cannot use)";
+                }
+                rows.push_back(row.str());
+            }
+        }
+        std::ostringstream footer;
+        footer << "up/down=select   Enter=" << (shopSession.sellMode ? "sell" : "buy")
+               << "   i=" << (shopSession.sellMode ? "view buy list" : "view sell list") << "   q=leave";
+        drawPickerOverlay(title.str(), rows, shopSession.selected, footer.str(), shopSession.message);
+    };
+
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
     while (window.isOpen()) {
@@ -1955,6 +2064,7 @@ int runPhase1(const std::string& savePath) {
                     std::string placeholder;
                     bool handleEnter = false;
                     bool wantsTalk = false;
+                    bool wantsShop = false;
                     bool wantsQuit = false;
                     bool wantsBackspace = false;
                     switch (key) {
@@ -1977,7 +2087,7 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::T: wantsTalk = true; break;
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
                         case sf::Keyboard::Key::C: break; // handled explicitly below via sheetOpen
-                        case sf::Keyboard::Key::P: placeholder = "Shop: not yet implemented in this build."; break;
+                        case sf::Keyboard::Key::P: wantsShop = true; break;
                         case sf::Keyboard::Key::I:
                             placeholder = "Inventory: not yet implemented in this build.";
                             break;
@@ -2008,6 +2118,16 @@ int runPhase1(const std::string& savePath) {
                         dialogueSession.active && dialogueSession.uiState == DialogueUiState::AskInput;
                     if (askInputActive && key == sf::Keyboard::Key::Escape) {
                         dialogueSession.uiState = DialogueUiState::TopicPicker;
+                    } else if (shopSession.active && wantsQuit) {
+                        // One deliberate deviation from the "Q always closes the
+                        // whole window" rule every other screen here follows --
+                        // GameLoop::handleShop's own Key::Quit explicitly "exits
+                        // the shop, not the whole game" (GameLoop.cpp:1611), and a
+                        // player backing in and out of a shop repeatedly is the
+                        // normal case, not an edge case, so faithfully porting the
+                        // console's behavior matters more than this build's
+                        // otherwise-uniform Q convention here.
+                        shopSession.active = false;
                     } else if (wantsQuit && !askInputActive) {
                         window.close();
                     } else if (sheetOpen) {
@@ -2112,6 +2232,42 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                         }
+                    } else if (shopSession.active) {
+                        // Shop's own input dispatch -- a single screen shape (no
+                        // UiState enum, see ShopSession's own comment), so this is
+                        // flatter than combat/dialogue's per-state switches. 'I' is
+                        // read directly off `key` rather than the outer switch's
+                        // `placeholder` (still "Inventory: not yet implemented in
+                        // this build." for the ordinary no-shop-open case) -- same
+                        // "bypass the outer switch's placeholder while this session
+                        // owns the key" precedent combat's Idle state already
+                        // established for F/M/I.
+                        const int buyCount = static_cast<int>(
+                            character::availableShopItems(state.character, shopSession.catalog).size());
+                        const int sellCount = static_cast<int>(character::sellableItems(state.character).size());
+                        const int activeCount = shopSession.sellMode ? sellCount : buyCount;
+                        if (dy < 0) {
+                            shopSession.selected =
+                                activeCount == 0 ? 0 : (shopSession.selected - 1 + activeCount) % activeCount;
+                        } else if (dy > 0) {
+                            shopSession.selected = activeCount == 0 ? 0 : (shopSession.selected + 1) % activeCount;
+                        } else if (handleEnter) {
+                            if (shopSession.sellMode) {
+                                if (sellCount > 0) {
+                                    character::PurchaseResult result =
+                                        character::sellItem(state.character, shopSession.selected);
+                                    shopSession.message = result.message;
+                                }
+                            } else if (buyCount > 0) {
+                                character::PurchaseResult result = character::purchaseItem(
+                                    state.character, shopSession.selected, shopSession.catalog);
+                                shopSession.message = result.message;
+                            }
+                        } else if (key == sf::Keyboard::Key::I) {
+                            shopSession.sellMode = !shopSession.sellMode;
+                            shopSession.selected = 0;
+                            shopSession.message.clear();
+                        }
                     } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
                             const world::Location* here = world.locationAt(state.x, state.y);
@@ -2163,6 +2319,8 @@ int runPhase1(const std::string& savePath) {
                         sheetOpen = true;
                     } else if (wantsTalk) {
                         dialogueBegin();
+                    } else if (wantsShop) {
+                        shopBegin();
                     } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
@@ -2484,6 +2642,11 @@ int runPhase1(const std::string& savePath) {
             if (dialogueSession.active) {
                 window.setView(uiView);
                 drawDialogueOverlay();
+            }
+
+            if (shopSession.active) {
+                window.setView(uiView);
+                drawShopOverlay();
             }
 
             window.display();
