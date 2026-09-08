@@ -640,6 +640,17 @@ struct InventorySession {
     std::string message; // post-action feedback (equip/drink/no-op), cleared on open
 };
 
+// State for the full event log overlay ('v') -- same "transient UI state"
+// reasoning as ShopSession/InventorySession above. Unlike those two this
+// needs no picker cursor, just a scroll position: scrollOffset uses the
+// same -1 "start at the bottom" sentinel render::MapRenderer::drawLogFrame
+// does (MapRenderer.cpp:1220), so opening the log always starts at the
+// most recent entry.
+struct LogSession {
+    bool active = false;
+    int scrollOffset = -1;
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -784,6 +795,7 @@ int runPhase1(const std::string& savePath) {
     DialogueSession dialogueSession;
     ShopSession shopSession;
     InventorySession inventorySession;
+    LogSession logSession;
 
     // Mirrors GameLoop::handleTalk exactly -- see that function's own
     // comments for why the Overworld/Zone branches differ and what
@@ -1174,6 +1186,20 @@ int runPhase1(const std::string& savePath) {
     // reasoning as sheetOpen above. Any key returns to the sheet (which
     // stays open), matching the console's showCharacterSheet loop.
     bool spellbookOpen = false;
+
+    // Help ('/', the pixel-space bind for the console's '?'), World Map
+    // ('o'), and Journal ('g') -- same transient-full-window-overlay
+    // reasoning as sheetOpen above, dismissed by any key. Journal is real
+    // (not a stub): it ports GameLoop::showJournal's own logic, but this
+    // build never populates game::GameState::quests yet (quest offer/
+    // accept dialogue is still deferred, see DialogueSession's own
+    // hasQuest handling above), so its body says so explicitly rather than
+    // silently rendering the console's "(no quests yet)" empty state,
+    // which would misleadingly imply a working-but-empty quest log instead
+    // of a not-yet-wired-up one.
+    bool helpOpen = false;
+    bool worldMapOpen = false;
+    bool journalOpen = false;
 
     auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
 
@@ -1957,6 +1983,174 @@ int runPhase1(const std::string& savePath) {
         drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
     };
 
+    // Help ('/', this build's bind for the console's '?') -- pixel-space
+    // equivalent of render::MapRenderer::drawHelpFrame
+    // (MapRenderer.cpp:1474-1500), ported verbatim: static content, no
+    // game-state dependency at all. One wording change from the console
+    // text: "/ = this help screen" instead of "? = this help screen",
+    // matching the real key this build binds (see the switch's own
+    // sf::Keyboard::Key::Slash case above).
+    auto drawHelpOverlay = [&]() {
+        static const std::vector<std::string> kHelpLines = {
+            "Movement:",
+            "  wasd = move (no diagonals)",
+            "",
+            "Overworld / zone:",
+            "  l = look around        t = talk to someone here",
+            "  Enter = step in/out     c = character sheet",
+            "  p = shop (at a shop)    i = inventory / equip",
+            "  v = full event log      g = quest journal",
+            "  r = rest                z = bed rest (at a bed)",
+            "  o = world map           / = this help screen",
+            "",
+            "Combat:",
+            "  Enter = attack          m = cast (if a caster)",
+            "  i = drink a potion      f = flee",
+            "",
+            "q / Esc = quit (or leave the current screen)",
+        };
+        drawPickerOverlay("Help", kHelpLines, -1, "(press any key to continue)");
+    };
+
+    // Journal ('g') -- a real overlay, not a silent stub, but see
+    // journalOpen's own top comment: this build never populates
+    // game::GameState::quests yet, so its body says so explicitly instead
+    // of rendering render::MapRenderer::drawJournalFrame's own empty-state
+    // "(no quests yet)" line (MapRenderer.cpp:1441), which would
+    // misleadingly read as "you truly have no quests" rather than "this
+    // build doesn't track quests yet."
+    auto drawJournalOverlay = [&]() {
+        static const std::vector<std::string> kJournalLines = {
+            "Quest tracking isn't wired up in this build yet.",
+        };
+        drawPickerOverlay("Journal", kJournalLines, -1, "(press any key to continue)");
+    };
+
+    // Full event log ('v') -- pixel-space equivalent of
+    // render::MapRenderer::drawLogFrame (MapRenderer.cpp:1220-1256). Wraps
+    // and scroll-windows log (the same vector the sidebar's own "-- Log --"
+    // section draws in full every frame, unclipped) rather than a flat
+    // always-visible list, since a long session's log can run into the
+    // hundreds of wrapped lines (see GameLoop::handleLog's own comment,
+    // GameLoop.cpp:1678-1680) -- then delegates to drawPickerOverlay above
+    // for the actual title/list/status/footer rendering, same as every
+    // other picker-shaped screen in this file.
+    auto drawLogOverlay = [&]() {
+        const std::size_t maxLineChars =
+            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+        std::vector<std::string> wrapped;
+        for (const std::string& entry : log) {
+            for (std::string& line : wrapToWidth(entry, maxLineChars)) wrapped.push_back(std::move(line));
+        }
+        const int total = static_cast<int>(wrapped.size());
+        // Sized to comfortably fit this build's fixed 1280x800 window
+        // alongside drawPickerOverlay's own title/status/footer lines --
+        // this file hardcodes windowW/windowH elsewhere too (e.g.
+        // kSheetRightX), so a fixed row count matches existing style
+        // rather than measuring live text extents.
+        constexpr int kLogVisibleRows = 20;
+        const int maxOffset = std::max(0, total - kLogVisibleRows);
+        const int offset =
+            logSession.scrollOffset < 0 ? maxOffset : std::clamp(logSession.scrollOffset, 0, maxOffset);
+        logSession.scrollOffset = offset; // resolve the -1 sentinel for next frame's own scroll math
+
+        std::vector<std::string> rows;
+        for (int i = offset; i < std::min(total, offset + kLogVisibleRows); ++i) {
+            rows.push_back(wrapped[static_cast<size_t>(i)]);
+        }
+        const std::string status =
+            total == 0 ? "(nothing logged yet)"
+                       : "Lines " + std::to_string(offset + 1) + "-" +
+                             std::to_string(std::min(total, offset + kLogVisibleRows)) + " of " +
+                             std::to_string(total);
+        drawPickerOverlay("Event Log", rows, -1, "up/down=scroll   v/q=return", status);
+    };
+
+    // World Map ('o') -- unlike the console's render::MapRenderer::
+    // drawWorldMapFrame (MapRenderer.cpp:1258-1435, ASCII box-majority-vote
+    // downsampling), this draws the real dragonlancemap2.png scaled down to
+    // fit, since mapTexture and the real grid-to-pixel scale
+    // (pxPerTileX/pxPerTileY) the live overworld itself uses are already
+    // loaded -- higher fidelity than the console version and far less code.
+    // Side legend (every location, alphabetically) for the same reason
+    // drawWorldMapFrame's own comment gives (MapRenderer.cpp:1396-1402):
+    // too many locations sit close together at this resolution for inline
+    // labels drawn directly on the map to stay legible.
+    auto drawWorldMapOverlay = [&]() {
+        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        bg.setFillColor(sf::Color(18, 18, 24));
+        window.draw(bg);
+
+        sf::Text title(font, "World Map", kSheetTitleCharSize);
+        title.setFillColor(kSheetSectionColor);
+        title.setPosition(sf::Vector2f(kSheetMarginX, 30.f));
+        window.draw(title);
+
+        constexpr float kLegendWidth = 260.f;
+        constexpr float kTopMargin = 90.f;
+        constexpr float kBottomMargin = 50.f;
+        const float mapBoxW = static_cast<float>(windowW) - 2.f * kSheetMarginX - kLegendWidth - 20.f;
+        const float mapBoxH = static_cast<float>(windowH) - kTopMargin - kBottomMargin;
+
+        const float scale =
+            std::min(mapBoxW / static_cast<float>(mapSize.x), mapBoxH / static_cast<float>(mapSize.y));
+        const float mapDrawW = static_cast<float>(mapSize.x) * scale;
+        const float mapDrawH = static_cast<float>(mapSize.y) * scale;
+        const float mapOriginX = kSheetMarginX + (mapBoxW - mapDrawW) / 2.f;
+        const float mapOriginY = kTopMargin + (mapBoxH - mapDrawH) / 2.f;
+
+        sf::Sprite miniMap(mapTexture);
+        miniMap.setScale(sf::Vector2f(scale, scale));
+        miniMap.setPosition(sf::Vector2f(mapOriginX, mapOriginY));
+        window.draw(miniMap);
+
+        sf::CircleShape marker(3.f);
+        marker.setOrigin(sf::Vector2f(3.f, 3.f));
+        for (const world::Location& loc : world.allLocations()) {
+            const float px = mapOriginX + (static_cast<float>(loc.x) + 0.5f) * pxPerTileX * scale;
+            const float py = mapOriginY + (static_cast<float>(loc.y) + 0.5f) * pxPerTileY * scale;
+            marker.setFillColor(loc.isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
+            marker.setPosition(sf::Vector2f(px, py));
+            window.draw(marker);
+        }
+        {
+            const float px = mapOriginX + (static_cast<float>(state.x) + 0.5f) * pxPerTileX * scale;
+            const float py = mapOriginY + (static_cast<float>(state.y) + 0.5f) * pxPerTileY * scale;
+            sf::CircleShape playerDot(4.f);
+            playerDot.setOrigin(sf::Vector2f(4.f, 4.f));
+            playerDot.setFillColor(sf::Color::White);
+            playerDot.setPosition(sf::Vector2f(px, py));
+            window.draw(playerDot);
+        }
+
+        std::vector<const world::Location*> byName;
+        for (const world::Location& loc : world.allLocations()) byName.push_back(&loc);
+        std::sort(byName.begin(), byName.end(),
+                  [](const world::Location* a, const world::Location* b) { return a->name < b->name; });
+
+        const float legendX = kSheetMarginX + mapBoxW + 20.f;
+        float legendY = kTopMargin;
+        constexpr unsigned kLegendCharSize = 13;
+        for (const world::Location* loc : byName) {
+            sf::CircleShape bullet(3.f);
+            bullet.setOrigin(sf::Vector2f(3.f, 3.f));
+            bullet.setFillColor(loc->isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
+            bullet.setPosition(sf::Vector2f(legendX + 4.f, legendY + 8.f));
+            window.draw(bullet);
+
+            sf::Text label(font, loc->name, kLegendCharSize);
+            label.setFillColor(kSheetBodyColor);
+            label.setPosition(sf::Vector2f(legendX + 14.f, legendY));
+            window.draw(label);
+            legendY += static_cast<float>(kLegendCharSize) + 8.f;
+        }
+
+        sf::Text footer(font, "(press any key to close)", kSheetHeaderCharSize);
+        footer.setFillColor(sf::Color(150, 150, 160));
+        footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 36.f));
+        window.draw(footer);
+    };
+
     // Spellbook ('s' from the character sheet, casters only) -- the
     // sheet's own full-spellbook drill-down, pixel-space equivalent of
     // render::MapRenderer::drawSpellbookFrame (MapRenderer.cpp:842-885).
@@ -2176,6 +2370,10 @@ int runPhase1(const std::string& savePath) {
                     bool wantsShop = false;
                     bool wantsQuit = false;
                     bool wantsBackspace = false;
+                    bool wantsLog = false;
+                    bool wantsJournal = false;
+                    bool wantsWorldMap = false;
+                    bool wantsHelp = false;
                     switch (key) {
                         case sf::Keyboard::Key::W:
                         case sf::Keyboard::Key::Up: dy = -1; break;
@@ -2203,12 +2401,10 @@ int runPhase1(const std::string& savePath) {
                         // directly, bypassing this switch -- see the
                         // shopSession.active dispatch below).
                         case sf::Keyboard::Key::I: break;
-                        case sf::Keyboard::Key::V:
-                            placeholder = "Full log view: not yet implemented in this build.";
-                            break;
-                        case sf::Keyboard::Key::G:
-                            placeholder = "Journal: not yet implemented in this build.";
-                            break;
+                        case sf::Keyboard::Key::V: wantsLog = true; break;
+                        case sf::Keyboard::Key::G: wantsJournal = true; break;
+                        case sf::Keyboard::Key::O: wantsWorldMap = true; break;
+                        case sf::Keyboard::Key::Slash: wantsHelp = true; break;
                         case sf::Keyboard::Key::F: placeholder = "Flee: not available outside combat."; break;
                         case sf::Keyboard::Key::M: placeholder = "Cast: not available outside combat."; break;
                         case sf::Keyboard::Key::R: placeholder = "Rest: not yet implemented in this build."; break;
@@ -2273,6 +2469,35 @@ int runPhase1(const std::string& savePath) {
                         // showCharacterSheet loop, which has no special
                         // Quit handling of its own either.
                         sheetOpen = false;
+                    } else if (helpOpen) {
+                        // Any key dismisses -- same "informational, no cancel
+                        // key needed" shape as sheetOpen above. Checked ahead
+                        // of the general quit branch below so Q/Escape close
+                        // this screen, not the whole window.
+                        helpOpen = false;
+                    } else if (worldMapOpen) {
+                        // Same "any key dismisses" shape as helpOpen above.
+                        worldMapOpen = false;
+                    } else if (journalOpen) {
+                        // Same "any key dismisses" shape as helpOpen above.
+                        journalOpen = false;
+                    } else if (logSession.active) {
+                        // Full log ('v') -- North/South scroll by a fixed
+                        // chunk, matching GameLoop::handleLog's own
+                        // kLogScrollStep (GameLoop.cpp:1681); 'v' (the key
+                        // that opened it) closes it too, same as Quit --
+                        // handleLog's own comment notes both close it
+                        // (GameLoop.cpp:1687-1690). Checked ahead of the
+                        // general quit branch below for the same reason
+                        // every other overlay guard above is.
+                        constexpr int kLogScrollStep = 10;
+                        if (dy < 0) {
+                            logSession.scrollOffset = std::max(0, logSession.scrollOffset - kLogScrollStep);
+                        } else if (dy > 0) {
+                            logSession.scrollOffset += kLogScrollStep; // clamped for real next draw
+                        } else if (wantsQuit || key == sf::Keyboard::Key::V) {
+                            logSession.active = false;
+                        }
                     } else if (wantsQuit && !askInputActive) {
                         window.close();
                     } else if (combatSession.active) {
@@ -2492,6 +2717,15 @@ int runPhase1(const std::string& savePath) {
                         shopBegin();
                     } else if (key == sf::Keyboard::Key::I) {
                         inventoryBegin();
+                    } else if (wantsLog) {
+                        logSession.active = true;
+                        logSession.scrollOffset = -1; // start at the bottom (most recent) every time it's opened
+                    } else if (wantsJournal) {
+                        journalOpen = true;
+                    } else if (wantsWorldMap) {
+                        worldMapOpen = true;
+                    } else if (wantsHelp) {
+                        helpOpen = true;
                     } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
@@ -2826,6 +3060,20 @@ int runPhase1(const std::string& savePath) {
             if (inventorySession.active) {
                 window.setView(uiView);
                 drawInventoryOverlay();
+            }
+
+            if (helpOpen) {
+                window.setView(uiView);
+                drawHelpOverlay();
+            } else if (worldMapOpen) {
+                window.setView(uiView);
+                drawWorldMapOverlay();
+            } else if (journalOpen) {
+                window.setView(uiView);
+                drawJournalOverlay();
+            } else if (logSession.active) {
+                window.setView(uiView);
+                drawLogOverlay();
             }
 
             window.display();

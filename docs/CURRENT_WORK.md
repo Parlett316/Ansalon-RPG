@@ -438,11 +438,85 @@ the window opens with no crash/exception -- this session again had no
 desktop/GUI access to press `C` then `s` live. **Not yet interactively
 confirmed** -- moved to the Playtest backlog below.
 
-**Next step:** the user's call, not to be assumed -- confirm dialogue,
-the character sheet (including the Q/Escape fix and spellbook), ask-
-input, shop, and/or inventory live (playtest backlog below), keep
-working down the full-migration roadmap (4 screens left: full log, world
-map, journal, help), or something else.
+**Help, Full Log, World Map, and Journal all shipped this session, same
+`sfml_phase1/main.cpp` -- the last 4 screens on the full-migration
+roadmap, closing it out entirely.** User asked to knock out all 4 in one
+pass rather than pick one at a time. All four follow the established
+`bool xOpen` / "any key dismisses" overlay convention (`sheetOpen`,
+`spellbookOpen`) or the flat-struct-session convention (`ShopSession`,
+`InventorySession`), guarded ahead of the general `wantsQuit ->
+window.close()` branch in the key-dispatch chain, composited as a final
+draw-on-top layer -- no new pattern introduced. **Zero `CMakeLists.txt`
+changes** across all four.
+
+- **Help** (`/`, this build's bind for the console's `?` -- the physical
+  key `sf::Keyboard::Key::Slash` maps to) -- `bool helpOpen`, ported
+  verbatim from `render::MapRenderer::drawHelpFrame`
+  (`MapRenderer.cpp:1474-1500`): static command reference text, no
+  game-state dependency, rendered via the existing `drawPickerOverlay`
+  with `selectedIndex -1` (same "pure information" idiom Spellbook
+  already established). One wording change from the console text: "/ =
+  this help screen" instead of "? = this help screen", matching the real
+  key this build binds.
+- **Full Log** (`V`, replacing its old placeholder) -- new
+  `LogSession { active, scrollOffset }` (the `-1` `scrollOffset` sentinel
+  matches `drawLogFrame`'s own "start at the bottom" convention,
+  `MapRenderer.cpp:1220-1256`). North/South scroll by a fixed 10-line
+  chunk (matches `GameLoop::handleLog`'s own `kLogScrollStep`,
+  `GameLoop.cpp:1681`); `V` or `Q` closes it (same "the key that opened
+  it closes it too" rule `handleLog`'s own comment states,
+  `GameLoop.cpp:1687-1690`). `drawLogOverlay` wraps and scroll-windows
+  the same `log` vector the sidebar already renders in full every frame
+  unclipped, then delegates the actual title/list/status/footer
+  rendering to `drawPickerOverlay` -- a "Lines X-Y of Z" status line
+  matches the console's own wording.
+- **World Map** (`O`, previously unbound) -- new `bool worldMapOpen`.
+  Real design choice: rather than porting `drawWorldMapFrame`'s ~180-line
+  ASCII box-majority-vote downsampling (`MapRenderer.cpp:1258-1435`),
+  this screen draws the *real* `dragonlancemap2.png` scaled down to fit,
+  since `mapTexture` and the real grid-to-pixel scale
+  (`pxPerTileX`/`pxPerTileY`) the live overworld already uses were
+  already loaded -- genuinely higher fidelity than the console version
+  and far less code. Location markers (same green-town/red-other color
+  convention the live overworld uses) and the player's own marker are
+  plotted via that same scale; a side legend lists all 25 locations
+  alphabetically (colored bullet + name -- fits one column at this
+  window size, so the console's own "+N more" truncation wasn't needed).
+- **Journal** (`G`, replacing its old placeholder) -- new `bool
+  journalOpen`. Real judgment call, not a silent stub: `GameLoop::
+  showJournal` iterates `game::GameState::quests`, which exists on
+  `GameState` (`GameState.h:98`) but this build never populates it --
+  quest offer/accept dialogue is still deferred, the same gap Shop's
+  quest-lock and Dialogue's `hasQuest` placeholder already flag (grepped
+  to confirm: no `state.quests` write site anywhere in this file). A
+  byte-faithful port would always render the console's own empty-state
+  line, "(no quests yet)" -- but that reads as "you truly have zero
+  quests," not "this build doesn't track quests yet." To stay consistent
+  with Shop's and Dialogue's own honest-placeholder wording, Journal's
+  body says explicitly that quest tracking isn't wired up in this build
+  yet, rather than silently implying a working-but-empty quest log. Needs
+  no `quest::` sources linked into the CMake target.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+test against real `save2.txt` confirming every catalog still loads and
+the window opens with no crash/exception -- this session again had no
+desktop/GUI access to press `/`/`V`/`O`/`G` live. **Not yet interactively
+confirmed** -- moved to the Playtest backlog below.
+
+**This closes the full-migration roadmap out.** Every screen in
+`ansalon_sfml_phase1` is now a real pixel-space port; nothing on that list
+is ASCII/terminal-only anymore, aside from character creation and the
+save-slot menu, which were always explicitly out of scope (plain
+`std::cin`/`std::cout`, no window exists yet when they run). The open
+question the roadmap's own last line named -- "when (if ever) this code
+gets promoted to replace `ansalon_rpg` outright" -- is now the natural
+next thing to decide, once enough of the Playtest backlog below is
+cleared to trust it.
+
+**Next step:** the user's call, not to be assumed -- clear the Playtest
+backlog below (a lot has shipped without a live keyboard check this
+session and prior ones), decide when/whether to promote this build to
+replace `ansalon_rpg`, or something else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -493,8 +567,19 @@ this order:
   Shop/Inventory's own reuse); also fixed a pre-existing Q/Escape bug on
   the character sheet itself while implementing it (see writeup above);
   not yet interactively confirmed (Playtest backlog below).
-- Full log, world map, journal, help -- 4 more screens, each smaller than
-  zones/combat.
+- ~~Help~~ -- done, see above (`/`, static content ported verbatim,
+  reusing `drawPickerOverlay`); not yet interactively confirmed
+  (Playtest backlog below).
+- ~~Full Log~~ -- done, see above (`V`, scroll-windowed via a new
+  `LogSession`, reusing `drawPickerOverlay` for the actual rendering);
+  not yet interactively confirmed (Playtest backlog below).
+- ~~World Map~~ -- done, see above (`O`, the real map image scaled down
+  instead of an ASCII downsample port, plus a side legend); not yet
+  interactively confirmed (Playtest backlog below).
+- ~~Journal~~ -- done, see above (`G`, a real overlay stating quest
+  tracking isn't wired up yet, since this build never populates
+  `game::GameState::quests`); not yet interactively confirmed (Playtest
+  backlog below).
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -607,6 +692,19 @@ piling on more unverified content. Full sourcing/detail for each is in its
   confirm pressing `I` while a shop is open still toggles buy/sell
   instead of opening this screen. See `sfml_phase1/main.cpp` and this
   file's writeup above, not a numbered `docs/MILESTONES.md` entry --
+  this branch isn't merged to `master` yet.
+- **SFML help/full log/world map/journal** -- press `/` from the
+  Overworld and again from inside a Zone, confirm the command reference
+  renders and any key dismisses; press `V`, confirm the event log shows
+  the most recent entries first, North/South scroll by a chunk and the
+  "Lines X-Y of Z" status line updates correctly, and `V`/`Q` both close
+  it; press `O`, confirm the real map image renders scaled down with a
+  marker at every location (green for towns, red otherwise) plus the
+  player's own marker in the right place, and the side legend lists every
+  location alphabetically and stays readable; press `G`, confirm it shows
+  the "quest tracking isn't wired up in this build yet" message rather
+  than crashing or silently doing nothing. See `sfml_phase1/main.cpp` and
+  this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
   this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
