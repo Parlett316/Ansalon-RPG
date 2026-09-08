@@ -152,9 +152,71 @@ startup -- this session again had no desktop/GUI access to press `C` and
 see the panel itself. **Not yet interactively confirmed** -- moved to the
 Playtest backlog below.
 
-**Next step:** the user's call, not to be assumed -- confirm the character
-sheet live (playtest backlog below), keep working down the full-migration
-roadmap (9 screens left), or something else.
+**Dialogue (core conversation) shipped this session, same
+`sfml_phase1/main.cpp`.** User picked it off the full-migration roadmap
+below. This is the biggest screen ported so far by underlying logic size --
+`GameLoop::talkTo`/`offerOrTurnInQuest` (`GameLoop.cpp:971-1470+`) is the
+single largest screen in the console build, well past combat's core melee
+loop. Research surfaced that `ansalon_sfml_phase1` didn't link
+`timeline::Timeline` at all before this session -- without it, Talk could
+never find a canon Hero, and a zone POI's own `TALK_AFTER`/`TALK_BEFORE`
+gating (which itself queries `Timeline::latestDayEnd`/`earliestDayStart`)
+couldn't work either. Added `src/timeline/Timeline.cpp`/`TimelineLoader.cpp`
+to the target and load `data/timeline.txt` alongside the existing
+World/ZoneCatalog/MonsterCatalog loads.
+
+**Scoped, by user decision, to the core conversation loop**: TALK/
+TALK_AGAIN, TALK_AFTER (aftermath)/TALK_BEFORE (anticipation), conditional
+greeting (SAY_IF), the curated TOPIC picker, and GRANTS_ITEM (needs no
+chooser -- an inventory push + one log line, so it shipped for free, same
+"cheap, no chooser" reasoning Phase 3 used for monsters' passive specials).
+Free-text "Ask about something else..." (needs real `TextEntered` input
+handling, unused anywhere in this codebase so far), quest offer/accept/
+progress/turn-in, boat-voyage accept/decline, and companion-recruit accept/
+decline are each deferred to a later phase -- a POI carrying any of those
+now prints one placeholder log line instead of silently doing nothing.
+**Scope correction found during implementation:** `ASK_LIMIT_LOCKED` was
+initially discussed as in-scope, but it can only ever fire once free-text
+asking has exhausted a daily question cap -- with that flow deferred, the
+counter never advances and it can never trigger, so it was dropped from
+this phase's local `Speech` shape entirely rather than carried as dead
+code. It'll come back naturally once free-text ask ships. Also not
+touched: canon-character "X is here" arrival announcements aren't ported in
+this build at all yet (only POI arrivals log a line today) -- a player has
+to think to press Talk, with no auto-nudge that a Hero is standing on their
+tile; a reasonable follow-up, out of scope for "the Talk screen" itself.
+
+`GameLoop.cpp`'s own `talkTo` machinery isn't linkable here (it's built on
+`render::Console`/`render::MapRenderer`, which this target deliberately
+excludes), so its logic was ported as new local code following this file's
+existing precedent (`pluralMonsterName`/`describeToHit`/`describeDamage`
+are already copied verbatim from `GameLoop.cpp` for the same reason):
+trimmed local `DialogueSpeech`/`DialogueCandidate` structs, `conditionMatches`
+copied verbatim, local `speechFromWindow`/`speechFromPoi`, a
+`gatherTalkCandidates()` mirroring `GameLoop::handleTalk`, and a
+`DialogueSession`/`DialogueUiState` state machine (`PickingCandidate`/
+`Greeting`/`TopicText`/`TopicPicker`) following `CombatSession`/
+`CombatUiState`'s own naming and non-blocking shape. One implementation-time
+correction from the plan: Q/Escape already close the whole window
+unconditionally in this build (checked before any per-screen dispatch), so
+there was never room for them to also mean "cancel this picker" -- matching
+combat's own `PickingTarget` precedent, `PickingCandidate` has no cancel
+(must pick someone) and `TopicPicker`'s always-present "Nothing, thanks"
+entry is its only way out. Rendering is a new full-window overlay
+(`drawDialogueOverlay`), composited the same way `drawCharacterSheetOverlay`
+already is, reusing that overlay's own color/size constants and the
+existing `wrapToWidth` helper.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` confirming every catalog -- including the new
+`timeline::Timeline` -- loads and the window opens with no crash/exception
+-- this session again had no desktop/GUI access to press `T` and actually
+talk to anyone. **Not yet interactively confirmed** -- moved to the
+Playtest backlog below.
+
+**Next step:** the user's call, not to be assumed -- confirm dialogue and/or
+the character sheet live (playtest backlog below), keep working down the
+full-migration roadmap (8 screens left), or something else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
 (sibling to `tools/package_release.ps1`, which packages the older console
@@ -182,9 +244,11 @@ this order:
   spellcasting/item use/backstab/sweep still deferred to a later phase.
 - ~~Character sheet~~ -- done, see above; not yet interactively confirmed
   (Playtest backlog below).
-- Spellbook, dialogue, generic picker, ask-input, shop, inventory, full
-  log, world map, journal, help -- 9 more screens, each smaller than
-  zones/combat.
+- ~~Dialogue~~ -- core conversation loop done, see above; free-text ask/
+  quest/boat/recruit choosers still deferred to a later phase; not yet
+  interactively confirmed (Playtest backlog below).
+- Spellbook, generic picker, ask-input, shop, inventory, full log, world
+  map, journal, help -- 8 more screens, each smaller than zones/combat.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -233,6 +297,15 @@ piling on more unverified content. Full sourcing/detail for each is in its
   prior screen without also moving the character or opening combat. See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- **SFML dialogue (core conversation)** -- press `T` at a zone-native NPC
+  (greeting, then topics if any, `TALK_AGAIN` on a second visit) and at a
+  canon Hero's scheduled tile (overworld or a zone's `TIMELINE_ANCHOR`);
+  confirm a multi-candidate tile picks correctly (up/down, Enter); confirm
+  the quest/boat/recruit placeholder log lines appear at a POI marked with
+  each (e.g. Kalaman's Curiosities Cart for `QUEST`, Crossing/Port O'Call
+  for `BOAT`, Haven or Solace for `RECRUIT`). See `sfml_phase1/main.cpp` and
+  this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
+  this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
   (e.g. Goblins), memorize Fireball, cast it at one instance while a second

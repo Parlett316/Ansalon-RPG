@@ -31,6 +31,8 @@
 #include "combat/MonsterLoader.h"
 #include "game/GameState.h"
 #include "game/SaveGame.h"
+#include "timeline/Timeline.h"
+#include "timeline/TimelineLoader.h"
 #include "world/OverworldGrid.h"
 #include "world/Terrain.h"
 #include "world/World.h"
@@ -126,6 +128,109 @@ std::string describeDamage(const combat::AttackOutcome& outcome) {
     }
     out << "]";
     return out.str();
+}
+
+// A talk interaction's content -- trimmed local counterpart to
+// game::Speech (GameLoop.h), which isn't linkable here (GameLoop.cpp is
+// built on render::Console/render::MapRenderer, which this target
+// deliberately excludes -- see this file's own top-of-file comment).
+// Deliberately omits game::Speech's subjects/subjectUnknown/askLimit*/
+// suppressAskHints/askLimitLocked* fields: free-text "ask about
+// something else..." is deferred to a later phase (see docs/CURRENT_WORK.md),
+// and askLimitLocked can only ever fire once that free-text flow has
+// exhausted a daily question cap -- with no such flow here, it can never
+// trigger, so it's dropped rather than carried as dead code.
+struct DialogueSpeech {
+    std::string greeting;                                          // plain SAY/TALK
+    std::vector<std::pair<std::string, std::string>> conditional;  // SAY_IF
+    std::string again;                                             // SAY_AGAIN/TALK_AGAIN
+    std::vector<std::pair<std::string, std::string>> topics;       // TOPIC
+};
+
+// One talkable candidate at the player's current tile -- trimmed local
+// counterpart to game::TalkCandidate (GameLoop.h), same "not linkable here"
+// reasoning as DialogueSpeech above. hasQuest/hasBoat/hasRecruit only
+// record *that* this candidate would offer one of those (in the console
+// build) so dialogueStartTalk can print a single placeholder line --
+// not the full payload (quest id, boat destination, companion id) the
+// console version's GameLoop::TalkCandidate carries, since none of those
+// flows are wired up yet.
+struct DialogueCandidate {
+    std::string id;
+    std::string name;
+    DialogueSpeech speech;
+    std::string dialogueAfter;
+    std::string dialogueBefore;
+    std::string grantsItemId;
+    std::string grantsItemName;
+    bool hasQuest = false;
+    bool hasBoat = false;
+    bool hasRecruit = false;
+};
+
+// SAY_IF's condition vocabulary -- copied verbatim from game::conditionMatches
+// (GameLoop.cpp), same "not exported, GameLoop.cpp isn't linked here"
+// reasoning as pluralMonsterName above. See docs/TIMELINE_NOTES.md.
+bool conditionMatches(const std::string& condition, const character::Character& c) {
+    using character::Alignment;
+    if (condition == "good") {
+        return c.alignment == Alignment::LawfulGood || c.alignment == Alignment::NeutralGood ||
+               c.alignment == Alignment::ChaoticGood;
+    }
+    if (condition == "evil") {
+        return c.alignment == Alignment::LawfulEvil || c.alignment == Alignment::NeutralEvil ||
+               c.alignment == Alignment::ChaoticEvil;
+    }
+    if (condition == "human") return c.race == character::RaceId::Human;
+    if (condition == "dwarf") return c.race == character::RaceId::Dwarf;
+    if (condition == "elf") return c.race == character::RaceId::Elf;
+    if (condition == "gnome") return c.race == character::RaceId::Gnome;
+    if (condition == "halfelf") return c.race == character::RaceId::HalfElf;
+    if (condition == "kender") return c.race == character::RaceId::Kender;
+    if (condition == "fighter") return c.charClass == character::ClassId::Fighter;
+    if (condition == "mage") return c.charClass == character::ClassId::Mage;
+    if (condition == "cleric") return c.charClass == character::ClassId::Cleric;
+    if (condition == "thief") return c.charClass == character::ClassId::Thief;
+    if (condition == "tinker") return c.charClass == character::ClassId::Tinker;
+    if (condition == "knight") return c.knightOrder != character::KnightOrder::None;
+    if (condition == "sword_knight") return c.knightOrder == character::KnightOrder::Sword;
+    if (condition == "sword_eligible") {
+        return c.knightOrder == character::KnightOrder::Crown && c.level >= 3 &&
+               character::meetsKnightOfSwordRequirements(c.scores);
+    }
+    if (condition == "rose_eligible") {
+        return c.knightOrder == character::KnightOrder::Sword && c.level >= 4 &&
+               character::meetsKnightOfRoseRequirements(c.scores);
+    }
+    if (condition == "str_13") return c.scores.strength >= character::kFrostreaverMinStrength;
+    if (condition == "wayreth_eligible") {
+        return c.charClass == character::ClassId::Mage && c.level >= 3;
+    }
+    return false;
+}
+
+// Adapts a timeline::PresenceWindow into DialogueSpeech -- trimmed local
+// counterpart to game::speechFromWindow (GameLoop.cpp), dropping the
+// subjects/subjectUnknown fields per DialogueSpeech's own comment above.
+DialogueSpeech speechFromWindow(const timeline::PresenceWindow& window) {
+    DialogueSpeech speech;
+    speech.greeting = window.dialogue;
+    speech.conditional = window.conditionalDialogue;
+    speech.again = window.dialogueAgain;
+    speech.topics = window.topics;
+    return speech;
+}
+
+// Adapts a world::PointOfInterest into DialogueSpeech -- the zone-native
+// counterpart to speechFromWindow above, trimmed local counterpart to
+// game::speechFromPoi (GameLoop.cpp).
+DialogueSpeech speechFromPoi(const world::PointOfInterest& poi) {
+    DialogueSpeech speech;
+    speech.greeting = poi.dialogue;
+    speech.conditional = poi.conditionalDialogue;
+    speech.again = poi.dialogueAgain;
+    speech.topics = poi.topics;
+    return speech;
 }
 
 std::string formatDayTime(long long hoursElapsed) {
@@ -366,6 +471,28 @@ struct CombatSession {
     int playerDamageBonus = 0;
 };
 
+// Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
+// "core conversation" slice (see docs/CURRENT_WORK.md's scope writeup for
+// this phase; free-text ask/quest/boat/recruit choosers are deferred, each
+// getting a single placeholder log line instead). PickingCandidate mirrors
+// GameLoop::pickAndTalk's "more than one candidate here" picker; Greeting/
+// TopicText/TopicPicker mirror talkTo's own greeting-then-topic-menu flow.
+enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker };
+
+// All state for one conversation, local to this file -- same "not part of
+// game::GameState" reasoning as CombatSession above (a conversation is
+// transient UI state, not world state).
+struct DialogueSession {
+    bool active = false;
+    std::vector<DialogueCandidate> candidates;
+    int candidateSelected = 0;
+    DialogueUiState uiState = DialogueUiState::PickingCandidate;
+    DialogueCandidate current;             // the candidate actually being talked to
+    std::string bodyText;                  // text currently on screen
+    std::vector<std::string> topicLabels;  // topics + "Nothing, thanks"
+    int topicSelected = 0;
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -388,6 +515,10 @@ int runPhase1(const std::string& savePath) {
     combat::MonsterCatalog monsterCatalog;
     combat::MonsterLoader::loadFromFile("data/monsters.txt", monsterCatalog);
     std::cout << "step 2c: monsters loaded, " << monsterCatalog.size() << " entries" << std::endl;
+
+    timeline::Timeline timeline;
+    timeline::TimelineLoader::loadFromFile("data/timeline.txt", timeline);
+    std::cout << "step 2d: timeline loaded" << std::endl;
 
     game::GameState state = game::SaveGame::load(savePath);
     std::cout << "step 3: save loaded -- " << state.character.name << ", level "
@@ -491,7 +622,193 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Movement, Enter (zones/combat), Flee (combat), and C (character sheet) work. Other keys are placeholders for now.");
+    pushLog("Movement, Enter (zones/combat), Flee (combat), Talk, and C (character sheet) work. Other keys are placeholders for now.");
+
+    // --- Dialogue (core conversation): all state is DialogueSession above;
+    // every lambda below is a non-blocking port of the matching piece of
+    // GameLoop::handleTalk/talkTo (src/game/GameLoop.cpp:828-1306) -- see
+    // this file's top-of-file comment and docs/CURRENT_WORK.md for the
+    // scope this phase ports (greeting/again/aftermath/anticipation/
+    // conditional-greeting resolution, the topic picker, GRANTS_ITEM) vs.
+    // defers (free-text ask, quest turn-in, boat voyage, companion
+    // recruit -- each of the latter three gets a single placeholder log
+    // line via dialogueStartTalk's hasQuest/hasBoat/hasRecruit checks
+    // instead of silently doing nothing).
+    DialogueSession dialogueSession;
+
+    // Mirrors GameLoop::handleTalk exactly -- see that function's own
+    // comments for why the Overworld/Zone branches differ and what
+    // TIMELINE_ANCHOR does.
+    auto gatherTalkCandidates = [&]() -> std::vector<DialogueCandidate> {
+        std::vector<DialogueCandidate> candidates;
+        const long long dayNow = state.hoursElapsed / 24;
+        if (state.mode == game::Mode::Overworld) {
+            const world::Location* here = world.locationAt(state.x, state.y);
+            if (here != nullptr) {
+                for (const timeline::Presence& presence : timeline.presentAt(here->id, static_cast<int>(dayNow))) {
+                    if (presence.window->dialogue.empty()) continue;
+                    DialogueCandidate candidate;
+                    candidate.id = presence.character->id;
+                    candidate.name = presence.character->name;
+                    candidate.speech = speechFromWindow(*presence.window);
+                    candidates.push_back(std::move(candidate));
+                }
+            }
+        } else if (currentZone != nullptr) {
+            const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY);
+            const std::string& effectiveId = currentZone->timelineLocationId().empty()
+                                                  ? state.currentZoneId
+                                                  : currentZone->timelineLocationId();
+            if (poi != nullptr && !poi->dialogue.empty()) {
+                DialogueCandidate candidate;
+                candidate.id = state.currentZoneId + ":" + std::string(1, poi->code);
+                candidate.name = poi->name;
+                candidate.speech = speechFromPoi(*poi);
+                candidate.grantsItemId = poi->grantsItemId;
+                candidate.grantsItemName = poi->grantsItemName;
+                candidate.hasQuest = currentZone->questAt(state.zoneX, state.zoneY) != nullptr;
+                candidate.hasBoat = currentZone->boatAt(state.zoneX, state.zoneY) != nullptr;
+                candidate.hasRecruit = !poi->recruitCompanionId.empty();
+                if (!poi->dialogueAfter.empty()) {
+                    int latestDayEnd = timeline.latestDayEnd(effectiveId);
+                    if (latestDayEnd >= 0 && dayNow > latestDayEnd) candidate.dialogueAfter = poi->dialogueAfter;
+                }
+                if (!poi->dialogueBefore.empty()) {
+                    int earliestDayStart = timeline.earliestDayStart(effectiveId);
+                    if (earliestDayStart >= 0 && dayNow < earliestDayStart) {
+                        candidate.dialogueBefore = poi->dialogueBefore;
+                    }
+                }
+                candidates.push_back(std::move(candidate));
+            }
+            if (poi != nullptr && poi->code == currentZone->timelineAnchorPoi()) {
+                for (const timeline::Presence& presence : timeline.presentAt(effectiveId, static_cast<int>(dayNow))) {
+                    if (presence.window->dialogue.empty()) continue;
+                    DialogueCandidate candidate;
+                    candidate.id = presence.character->id;
+                    candidate.name = presence.character->name;
+                    candidate.speech = speechFromWindow(*presence.window);
+                    candidates.push_back(std::move(candidate));
+                }
+            }
+        }
+        return candidates;
+    };
+
+    // Ends the current conversation -- loops back to the "talk to whom?"
+    // picker if there was one (mirroring GameLoop::pickAndTalk's own
+    // deliberate non-return after talkTo finishes, GameLoop.cpp:924-929),
+    // otherwise closes the session outright.
+    auto dialogueEnd = [&]() {
+        if (dialogueSession.candidates.size() > 1) {
+            dialogueSession.uiState = DialogueUiState::PickingCandidate;
+        } else {
+            dialogueSession.active = false;
+        }
+    };
+
+    // Mirrors GameLoop::talkTo's greeting-resolution precedence exactly
+    // (GameLoop.cpp:1002-1046), minus the askLimitLocked branch (see
+    // DialogueSpeech's own comment for why) and minus boat/quest/recruit's
+    // real handling (a single placeholder log line each instead).
+    auto dialogueStartTalk = [&](const DialogueCandidate& candidate) {
+        dialogueSession.current = candidate;
+        const std::string afterId = candidate.id + ":after";
+        const bool showAfter = !candidate.dialogueAfter.empty() && state.metCharacters.count(afterId) == 0;
+        const bool alreadyMet = state.metCharacters.count(candidate.id) > 0;
+        std::string text;
+        if (showAfter) {
+            text = candidate.dialogueAfter;
+            state.metCharacters.insert(afterId);
+        } else if (!candidate.dialogueBefore.empty()) {
+            text = candidate.dialogueBefore;
+        } else if (alreadyMet) {
+            text = !candidate.speech.again.empty()
+                       ? candidate.speech.again
+                       : (candidate.name + " catches your eye and gives a small nod of recognition.");
+        } else {
+            text = candidate.speech.greeting;
+            for (const auto& [condition, conditionalText] : candidate.speech.conditional) {
+                if (conditionMatches(condition, state.character)) {
+                    text = conditionalText;
+                    break;
+                }
+            }
+        }
+        dialogueSession.bodyText = text;
+        state.metCharacters.insert(candidate.id);
+
+        if (!candidate.grantsItemId.empty() &&
+            character::findQuestItemIndex(state.character, candidate.grantsItemId) < 0) {
+            state.character.inventory.push_back(character::InventoryItem{
+                character::ItemKind::QuestItem, character::ArmorId::None, "", 0, 0, 0, candidate.grantsItemId,
+                candidate.grantsItemName});
+            pushLog("You've picked up " + candidate.grantsItemName + ".");
+        }
+        if (candidate.hasQuest) pushLog("(Quest content at this NPC isn't wired up in this build yet.)");
+        if (candidate.hasBoat) pushLog("(Boat voyages aren't wired up in this build yet.)");
+        if (candidate.hasRecruit) pushLog("(Recruiting companions isn't wired up in this build yet.)");
+
+        dialogueSession.topicLabels.clear();
+        for (const auto& [label, topicText] : candidate.speech.topics) dialogueSession.topicLabels.push_back(label);
+        dialogueSession.topicLabels.push_back("Nothing, thanks");
+        dialogueSession.topicSelected = 0;
+        dialogueSession.uiState = DialogueUiState::Greeting;
+    };
+
+    // 'T' -- mirrors GameLoop::handleTalk/pickAndTalk's own 0/1/2+ shape.
+    auto dialogueBegin = [&]() {
+        dialogueSession.candidates = gatherTalkCandidates();
+        if (dialogueSession.candidates.empty()) {
+            pushLog("There's no one here to talk to.");
+            return;
+        }
+        dialogueSession.active = true;
+        if (dialogueSession.candidates.size() == 1) {
+            dialogueStartTalk(dialogueSession.candidates.front());
+            return;
+        }
+        dialogueSession.candidateSelected = 0;
+        dialogueSession.uiState = DialogueUiState::PickingCandidate;
+    };
+
+    // Enter on the "talk to whom?" picker.
+    auto dialogueConfirmCandidate = [&]() {
+        if (dialogueSession.candidateSelected < 0 ||
+            dialogueSession.candidateSelected >= static_cast<int>(dialogueSession.candidates.size())) {
+            return;
+        }
+        dialogueStartTalk(dialogueSession.candidates[static_cast<size_t>(dialogueSession.candidateSelected)]);
+    };
+
+    // Enter on the "ask <name> about..." picker -- "Nothing, thanks" is
+    // always the last label (see dialogueStartTalk above).
+    auto dialogueConfirmTopic = [&]() {
+        const int nothingThanksIndex = static_cast<int>(dialogueSession.topicLabels.size()) - 1;
+        if (dialogueSession.topicSelected == nothingThanksIndex) {
+            dialogueEnd();
+            return;
+        }
+        dialogueSession.bodyText =
+            dialogueSession.current.speech.topics[static_cast<size_t>(dialogueSession.topicSelected)].second;
+        dialogueSession.uiState = DialogueUiState::TopicText;
+    };
+
+    // Enter (or any key, per the console's "press any key to continue") on
+    // a plain dialogue box -- Greeting goes to the topic menu if there is
+    // one, else ends the conversation; TopicText always returns to the
+    // topic menu (mirroring talkTo's own topic loop).
+    auto dialogueContinue = [&]() {
+        if (dialogueSession.uiState == DialogueUiState::Greeting) {
+            if (!dialogueSession.current.speech.topics.empty()) {
+                dialogueSession.uiState = DialogueUiState::TopicPicker;
+            } else {
+                dialogueEnd();
+            }
+        } else if (dialogueSession.uiState == DialogueUiState::TopicText) {
+            dialogueSession.uiState = DialogueUiState::TopicPicker;
+        }
+    };
 
     // --- Combat (Phase 3): all state is CombatSession above; every lambda
     // below is a non-blocking port of the matching piece of
@@ -1240,6 +1557,66 @@ int runPhase1(const std::string& savePath) {
         window.draw(footer);
     };
 
+    // Dialogue -- a full-window overlay, same compositing approach as
+    // drawCharacterSheetOverlay above (drawn as a final layer on top of
+    // the map/sidebar, gated on dialogueSession.active). Pixel-space
+    // equivalent of render::MapRenderer::drawDialogueFrame/drawPickerFrame,
+    // reusing the character sheet's own color/size constants above for
+    // visual consistency across overlays.
+    auto drawDialogueOverlay = [&]() {
+        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        bg.setFillColor(sf::Color(18, 18, 24));
+        window.draw(bg);
+
+        const std::size_t maxChars =
+            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+        float y = 40.f;
+
+        auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
+            sf::Text sfText(font, text, size);
+            sfText.setFillColor(color);
+            sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
+            window.draw(sfText);
+            y += static_cast<float>(size) + 10.f;
+        };
+
+        switch (dialogueSession.uiState) {
+            case DialogueUiState::Greeting:
+            case DialogueUiState::TopicText:
+                drawLine(dialogueSession.current.name, sf::Color::White, kSheetTitleCharSize);
+                y += 10.f;
+                for (const std::string& wrapped : wrapToWidth(dialogueSession.bodyText, maxChars)) {
+                    drawLine(wrapped, kSheetBodyColor, kSheetBodyCharSize);
+                }
+                y += 10.f;
+                drawLine("(press Enter to continue)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                break;
+            case DialogueUiState::PickingCandidate:
+                drawLine("Talk to whom?", kSheetSectionColor, kSheetTitleCharSize);
+                y += 10.f;
+                for (int i = 0; i < static_cast<int>(dialogueSession.candidates.size()); ++i) {
+                    const bool isSelected = i == dialogueSession.candidateSelected;
+                    drawLine((isSelected ? "> " : "  ") + dialogueSession.candidates[static_cast<size_t>(i)].name,
+                             isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
+                }
+                y += 10.f;
+                drawLine("(up/down = select, Enter = talk)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                break;
+            case DialogueUiState::TopicPicker:
+                drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
+                         kSheetTitleCharSize);
+                y += 10.f;
+                for (int i = 0; i < static_cast<int>(dialogueSession.topicLabels.size()); ++i) {
+                    const bool isSelected = i == dialogueSession.topicSelected;
+                    drawLine((isSelected ? "> " : "  ") + dialogueSession.topicLabels[static_cast<size_t>(i)],
+                             isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
+                }
+                y += 10.f;
+                drawLine("(up/down = select, Enter = ask)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                break;
+        }
+    };
+
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
     while (window.isOpen()) {
@@ -1253,6 +1630,7 @@ int runPhase1(const std::string& savePath) {
                     int dy = 0;
                     std::string placeholder;
                     bool handleEnter = false;
+                    bool wantsTalk = false;
                     switch (key) {
                         case sf::Keyboard::Key::W:
                         case sf::Keyboard::Key::Up: dy = -1; break;
@@ -1265,7 +1643,7 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Q:
                         case sf::Keyboard::Key::Escape: window.close(); break;
                         case sf::Keyboard::Key::L: placeholder = "Look: not yet implemented in this build."; break;
-                        case sf::Keyboard::Key::T: placeholder = "Talk: not yet implemented in this build."; break;
+                        case sf::Keyboard::Key::T: wantsTalk = true; break;
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
                         case sf::Keyboard::Key::C: break; // handled explicitly below via sheetOpen
                         case sf::Keyboard::Key::P: placeholder = "Shop: not yet implemented in this build."; break;
@@ -1337,6 +1715,50 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                         }
+                    } else if (dialogueSession.active) {
+                        // Dialogue's own input dispatch -- see
+                        // DialogueSession/DialogueUiState's doc comments
+                        // above. Same "reuse dx/dy/handleEnter the switch
+                        // above already computed" shape as combat's own
+                        // dispatch. Deliberately no cancel key: Q/Escape
+                        // already close the whole window unconditionally
+                        // (see the switch above), so -- same as combat's
+                        // own PickingTarget -- there's no room to also mean
+                        // "back out of this menu" here; the always-present
+                        // "Nothing, thanks" entry is TopicPicker's only way
+                        // out, and PickingCandidate has no cancel at all,
+                        // matching PickingTarget's precedent.
+                        switch (dialogueSession.uiState) {
+                            case DialogueUiState::PickingCandidate: {
+                                const int candidateCount = static_cast<int>(dialogueSession.candidates.size());
+                                if (dy < 0) {
+                                    dialogueSession.candidateSelected =
+                                        (dialogueSession.candidateSelected - 1 + candidateCount) % candidateCount;
+                                } else if (dy > 0) {
+                                    dialogueSession.candidateSelected =
+                                        (dialogueSession.candidateSelected + 1) % candidateCount;
+                                } else if (handleEnter) {
+                                    dialogueConfirmCandidate();
+                                }
+                                break;
+                            }
+                            case DialogueUiState::Greeting:
+                            case DialogueUiState::TopicText:
+                                if (handleEnter) dialogueContinue();
+                                break;
+                            case DialogueUiState::TopicPicker: {
+                                const int topicCount = static_cast<int>(dialogueSession.topicLabels.size());
+                                if (dy < 0) {
+                                    dialogueSession.topicSelected =
+                                        (dialogueSession.topicSelected - 1 + topicCount) % topicCount;
+                                } else if (dy > 0) {
+                                    dialogueSession.topicSelected = (dialogueSession.topicSelected + 1) % topicCount;
+                                } else if (handleEnter) {
+                                    dialogueConfirmTopic();
+                                }
+                                break;
+                            }
+                        }
                     } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
                             const world::Location* here = world.locationAt(state.x, state.y);
@@ -1386,6 +1808,8 @@ int runPhase1(const std::string& savePath) {
                         }
                     } else if (key == sf::Keyboard::Key::C) {
                         sheetOpen = true;
+                    } else if (wantsTalk) {
+                        dialogueBegin();
                     } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
@@ -1689,6 +2113,11 @@ int runPhase1(const std::string& savePath) {
             if (sheetOpen) {
                 window.setView(uiView);
                 drawCharacterSheetOverlay();
+            }
+
+            if (dialogueSession.active) {
+                window.setView(uiView);
+                drawDialogueOverlay();
             }
 
             window.display();
