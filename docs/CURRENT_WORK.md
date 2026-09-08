@@ -348,10 +348,52 @@ window opens with no crash/exception -- this session again had no
 desktop/GUI access to press `P` live. **Not yet interactively
 confirmed** -- moved to the Playtest backlog below.
 
+**Inventory shipped this session, same `sfml_phase1/main.cpp`.** User
+picked it off the full-migration roadmap -- confirmed as the cheapest
+remaining screen, same "already have every mechanic, already have the
+picker overlay" reasoning that made Shop cheap. **Zero
+`CMakeLists.txt` changes needed** -- `src/character/Equipment.cpp` was
+already linked in for the character sheet/Shop phases.
+
+Ports `GameLoop::handleInventory` (`GameLoop.cpp:1638-1675`) faithfully:
+North/South cycles the carried-item list (wrapping, no-op if empty);
+Enter dispatches on `InventoryItem::kind` -- a Potion is drunk via
+`character::drinkPotion` (its result message shown), a Webnet/Brooch of
+Imog shows "That can only be used in combat.", a QuestItem shows "That's
+meant for someone else -- you'll need to deliver it.", and everything
+else (Armor/Shield/Weapon) is equipped via `character::
+equipInventoryItem` -- after any action the cursor resets to 0, matching
+the console's own "the list just changed shape" comment. Unlike Shop,
+Inventory has no opening gate (works from Overworld or Zone, matching
+Character Sheet's `sheetOpen` convention rather than Shop's POI-gated
+one), and `Q` closes just the screen, not the whole window (same
+deliberate deviation Shop's own `Key::Quit` precedent already
+established, since `handleInventory`'s own Quit just returns from its
+local loop).
+
+New local `InventorySession` (flat struct, no `UiState` enum -- one
+screen shape throughout, same reasoning as `ShopSession`). Reuses
+`drawPickerOverlay` for the item list; since that lambda only takes a
+flat row list with no separate header block, the HP/Weapon/Armor+Shield
+summary lines (mirroring `drawInventoryFrame`'s own header,
+`MapRenderer.cpp:1105-1147`) are prepended as non-selectable leading
+rows and the cursor index is offset past them, with the cursor
+suppressed entirely (index -1) when the inventory is empty so
+"(nothing carried)" never draws a selection arrow. `I` now opens
+Inventory in the ordinary case; while a shop is open it still means
+"toggle buy/sell view" as before (Shop's own dispatch reads `key`
+directly and is checked first, so the two never conflict).
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+test against real `save2.txt` (run from the repo root) confirming every
+catalog still loads and the window opens with no crash/exception --
+this session again had no desktop/GUI access to press `I` live. **Not
+yet interactively confirmed** -- moved to the Playtest backlog below.
+
 **Next step:** the user's call, not to be assumed -- confirm dialogue,
-the character sheet, ask-input, and/or shop live (playtest backlog
-below), keep working down the full-migration roadmap (6 screens left:
-spellbook, inventory, full log, world map, journal, help), or something
+the character sheet, ask-input, shop, and/or inventory live (playtest
+backlog below), keep working down the full-migration roadmap (5 screens
+left: spellbook, full log, world map, journal, help), or something
 else.
 
 **Standalone demo packaging added this session:** `tools/package_sfml_demo.ps1`
@@ -395,9 +437,12 @@ this order:
   quest-locked shop (Flint's Smithy) shows a placeholder instead of
   opening, no quest state tracked in this build yet; not yet
   interactively confirmed (Playtest backlog below).
-- Spellbook, inventory, full log, world map, journal, help -- 6 more
-  screens, each smaller than zones/combat; inventory and spellbook can
-  now also reuse `drawPickerOverlay` the way Shop just did.
+- ~~Inventory~~ -- done, see above (equip/drink/no-op, reusing
+  `drawPickerOverlay` the same way Shop did); not yet interactively
+  confirmed (Playtest backlog below).
+- Spellbook, full log, world map, journal, help -- 5 more screens, each
+  smaller than zones/combat; spellbook can also reuse
+  `drawPickerOverlay` the way Shop/Inventory did.
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
@@ -489,6 +534,18 @@ piling on more unverified content. Full sourcing/detail for each is in its
   quest-locked placeholder line instead of opening. See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- **SFML inventory** -- press `I` from the Overworld and again from
+  inside a Zone; confirm the HP/Weapon/Armor(+Shield) header lines and
+  the carried-item list render, with an empty inventory correctly
+  showing "(nothing carried)" and no cursor; equip a weapon/armor/shield
+  and confirm the header line updates to match; drink a potion and
+  confirm current HP increases and a result message appears; confirm a
+  Webnet/Brooch of Imog/quest item shows its no-op message instead of
+  equipping; confirm `Q` returns to the map (not the whole window);
+  confirm pressing `I` while a shop is open still toggles buy/sell
+  instead of opening this screen. See `sfml_phase1/main.cpp` and this
+  file's writeup above, not a numbered `docs/MILESTONES.md` entry --
+  this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
   (e.g. Goblins), memorize Fireball, cast it at one instance while a second

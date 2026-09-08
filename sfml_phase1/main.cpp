@@ -14,7 +14,7 @@
 // Fighter sweep are each a real chunk of new chooser UI or extra positional
 // bookkeeping on top of `GameLoop::runCombat` -- deferred to a later phase,
 // same "not yet in this build" convention Phase 1 already established for
-// Look/Inventory/etc. See docs/CURRENT_WORK.md for the full scope writeup.
+// Look/Journal/etc. See docs/CURRENT_WORK.md for the full scope writeup.
 
 #include "character/Alignment.h"
 #include "character/CharClass.h"
@@ -630,6 +630,16 @@ struct ShopSession {
     std::string message; // post-transaction feedback, cleared on mode toggle
 };
 
+// All state for one inventory visit -- same "transient UI state" reasoning
+// as ShopSession above, and just as flat: a single picker list, no UiState
+// enum. Unlike Shop this isn't POI-gated -- works from Overworld or Zone,
+// matching Character Sheet's sheetOpen convention instead.
+struct InventorySession {
+    bool active = false;
+    int selected = 0;
+    std::string message; // post-action feedback (equip/drink/no-op), cleared on open
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -773,6 +783,7 @@ int runPhase1(const std::string& savePath) {
     // instead of silently doing nothing).
     DialogueSession dialogueSession;
     ShopSession shopSession;
+    InventorySession inventorySession;
 
     // Mirrors GameLoop::handleTalk exactly -- see that function's own
     // comments for why the Overworld/Zone branches differ and what
@@ -976,6 +987,16 @@ int runPhase1(const std::string& savePath) {
         shopSession.sellMode = false;
         shopSession.selected = 0;
         shopSession.message.clear();
+    };
+
+    // 'I' -- unlike shopBegin above, no opening gate: Inventory works from
+    // Overworld or Zone, matching sheetOpen's convention rather than
+    // Shop's POI-gated one. Mirrors GameLoop::handleInventory's own lack
+    // of preconditions (GameLoop.cpp:1638).
+    auto inventoryBegin = [&]() {
+        inventorySession.active = true;
+        inventorySession.selected = 0;
+        inventorySession.message.clear();
     };
 
     // Enter on the "talk to whom?" picker.
@@ -2050,6 +2071,40 @@ int runPhase1(const std::string& savePath) {
         drawPickerOverlay(title.str(), rows, shopSession.selected, footer.str(), shopSession.message);
     };
 
+    // Inventory -- pixel-space equivalent of render::MapRenderer::
+    // drawInventoryFrame (MapRenderer.cpp:1105-1147), delegating to
+    // drawPickerOverlay above the same way Shop does. That lambda only
+    // takes a flat item list with no separate header block, so the HP/
+    // Weapon/Armor summary lines are prepended as non-selectable leading
+    // rows and the cursor index is offset past them -- the cleanest way
+    // to reuse it unchanged. cursorIndex is -1 (never matches any row)
+    // when the inventory is empty, so "(nothing carried)" never draws a
+    // cursor -- there's nothing to select.
+    auto drawInventoryOverlay = [&]() {
+        std::vector<std::string> rows;
+        rows.push_back("HP: " + std::to_string(state.character.currentHp) + "/" +
+                        std::to_string(state.character.maxHp));
+        rows.push_back("Weapon: " + state.character.weaponName);
+        std::string armorLine = "Armor: " + (state.character.equippedArmor == character::ArmorId::None
+                                                  ? std::string("none")
+                                                  : std::string(character::armorInfo(state.character.equippedArmor).name));
+        if (state.character.hasShield) armorLine += " + Shield";
+        rows.push_back(armorLine);
+        rows.push_back("");
+        if (state.character.inventory.empty()) {
+            rows.push_back("(nothing carried)");
+        } else {
+            rows.push_back("Carried items:");
+        }
+        const int headerCount = static_cast<int>(rows.size());
+        for (const character::InventoryItem& item : state.character.inventory) {
+            rows.push_back(character::inventoryItemLabel(item));
+        }
+        const int cursorIndex = state.character.inventory.empty() ? -1 : headerCount + inventorySession.selected;
+        drawPickerOverlay("Inventory", rows, cursorIndex, "up/down=select   Enter=equip/use   q=leave",
+                           inventorySession.message);
+    };
+
     std::cout << "init ok; world pixel size " << worldW << "x" << worldH << std::endl;
 
     while (window.isOpen()) {
@@ -2088,9 +2143,12 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
                         case sf::Keyboard::Key::C: break; // handled explicitly below via sheetOpen
                         case sf::Keyboard::Key::P: wantsShop = true; break;
-                        case sf::Keyboard::Key::I:
-                            placeholder = "Inventory: not yet implemented in this build.";
-                            break;
+                        // Handled explicitly below: opens Inventory in the
+                        // ordinary case, but toggles Shop's own buy/sell view
+                        // while a shop is open (that branch reads `key`
+                        // directly, bypassing this switch -- see the
+                        // shopSession.active dispatch below).
+                        case sf::Keyboard::Key::I: break;
                         case sf::Keyboard::Key::V:
                             placeholder = "Full log view: not yet implemented in this build.";
                             break;
@@ -2128,6 +2186,12 @@ int runPhase1(const std::string& savePath) {
                         // console's behavior matters more than this build's
                         // otherwise-uniform Q convention here.
                         shopSession.active = false;
+                    } else if (inventorySession.active && wantsQuit) {
+                        // Same deviation as Shop just above -- GameLoop::
+                        // handleInventory's own Key::Quit just returns from its
+                        // local loop (GameLoop.cpp:1671-1672), closing the
+                        // screen, not the whole game.
+                        inventorySession.active = false;
                     } else if (wantsQuit && !askInputActive) {
                         window.close();
                     } else if (sheetOpen) {
@@ -2236,12 +2300,12 @@ int runPhase1(const std::string& savePath) {
                         // Shop's own input dispatch -- a single screen shape (no
                         // UiState enum, see ShopSession's own comment), so this is
                         // flatter than combat/dialogue's per-state switches. 'I' is
-                        // read directly off `key` rather than the outer switch's
-                        // `placeholder` (still "Inventory: not yet implemented in
-                        // this build." for the ordinary no-shop-open case) -- same
-                        // "bypass the outer switch's placeholder while this session
-                        // owns the key" precedent combat's Idle state already
-                        // established for F/M/I.
+                        // read directly off `key` rather than the outer switch
+                        // (which leaves it a no-op, see the switch's own comment)
+                        // -- while a shop is open, 'I' toggles buy/sell instead of
+                        // opening Inventory, same "this session owns the key"
+                        // precedent combat's Idle state already established for
+                        // F/M/I.
                         const int buyCount = static_cast<int>(
                             character::availableShopItems(state.character, shopSession.catalog).size());
                         const int sellCount = static_cast<int>(character::sellableItems(state.character).size());
@@ -2267,6 +2331,36 @@ int runPhase1(const std::string& savePath) {
                             shopSession.sellMode = !shopSession.sellMode;
                             shopSession.selected = 0;
                             shopSession.message.clear();
+                        }
+                    } else if (inventorySession.active) {
+                        // Inventory's own input dispatch -- mirrors
+                        // GameLoop::handleInventory (GameLoop.cpp:1638-1675)
+                        // exactly, including its North/South wrap-if-nonempty
+                        // and "reset cursor to 0, the list just changed shape"
+                        // rule after any Enter action.
+                        auto& inventory = state.character.inventory;
+                        const int itemCount = static_cast<int>(inventory.size());
+                        if (dy < 0) {
+                            inventorySession.selected =
+                                itemCount == 0 ? 0 : (inventorySession.selected - 1 + itemCount) % itemCount;
+                        } else if (dy > 0) {
+                            inventorySession.selected = itemCount == 0 ? 0 : (inventorySession.selected + 1) % itemCount;
+                        } else if (handleEnter && itemCount > 0) {
+                            const character::ItemKind kind = inventory[static_cast<size_t>(inventorySession.selected)].kind;
+                            if (kind == character::ItemKind::Potion) {
+                                character::PurchaseResult result =
+                                    character::drinkPotion(state.character, inventorySession.selected);
+                                inventorySession.message = result.message;
+                            } else if (kind == character::ItemKind::Webnet ||
+                                       kind == character::ItemKind::BroochOfImog) {
+                                inventorySession.message = "That can only be used in combat.";
+                            } else if (kind == character::ItemKind::QuestItem) {
+                                inventorySession.message = "That's meant for someone else -- you'll need to deliver it.";
+                            } else {
+                                character::equipInventoryItem(state.character, inventorySession.selected);
+                                inventorySession.message.clear();
+                            }
+                            inventorySession.selected = 0;
                         }
                     } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
@@ -2321,6 +2415,8 @@ int runPhase1(const std::string& savePath) {
                         dialogueBegin();
                     } else if (wantsShop) {
                         shopBegin();
+                    } else if (key == sf::Keyboard::Key::I) {
+                        inventoryBegin();
                     } else if (!placeholder.empty()) {
                         pushLog(placeholder);
                     } else if (dx != 0 || dy != 0) {
@@ -2647,6 +2743,11 @@ int runPhase1(const std::string& savePath) {
             if (shopSession.active) {
                 window.setView(uiView);
                 drawShopOverlay();
+            }
+
+            if (inventorySession.active) {
+                window.setView(uiView);
+                drawInventoryOverlay();
             }
 
             window.display();
