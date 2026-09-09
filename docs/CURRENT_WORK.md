@@ -687,6 +687,64 @@ window opens with no crash/exception -- this session again had no
 desktop/GUI access to press `I` live. **Not yet interactively confirmed**
 -- moved to the Playtest backlog below.
 
+**Thief backstab and Fighter sweep shipped this session, same
+`sfml_phase1/main.cpp`.** User picked them off Phase 3's own deferred
+list -- the last two items on it (spellcasting and item use had already
+closed out the rest). Direct port of `GameLoop::runCombat`'s shared
+`firstAttackerId`/`positionOfAttacker`/`backstabBonus`/
+`adjacentWeakInstances` lambdas (`GameLoop.cpp:2024-2085`), its player
+sweep block (`GameLoop.cpp:2214-2245`), backstab wired into the player's
+ordinary attack loop (`GameLoop.cpp:2275-2289`), and companion sweep +
+backstab (`GameLoop.cpp:2347-2416`) -- reusing `character::classGroupFor`/
+`ClassGroup::Warrior`/`ClassGroup::Rogue`, `character::canBackstab`,
+`character::backstabDamageMultiplier`, `combat::isSweepEligible`, and
+`combat::oppositeSide` completely unchanged (all already linked into this
+target for other combat features). **Zero `CMakeLists.txt` changes
+needed.** Unlike every other feature shipped this session, neither ability
+gets a new key binding or `CombatUiState` -- both are automatic,
+position/class/HP-dice-driven, exactly as in the console build.
+
+`CombatSession` gained one new fight-long field, `firstAttackerId` (sized
+fresh per encounter alongside the other per-instance vectors, NOT reset
+per round -- same "the first character to attack it, full stop, for the
+instance's whole lifetime" rule the console version documents). Two new
+shared lambdas, `combatBackstabBonus` and `combatAdjacentWeakInstances`,
+sit right before `combatCompanionActs` (so they're in scope for it, for
+`combatResolveAttackAgainstTarget`, and for `combatBeginPlayerAttack`, all
+of which come later in the file) and are called from all three: the
+player's sweep check (inserted into `combatBeginPlayerAttack` right after
+the existing ranged-weapon-adjacency early return, before candidate
+gathering -- same placement the console uses), the player's ordinary
+attack loop (`combatResolveAttackAgainstTarget`, which needed no signature
+change since it already only ever resolves the player's own attacks), and
+companion sweep/backstab (`combatCompanionActs`, both inserted right
+before its existing single-target `attacks` loop). This build's own
+established simplification carries over unchanged: **one target per
+round, no mid-round retarget-on-kill** -- sweep doesn't interact with that
+since it was never target-picker-driven to begin with. Log lines follow
+this build's already-simplified style (no `describeToHit`/`describeDamage`
+roll-math breakdown, dropped at commit `c657a44`) -- "You hit the Goblin
+for 5.", "Backstab! You hit the Goblin A for 12."
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against both real saves (`save1.txt`, Mike, level 1 Human Fighter; and
+`save2.txt`, Regan, level 20 Human Mage) confirming every catalog still
+loads and the window opens with no crash/exception -- this session again
+had no desktop/GUI access to actually fight anything. **Not yet
+interactively confirmed** -- moved to the Playtest backlog below. Neither
+current save carries a recruited companion (checked directly, no
+`COMPANION` line in either file) -- since backstab and companion sweep
+both need a second party member, and this build's own Dialogue phase
+still defers the recruit-accept/decline flow, a companion has to come
+from a console-build (`ansalon_rpg`) playthrough saving into the slot
+first, same prerequisite the Phase 3 combat backlog entry below already
+notes for its own companion-fighting item.
+
+This closes out every item Phase 3 originally deferred -- backstab,
+sweep, spellcasting, and item use have all now shipped in this build (only
+Phase 3's own deliberately-out-of-scope items, like player-directed party
+control, remain out of scope project-wide).
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -845,6 +903,27 @@ piling on more unverified content. Full sourcing/detail for each is in its
   `sfml_phase1/main.cpp` and this file's Phase 3 writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
+- **SFML thief backstab and Fighter sweep** -- **neither current save
+  carries a recruited companion** (checked directly), so this needs a
+  console-build (`ansalon_rpg`) playthrough that recruits one into
+  save1/save2 first (this build's own Dialogue phase still defers the
+  recruit flow, so it can't do this itself). For sweep: fight a Fighter
+  (or a Fighter companion) against a weak group (Goblin/Kobold/Hobgoblin/
+  Skeleton -- HD <=1, `combat::isSweepEligible`) with 2+ adjacent, and
+  confirm the log reads "You sweep through the Goblins!" (or the
+  companion's own name) followed by one hit/miss line per adjacent
+  instance, no target picker opened, and no to-hit/damage bonus applied.
+  For backstab: get a Thief-type party member (player or companion) in
+  light-or-no armor positioned exactly opposite whichever party member
+  first attacked a given instance, and confirm the log line is prefixed
+  "Backstab! " with a visibly larger damage number (PHB Table 30's
+  level-based multiplier) -- also confirm a Thief attacking from any other
+  square, or in armor heavier than Leather, gets no bonus. Both apply
+  symmetrically to the player and to companions, so worth checking at
+  least one of each direction (player backstabbing around a companion's
+  engagement, and vice versa) if the party composition allows. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **SFML character sheet (+ spellbook)** -- press `C` from the overworld
   and again from inside a zone; confirm every field renders correctly
   (ability scores, saves, weapon/armor, steel/inventory, the
