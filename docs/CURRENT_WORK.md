@@ -804,6 +804,82 @@ a reasonable cherry-pick candidate to `master` independent of whenever (or
 whether) the broader branch itself gets merged. Not done automatically here;
 the user's call.
 
+**`ansalon_sfml_phase1` promoted to the primary/main build this session,
+still on `sfml-trial-3` (no merge to `master`).** With the full-migration
+roadmap below entirely closed out, the user asked to make it "the main
+game." Scoped down via a few rounds of questions: `ansalon_rpg` stays in
+the tree as a legacy/reference build rather than being retired (a
+separate, later call); no merge to `master` yet, since most of the
+Playtest backlog below is still unconfirmed; quest tracking/offer/
+turn-in, companion recruit accept/decline, and boat-voyage accept/decline
+all stay deferred/placeholder, unchanged; the target keeps its
+`ansalon_sfml_phase1` name (no rename).
+
+Two real changes came out of it. First, `CMakeLists.txt` now copies
+`data/` and just `References/dragonlancemap2.png` (not the whole 460MB+
+`References/` folder -- that also holds reference PDFs/scratch art never
+read at runtime) next to the built exe, the same post-build treatment
+`ansalon_rpg` already had -- previously this target only worked launched
+with the repo root as the working directory, a real rough edge for
+something now positioned as "the main game." Running from the repo root
+still works too, unaffected. See `docs/ARCHITECTURE.md`'s SFML section
+and `CLAUDE.md`'s "Build process".
+
+Second: while researching the promotion, found that **Look, Rest, and Bed
+Rest** (`L`/`R`/`Z` outside combat) were never on the roadmap below or the
+Playtest backlog at all -- all three were still unconditional stub
+placeholders in `sfml_phase1/main.cpp`. Rest matters far more than the
+gaps deliberately scoped out above: without it, a Mage/Cleric in this
+build could never heal naturally or re-memorize spells day-to-day, a core
+gameplay loop, not a peripheral feature. The user asked to close Rest and
+Bed Rest as part of this pass; Look stays deferred (minor, cosmetic --
+just names the nearest location/direction, mirrors `GameLoop::
+lookOverworld`).
+
+Rest (`R`, anywhere) and Bed Rest (`Z`, standing on a bed inside a zone)
+are now ported from `GameLoop::handleRest`/`handleBedRest`/
+`performSpellMemorization`/`chooseSpellLoadout` (`GameLoop.cpp:464-624`):
+the already-rested-today gate, the 1 HP (Rest) or full-heal (Bed Rest) for
+the player and every companion, and -- for a Mage/Cleric -- the same
+"keep the same spells memorized?" prompt and level-by-level/slot-by-slot
+picker the console uses, all via a new `RestSession` state machine
+reusing the existing `drawPickerOverlay`. Time/HP/`lastRestDay` commit the
+instant Rest/Bed Rest fires, *before* the spell-loadout wizard runs --
+matching the console's own ordering exactly, including that there is
+deliberately no way to cancel out of a rest once it's begun (the console's
+own picker loops never respond to anything but North/South/Enter either,
+so Q/Escape are simply swallowed here rather than bound to a cancel).
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings) and a launch smoke test of `ansalon_sfml_phase1.exe` run
+directly from `build\Debug` with no CWD trick (confirming the new
+post-build copy: all catalogs load, the map texture loads, no crash), and
+again from the repo root to confirm that invocation still works too.
+**Rest/Bed Rest itself is not yet interactively confirmed** -- moved to
+the Playtest backlog below, same standing no-desktop/GUI-access
+limitation as everything else this session.
+
+One more real gap surfaced while updating the docs, bigger than any of
+quest/recruit/boat: **this build still never writes back to the save
+file at all** (`sfml_phase1/main.cpp:6`/`4226` say so directly) -- every
+combat win, level-up, rested night, shop purchase, or equipped item is
+lost the moment the window closes. Asked about explicitly: **out of
+scope for this pass, but to be documented prominently rather than glossed
+over** -- implementing it is a real feature with real risk of its own
+(this build's own not-yet-interactively-confirmed code paths writing to
+the user's actual `save1`/`save2`/`save3.txt`), deserving its own planning
+pass rather than a tack-on here. Flagged as the single biggest known
+limitation of "the main game" in `README.md` below.
+
+`README.md` and `CLAUDE.md` were also updated to describe
+`ansalon_sfml_phase1` as the primary build (build/run instructions,
+control list, the no-save-persistence limitation just above, and honest
+per-feature caveats for the still-deferred quest/recruit/boat flows)
+rather than describing the console build as the only or default
+experience. No `docs/MILESTONES.md` entry -- matching every other
+Phase 1-3/dialogue/shop/etc. entry on this branch, which stays here only,
+not numbered, unless/until merged to `master`.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -855,8 +931,11 @@ this order:
 - Character creation and the save-slot menu use plain `std::cin`/
   `std::cout` before any window exists -- can stay as-is indefinitely,
   not part of this migration.
-- Deciding when (if ever) this code gets promoted to replace `ansalon_rpg`
-  outright -- only once enough of the above is real, not before.
+- ~~Deciding when (if ever) this code gets promoted to replace
+  `ansalon_rpg` outright~~ -- partially resolved: `ansalon_sfml_phase1`
+  was promoted to the primary/main build this session (see above), but
+  `ansalon_rpg` was kept rather than retired/replaced outright -- that
+  narrower question stays open, a separate future call.
 
 Milestones 146-152 are all implemented and documented on
 `master` (146 terrain smoothing, 147 mountain glyph, 148 region-boundary
@@ -883,6 +962,31 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML Rest and Bed Rest** -- press `R` from the Overworld or a Zone on a
+  non-caster (Fighter/Thief/Tinker) and confirm: the first rest of a day
+  heals 1 HP (or logs "You were already at full health." at full HP), every
+  recruited companion heals 1 HP too, and a second `R` the same day logs
+  "You've already rested today." with no further change. Press `Z` away
+  from a bed and confirm "There's no bed here."; standing on the Inn of the
+  Last Home's upstairs bed, confirm `Z` fully heals the player and every
+  companion in one go (not just 1 HP) with the matching "You wake fully
+  healed."/"You were already at full health." wording. On a Mage or Cleric
+  (save2, Regan, is a caster): the very first rest of a fresh character
+  should skip straight to the level-by-level/slot-by-slot spell picker with
+  no "keep the same?" prompt; a later rest with a standing loadout should
+  show "Keep the same spells memorized?" first, "Yes" keeping it unchanged
+  (confirm via `C`'s character sheet or the spellbook's `s` drill-down) and
+  "No" reopening the full picker; up/down should cycle each level's spell
+  choices and Enter should advance to the next slot, with the title
+  reading "Level N spell (X/Y)" matching the console's own wording; press
+  Q/Escape at any point during either the prompt or the picker and confirm
+  it's simply ignored (no cancel, no window-close, no quit-confirm dialog)
+  since there's deliberately no way to back out of a rest already taken.
+  If a level-up since the last rest opened extra spell slots, confirm
+  "Yes" silently tops them up with a spell rather than leaving them empty
+  or reopening the full picker. See `sfml_phase1/main.cpp` and this file's
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
 - **SFML same-cell collision fix** -- deliberately retreat (move away) from
   an adjacent monster on a round where it's likely to win initiative and
   close in on the same cell (retry a few times if needed -- it's

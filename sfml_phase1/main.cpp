@@ -683,6 +683,46 @@ struct LogSession {
     int scrollOffset = -1;
 };
 
+// One slot in Rest/Bed Rest's spell-loadout wizard -- one entry per slot
+// still needing a pick, flattened across every accessible level, mirroring
+// GameLoop::chooseSpellLoadout's nested level/slot loop (GameLoop.cpp:
+// 590-620). slotNumber/totalSlotsAtLevel are 1-based/per-level (not a
+// position in this flattened queue) purely so the picker's title can match
+// the console's own "Level N spell (X/Y)" wording exactly.
+struct RestSpellPick {
+    int level = 0;
+    int slotNumber = 0;
+    int totalSlotsAtLevel = 0;
+    std::vector<const character::SpellInfo*> choices;
+};
+
+// State for the Rest ('r') / Bed Rest ('z') spell-loadout wizard -- same
+// "transient UI state" reasoning as the sessions above. Time/HP/
+// lastRestDay are committed the instant Rest/Bed Rest fires (see
+// restBegin below), matching GameLoop::handleRest/handleBedRest's own
+// ordering (both mutate state before ever calling performSpellMemorization)
+// -- this struct only drives the spell-memorization half that follows,
+// ported from GameLoop::performSpellMemorization/chooseSpellLoadout
+// (GameLoop.cpp:527-624). A non-caster, or a caster who's never memorized
+// anything before, skips straight to the queue below (or finishes with no
+// picker at all if the queue turns out empty); an existing caster sees
+// keepSamePrompt first. Unlike every other picker in this file, there is
+// deliberately no cancel here -- chooseSpellLoadout's own console loop
+// only ever responds to North/South/Enter, never Escape, so Q/Escape (and
+// everything else) are simply swallowed while this session is active, not
+// bound to a cancel.
+struct RestSession {
+    bool active = false;
+    bool keepSamePrompt = false;
+    int keepSameSelected = 0;
+    std::vector<RestSpellPick> queue;
+    size_t queueIndex = 0;
+    int pickSelected = 0;
+    std::vector<std::string> loadout;
+    std::string baseMessage;   // "You settle in..."/"You spend the night..." + healed/full-health wording
+    long long dayAfterRest = 0;
+};
+
 int runPhase1(const std::string& savePath) {
     const unsigned windowW = 1280;
     const unsigned windowH = 800;
@@ -847,7 +887,8 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Movement, Enter (zones/combat), Flee (combat), Talk, and C (character sheet) work. Other keys are placeholders for now.");
+    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking, boat voyages, companion "
+            "recruitment, and Look aren't wired up in this build yet. Press / for the full command list.");
 
     // --- Dialogue (core conversation): all state is DialogueSession above;
     // every lambda below is a non-blocking port of the matching piece of
@@ -863,6 +904,7 @@ int runPhase1(const std::string& savePath) {
     ShopSession shopSession;
     InventorySession inventorySession;
     LogSession logSession;
+    RestSession restSession;
 
     // Mirrors GameLoop::handleTalk exactly -- see that function's own
     // comments for why the Overworld/Zone branches differ and what
@@ -1076,6 +1118,168 @@ int runPhase1(const std::string& savePath) {
         inventorySession.active = true;
         inventorySession.selected = 0;
         inventorySession.message.clear();
+    };
+
+    // Rest/Bed Rest, final step -- mirrors performSpellMemorization's own
+    // tail (GameLoop.cpp:569-581): actually memorize whatever loadout was
+    // settled on (empty is fine -- matches a non-caster, or a caster whose
+    // class has nothing implemented at any accessible level) and push the
+    // combined message. The isCleric&&isMage branch performSpellMemorization
+    // carries is NOT ported -- Character::charClass is a single value today,
+    // so that branch is unreachable there too (see its own comment,
+    // GameLoop.cpp:570-574).
+    auto restFinishMemorization = [&]() {
+        character::Character& c = state.character;
+        character::memorizeSpells(c, restSession.dayAfterRest, c.preferredSpellIds);
+        const std::string suffix = c.charClass == character::ClassId::Cleric
+                                        ? " You rememorize your prayers."
+                                        : " You memorize your incantations.";
+        pushLog(restSession.baseMessage + suffix);
+        restSession = RestSession{};
+    };
+
+    // Opens the level-by-level/slot-by-slot spell picker, or finishes
+    // immediately if the queue restBeginSpellMemorization already built
+    // turned out empty (nothing implemented at any accessible level for
+    // this class -- chooseSpellLoadout's own roster.empty() guard,
+    // GameLoop.cpp:598, has the same effect: nothing to choose, loadout
+    // stays whatever it already was).
+    auto restBeginPicking = [&]() {
+        if (restSession.queue.empty()) {
+            restFinishMemorization();
+            return;
+        }
+        restSession.active = true;
+        restSession.keepSamePrompt = false;
+        restSession.queueIndex = 0;
+        restSession.pickSelected = 0;
+        restSession.loadout.clear();
+    };
+
+    // Enter on the "keep the same spells memorized?" prompt -- mirrors
+    // GameLoop.cpp:536-566. "Yes" tops up any slots a level-up since the
+    // last rest opened, silently, with the lowest-level roster spell (no
+    // picker -- same as the console's own top-up branch); "No" goes to the
+    // ordinary picker to choose an entirely new loadout.
+    auto restConfirmKeepSame = [&]() {
+        character::Character& c = state.character;
+        if (restSession.keepSameSelected != 0) { // 0 = "Yes", 1 = "No -- choose new spells"
+            restBeginPicking();
+            return;
+        }
+        const int totalSlots = static_cast<int>(restSession.queue.size());
+        const auto& roster = character::spellListFor(c.charClass);
+        if (!roster.empty()) {
+            while (static_cast<int>(c.preferredSpellIds.size()) < totalSlots) {
+                c.preferredSpellIds.push_back(roster.front().id);
+            }
+        }
+        restFinishMemorization();
+    };
+
+    // Enter on one spell pick -- mirrors chooseSpellLoadout's own inner
+    // loop body (GameLoop.cpp:603-619): record the choice, advance to the
+    // next queued slot, and once the whole queue is spent, commit the new
+    // loadout and finish.
+    auto restConfirmSpellPick = [&]() {
+        const RestSpellPick& pick = restSession.queue[restSession.queueIndex];
+        restSession.loadout.push_back(pick.choices[static_cast<size_t>(restSession.pickSelected)]->id);
+        ++restSession.queueIndex;
+        restSession.pickSelected = 0;
+        if (restSession.queueIndex >= restSession.queue.size()) {
+            state.character.preferredSpellIds = std::move(restSession.loadout);
+            restFinishMemorization();
+        }
+    };
+
+    // Rest/Bed Rest's spell-memorization half -- mirrors
+    // performSpellMemorization (GameLoop.cpp:527-567). Called only after
+    // restBegin has already committed time/HP/lastRestDay, matching the
+    // console's own ordering exactly.
+    auto restBeginSpellMemorization = [&](const std::string& baseMessage, long long dayAfterRest) {
+        character::Character& c = state.character;
+        restSession.baseMessage = baseMessage;
+        restSession.dayAfterRest = dayAfterRest;
+
+        if (character::maxAccessibleSpellLevel(c) == 0) {
+            pushLog(baseMessage); // no caster suffix, no memorization at all -- matches console
+            return;
+        }
+
+        restSession.queue.clear();
+        const int maxLevel = character::maxAccessibleSpellLevel(c);
+        const auto& roster = character::spellListFor(c.charClass);
+        for (int lvl = 1; lvl <= maxLevel; ++lvl) {
+            const int slots = character::spellSlotsPerDay(c, lvl);
+            if (slots <= 0) continue;
+            std::vector<const character::SpellInfo*> choices;
+            for (const auto& spell : roster) {
+                if (spell.level == lvl) choices.push_back(&spell);
+            }
+            if (choices.empty()) continue; // nothing implemented at this level yet
+            for (int slot = 0; slot < slots; ++slot) {
+                restSession.queue.push_back(RestSpellPick{lvl, slot + 1, slots, choices});
+            }
+        }
+
+        if (c.preferredSpellIds.empty()) {
+            // Never memorized anything before -- nothing to "keep the same"
+            // as, so go straight to the picker (GameLoop.cpp:531-534).
+            restBeginPicking();
+        } else {
+            restSession.active = true;
+            restSession.keepSamePrompt = true;
+            restSession.keepSameSelected = 0;
+        }
+    };
+
+    // 'R' (anywhere) / 'Z' (standing on a bed inside a zone) -- mirrors
+    // GameLoop::handleRest/handleBedRest (GameLoop.cpp:464-525). Time/HP/
+    // lastRestDay are committed here, immediately, before the spell-loadout
+    // half above ever runs -- see RestSession's own doc comment for why
+    // that ordering matters (it's why there's no cancel once this fires).
+    auto restBegin = [&](bool isBedRest) {
+        character::Character& c = state.character;
+        const long long currentDay = state.hoursElapsed / 24;
+        if (c.lastRestDay == currentDay) {
+            pushLog("You've already rested today.");
+            return;
+        }
+        if (isBedRest) {
+            const world::PointOfInterest* poi =
+                state.mode == game::Mode::Zone && currentZone != nullptr
+                    ? currentZone->poiAt(state.zoneX, state.zoneY)
+                    : nullptr;
+            if (poi == nullptr || !poi->isBed) {
+                pushLog("There's no bed here.");
+                return;
+            }
+        }
+
+        state.hoursElapsed += 8; // an overnight rest -- may cross into a new day
+        const long long dayAfterRest = state.hoursElapsed / 24;
+        c.lastRestDay = dayAfterRest;
+
+        std::string message;
+        if (isBedRest) {
+            const bool alreadyFull = c.currentHp >= c.maxHp;
+            c.currentHp = c.maxHp;
+            for (game::RecruitedCompanion& companion : state.companions) {
+                companion.character.currentHp = companion.character.maxHp;
+            }
+            message = "You spend the night resting soundly in a real bed.";
+            message += alreadyFull ? " You were already at full health." : " You wake fully healed.";
+        } else {
+            const int healed = std::min(1, c.maxHp - c.currentHp); // DMG p.74: 1 hp per day of rest
+            c.currentHp += healed;
+            for (game::RecruitedCompanion& companion : state.companions) {
+                companion.character.currentHp = std::min(companion.character.maxHp, companion.character.currentHp + 1);
+            }
+            message = "You settle in and rest through the night.";
+            message += healed > 0 ? " You recover 1 hit point." : " You were already at full health.";
+        }
+
+        restBeginSpellMemorization(message, dayAfterRest);
     };
 
     // Enter on the "talk to whom?" picker.
@@ -2669,6 +2873,26 @@ int runPhase1(const std::string& savePath) {
                            quitConfirmSelected, "up/down=select   Enter=confirm   Escape=cancel");
     };
 
+    // Rest ('r') / Bed Rest ('z') spell-loadout wizard -- reuses
+    // drawPickerOverlay for both of its two possible screens, same as every
+    // other list-shaped overlay here. No cancel hint in the footer -- see
+    // RestSession's own doc comment for why Escape/Q are swallowed instead
+    // of bound to anything while this is open.
+    auto drawRestOverlay = [&]() {
+        if (restSession.keepSamePrompt) {
+            static const std::vector<std::string> kKeepSameOptions = {"Yes", "No -- choose new spells"};
+            drawPickerOverlay("Keep the same spells memorized?", kKeepSameOptions,
+                               restSession.keepSameSelected, "up/down=select   Enter=choose");
+            return;
+        }
+        const RestSpellPick& pick = restSession.queue[restSession.queueIndex];
+        std::vector<std::string> labels;
+        for (const character::SpellInfo* spell : pick.choices) labels.push_back(spell->name);
+        std::ostringstream title;
+        title << "Level " << pick.level << " spell (" << pick.slotNumber << "/" << pick.totalSlotsAtLevel << ")";
+        drawPickerOverlay(title.str(), labels, restSession.pickSelected, "up/down=select   Enter=choose");
+    };
+
     // Cast-which-spell picker (M, 2+ distinct memorized spells) -- reuses
     // drawPickerOverlay the same way every other list-shaped overlay here
     // does, composited on top of the ordinary combat frame exactly like
@@ -3095,6 +3319,8 @@ int runPhase1(const std::string& savePath) {
                     bool wantsJournal = false;
                     bool wantsWorldMap = false;
                     bool wantsHelp = false;
+                    bool wantsRest = false;
+                    bool wantsBedRest = false;
                     switch (key) {
                         case sf::Keyboard::Key::W:
                         case sf::Keyboard::Key::Up: dy = -1; break;
@@ -3128,10 +3354,8 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Slash: wantsHelp = true; break;
                         case sf::Keyboard::Key::F: placeholder = "Flee: not available outside combat."; break;
                         case sf::Keyboard::Key::M: placeholder = "Cast: not available outside combat."; break;
-                        case sf::Keyboard::Key::R: placeholder = "Rest: not yet implemented in this build."; break;
-                        case sf::Keyboard::Key::Z:
-                            placeholder = "Bed rest: not yet implemented in this build.";
-                            break;
+                        case sf::Keyboard::Key::R: wantsRest = true; break;
+                        case sf::Keyboard::Key::Z: wantsBedRest = true; break;
                         default: break;
                     }
 
@@ -3274,6 +3498,31 @@ int runPhase1(const std::string& savePath) {
                             logSession.scrollOffset += kLogScrollStep; // clamped for real next draw
                         } else if (wantsQuit || key == sf::Keyboard::Key::V) {
                             logSession.active = false;
+                        }
+                    } else if (restSession.active) {
+                        // Rest/Bed Rest's own spell-loadout wizard -- see
+                        // RestSession's doc comment for why every key but
+                        // North/South/Enter (Q/Escape included) is simply
+                        // swallowed here rather than treated as a cancel.
+                        // Checked ahead of the general quit branch below for
+                        // that reason, same as every other overlay guard
+                        // above.
+                        if (restSession.keepSamePrompt) {
+                            if (dy < 0 || dy > 0) {
+                                restSession.keepSameSelected = restSession.keepSameSelected == 0 ? 1 : 0;
+                            } else if (handleEnter) {
+                                restConfirmKeepSame();
+                            }
+                        } else if (!restSession.queue.empty()) {
+                            const int optionCount =
+                                static_cast<int>(restSession.queue[restSession.queueIndex].choices.size());
+                            if (dy < 0) {
+                                restSession.pickSelected = (restSession.pickSelected - 1 + optionCount) % optionCount;
+                            } else if (dy > 0) {
+                                restSession.pickSelected = (restSession.pickSelected + 1) % optionCount;
+                            } else if (handleEnter) {
+                                restConfirmSpellPick();
+                            }
                         }
                     } else if (combatSession.active &&
                                (combatSession.uiState == CombatUiState::PickingSpell ||
@@ -3540,6 +3789,10 @@ int runPhase1(const std::string& savePath) {
                         shopBegin();
                     } else if (key == sf::Keyboard::Key::I) {
                         inventoryBegin();
+                    } else if (wantsRest) {
+                        restBegin(false);
+                    } else if (wantsBedRest) {
+                        restBegin(true);
                     } else if (wantsLog) {
                         logSession.active = true;
                         logSession.scrollOffset = -1; // start at the bottom (most recent) every time it's opened
@@ -3939,6 +4192,11 @@ int runPhase1(const std::string& savePath) {
             } else if (logSession.active) {
                 window.setView(uiView);
                 drawLogOverlay();
+            }
+
+            if (restSession.active) {
+                window.setView(uiView);
+                drawRestOverlay();
             }
 
             if (quitConfirmOpen) {

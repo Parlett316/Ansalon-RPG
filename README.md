@@ -1,19 +1,36 @@
 # Ansalon: Age of Despair
 
-A personal, non-commercial fan project: an ASCII, terminal-based RPG set on
-the world of Krynn (Dragonlance) during the War of the Lance, using 2nd
-Edition AD&D rules, presented Caves-of-Qud style — a colored ASCII overworld
-you walk across in real time. The eventual goal is an open world where the
-canon Heroes of the Lance (Tanis, Sturm, Raistlin, Caramon, Goldmoon,
-Riverwind, Tasslehoff, Flint...) move through their real novel-timeline
-locations, so the player can stumble into a "chance encounter" with them if
-they happen to be in the same place at the same in-game time.
+A personal, non-commercial fan project set on the world of Krynn
+(Dragonlance) during the War of the Lance, using 2nd Edition AD&D rules.
+The primary build (`ansalon_sfml_phase1`, via SFML) renders a real
+pixel-space overworld, zone interiors, and combat — the actual reference
+map, walked in real time, with placeholder shapes/text standing in for
+sprite art that hasn't been made yet. An earlier terminal build
+(`ansalon_rpg`), presented Caves-of-Qud style as a colored ASCII
+overworld, stays in the tree as a legacy/reference build rather than
+being retired. This has been a presentation migration, not a systems
+one — the rules/content described below apply to both, and most of
+"Playing" below describes the primary SFML build specifically (see that
+section for the console build's own, different controls).
+
+**The single biggest limitation of the SFML build right now: it never
+saves.** It loads a save file and lets you play through it, but nothing —
+combat wins, leveling, resting, shopping, equipping — is written back
+when you close the window. Use the legacy console build (`ansalon_rpg`)
+for anything you want to actually keep; see "Playing" below.
+
+The eventual goal is an open world where the canon Heroes of the Lance
+(Tanis, Sturm, Raistlin, Caramon, Goldmoon, Riverwind, Tasslehoff,
+Flint...) move through their real novel-timeline locations, so the player
+can stumble into a "chance encounter" with them if they happen to be in
+the same place at the same in-game time.
 
 This is a fan project built for fun, not for profit, and is not affiliated
 with or endorsed by Wizards of the Coast / the Dragonlance IP holders.
 
 The overworld map (`References/dragonlancemap2.png`) used to place every
-`LOCATION` in `data/locations.txt` is used with permission of its author,
+`LOCATION` in `data/locations.txt` — and, in the SFML build, rendered
+directly as the overworld itself — is used with permission of its author,
 **paercebal** ([www.paercebal.org](https://www.paercebal.org/HtmlKrynnMaps/index.html)),
 built on the original map by **AtenOkke**. Both are credited here per the
 terms of that permission.
@@ -48,6 +65,11 @@ terms of that permission.
 - Progress **autosaves continuously**.
 
 ### The overworld & interface
+
+*(The specifics below describe the legacy console build's ASCII
+presentation. The primary SFML build shows the same information — party
+status, event log, HP, in-game time — in real pixel space instead, with
+its own control list under "Playing" below.)*
 
 - The overworld/zone screen is a wide, frameless, side-by-side view — no
   box border, just `=`/`-` rule dividers: a one-line header (name/class, an
@@ -259,6 +281,10 @@ Other canon characters are talkable too, with their own arcs:
 
 ### Sea travel
 
+*(The SFML build's dialogue doesn't yet offer boat voyages — a boat-offer
+POI logs a placeholder line instead. Sea travel works fully in the
+console build.)*
+
 Some places — Ice Wall Castle, Southern Ergoth, and Sancrist Isle — sit on
 their own sea-locked landmasses with no road to them at all.
 
@@ -278,6 +304,12 @@ stands until you board, and (unlike a one-way passage arranged for you)
 comes back again even after you've sailed it once.
 
 ### Companions
+
+*(The SFML build's dialogue doesn't yet offer recruitment — a would-be
+companion logs a placeholder line instead of asking to join. A companion
+already recruited in a console-build save does fight alongside you in
+SFML combat, sweep/backstab included; recruiting one in the first place
+currently needs the console build.)*
 
 - Solace and Haven each have a would-be companion of their own: talk to
   **Bren Alder** in Solace or **Dessa Corrin** in Haven and they'll ask to
@@ -460,6 +492,11 @@ and a Mage feels, faintly, that something has taken notice of them). See
 
 ### Quests
 
+*(The SFML build doesn't track quest state at all yet — its `G` journal
+says so plainly, quest-giver dialogue logs a placeholder line instead of
+offering one, and one quest-locked shop shows its own placeholder rather
+than resolving the lock. Quests work fully in the console build.)*
+
 Press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
 reward — the moment every objective's actually done, the game says so
@@ -554,11 +591,19 @@ cmake -G "Visual Studio 18 2026" -A x64 -S . -B build
 cmake --build build --config Debug
 ```
 
-The built executable will be at `build\Debug\ansalon_rpg.exe`. It locates
-`data/locations.txt`, `data/overworld.grid`, etc. (and up to three
-save-slot files) next to itself — a post-build step keeps a `data/` copy
-there automatically, so this needs no extra step (see the comment in
-`CMakeLists.txt`).
+This configures and builds every target, including the primary
+`ansalon_sfml_phase1`, which lands at
+`build\Debug\ansalon_sfml_phase1.exe`. It takes the save file to load as
+its one argument:
+
+```powershell
+.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt
+```
+
+(Any of the three slots works, once it holds a character — see "Playing"
+below for how to create one on the legacy console build first. A
+post-build step keeps `data/` and the reference map image populated next
+to the exe automatically, so this needs no extra step.)
 
 If you have a different Visual Studio version installed, list available
 generators with `cmake --help` and substitute the matching `-G` name.
@@ -575,8 +620,30 @@ cmake --build build
 
 ### Sharing a build
 
-To hand a playable build to someone who doesn't have this source tree,
-run:
+To hand a runnable demo to someone who doesn't have this source tree, run:
+
+```powershell
+powershell -File tools\package_sfml_demo.ps1
+```
+
+This builds a Release exe and stages it with the data/map it needs, plus
+a `RunDemo.bat` launcher and a sample save, into
+`dist\AnsalonSFMLDemo-v<N>.zip`. The recipient just unzips and runs
+`RunDemo.bat` — the MSVC runtime is statically linked, so no separate
+Visual C++ Redistributable install is needed. Remember: this build never
+saves, so it's a WIP tech demo, not a way to hand someone a persistent
+character.
+
+### Legacy console build (`ansalon_rpg`)
+
+The original ASCII/terminal build still builds alongside the SFML target
+above and lands at `build\Debug\ansalon_rpg.exe`. It locates
+`data/locations.txt`, `data/overworld.grid`, etc. (and up to three
+save-slot files) next to itself — its own post-build step keeps a `data/`
+copy there automatically.
+
+To hand a playable build of this version to someone who doesn't have this
+source tree, run:
 
 ```powershell
 powershell -File tools\package_release.ps1
@@ -591,6 +658,60 @@ support the VT100 sequences the game relies on for color).
 
 ## Playing
 
+The primary build is `ansalon_sfml_phase1` — real pixel-space rendering,
+no terminal required. **It never saves** (see the note near the top of
+this file), so create or continue a character on the legacy console
+build first (below), then point the SFML build at that save file:
+
+```powershell
+.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt
+```
+
+Movement is immediate — no Enter key needed:
+
+- **Move**: `W A S D` or arrow keys, 4 cardinal directions (no diagonals)
+- **Enter** — step into/out of a location's walkable interior, or attack
+  in combat
+- `T` — talk to whoever's here (a canon character the timeline places at
+  your current location today, or a talkable zone NPC — a picker asks
+  who first if more than one is present). Covers greetings, repeat-visit
+  lines, aftermath/anticipation text, the topic picker, and free-text
+  "Ask about something else..."; quest offers, boat-voyage offers, and
+  companion recruitment each log a placeholder line instead of actually
+  opening (console-only for now — see the caveats under "Status" above).
+- `P` — browse/buy at a shop POI; `I` while inside toggles to selling.
+  Purchases land in your carried inventory, not straight onto your body.
+- `I` (outside a shop) — view carried items; Enter equips a weapon/
+  armor/shield, drinks a Potion, or explains why a combat-only item
+  (Webnet, Brooch of Imog) or quest item can't be used here.
+- `C` — character sheet (any key dismisses it); a Mage or Cleric gets an
+  `S`/Down option there for the full spellbook.
+- `V` — full scrollable event log, up/down to scroll, `V`/`Q` to return.
+- `G` — quest journal. This build doesn't track quest state yet, so it
+  says so plainly rather than showing anything.
+- `O` — read-only World Map: the real reference map scaled down, a
+  marker at every location plus your own position, and a side legend.
+- `/` — help screen (command reference).
+- `R` — rest, once per in-game day: heals 1 HP and, for a Mage/Cleric,
+  walks through re-memorizing spells for the day.
+- `Z` — bed rest, standing on a real bed inside a zone (e.g. the Inn of
+  the Last Home's upstairs landing): a full heal instead of 1 HP,
+  otherwise the same as Rest.
+- `Q` or Escape — asks "Are you sure you want to end your adventure?"
+  rather than quitting immediately.
+- Look (`L`) isn't implemented in this build yet.
+
+In combat: **Enter** attacks whoever's under the grid cursor, `W A S D`
+moves on the grid, **`M`** casts a memorized spell (asks which, if more
+than one memorized), **`I`** uses an item — Potion/Webnet/Brooch of
+Imog/Staff of Curing (asks which, if more than one usable), **`F`**
+flees. A Fighter adjacent to 2+ weak enemies sweeps automatically; a
+correctly-positioned Thief backstabs automatically — no key needed for
+either. Losing a fight knocks you out and sends you back to the nearest
+refuge rather than ending the run.
+
+### Legacy console build
+
 Run the built `ansalon_rpg.exe`. It shows a menu of 3 save slots (each
 autosaved continuously during play — see `docs/ARCHITECTURE.md`), any
 occupied ones summarized by name/level/race/class/day; pick one to
@@ -599,8 +720,11 @@ allowed to overwrite it), type `d1`/`d2`/`d3` to delete a slot's save
 immediately (with its own confirmation), or pick an empty slot to open
 character creation
 (plain typed prompts — enter a name, keep or reroll your ability scores,
-pick a race/class/alignment number, confirm). Once that's done, movement is immediate — no Enter key
-needed:
+pick a race/class/alignment number, confirm). This is the only way today
+to create a character or a save file in the first place — see "Playing"
+above for the SFML build's own controls, which is the way to actually
+play once you have one. Once character creation's done, movement is
+immediate — no Enter key needed:
 
 - **Move**: `w a s d` for the 4 cardinal directions (no diagonals)
 - **Enter** — step into a location's walkable interior (every location has

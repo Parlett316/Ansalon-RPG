@@ -150,6 +150,20 @@ sprite art later). See `docs/CURRENT_WORK.md` for exactly which screens
 are done vs. still-ASCII-only at any given time — this section describes
 the architecture, not the current progress checkpoint.
 
+**`ansalon_sfml_phase1` was promoted to the primary/main build** once
+every screen on the original migration roadmap had a real pixel-space
+port (see `docs/CURRENT_WORK.md`). `ansalon_rpg` stays in the tree as a
+legacy/reference build rather than being retired outright — that's a
+separate, still-open decision. The promotion also closed a real
+usability gap: `sfml_phase1/main.cpp` reads `data/*.txt` and
+`References/dragonlancemap2.png` as plain relative literals rather than
+resolving them executable-relative (`ansalon_rpg`'s own approach, via
+`render::Console::executableDirectory()`), so `CMakeLists.txt` now copies
+both next to the built exe in `build\Debug`/`build\Release` the same way
+it already did for `ansalon_rpg` — otherwise "the main game" would have
+only run correctly when launched with the repo root as the working
+directory.
+
 ## Why location data is a hand-rolled text format, not JSON
 
 Unchanged reasoning from Milestone 1: no external dependency to vendor for

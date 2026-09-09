@@ -174,3 +174,24 @@ if (MSVC)
 else()
     target_compile_options(ansalon_sfml_phase1 PRIVATE -Wall -Wextra)
 endif()
+
+# Now the primary/promoted build (see docs/CURRENT_WORK.md) rather than a
+# standalone dev spike, so it gets the same "runs straight from build\<Config>\"
+# treatment as ansalon_rpg above: sfml_phase1/main.cpp reads data/*.txt and
+# References/dragonlancemap2.png as plain relative literals (no
+# executable-relative resolution like ansalon_rpg's -- see
+# docs/ARCHITECTURE.md's SFML section), so those need to actually exist next
+# to the built exe. Only dragonlancemap2.png is copied out of References/, not
+# the whole folder -- that folder also holds 460MB+ of reference PDFs/scratch
+# art never read at runtime, same one-file convention tools/package_sfml_demo.ps1
+# already uses for external distribution. Running from the repo root (this
+# target's original convention) still works too, unaffected.
+add_custom_command(TARGET ansalon_sfml_phase1 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/data"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/References"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_SOURCE_DIR}/References/dragonlancemap2.png"
+            "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/References/dragonlancemap2.png"
+)

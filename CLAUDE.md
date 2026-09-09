@@ -16,18 +16,21 @@ schedule, so the player can stumble into a "chance encounter" with them.
 Everything else (character creation, combat, equipment, leveling, zones)
 exists in service of that.
 
-**Presentation is mid-migration, away from ASCII.** The project
-originally shipped Caves-of-Qud style — a colored ASCII overworld walked
-in real time in a terminal (`render::Console`, the `ansalon_rpg` target,
-still on `master`). The user has since committed to a full move to real
-pixel-space rendering via SFML (a monospace-grid recreation was tried
-first and rejected as "looks almost exactly the same" as the terminal).
-Every screen has since been ported to a second, standalone target
-(`ansalon_sfml_phase1`, `sfml_phase1/main.cpp`, developed on branch
-`sfml-trial-3`) — placeholder shapes/text for now, ready for real sprite
-art later. **Both targets currently build and exist side by side**: the
-console build hasn't been retired and the SFML build hasn't been
-promoted to replace it — that's a still-open decision. See
+**Presentation has migrated away from ASCII.** The project originally
+shipped Caves-of-Qud style — a colored ASCII overworld walked in real
+time in a terminal (`render::Console`, the `ansalon_rpg` target). The
+user committed to a full move to real pixel-space rendering via SFML (a
+monospace-grid recreation was tried first and rejected as "looks almost
+exactly the same" as the terminal). Every screen has since been ported to
+a second, standalone target (`ansalon_sfml_phase1`, `sfml_phase1/
+main.cpp`, developed on branch `sfml-trial-3`) — placeholder shapes/text
+for now, ready for real sprite art later.
+
+**`ansalon_sfml_phase1` is now the primary/main build** — the one to
+build and run by default. `ansalon_rpg` (the original ASCII console
+build, still on `master`) stays in the tree as a legacy/reference build,
+not retired; whether to retire it outright remains a separate, later
+decision. Both targets still build side by side. See
 `docs/CURRENT_WORK.md` for exactly which SFML screens are implemented
 vs. still needing a live interactive playtest, and
 `docs/ARCHITECTURE.md`'s SFML section for why the codebase is split this
@@ -146,13 +149,22 @@ automatically, so this needs no extra step in normal dev use (see
 `docs/GOTCHAS.md`). To hand a runnable build to someone outside this
 source tree, run `tools/package_release.ps1` — see its header comment.
 
-**`ansalon_sfml_phase1`** lands at `build\Debug\ansalon_sfml_phase1.exe`,
-but unlike `ansalon_rpg` it gets **no post-build data copy** — it reads
-`data/*.txt` and `References/dragonlancemap2.png` straight from the
-source tree at runtime, so it must be **run with the repo root as the
-working directory**, not from inside `build\Debug`. To hand a runnable
-demo to someone outside this source tree, run
-`tools/package_sfml_demo.ps1` instead.
+**`ansalon_sfml_phase1`** (the primary/main build — see "What this
+project is" above) lands at `build\Debug\ansalon_sfml_phase1.exe`. It
+reads `data/*.txt` and `References/dragonlancemap2.png` as plain relative
+literals rather than resolving them executable-relative the way
+`ansalon_rpg` does (see `docs/ARCHITECTURE.md`'s SFML section), so a
+CMake post-build step keeps both a `data/` copy and just
+`References/dragonlancemap2.png` (not the whole 460MB+ `References/`
+folder) populated next to it in `build\Debug`/`build\Release` — the same
+"runs straight from the build output" convention `ansalon_rpg` already
+has. Running with the repo root as the working directory instead still
+works too (its original convention, unaffected). It takes the save file
+to load as its one required argument: `.\ansalon_sfml_phase1.exe
+save1.txt` from inside `build\Debug`, or
+`.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt` from the
+repo root. To hand a runnable demo to someone outside this source tree,
+run `tools/package_sfml_demo.ps1` instead.
 
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.
@@ -187,8 +199,9 @@ missing.
 real SFML window driven by `sf::Event`, with no piped-input path, and a
 session typically has no desktop/GUI access to drive it interactively
 either. The available self-check from inside a session is a **launch
-smoke test**: run the exe briefly (from the repo root, per the CWD note
-above) and confirm it opens without crashing/throwing and every catalog
+smoke test**: run the exe briefly (from `build\Debug` or the repo root,
+per the CWD note above) and confirm it opens without crashing/throwing
+and every catalog
 it loads (World, ZoneCatalog, Timeline, MonsterCatalog, a real save file
 via `SaveGame`) succeeds — necessary but not sufficient. Anything that
 actually needs a keypress or a rendered frame to confirm (does a picker
