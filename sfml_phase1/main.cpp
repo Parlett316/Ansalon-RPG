@@ -617,42 +617,9 @@ int runPhase1(const std::string& savePath) {
 
     std::cout << "step 0: starting, save = " << savePath << std::endl;
 
-    world::OverworldGrid grid =
-        world::OverworldGrid::loadFromFile("data/overworld.grid", "data/overworld_regions.grid");
-    std::cout << "step 1: grid loaded " << grid.width() << "x" << grid.height() << std::endl;
-
-    world::World world;
-    world::WorldLoader::loadFromFile("data/locations.txt", world);
-    std::cout << "step 2: world loaded, " << world.allLocations().size() << " locations" << std::endl;
-
-    world::ZoneCatalog zones = world::ZoneCatalog::loadForWorld(world, "data/zones");
-    std::cout << "step 2b: zones loaded, " << zones.allZones().size() << " zones" << std::endl;
-
-    combat::MonsterCatalog monsterCatalog;
-    combat::MonsterLoader::loadFromFile("data/monsters.txt", monsterCatalog);
-    std::cout << "step 2c: monsters loaded, " << monsterCatalog.size() << " entries" << std::endl;
-
-    timeline::Timeline timeline;
-    timeline::TimelineLoader::loadFromFile("data/timeline.txt", timeline);
-    std::cout << "step 2d: timeline loaded" << std::endl;
-
-    game::GameState state = game::SaveGame::load(savePath);
-    std::cout << "step 3: save loaded -- " << state.character.name << ", level "
-              << state.character.level << " " << character::raceInfo(state.character.race).name << " "
-              << character::classInfo(state.character.charClass).name << ", at (" << state.x << ", "
-              << state.y << ")" << std::endl;
-
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(windowW, windowH)),
                              "Ansalon SFML Phase 1+2+3 -- Real Overworld + Zones + Combat (WIP)");
     window.setFramerateLimit(60);
-
-    sf::Texture mapTexture;
-    if (!mapTexture.loadFromFile("References/dragonlancemap2.png")) {
-        std::cerr << "Failed to load References/dragonlancemap2.png\n";
-        return 1;
-    }
-    const sf::Vector2u mapSize = mapTexture.getSize();
-    std::cout << "step 4: map texture loaded, size " << mapSize.x << "x" << mapSize.y << std::endl;
 
     sf::Font font;
     if (!font.openFromFile("C:/Windows/Fonts/consola.ttf")) {
@@ -660,6 +627,74 @@ int runPhase1(const std::string& savePath) {
                      "this build uses a system font as a stand-in until this project has its own.\n";
         return 1;
     }
+
+    // Loading screen: a real drawn frame instead of a blank/possibly
+    // "Not Responding" window while the steps below run -- the map image
+    // decode especially (the packaged demo's ~76MB is dominated by that
+    // one file). Local constants rather than the kSheet* ones used by
+    // every other overlay below, since those are declared much later in
+    // this function, after everything here already runs. Returns false
+    // (caller should bail out) if the user closes the window mid-load.
+    constexpr unsigned kLoadingTitleSize = 28;
+    constexpr unsigned kLoadingStatusSize = 18;
+    constexpr float kLoadingMarginX = 60.f;
+    auto drawLoadingScreen = [&](const std::string& status) -> bool {
+        while (const std::optional<sf::Event> event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) window.close();
+        }
+        if (!window.isOpen()) return false;
+        window.clear(sf::Color(12, 12, 16));
+        sf::Text title(font, "Ansalon: Age of Despair", kLoadingTitleSize);
+        title.setFillColor(sf::Color(230, 220, 160));
+        title.setPosition(sf::Vector2f(kLoadingMarginX, static_cast<float>(windowH) / 2.f - 40.f));
+        window.draw(title);
+        sf::Text statusText(font, status, kLoadingStatusSize);
+        statusText.setFillColor(sf::Color(180, 180, 190));
+        statusText.setPosition(sf::Vector2f(kLoadingMarginX, static_cast<float>(windowH) / 2.f + 10.f));
+        window.draw(statusText);
+        window.display();
+        return true;
+    };
+
+    if (!drawLoadingScreen("Loading overworld grid...")) return 0;
+    world::OverworldGrid grid =
+        world::OverworldGrid::loadFromFile("data/overworld.grid", "data/overworld_regions.grid");
+    std::cout << "step 1: grid loaded " << grid.width() << "x" << grid.height() << std::endl;
+
+    if (!drawLoadingScreen("Loading world data...")) return 0;
+    world::World world;
+    world::WorldLoader::loadFromFile("data/locations.txt", world);
+    std::cout << "step 2: world loaded, " << world.allLocations().size() << " locations" << std::endl;
+
+    if (!drawLoadingScreen("Loading zones...")) return 0;
+    world::ZoneCatalog zones = world::ZoneCatalog::loadForWorld(world, "data/zones");
+    std::cout << "step 2b: zones loaded, " << zones.allZones().size() << " zones" << std::endl;
+
+    if (!drawLoadingScreen("Loading monster catalog...")) return 0;
+    combat::MonsterCatalog monsterCatalog;
+    combat::MonsterLoader::loadFromFile("data/monsters.txt", monsterCatalog);
+    std::cout << "step 2c: monsters loaded, " << monsterCatalog.size() << " entries" << std::endl;
+
+    if (!drawLoadingScreen("Loading timeline...")) return 0;
+    timeline::Timeline timeline;
+    timeline::TimelineLoader::loadFromFile("data/timeline.txt", timeline);
+    std::cout << "step 2d: timeline loaded" << std::endl;
+
+    if (!drawLoadingScreen("Loading your character...")) return 0;
+    game::GameState state = game::SaveGame::load(savePath);
+    std::cout << "step 3: save loaded -- " << state.character.name << ", level "
+              << state.character.level << " " << character::raceInfo(state.character.race).name << " "
+              << character::classInfo(state.character.charClass).name << ", at (" << state.x << ", "
+              << state.y << ")" << std::endl;
+
+    if (!drawLoadingScreen("Loading world map image...")) return 0;
+    sf::Texture mapTexture;
+    if (!mapTexture.loadFromFile("References/dragonlancemap2.png")) {
+        std::cerr << "Failed to load References/dragonlancemap2.png\n";
+        return 1;
+    }
+    const sf::Vector2u mapSize = mapTexture.getSize();
+    std::cout << "step 4: map texture loaded, size " << mapSize.x << "x" << mapSize.y << std::endl;
 
     const float pxPerTileX = static_cast<float>(mapSize.x) / static_cast<float>(grid.width());
     const float pxPerTileY = static_cast<float>(mapSize.y) / static_cast<float>(grid.height());
@@ -1165,6 +1200,18 @@ int runPhase1(const std::string& savePath) {
     bool helpOpen = false;
     bool worldMapOpen = false;
     bool journalOpen = false;
+
+    // Quit confirmation -- the outermost wantsQuit catch-all in the key
+    // dispatch below used to call window.close() directly; it now opens
+    // this instead, so an accidental Q/Escape (an ordinary WASD-adjacent
+    // key) can't end the session outright. Reachable from every state
+    // that doesn't already give Quit its own meaning (Overworld, a Zone,
+    // and -- since combat had no wantsQuit override of its own -- Combat
+    // too, which previously fell straight into the same catch-all).
+    // selectedIndex always resets to 1 ("No") whenever this opens, so a
+    // stray double-Enter can never quit by accident.
+    bool quitConfirmOpen = false;
+    int quitConfirmSelected = 1;
 
     auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
 
@@ -1968,7 +2015,7 @@ int runPhase1(const std::string& savePath) {
             "  Enter = attack          m = cast (if a caster)",
             "  i = drink a potion      f = flee",
             "",
-            "q / Esc = quit (or leave the current screen)",
+            "q / Esc = quit (asks to confirm) or leave the current screen",
         };
         drawPickerOverlay("Help", kHelpLines, -1, "(press any key to continue)");
     };
@@ -1985,6 +2032,20 @@ int runPhase1(const std::string& savePath) {
             "Quest tracking isn't wired up in this build yet.",
         };
         drawPickerOverlay("Journal", kJournalLines, -1, "(press any key to continue)");
+    };
+
+    // Quit confirmation -- reuses drawPickerOverlay the same way Help/
+    // Journal/Shop/Inventory/Spellbook already do, rather than a new
+    // visual primitive. up/down moves quitConfirmSelected, Enter acts on
+    // it, Escape/Q cancels the dialog itself -- see the key-dispatch
+    // block below.
+    auto drawQuitConfirmOverlay = [&]() {
+        static const std::vector<std::string> kQuitOptions = {
+            "Yes, end my adventure",
+            "No, keep playing",
+        };
+        drawPickerOverlay("Are you sure you want to end your adventure?", kQuitOptions,
+                           quitConfirmSelected, "up/down=select   Enter=confirm   Escape=cancel");
     };
 
     // Full event log ('v') -- pixel-space equivalent of
@@ -2451,7 +2512,30 @@ int runPhase1(const std::string& savePath) {
                     // general "close the window" branch below.
                     const bool askInputActive =
                         dialogueSession.active && dialogueSession.uiState == DialogueUiState::AskInput;
-                    if (askInputActive && key == sf::Keyboard::Key::Escape) {
+                    if (quitConfirmOpen) {
+                        // Checked first, ahead of every other guard below --
+                        // once this is open it owns all input, same "modal
+                        // takes total priority" shape askInputActive's own
+                        // Escape check has. up/down (already computed as
+                        // dy above) moves the selection, Enter acts on it,
+                        // and Escape/Q always cancels the dialog itself
+                        // rather than falling through to anything else --
+                        // there is no path from here back to window.close()
+                        // except explicitly picking "Yes".
+                        if (dy < 0) {
+                            quitConfirmSelected = 0;
+                        } else if (dy > 0) {
+                            quitConfirmSelected = 1;
+                        } else if (handleEnter) {
+                            if (quitConfirmSelected == 0) {
+                                window.close();
+                            } else {
+                                quitConfirmOpen = false;
+                            }
+                        } else if (wantsQuit) {
+                            quitConfirmOpen = false;
+                        }
+                    } else if (askInputActive && key == sf::Keyboard::Key::Escape) {
                         dialogueSession.uiState = DialogueUiState::TopicPicker;
                     } else if (dialogueSession.active && wantsQuit && !askInputActive) {
                         switch (dialogueSession.uiState) {
@@ -2549,7 +2633,13 @@ int runPhase1(const std::string& savePath) {
                             logSession.active = false;
                         }
                     } else if (wantsQuit && !askInputActive) {
-                        window.close();
+                        // Opens the confirmation instead of closing outright
+                        // -- see quitConfirmOpen's own declaration comment
+                        // above. Reached from Overworld/Zone idle and from
+                        // Combat (which has no wantsQuit override of its
+                        // own), always resetting to the safe "No" default.
+                        quitConfirmOpen = true;
+                        quitConfirmSelected = 1;
                     } else if (combatSession.active) {
                         // Combat's own input dispatch -- see CombatSession/
                         // CombatUiState's doc comments above for the state
@@ -3132,6 +3222,11 @@ int runPhase1(const std::string& savePath) {
             } else if (logSession.active) {
                 window.setView(uiView);
                 drawLogOverlay();
+            }
+
+            if (quitConfirmOpen) {
+                window.setView(uiView);
+                drawQuitConfirmOverlay();
             }
 
             window.display();

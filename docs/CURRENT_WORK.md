@@ -532,6 +532,51 @@ playtest of the packaged copy itself. Zips to
 `dist/AnsalonSFMLDemo-v<N>.zip` (~76MB, dominated by the map PNG);
 `dist/` stays gitignored as before.
 
+**Loading screen and quit confirmation added this session, same
+`sfml_phase1/main.cpp` -- SFML-only by user decision** (the console
+build, `ansalon_rpg`, already has an established `promptYesNo("...(y/n)
+")` convention for confirmations and a different, already-instant text
+loading trace; touching it wasn't asked for and would have roughly
+doubled this change for no requested benefit).
+
+`runPhase1()` used to create the window *after* the grid/world/zones/
+monsters/timeline/save loads, then decode `References/
+dragonlancemap2.png` (the heaviest single load) and open the placeholder
+font before the first `window.display()` -- a real risk of a blank or
+"Not Responding" window on a slow disk. Window and font construction
+moved to the top of the function, and a small local `drawLoadingScreen`
+lambda now draws a real "Ansalon: Age of Despair" / status-line frame
+(and pumps/handles the window-close event) before each of the existing
+load steps -- every original `std::cout << "step N: ..."` trace line is
+unchanged, this just interleaves a real drawn frame ahead of each one.
+
+Separately, `Q`/Escape used to call `window.close()` unconditionally
+from the outermost catch-all in the key-dispatch chain -- every other
+overlay (dialogue/shop/inventory/spellbook/sheet/help/world map/journal/
+log) already had its own `wantsQuit` override that closes just that
+screen, but Combat did not, so `Q` mid-fight fell into the same
+catch-all and force-quit with zero warning. That catch-all now opens a
+new `quitConfirmOpen` overlay ("Are you sure you want to end your
+adventure?", reusing the existing generic `drawPickerOverlay` the same
+way Help/Journal/Shop/Inventory/Spellbook already do) instead of closing
+outright -- up/down selects between "Yes, end my adventure" / "No, keep
+playing" (defaults to "No"), Enter acts on the selection, Escape/Q
+cancels the dialog itself rather than falling through to anything else.
+This also fixes the Combat gap above for free, since it shares the same
+catch-all. Deliberately unchanged: clicking the window's own OS close
+button (`sf::Event::Closed`, the title-bar X / Alt+F4) still closes
+immediately -- the user's ask was about an accidental `Q` keypress
+specifically, and gating a deliberate OS-level gesture too would be
+scope creep beyond that.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+test against real `save2.txt` (run from the repo root) confirming every
+`step 0..4` trace line still prints in order and the window opens with
+no crash/exception -- this session again had no desktop/GUI access to
+actually watch the loading screen draw or press `Q` and see the confirm
+dialog. **Not yet interactively confirmed** -- moved to the Playtest
+backlog below.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -611,6 +656,20 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML loading screen + quit confirmation** -- launch the game and
+  confirm a real "Ansalon: Age of Despair" screen with an updating status
+  line is visible (even briefly) instead of a blank window before the
+  overworld appears; press `Q`/Escape from the Overworld, from inside a
+  Zone, and mid-Combat and confirm each opens "Are you sure you want to
+  end your adventure?" instead of quitting outright; confirm up/down
+  moves the selection, Enter on "No, keep playing" (or Escape/Q) returns
+  to the game unchanged, and Enter on "Yes, end my adventure" actually
+  closes the window. Also confirm every other screen's own `Q`/Escape
+  behavior is unaffected (dialogue/shop/inventory/spellbook/sheet/help/
+  world map/journal/log all still close just that screen, not this new
+  dialog). See `sfml_phase1/main.cpp` and this file's writeup above, not
+  a numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
   untested: Flee (`f` during an idle combat round), a multi-instance group
   encounter's in-frame target picker (up/down to cycle, Enter to confirm --
