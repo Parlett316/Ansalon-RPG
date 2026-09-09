@@ -621,12 +621,14 @@ screen's own Quit override uses). Only once a spell is truly chosen does
 already established by `combatBeginPlayerAttack`) and *then* call
 `character::castSpell` -- so a monsters-act-first knockout correctly
 prevents the cast, matching the console exactly. `PickingTarget` itself
-is reused for a spell's target choice (a new `pickingForSpell` bool +
-`pendingSpellResult` on `CombatSession` disambiguate it from an ordinary
-melee attack) rather than adding a second grid-cursor state -- same
-single mechanism `GameLoop::pickTarget` already is for both. Unlike
-melee, spell targeting isn't adjacency-restricted (every alive instance
-is eligible, matching `GameLoop.cpp:1935`'s own `anyAlive` filter).
+is reused for a spell's target choice (originally a `pickingForSpell`
+bool + `pendingSpellResult` on `CombatSession` disambiguating it from an
+ordinary melee attack, since generalized to a 3-way `TargetPickReason`
+enum -- see the item-use writeup directly below) rather than adding a
+second grid-cursor state -- same single mechanism `GameLoop::pickTarget`
+already is for all of attack/spell/item targeting. Unlike melee, spell
+targeting isn't adjacency-restricted (every alive instance is eligible,
+matching `GameLoop.cpp:1935`'s own `anyAlive` filter).
 
 Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
 test against real `save2.txt` (Regan, level 20 Human Mage -- a caster
@@ -634,6 +636,56 @@ with Fireball per Milestone 152's own playtest note) confirming every
 catalog still loads and the window opens with no crash/exception -- this
 session again had no desktop/GUI access to press `M` live. **Not yet
 interactively confirmed** -- moved to the Playtest backlog below.
+
+**Combat item use (`I`) shipped this session, same `sfml_phase1/main.cpp`.**
+User picked it off Phase 3's own deferred list (thief backstab and Fighter
+sweep stay deferred, untouched). Direct port of `GameLoop::runCombat`'s own
+four item-use lambdas (`GameLoop.cpp:2724-2759`: `playerDrinksPotion`/
+`playerUsesWebnet`/`playerActivatesBrooch`/`playerUsesStaffCure`) and its
+`I`-key USE-menu chooser (`GameLoop.cpp:2931-2985`), reusing
+`character::availableCombatItems`/`CombatItem`/`CombatItemKind` and the
+four underlying `character::` functions unchanged -- all already linked
+into this target via `src/character/Equipment.cpp` for Shop/Inventory/
+Character Sheet. **Zero `CMakeLists.txt` changes needed.**
+
+Same "pick before initiative, resolve after" shape spellcasting already
+established: a new `combatBeginUseItem` (mirrors `combatBeginCast`) builds
+the usable-item list fresh, auto-resolves the 0/1-item cases for free (no
+round consumed), and opens a new `PickingItem` `CombatUiState` for 2+ (a
+full list via `drawPickerOverlay`, new `drawCombatItemPickerOverlay`,
+composited the same way `drawCombatSpellPickerOverlay` is). Only once an
+item is chosen does a new `combatCommitItemChoice` roll initiative
+(`combatRollGoFirstAndMaybeActMonsters`) and *then* actually apply it --
+so, same as a monsters-act-first knockout preventing a chosen spell from
+being cast, it also now prevents a chosen item from being consumed.
+Escape/Q cancels `PickingItem` for free, extending the existing
+`PickingSpell` guard rather than duplicating it.
+
+Webnet reuses `PickingTarget` a third way (not adjacency-restricted, same
+as spell targeting) -- `CombatSession::pickingForSpell` (a plain bool) was
+generalized to `TargetPickReason { Attack, Spell, Webnet }` to disambiguate
+`combatConfirmTarget`'s three real resolutions and the footer's three real
+prompts ("Attack"/"Cast X"/"Tangle which enemy?"), rather than adding a
+second ad-hoc bool alongside it.
+
+**One real gap closed in the same pass, beyond a pure item-use port:** the
+Brooch of Imog's `globeActive` flag was explicitly called out as
+"Item-use scope, not touched" when spellcasting shipped -- it didn't exist
+anywhere in `combatMonstersAct`/`combatTriggerOpportunityAttacks` yet, so
+porting item use without it would have made the Brooch a real no-op in
+this build. Added `CombatSession::globeActive` (resets for free each fight
+via the existing `combatSession = CombatSession{}` reset) and wired it into
+all four spots `GameLoop.cpp` gates on it: Bozak Magic Missile
+(`GameLoop.cpp:2463`), Aurak breath weapon (`GameLoop.cpp:2482`), a melee
+hit resolving against the player specifically -- never a companion, the
+Brooch is player-only (`GameLoop.cpp:2549-2556`) -- and opportunity attacks
+(`GameLoop.cpp:2182`).
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` confirming every catalog still loads and the
+window opens with no crash/exception -- this session again had no
+desktop/GUI access to press `I` live. **Not yet interactively confirmed**
+-- moved to the Playtest backlog below.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -752,6 +804,38 @@ piling on more unverified content. Full sourcing/detail for each is in its
   was never actually cast (still shows as memorized afterward). See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- **SFML combat item use** -- **neither real save carries anything usable
+  yet** (`save1.txt`'s Mike and `save2.txt`'s Regan both show
+  `INVENTORY 0`), so this needs buying a Potion of Healing (any shop) and,
+  for the Mage-only items, a Webnet and/or Brooch of Imog (Solace's Item
+  Shop per `docs/CHARACTER_NOTES.md`'s "Magic items" section) via the SFML
+  Shop screen first -- itself still on this same backlog, so confirming
+  Shop purchases actually land in inventory doubles as a prerequisite check
+  here. Once carrying at least a Potion: press `I` in combat with exactly
+  one usable item and confirm it resolves immediately (no picker) --
+  drinking a Potion heals HP and ends the round with no picker shown. With
+  2+ usable items carried, confirm "Use which item?" opens (a real overlay,
+  not the roster-embedded picker) and Escape/Q cancels it back to Idle with
+  no round consumed (HP/round number unchanged), same as the spell picker
+  above. For Webnet specifically: against a solo monster it should tangle
+  immediately with no target picker; against a multi-instance group the
+  picker should open and the footer should read "Tangle which enemy?" (not
+  "Attack"/"Cast"), and the tangled instance's next turn should log "can't
+  bring itself to attack!" and actually skip its turn. For the Brooch:
+  activating it once should absorb the *next* monster attack against the
+  player specifically (a log line naming "globe of invulnerability") but
+  NOT protect a companion, if one is recruited, hit in the same round --
+  and confirm it can't be activated twice in the same in-game day
+  (`character::broochAvailableToday`'s own gate). If the save carries a
+  Staff of Striking/Curing (a quest reward, likely absent on both current
+  saves), confirm it heals once per day without being consumed. Hardest to
+  force but worth a real attempt: get the monsters to act first (retry
+  until initiative favors them) on a round where you press `I` and choose
+  an item, and confirm a knockout that round means the item was never
+  actually used (Potion still shows in inventory afterward, Brooch's globe
+  never actually activated). See `sfml_phase1/main.cpp` and this file's
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
 - **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
   untested: Flee (`f` during an idle combat round), a multi-instance group
   encounter's in-frame target picker (up/down to cycle, Enter to confirm --

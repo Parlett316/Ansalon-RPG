@@ -10,12 +10,12 @@
 // random encounters, positional movement, target picking, monster/companion
 // AI (including each monster's own passive on-turn/on-death specials, which
 // cost nothing extra since they're not chooser-driven), flee, victory/
-// leveling, and knockout. Item use, thief backstab, and Fighter sweep are
-// each a real chunk of new chooser UI or extra positional bookkeeping on
-// top of `GameLoop::runCombat` -- deferred to a later phase, same "not yet
-// in this build" convention Phase 1 already established for Look/Journal/
-// etc. Spellcasting (M) shipped in a later session, see
-// docs/CURRENT_WORK.md for its own scope writeup and the full picture.
+// leveling, and knockout. Thief backstab and Fighter sweep are each extra
+// positional bookkeeping on top of `GameLoop::runCombat` -- still deferred
+// to a later phase, same "not yet in this build" convention Phase 1 already
+// established for Look/Journal/etc. Spellcasting (M) and item use (I -- see
+// the CombatItemKind block below) both shipped in later sessions, see
+// docs/CURRENT_WORK.md for their own scope writeups and the full picture.
 
 #include "character/Alignment.h"
 #include "character/CharClass.h"
@@ -495,14 +495,24 @@ void drawPoiIcon(sf::RenderWindow& window, PoiIconShapes& shapes, PoiKind kind, 
 // below) rather than porting GameLoop::runCombat's mid-round retarget-on-
 // kill loop, which would need real cross-frame resumable state to redo
 // non-blockingly -- a deliberate scope cut, not an oversight. PickingSpell
-// is a second pre-round pause (which of 2+ memorized spells to cast) --
-// like the console's own blocking spell-choice loop
-// (GameLoop.cpp:2906-2928), it resolves entirely before initiative is
-// rolled, so cancelling it (Escape/Q) costs nothing; PickingTarget itself
-// is reused for a spell's target choice once one is picked (see
-// CombatSession::pickingForSpell below), same single mechanism
-// GameLoop::pickTarget already is for both attack and spell targeting.
-enum class CombatUiState { AwaitContinue, Idle, PickingTarget, PickingSpell, Won, Lost, Fled };
+// and PickingItem are further pre-round pauses (which of 2+ memorized
+// spells to cast, or 2+ usable items to use) -- like the console's own
+// blocking spell-choice and USE-menu loops (GameLoop.cpp:2906-2928 and
+// 2955-2977), each resolves entirely before initiative is rolled, so
+// cancelling it (Escape/Q) costs nothing; PickingTarget itself is reused
+// for a spell's or Webnet's target choice once one is picked (see
+// CombatSession::pickReason/TargetPickReason below), same single mechanism
+// GameLoop::pickTarget already is for attack, spell, and Webnet targeting.
+enum class CombatUiState { AwaitContinue, Idle, PickingTarget, PickingSpell, PickingItem, Won, Lost, Fled };
+
+// Which of the three real reasons PickingTarget is ever open for -- an
+// ordinary melee attack, a spell that needs a target, or Webnet's own
+// "tangle which enemy?" (character::useWebnet succeeded, still needs to
+// know who) -- since combatConfirmTarget and the footer text both need to
+// know which action to actually resolve once a target is chosen. Replaces
+// what used to be a plain bool (attack vs. spell) now that item use adds a
+// third case.
+enum class TargetPickReason { Attack, Spell, Webnet };
 
 struct CombatInstance {
     int hp = 0;
@@ -567,12 +577,34 @@ struct CombatSession {
     int spellPickSelected = 0;
 
     // Distinguishes PickingTarget's reused picker (see CombatUiState's own
-    // doc comment): true means this round's target choice resolves
-    // pendingSpellResult (character::castSpell has already run, consuming
-    // the memorized slot -- see combatCommitSpellChoice), false means an
-    // ordinary melee attack, same as before this feature existed.
-    bool pickingForSpell = false;
+    // doc comment and TargetPickReason above): Spell means this round's
+    // target choice resolves pendingSpellResult (character::castSpell has
+    // already run, consuming the memorized slot -- see
+    // combatCommitSpellChoice); Webnet means it resolves a successful
+    // character::useWebnet call instead (see combatCommitItemChoice);
+    // Attack means an ordinary melee attack, same as before this feature
+    // existed.
+    TargetPickReason pickReason = TargetPickReason::Attack;
     character::SpellCastResult pendingSpellResult;
+
+    // Item-choice picker state -- only meaningful while uiState ==
+    // PickingItem. Parallel to spellPickIds/spellPickLabels/
+    // spellPickSelected above: itemPickKinds/itemPickLabels are parallel
+    // (character::availableCombatItems's own kind + display label, in its
+    // fixed Potion/Webnet/Brooch/StaffCure order).
+    std::vector<character::CombatItemKind> itemPickKinds;
+    std::vector<std::string> itemPickLabels;
+    int itemPickSelected = 0;
+
+    // Brooch of Imog's globe of invulnerability (character::activateBrooch,
+    // Dragonlance Adventures p.92) -- player-only, absorbs one Bozak Magic
+    // Missile/Aurak breath weapon/melee hit per attempt for the rest of the
+    // fight once activated (see combatMonstersAct/
+    // combatTriggerOpportunityAttacks's own globeActive checks). Mirrors
+    // GameLoop::runCombat's identically-named local (GameLoop.cpp:1995),
+    // reset fresh each fight the same way every other CombatSession field
+    // above is (combatStartEncounter's wholesale `CombatSession{}` reset).
+    bool globeActive = false;
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
@@ -1357,9 +1389,13 @@ int runPhase1(const std::string& savePath) {
                                  !combat::isAdjacent(destination, combatSession.instancePositions[i]);
             if (!leavingReach) continue;
             // A Web/Hold-style blocked or incapacitated instance can't
-            // swing at all, opportunity attack included -- mirrors
+            // swing at all, opportunity attack included; an active Brooch
+            // globe absorbs it before it's even rolled -- mirrors
             // GameLoop.cpp:2182's own guard on this exact loop.
-            if (combatSession.incapacitatedRestOfFight[i] || combatSession.blockedAttacksRemaining[i] > 0) continue;
+            if (combatSession.globeActive || combatSession.incapacitatedRestOfFight[i] ||
+                combatSession.blockedAttacksRemaining[i] > 0) {
+                continue;
+            }
             std::string name = combatMonsterLabel(static_cast<int>(i));
             combat::AttackOutcome outcome = combat::resolveMonsterAttack(
                 combatSession.monster, state.character, combatSession.playerAcBonus,
@@ -1495,7 +1531,17 @@ int runPhase1(const std::string& savePath) {
                 continue;
             }
             const combat::Monster& monster = combatSession.monster;
+            // The Brooch's globe wards the player only (see the melee check
+            // below) but Magic Missile/breath weapon always target the
+            // player directly (Milestone 117 never taught either to pick a
+            // companion instead), so a plain globeActive check is enough
+            // here -- mirrors GameLoop.cpp:2463/2482.
             if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
+                if (combatSession.globeActive) {
+                    combatSession.log.push_back("The globe of invulnerability absorbs the " + name +
+                                                 "'s Magic Missile!");
+                    continue;
+                }
                 int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
                 state.character.currentHp -= missileDamage;
                 combatSession.log.push_back("The " + name + " casts Magic Missile! It strikes you for " +
@@ -1503,6 +1549,11 @@ int runPhase1(const std::string& savePath) {
                 continue;
             }
             if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
+                if (combatSession.globeActive) {
+                    combatSession.log.push_back("The globe of invulnerability absorbs the " + name +
+                                                 "'s breath weapon!");
+                    continue;
+                }
                 if (combat::rollSavingThrow(state.character, character::SaveCategory::BreathWeapon)) {
                     state.character.currentHp -= 10;
                     combatSession.log.push_back("The " + name + " breathes a noxious cloud! You resist -- 10 damage.");
@@ -1552,6 +1603,15 @@ int runPhase1(const std::string& savePath) {
                                  : adjacentTargets[static_cast<size_t>(
                                        character::roll(1, static_cast<int>(adjacentTargets.size())) - 1)];
             const CombatPartyTarget& target = party[chosen];
+            // The Brooch's globe wards the player only (see docs/
+            // COMBAT_NOTES.md's "Extending this later") -- it does NOT
+            // protect any companion, so this check only applies once the
+            // resolved target is actually the player. Mirrors
+            // GameLoop.cpp:2549-2556.
+            if (target.isPlayer && combatSession.globeActive) {
+                combatSession.log.push_back("The globe of invulnerability absorbs the blow from the " + name + "!");
+                continue;
+            }
             std::string targetName = target.isPlayer ? "you" : target.character->name;
             // playerAcBonus (Protection from Evil/Shield/...) only wards the
             // player, same as GameLoop.cpp:2559's own target.isPlayer check
@@ -1798,7 +1858,7 @@ int runPhase1(const std::string& savePath) {
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
-        combatSession.pickingForSpell = true;
+        combatSession.pickReason = TargetPickReason::Spell;
         combatSession.pendingSpellResult = result;
         combatSession.pickCandidates = candidates;
         combatSession.pickSelected = 0;
@@ -1845,6 +1905,103 @@ int runPhase1(const std::string& savePath) {
         combatSession.uiState = CombatUiState::PickingSpell;
     };
 
+    // An item has been definitively chosen (the only one usable, or picked
+    // from PickingItem) -- rolls initiative now, exactly like
+    // GameLoop::runCombat's own item-use lambdas (playerDrinksPotion/
+    // playerUsesWebnet/playerActivatesBrooch/playerUsesStaffCure,
+    // GameLoop.cpp:2724-2759) only ever running as part of the shared
+    // playerActsFirst() dispatch: if the monsters go first and that already
+    // knocks the player out, the item is never actually used -- same
+    // real console behavior combatCommitSpellChoice already established for
+    // Cast.
+    auto combatCommitItemChoice = [&](character::CombatItemKind kind) {
+        if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        const long long today = state.hoursElapsed / 24;
+        switch (kind) {
+            case character::CombatItemKind::Potion: {
+                character::PurchaseResult result =
+                    character::drinkPotion(state.character, character::firstPotionIndex(state.character));
+                combatSession.log.push_back(result.message);
+                combatFinishPlayerAction(combatSession.pendingGoFirst);
+                break;
+            }
+            case character::CombatItemKind::Webnet: {
+                character::PurchaseResult result =
+                    character::useWebnet(state.character, character::firstWebnetIndex(state.character));
+                combatSession.log.push_back(result.message);
+                if (!result.success) {
+                    combatFinishPlayerAction(combatSession.pendingGoFirst);
+                    break;
+                }
+                // Webnet targeting is never adjacency-restricted, same
+                // "every alive instance is eligible" rule spell targeting
+                // follows (GameLoop.cpp:1935's anyAlive filter) -- mirrors
+                // GameLoop::playerUsesWebnet's own pickTarget(..., anyAlive)
+                // call.
+                std::vector<int> candidates;
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    if (combatSession.instances[i].hp > 0) candidates.push_back(static_cast<int>(i));
+                }
+                if (candidates.size() == 1) {
+                    // No extra log line here -- matches
+                    // GameLoop::playerUsesWebnet's own silent
+                    // ++blockedAttacksRemaining[...] once pickTarget
+                    // returns.
+                    ++combatSession.blockedAttacksRemaining[static_cast<size_t>(candidates.front())];
+                    combatFinishPlayerAction(combatSession.pendingGoFirst);
+                    break;
+                }
+                combatSession.pickReason = TargetPickReason::Webnet;
+                combatSession.pickCandidates = candidates;
+                combatSession.pickSelected = 0;
+                combatSession.uiState = CombatUiState::PickingTarget;
+                break;
+            }
+            case character::CombatItemKind::Brooch: {
+                character::PurchaseResult result = character::activateBrooch(state.character, today);
+                combatSession.log.push_back(result.message);
+                if (result.success) combatSession.globeActive = true;
+                combatFinishPlayerAction(combatSession.pendingGoFirst);
+                break;
+            }
+            case character::CombatItemKind::StaffCure: {
+                character::PurchaseResult result = character::useStaffCure(state.character, today);
+                combatSession.log.push_back(result.message);
+                combatFinishPlayerAction(combatSession.pendingGoFirst);
+                break;
+            }
+        }
+    };
+
+    // I pressed while Idle: mirrors GameLoop::runCombat's own Inventory-key
+    // handling (GameLoop.cpp:2931-2985) up through choosing WHICH item --
+    // built fresh each time from character::availableCombatItems (Potion/
+    // Webnet/Brooch/StaffCure, in that fixed order), validated and (for 2+
+    // usable items) chosen entirely before initiative is rolled, same as
+    // combatBeginCast above. No round is consumed by "nothing to use" or a
+    // cancelled choice (see PickingItem's own Escape/Q handling in the key
+    // dispatch below).
+    auto combatBeginUseItem = [&]() {
+        std::vector<character::CombatItem> usable =
+            character::availableCombatItems(state.character, state.hoursElapsed / 24);
+        if (usable.empty()) {
+            combatSession.log.push_back("You have nothing to use.");
+            return;
+        }
+        if (usable.size() == 1) {
+            combatCommitItemChoice(usable.front().kind);
+            return;
+        }
+        combatSession.itemPickKinds.clear();
+        combatSession.itemPickLabels.clear();
+        for (const character::CombatItem& item : usable) {
+            combatSession.itemPickKinds.push_back(item.kind);
+            combatSession.itemPickLabels.push_back(item.label);
+        }
+        combatSession.itemPickSelected = 0;
+        combatSession.uiState = CombatUiState::PickingItem;
+    };
+
     // Enter pressed while Idle: commit to attacking this round. Melee-locked
     // (must be adjacent) unless wielding the Light Crossbow, which can hit
     // anyone on the grid but is disabled outright the instant an enemy
@@ -1884,7 +2041,7 @@ int runPhase1(const std::string& savePath) {
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
-        combatSession.pickingForSpell = false;
+        combatSession.pickReason = TargetPickReason::Attack;
         combatSession.pickCandidates = candidates;
         combatSession.pickSelected = 0;
         combatSession.uiState = CombatUiState::PickingTarget;
@@ -1942,10 +2099,19 @@ int runPhase1(const std::string& savePath) {
     // immediate (0/1-candidate) path in combatBeginPlayerAttack does.
     auto combatConfirmTarget = [&]() {
         int target = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
-        if (combatSession.pickingForSpell) {
-            combatApplySpellEffect(combatSession.pendingSpellResult, target);
-        } else {
-            combatResolveAttackAgainstTarget(target);
+        switch (combatSession.pickReason) {
+            case TargetPickReason::Spell:
+                combatApplySpellEffect(combatSession.pendingSpellResult, target);
+                break;
+            case TargetPickReason::Webnet:
+                // No extra log line -- matches GameLoop::playerUsesWebnet's
+                // own silent ++blockedAttacksRemaining[...] once pickTarget
+                // returns.
+                ++combatSession.blockedAttacksRemaining[static_cast<size_t>(target)];
+                break;
+            case TargetPickReason::Attack:
+                combatResolveAttackAgainstTarget(target);
+                break;
         }
         if (combatSession.uiState == CombatUiState::Lost) return;
         combatFinishPlayerAction(combatSession.pendingGoFirst);
@@ -2338,6 +2504,17 @@ int runPhase1(const std::string& savePath) {
     auto drawCombatSpellPickerOverlay = [&]() {
         drawPickerOverlay("Cast which spell?", combatSession.spellPickLabels, combatSession.spellPickSelected,
                            "up/down=select   Enter=cast   Escape=cancel");
+    };
+
+    // Use-which-item picker (I, 2+ usable combat items) -- same shape as
+    // drawCombatSpellPickerOverlay above. Only one of PickingSpell/
+    // PickingItem is ever active at once (Idle only ever starts one
+    // chooser), so the two composite calls below never overlap. Mirrors
+    // GameLoop::runCombat's own blocking "Use which item?" chooser
+    // (GameLoop.cpp:2955-2977).
+    auto drawCombatItemPickerOverlay = [&]() {
+        drawPickerOverlay("Use which item?", combatSession.itemPickLabels, combatSession.itemPickSelected,
+                           "up/down=select   Enter=use   Escape=cancel");
     };
 
     // Full event log ('v') -- pixel-space equivalent of
@@ -2924,16 +3101,19 @@ int runPhase1(const std::string& savePath) {
                         } else if (wantsQuit || key == sf::Keyboard::Key::V) {
                             logSession.active = false;
                         }
-                    } else if (combatSession.active && combatSession.uiState == CombatUiState::PickingSpell &&
+                    } else if (combatSession.active &&
+                               (combatSession.uiState == CombatUiState::PickingSpell ||
+                                combatSession.uiState == CombatUiState::PickingItem) &&
                                wantsQuit) {
-                        // Escape/Q cancels the spell choice itself, back to
-                        // Idle, no round consumed -- mirrors
-                        // GameLoop::runCombat's own blocking spell-choice
-                        // loop, where Quit sets cancelled=true and the round
-                        // loop `continue`s without ever reaching the
-                        // initiative dispatch (GameLoop.cpp:2923-2928).
-                        // Checked ahead of the general quit branch below for
-                        // the same reason every other overlay guard above is.
+                        // Escape/Q cancels the spell/item choice itself,
+                        // back to Idle, no round consumed -- mirrors
+                        // GameLoop::runCombat's own blocking spell-choice and
+                        // USE-menu loops, where Quit sets cancelled=true and
+                        // the round loop `continue`s without ever reaching
+                        // the initiative dispatch (GameLoop.cpp:2923-2928 for
+                        // spells, GameLoop.cpp:2973-2978 for items). Checked
+                        // ahead of the general quit branch below for the
+                        // same reason every other overlay guard above is.
                         combatSession.uiState = CombatUiState::Idle;
                     } else if (wantsQuit && !askInputActive) {
                         // Opens the confirmation instead of closing outright
@@ -2981,6 +3161,19 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                             }
+                            case CombatUiState::PickingItem: {
+                                const int optionCount = static_cast<int>(combatSession.itemPickKinds.size());
+                                if (dy < 0) {
+                                    combatSession.itemPickSelected =
+                                        (combatSession.itemPickSelected - 1 + optionCount) % optionCount;
+                                } else if (dy > 0) {
+                                    combatSession.itemPickSelected = (combatSession.itemPickSelected + 1) % optionCount;
+                                } else if (handleEnter) {
+                                    combatCommitItemChoice(
+                                        combatSession.itemPickKinds[static_cast<size_t>(combatSession.itemPickSelected)]);
+                                }
+                                break;
+                            }
                             case CombatUiState::Won:
                             case CombatUiState::Lost:
                             case CombatUiState::Fled:
@@ -2992,7 +3185,7 @@ int runPhase1(const std::string& savePath) {
                                 } else if (key == sf::Keyboard::Key::M) {
                                     combatBeginCast();
                                 } else if (key == sf::Keyboard::Key::I) {
-                                    combatSession.log.push_back("Item use: not yet implemented in this build.");
+                                    combatBeginUseItem();
                                 } else if (handleEnter) {
                                     combatBeginPlayerAttack();
                                 } else if (dx != 0 || dy != 0) {
@@ -3464,20 +3657,34 @@ int runPhase1(const std::string& savePath) {
                     case CombatUiState::AwaitContinue:
                         drawWrappedLine("Press Enter to continue.", sf::Color(230, 220, 160));
                         break;
-                    case CombatUiState::PickingTarget:
-                        drawWrappedLine(combatSession.pickingForSpell
-                                             ? ("Cast " + combatSession.pendingSpellResult.spellName +
-                                                " at which enemy?")
-                                             : "Attack which enemy?",
-                                         sf::Color(230, 220, 160));
+                    case CombatUiState::PickingTarget: {
+                        std::string prompt;
+                        switch (combatSession.pickReason) {
+                            case TargetPickReason::Spell:
+                                prompt = "Cast " + combatSession.pendingSpellResult.spellName + " at which enemy?";
+                                break;
+                            case TargetPickReason::Webnet:
+                                prompt = "Tangle which enemy?";
+                                break;
+                            case TargetPickReason::Attack:
+                                prompt = "Attack which enemy?";
+                                break;
+                        }
+                        drawWrappedLine(prompt, sf::Color(230, 220, 160));
                         drawWrappedLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
                         break;
+                    }
                     case CombatUiState::PickingSpell:
                         // The real picker (drawCombatSpellPickerOverlay)
                         // draws on top of this whole frame -- this line is
                         // never actually seen, just here so the switch
                         // covers every CombatUiState value.
                         drawWrappedLine("Choose a spell...", sf::Color(230, 220, 160));
+                        break;
+                    case CombatUiState::PickingItem:
+                        // Same "never actually seen" idiom as PickingSpell
+                        // above -- drawCombatItemPickerOverlay draws on top.
+                        drawWrappedLine("Choose an item...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::Won:
                         drawWrappedLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
@@ -3489,7 +3696,8 @@ int runPhase1(const std::string& savePath) {
                         drawWrappedLine("Press Enter to continue.", sf::Color(220, 190, 120));
                         break;
                     case CombatUiState::Idle:
-                        drawWrappedLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)   CAST (m)", sf::Color(190, 190, 200));
+                        drawWrappedLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)   CAST (m)   USE (i)",
+                                         sf::Color(190, 190, 200));
                         break;
                 }
             } else {
@@ -3525,6 +3733,9 @@ int runPhase1(const std::string& savePath) {
             if (combatSession.active && combatSession.uiState == CombatUiState::PickingSpell) {
                 window.setView(uiView);
                 drawCombatSpellPickerOverlay();
+            } else if (combatSession.active && combatSession.uiState == CombatUiState::PickingItem) {
+                window.setView(uiView);
+                drawCombatItemPickerOverlay();
             }
 
             if (dialogueSession.active) {
