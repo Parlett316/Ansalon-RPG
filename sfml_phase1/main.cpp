@@ -51,6 +51,7 @@
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -1183,9 +1184,16 @@ int runPhase1(const std::string& savePath) {
     // Spellbook ('s', only while the sheet is open and the character is a
     // caster): the sheet's own full-spellbook drill-down
     // (GameLoop::showSpellbook, GameLoop.cpp:644-647), same transient-UI
-    // reasoning as sheetOpen above. Any key returns to the sheet (which
-    // stays open), matching the console's showCharacterSheet loop.
+    // reasoning as sheetOpen above. Any key other than North/South returns
+    // to the sheet (which stays open), matching the console's
+    // showCharacterSheet loop -- except the console prints to a terminal
+    // that can show/scroll arbitrarily many lines, while this window is a
+    // fixed 1280x800, so a high-level caster's full list (a 20th-level Mage
+    // has 9 spell levels' worth) needs the same real scroll treatment
+    // logSession already has, unlike the console original. scrollOffset
+    // resets to 0 each time the spellbook is (re)opened.
     bool spellbookOpen = false;
+    int spellbookScrollOffset = 0;
 
     // Help ('/', the pixel-space bind for the console's '?'), World Map
     // ('o'), and Journal ('g') -- same transient-full-window-overlay
@@ -2104,12 +2112,56 @@ int runPhase1(const std::string& savePath) {
         miniMap.setPosition(sf::Vector2f(mapOriginX, mapOriginY));
         window.draw(miniMap);
 
+        std::vector<const world::Location*> byName;
+        for (const world::Location& loc : world.allLocations()) byName.push_back(&loc);
+        std::sort(byName.begin(), byName.end(),
+                  [](const world::Location* a, const world::Location* b) { return a->name < b->name; });
+
+        // A distinct hue per location (evenly spaced around the color
+        // wheel, keyed by loc.id so the marker loop and the legend loop
+        // below agree) -- found live: the old green-town/red-other scheme
+        // left same-colored dots indistinguishable wherever several
+        // locations cluster close together on the map, with no way to tell
+        // which legend entry a given dot was. Fixed saturation/value stay
+        // legible against the dark background without clipping to white
+        // (which would collide with the player's own marker below).
+        auto hueToColor = [](float hue) -> sf::Color {
+            const float h = hue * 6.f;
+            const float s = 0.65f, v = 0.95f;
+            const int i = static_cast<int>(h);
+            const float f = h - static_cast<float>(i);
+            const float p = v * (1.f - s);
+            const float q = v * (1.f - s * f);
+            const float t = v * (1.f - s * (1.f - f));
+            float r, g, b;
+            switch (i % 6) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                default: r = v; g = p; b = q; break;
+            }
+            return sf::Color(static_cast<std::uint8_t>(r * 255.f), static_cast<std::uint8_t>(g * 255.f),
+                              static_cast<std::uint8_t>(b * 255.f));
+        };
+        std::unordered_map<std::string, sf::Color> colorById;
+        for (std::size_t i = 0; i < byName.size(); ++i) {
+            colorById[byName[i]->id] = hueToColor(static_cast<float>(i) / static_cast<float>(byName.size()));
+        }
+
+        // Towns still get a slightly larger marker than everything else --
+        // the one piece of the old two-tone scheme worth keeping, since
+        // town/not-town is still useful at a glance and doesn't need its
+        // own color now that hue is spoken for identifying which location.
         sf::CircleShape marker(3.f);
-        marker.setOrigin(sf::Vector2f(3.f, 3.f));
         for (const world::Location& loc : world.allLocations()) {
             const float px = mapOriginX + (static_cast<float>(loc.x) + 0.5f) * pxPerTileX * scale;
             const float py = mapOriginY + (static_cast<float>(loc.y) + 0.5f) * pxPerTileY * scale;
-            marker.setFillColor(loc.isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
+            const float radius = loc.isTown ? 4.f : 3.f;
+            marker.setRadius(radius);
+            marker.setOrigin(sf::Vector2f(radius, radius));
+            marker.setFillColor(colorById.at(loc.id));
             marker.setPosition(sf::Vector2f(px, py));
             window.draw(marker);
         }
@@ -2123,18 +2175,13 @@ int runPhase1(const std::string& savePath) {
             window.draw(playerDot);
         }
 
-        std::vector<const world::Location*> byName;
-        for (const world::Location& loc : world.allLocations()) byName.push_back(&loc);
-        std::sort(byName.begin(), byName.end(),
-                  [](const world::Location* a, const world::Location* b) { return a->name < b->name; });
-
         const float legendX = kSheetMarginX + mapBoxW + 20.f;
         float legendY = kTopMargin;
         constexpr unsigned kLegendCharSize = 13;
         for (const world::Location* loc : byName) {
             sf::CircleShape bullet(3.f);
             bullet.setOrigin(sf::Vector2f(3.f, 3.f));
-            bullet.setFillColor(loc->isTown ? sf::Color(60, 220, 90) : sf::Color(220, 60, 60));
+            bullet.setFillColor(colorById.at(loc->id));
             bullet.setPosition(sf::Vector2f(legendX + 4.f, legendY + 8.f));
             window.draw(bullet);
 
@@ -2193,7 +2240,24 @@ int runPhase1(const std::string& savePath) {
                 }
             }
         }
-        drawPickerOverlay("Spells Known", rows, -1, "(press any key to return)");
+        // Scroll-windowed the same way drawLogOverlay is -- see
+        // spellbookScrollOffset's own declaration comment for why this
+        // build needs it where the console original didn't.
+        const int total = static_cast<int>(rows.size());
+        constexpr int kSpellbookVisibleRows = 20;
+        const int maxOffset = std::max(0, total - kSpellbookVisibleRows);
+        const int offset = std::clamp(spellbookScrollOffset, 0, maxOffset);
+        spellbookScrollOffset = offset;
+        std::vector<std::string> visible;
+        for (int i = offset; i < std::min(total, offset + kSpellbookVisibleRows); ++i) {
+            visible.push_back(rows[static_cast<size_t>(i)]);
+        }
+        const std::string status = total <= kSpellbookVisibleRows
+                                        ? ""
+                                        : "Lines " + std::to_string(offset + 1) + "-" +
+                                              std::to_string(std::min(total, offset + kSpellbookVisibleRows)) +
+                                              " of " + std::to_string(total);
+        drawPickerOverlay("Spells Known", visible, -1, "up/down=scroll   any other key=return", status);
     };
 
     // Dialogue -- a full-window overlay, same compositing approach as
@@ -2247,12 +2311,12 @@ int runPhase1(const std::string& savePath) {
                 names.reserve(dialogueSession.candidates.size());
                 for (const auto& candidate : dialogueSession.candidates) names.push_back(candidate.name);
                 drawPickerOverlay("Talk to whom?", names, dialogueSession.candidateSelected,
-                                   "(up/down = select, Enter = talk)");
+                                   "(up/down = select, Enter = talk, q = cancel)");
                 break;
             }
             case DialogueUiState::TopicPicker:
                 drawPickerOverlay("Ask " + dialogueSession.current.name + " about...", dialogueSession.topicLabels,
-                                   dialogueSession.topicSelected, "(up/down = select, Enter = ask)");
+                                   dialogueSession.topicSelected, "(up/down = select, Enter = ask, q = leave)");
                 break;
             case DialogueUiState::AskInput:
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
@@ -2417,15 +2481,41 @@ int runPhase1(const std::string& savePath) {
                     // Ask-input is the one screen where an ordinary letter
                     // (e.g. 'q', part of a typed question) must not quit the
                     // game, and where Escape means "cancel this box" rather
-                    // than "close the window" -- see the switch's own comment
-                    // on Q/Escape above. Every other screen keeps the
-                    // established "Escape/Q always closes the window, no
-                    // per-screen cancel key" rule unchanged (PickingCandidate/
-                    // PickingTarget/TopicPicker still have none).
+                    // than "close the window". Every other dialogue state
+                    // DOES get a Quit override just below, matching
+                    // GameLoop::talkTo/pickAndTalk's own console behavior
+                    // exactly: pickAndTalk's "Talk to whom?" picker treats
+                    // Quit as cancel (GameLoop.cpp:931-932), talkTo's topic
+                    // picker treats it as "leave" -- same as selecting
+                    // "Nothing, thanks" (GameLoop.cpp:1301-1302) -- and a
+                    // plain greeting/topic-text/ask-response screen's
+                    // readKey() doesn't special-case Quit at all, so it just
+                    // acts like any other key (continue). Found live:
+                    // talking to a canon Hero and pressing Escape/Q closed
+                    // the whole application instead of leaving the
+                    // conversation, since this build previously had no
+                    // per-screen cancel here and fell through to the
+                    // general "close the window" branch below.
                     const bool askInputActive =
                         dialogueSession.active && dialogueSession.uiState == DialogueUiState::AskInput;
                     if (askInputActive && key == sf::Keyboard::Key::Escape) {
                         dialogueSession.uiState = DialogueUiState::TopicPicker;
+                    } else if (dialogueSession.active && wantsQuit && !askInputActive) {
+                        switch (dialogueSession.uiState) {
+                            case DialogueUiState::PickingCandidate:
+                                dialogueSession.active = false;
+                                break;
+                            case DialogueUiState::TopicPicker:
+                                dialogueEnd();
+                                break;
+                            case DialogueUiState::Greeting:
+                            case DialogueUiState::TopicText:
+                            case DialogueUiState::AskResponse:
+                                dialogueContinue();
+                                break;
+                            case DialogueUiState::AskInput:
+                                break; // unreachable -- askInputActive excludes this above
+                        }
                     } else if (shopSession.active && wantsQuit) {
                         // One deliberate deviation from the "Q always closes the
                         // whole window" rule every other screen here follows --
@@ -2442,9 +2532,15 @@ int runPhase1(const std::string& savePath) {
                         // local loop (GameLoop.cpp:1671-1672), closing the
                         // screen, not the whole game.
                         inventorySession.active = false;
+                    } else if (spellbookOpen && dy != 0) {
+                        // North/South scrolls (see spellbookScrollOffset's
+                        // declaration comment) instead of dismissing --
+                        // checked ahead of the plain spellbookOpen dismiss
+                        // branch just below.
+                        spellbookScrollOffset += (dy < 0 ? -1 : 1) * 5;
                     } else if (spellbookOpen) {
-                        // Any key returns to the sheet -- spellbookOpen is
-                        // only ever true while sheetOpen is too. Checked
+                        // Any other key returns to the sheet -- spellbookOpen
+                        // is only ever true while sheetOpen is too. Checked
                         // ahead of the general quit branch below for the
                         // same reason sheetOpen's own guard just under this
                         // one is: Q/Escape should return to the sheet, not
@@ -2456,6 +2552,7 @@ int runPhase1(const std::string& savePath) {
                         // showCharacterSheet's own South dispatch
                         // (GameLoop.cpp:632-639), offered to casters only.
                         spellbookOpen = true;
+                        spellbookScrollOffset = 0;
                     } else if (sheetOpen) {
                         // Dismiss on any other key -- see sheetOpen's own
                         // top comment. Deliberately swallows dx/dy/
@@ -2549,12 +2646,12 @@ int runPhase1(const std::string& savePath) {
                         // DialogueSession/DialogueUiState's doc comments
                         // above. Same "reuse dx/dy/handleEnter the switch
                         // above already computed" shape as combat's own
-                        // dispatch. No cancel key on PickingCandidate/
-                        // TopicPicker (matching combat's own PickingTarget
-                        // precedent -- the always-present "Nothing, thanks"
-                        // entry is TopicPicker's only way out); AskInput is
-                        // the one exception, handled by the Escape guard
-                        // above and by Backspace/empty-Enter here.
+                        // dispatch. Quit/Escape are handled earlier by this
+                        // block's own dialogueSession.active guard above
+                        // (PickingCandidate cancels, TopicPicker leaves same
+                        // as "Nothing, thanks", the rest just continue), so
+                        // this switch only ever sees dy/handleEnter/
+                        // Backspace here.
                         switch (dialogueSession.uiState) {
                             case DialogueUiState::PickingCandidate: {
                                 const int candidateCount = static_cast<int>(dialogueSession.candidates.size());
@@ -2948,6 +3045,14 @@ int runPhase1(const std::string& savePath) {
 
             const std::size_t maxLineChars =
                 static_cast<std::size_t>((sidebarWidth - 32.f) / kSidebarCharWidth);
+            // The combat log below already wraps through this -- these
+            // static/dynamic prompt lines (e.g. "ATTACK (Enter)   MOVE
+            // (wasd)   FLEE (f)") didn't, so a long enough one ran past the
+            // sidebar's own width and was clipped by the window's right
+            // edge (found live, mid-fight). Wrapping them the same way.
+            auto drawWrappedLine = [&](const std::string& text, sf::Color color) {
+                for (const std::string& wrapped : wrapToWidth(text, maxLineChars)) drawLine(wrapped, color);
+            };
 
             if (combatSession.active) {
                 const world::TerrainInfo& floorTerrain = world::terrainFor(combatSession.floorTerrainCode);
@@ -2998,23 +3103,23 @@ int runPhase1(const std::string& savePath) {
 
                 switch (combatSession.uiState) {
                     case CombatUiState::AwaitContinue:
-                        drawLine("Press Enter to continue.", sf::Color(230, 220, 160));
+                        drawWrappedLine("Press Enter to continue.", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::PickingTarget:
-                        drawLine("Attack which enemy?", sf::Color(230, 220, 160));
-                        drawLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
+                        drawWrappedLine("Attack which enemy?", sf::Color(230, 220, 160));
+                        drawWrappedLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
                         break;
                     case CombatUiState::Won:
-                        drawLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
+                        drawWrappedLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
                         break;
                     case CombatUiState::Lost:
-                        drawLine("Press Enter to continue.", sf::Color(220, 120, 120));
+                        drawWrappedLine("Press Enter to continue.", sf::Color(220, 120, 120));
                         break;
                     case CombatUiState::Fled:
-                        drawLine("Press Enter to continue.", sf::Color(220, 190, 120));
+                        drawWrappedLine("Press Enter to continue.", sf::Color(220, 190, 120));
                         break;
                     case CombatUiState::Idle:
-                        drawLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)", sf::Color(190, 190, 200));
+                        drawWrappedLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)", sf::Color(190, 190, 200));
                         break;
                 }
             } else {
