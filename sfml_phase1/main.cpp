@@ -103,49 +103,6 @@ character::ShopCatalog shopCatalogFor(const std::string& name) {
     return character::ShopCatalog::General;
 }
 
-// Renders an AttackOutcome's roll math, e.g. "[d20 14 +2 = 16 vs THAC0 18 -
-// AC 6 (need 12)]" -- copied verbatim from game::describeToHit
-// (GameLoop.cpp), same "not exported, GameLoop.cpp isn't linked here"
-// reasoning as pluralMonsterName above.
-std::string describeToHit(const combat::AttackOutcome& outcome) {
-    std::ostringstream out;
-    out << "[d20 " << outcome.naturalRoll;
-    if (outcome.naturalRoll == 20) {
-        out << " -- natural 20, automatic hit]";
-        return out.str();
-    }
-    if (outcome.naturalRoll == 1) {
-        out << " -- natural 1, automatic miss]";
-        return out.str();
-    }
-    if (outcome.toHitBonus != 0) {
-        out << (outcome.toHitBonus > 0 ? " +" : " ") << outcome.toHitBonus << " = "
-            << (outcome.naturalRoll + outcome.toHitBonus);
-    }
-    out << " vs THAC0 " << outcome.attackerThac0 << " - AC " << outcome.defenderArmorClass << " (need "
-        << outcome.targetNumber << ")]";
-    return out.str();
-}
-
-// Renders the damage-roll math the same way describeToHit renders the
-// attack roll -- copied verbatim from game::describeDamage (GameLoop.cpp).
-std::string describeDamage(const combat::AttackOutcome& outcome) {
-    std::ostringstream out;
-    out << "[" << outcome.damageDiceCount << "d" << outcome.damageDiceSides << " "
-        << (outcome.damageMultiplier != 1 ? outcome.damageRoll / outcome.damageMultiplier : outcome.damageRoll);
-    if (outcome.damageMultiplier != 1) {
-        out << " x" << outcome.damageMultiplier;
-    }
-    if (outcome.damageBonus != 0) {
-        out << (outcome.damageBonus > 0 ? " +" : " ") << outcome.damageBonus;
-    }
-    if (outcome.damageBonus != 0 || outcome.damageMultiplier != 1) {
-        out << " = " << (outcome.damageRoll + outcome.damageBonus);
-    }
-    out << "]";
-    return out.str();
-}
-
 // A talk interaction's content -- local counterpart to game::Speech
 // (GameLoop.h), which isn't linkable here (GameLoop.cpp is built on
 // render::Console/render::MapRenderer, which this target deliberately
@@ -1323,8 +1280,7 @@ int runPhase1(const std::string& savePath) {
             if (outcome.hit) {
                 state.character.currentHp -= outcome.damage;
                 combatSession.log.push_back("As you pull back, the " + name + " gets a free strike! It hits you for " +
-                                             std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
-                                             describeDamage(outcome));
+                                             std::to_string(outcome.damage) + ".");
             } else {
                 combatSession.log.push_back("The " + name + " lunges as you pull back, but misses.");
             }
@@ -1406,14 +1362,12 @@ int runPhase1(const std::string& savePath) {
                 if (outcome.hit) {
                     combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                     combatSession.log.push_back(companion.name + " hits the " + targetName + " for " +
-                                                 std::to_string(outcome.damage) + ". " + describeToHit(outcome) +
-                                                 " " + describeDamage(outcome));
+                                                 std::to_string(outcome.damage) + ".");
                     if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                         if (combatHandleInstanceDeath(targetIndex)) return;
                     }
                 } else {
-                    combatSession.log.push_back(companion.name + " misses the " + targetName + ". " +
-                                                 describeToHit(outcome));
+                    combatSession.log.push_back(companion.name + " misses the " + targetName + ".");
                 }
             }
         }
@@ -1499,8 +1453,7 @@ int runPhase1(const std::string& savePath) {
             if (outcome.hit) {
                 target.character->currentHp -= outcome.damage;
                 combatSession.log.push_back("The " + name + " hits " + targetName + " for " +
-                                             std::to_string(outcome.damage) + ". " + describeToHit(outcome) + " " +
-                                             describeDamage(outcome));
+                                             std::to_string(outcome.damage) + ".");
                 if (monster.poisonOnHit) {
                     if (combat::rollSavingThrow(*target.character, character::SaveCategory::ParalyzationPoisonDeath)) {
                         combatSession.log.push_back(target.isPlayer ? "You resist the poison."
@@ -1515,7 +1468,7 @@ int runPhase1(const std::string& savePath) {
                     combatSession.log.push_back(targetName + " is knocked out!");
                 }
             } else {
-                combatSession.log.push_back("The " + name + " misses " + targetName + ". " + describeToHit(outcome));
+                combatSession.log.push_back("The " + name + " misses " + targetName + ".");
             }
         }
     };
@@ -1566,12 +1519,12 @@ int runPhase1(const std::string& savePath) {
             if (outcome.hit) {
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                 combatSession.log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) +
-                                             ". " + describeToHit(outcome) + " " + describeDamage(outcome));
+                                             ".");
                 if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                     if (combatHandleInstanceDeath(targetIndex)) return;
                 }
             } else {
-                combatSession.log.push_back("You miss the " + targetName + ". " + describeToHit(outcome));
+                combatSession.log.push_back("You miss the " + targetName + ".");
             }
         }
     };
