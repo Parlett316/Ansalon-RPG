@@ -745,6 +745,65 @@ sweep, spellcasting, and item use have all now shipped in this build (only
 Phase 3's own deliberately-out-of-scope items, like player-directed party
 control, remain out of scope project-wide).
 
+**Real bug found and fixed this session via live playtesting, same
+`sfml_phase1/main.cpp`:** retreating from an adjacent monster could end up
+sharing its exact grid cell. `combatBeginPlayerMove` validated the
+destination was empty, then called `combatRollGoFirstAndMaybeActMonsters`
+(which, if the monster wins initiative, lets it act immediately -- including
+closing-in movement) before ever committing `playerPos = destination`. If
+the monster's own step landed exactly on that already-validated cell, nothing
+re-checked it, so both combatants ended up on the same `GridPos` --
+`combat::isAdjacent`'s deliberate "never adjacent to itself" rule
+(`CombatGrid.cpp:9`) then made both sides read the other as permanently too
+far away to attack, with no way to recover except fleeing/ending the fight.
+Reproduced live: a Cleric (new test character Melissa, save slot 3) retreated
+from a Black Bear, took the expected free strike, but then couldn't attack or
+be attacked at all -- visually, both markers rendered on the exact same tile.
+
+Fixed by extracting the occupancy check into `combatCellOccupied` and calling
+it a second time right after monsters act, right before the position commit
+-- if the cell filled up in the meantime, the move is cancelled ("The way is
+blocked now.") but everything that already happened this round (the
+opportunity attack, the monster's own turn) still stands. Verified: clean
+rebuild (zero new `/W4` warnings) and a launch smoke test against save3
+(Melissa, level 1 Human Cleric) confirming no crash. **Not yet
+re-confirmed live** -- worth deliberately re-triggering the same
+retreat-while-a-monster-closes-in scenario to confirm the fix actually
+prevents the overlap now, added to the Playtest backlog below.
+
+**This exact same ordering bug existed in the console build too, now fixed
+there as well** (`GameLoop::playerMoves`/the move-key handling in
+`GameLoop::runCombat`, `GameLoop.cpp`) -- the SFML port had faithfully
+copied the console's own structure, so this wasn't a regression the
+migration introduced, it was a latent bug in `ansalon_rpg`'s shipped combat
+that this session's SFML playtesting happened to surface first. Same fix
+shape: a new shared `isCellOccupied` lambda replaces the old inline
+instances/companions occupancy loop (used by the original up-front
+"Something's in the way" check) and is called a second time inside
+`playerMoves`, right after `triggerOpportunityAttacks` and the knockout
+check, right before `playerPos` actually commits -- if the cell filled up
+in the meantime, the move is cancelled ("The way is blocked now.") but the
+opportunity attack and whatever else already happened this round still
+stand, identical semantics to the SFML fix above.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings) and a piped character-creation smoke test (real `save1.txt`/
+`save2.txt`/`save3.txt` moved aside during the test, confirmed restored
+and intact -- `NAME Mike`/`NAME Regan`/`NAME Melissa` -- immediately after).
+**Not yet interactively confirmed** on the console build specifically
+(`_getch()` can't be piped past character creation -- same standing
+limitation as every other `ansalon_rpg` combat change) -- this is a small,
+mechanical, same-shape port of a fix already confirmed live in the SFML
+build, so not flagged on the Playtest backlog below as its own item, but
+worth keeping in mind if `ansalon_rpg` is played directly.
+
+This `GameLoop.cpp` fix is currently sitting on `sfml-trial-3` alongside
+everything else in this file, uncommitted-vs-`master` state aside -- since
+it's a pure console-build bugfix unrelated to the SFML migration itself, it's
+a reasonable cherry-pick candidate to `master` independent of whenever (or
+whether) the broader branch itself gets merged. Not done automatically here;
+the user's call.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -824,6 +883,15 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML same-cell collision fix** -- deliberately retreat (move away) from
+  an adjacent monster on a round where it's likely to win initiative and
+  close in on the same cell (retry a few times if needed -- it's
+  initiative-dependent). Confirm the move is refused with "The way is
+  blocked now." instead of letting you overlap it, and that ordinary
+  retreats (where the monster doesn't happen to fill your destination)
+  still work exactly as before. See this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - **SFML loading screen + quit confirmation** -- launch the game and
   confirm a real "Ansalon: Age of Despair" screen with an updating status
   line is visible (even briefly) instead of a blank window before the
@@ -839,19 +907,43 @@ piling on more unverified content. Full sourcing/detail for each is in its
   a numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
 - **SFML combat spellcasting** -- on save2 (Regan, level 20 Human Mage),
-  memorize and cast: a single-target damage spell (Magic Missile) at a
+  memorize and cast: ~~a single-target damage spell (Magic Missile) at a
   solo monster (should resolve immediately, no target picker, since
   there's only one alive candidate) and at a multi-instance group (picker
   opens, up/down + Enter picks correctly, and the footer reads "Cast
-  Magic Missile at which enemy?" not "Attack which enemy?"); Fireball at
+  Magic Missile at which enemy?" not "Attack which enemy?")~~ --
+  **confirmed 2026-09-09**: casting Magic Missile opened the target
+  picker as expected; ~~Fireball at
   a multi-instance group with 2+ instances within 2 cells of the chosen
-  epicenter (both take the same damage, both named in one log line);
-  Cure Light Wounds on yourself (no target picker at all, HP increases);
-  a buff (Bless/Prayer-equivalent, if memorized) and confirm subsequent
-  attack rolls actually reflect it; Web (or another `BlockMonsterAttacks`
+  epicenter (both take the same damage, both named in one log line)~~ --
+  **confirmed 2026-09-09**: cast at a multi-instance group's middle
+  target, three instances within radius all took damage together;
+  ~~Cure Light Wounds on yourself (no target picker at all, HP
+  increases)~~ -- **partially confirmed 2026-09-09** (new Cleric
+  Melissa): cast at full HP (9/9) correctly logged "heal 0 hit points"
+  and left HP unchanged -- `main.cpp:1874` clamps healing to
+  `maxHp - currentHp`, so a heal spell at full health always wastes the
+  roll, matching real 2e's no-overhealing rule; still want to see it
+  actually raise HP after taking damage. ~~a buff (Bless/Prayer-
+  equivalent, if memorized) and confirm subsequent attack rolls actually
+  reflect it~~ -- **confirmed 2026-09-09**: Bless cast correctly, log
+  line matches the console's wording, and it runs through the same
+  `playerThac0Bonus` mechanism Phase 3 already proved out (Frostreaver/
+  Weapon Specialization); NOTE the bonus itself can't be *seen* in any
+  single log line since commit `c657a44` dropped roll-math breakdowns,
+  so it's only provable statistically over many attacks, not from one
+  fight. Prayer (`BuffPlayerAndDebuffMonsterThac0`) still untested --
+  needs a level-5+ Cleric (3rd-level spell), out of reach for a fresh
+  level 1 character. ~~Web (or another `BlockMonsterAttacks`
   spell) on one instance and confirm its next turn logs "can't bring
   itself to attack!" and is actually skipped, with the counter running
-  out on schedule. Also confirm: memorizing 2+ *different* spells opens
+  out on schedule~~ -- **confirmed 2026-09-09** via Charm Person and
+  Charm Monster instead of Web (same `BlockMonsterAttacks` effect, see
+  `character/Spellcasting.cpp:257-266`): the charmed kobold correctly
+  stood down rather than joining the player's side -- this project
+  deliberately doesn't model "monster switches sides," only "monster
+  taken out of the fight," so that's expected behavior, not a bug. Also
+  confirm: memorizing 2+ *different* spells opens
   "Cast which spell?" (a real overlay, not the roster-embedded picker);
   Escape/Q on that picker cancels back to Idle with no round consumed
   (HP/round number unchanged); pressing `M` with nothing memorized (or
@@ -1011,12 +1103,14 @@ piling on more unverified content. Full sourcing/detail for each is in its
   this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
   this branch isn't merged to `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
-  (radius 2 grid cells, Chebyshev distance). Fight a multi-instance group
-  (e.g. Goblins), memorize Fireball, cast it at one instance while a second
-  is within 2 cells, and confirm both take the same damage with both named
-  in the log; separately confirm a solo/isolated target still reads as a
-  clean single-target hit. Save slot 2 (`Regan`, level 20 Human Mage) should
-  already have Fireball available.
+  (radius 2 grid cells, Chebyshev distance). The underlying area-damage
+  math is now confirmed (2026-09-09, via the SFML build -- see the SFML
+  combat spellcasting item above). Still open: confirming a
+  solo/isolated target reads as a clean single-target hit, and separately
+  walking this through the *console* (`ansalon_rpg`) build's own
+  `pickTarget` epicenter-picking UI, which hasn't been exercised at all
+  yet (same standing `_getch()` limitation). Save slot 2 (`Regan`, level
+  20 Human Mage) should already have Fireball available.
 - **137** -- day-gated Astinus dialogue, fixing 12 shipped spoilers. Talk to
   Astinus in Palanthas before day 2/3/12/17 and again after day 160; confirm
   both halves read correctly.

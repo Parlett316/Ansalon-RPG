@@ -5838,13 +5838,19 @@ now fully verified, nothing further outstanding.
      (`combat::chebyshevDistance`) is pre-existing, already covered by
      Milestone 117's own precedent. Verified via a clean rebuild (zero new
      `/W4` warnings) and a piped character-creation smoke test (real
-     `save1.txt`/`save2.txt` untouched, empty slot 3 used). **Not
-     interactively walked** -- same standing `_getch()` limitation; worth
-     doing on the next play session: fight a multi-instance group, memorize
-     Fireball, cast it at one instance while a second is within 2 cells,
-     and confirm both take the same damage with both named in the log;
-     separately confirm a solo/isolated target still reads as a clean
-     single-target hit.
+     `save1.txt`/`save2.txt` untouched, empty slot 3 used).
+
+     **Underlying area-damage math (the shared `SpellEffect::DamageArea`
+     in `character/Spellcasting.cpp`) interactively confirmed 2026-09-09**
+     -- via the `sfml-trial-3` branch's SFML combat-spellcasting port (see
+     `docs/CURRENT_WORK.md`), not the console build: cast Fireball at a
+     multi-instance group's middle target and three instances within
+     radius all took damage together, one log line. The console
+     (`ansalon_rpg`) build's own `GameLoop::playerCasts`/`pickTarget`
+     epicenter-picking UI still hasn't been separately walked (same
+     standing `_getch()` limitation) -- if that build gets played live,
+     still worth confirming a solo/isolated target reads as a clean
+     single-target hit there too.
 
 153. Corrected 5 of the 9 `TOWN` locations' `POS` coordinates
      (Solace, Haven, Port O'Call, Port Balifor, Flotsam) to precisely

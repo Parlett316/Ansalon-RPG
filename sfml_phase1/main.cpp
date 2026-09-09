@@ -2197,6 +2197,30 @@ int runPhase1(const std::string& savePath) {
         combatSession.uiState = CombatUiState::PickingTarget;
     };
 
+    // Shared by combatBeginPlayerMove below, called both before and after
+    // monsters get a chance to act -- a monster that wasn't yet adjacent
+    // when the move was declared can close in during its own turn and land
+    // exactly on the cell the player is mid-step into, since nothing else
+    // re-checks that cell once combatRollGoFirstAndMaybeActMonsters runs.
+    // Left uncaught, that produces two combatants sharing one GridPos,
+    // which combat::isAdjacent's own "never adjacent to itself" rule then
+    // masks as both being permanently "too far away" to attack each other.
+    auto combatCellOccupied = [&](combat::GridPos cell) {
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp > 0 && combatSession.instancePositions[i].x == cell.x &&
+                combatSession.instancePositions[i].y == cell.y) {
+                return true;
+            }
+        }
+        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
+            if (combatCompanionAlive(ci) && combatSession.companionPositions[ci].x == cell.x &&
+                combatSession.companionPositions[ci].y == cell.y) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     // A direction key pressed while Idle: commit to moving this round.
     // Validated up front (bounds/occupancy) before it ever costs a round,
     // same as the console version; a valid move still triggers opportunity
@@ -2208,23 +2232,22 @@ int runPhase1(const std::string& savePath) {
             combatSession.log.push_back("You can't move that way.");
             return;
         }
-        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp > 0 && combatSession.instancePositions[i].x == destination.x &&
-                combatSession.instancePositions[i].y == destination.y) {
-                combatSession.log.push_back("Something's in the way.");
-                return;
-            }
-        }
-        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
-            if (combatCompanionAlive(ci) && combatSession.companionPositions[ci].x == destination.x &&
-                combatSession.companionPositions[ci].y == destination.y) {
-                combatSession.log.push_back("Something's in the way.");
-                return;
-            }
+        if (combatCellOccupied(destination)) {
+            combatSession.log.push_back("Something's in the way.");
+            return;
         }
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         combatTriggerOpportunityAttacks(destination);
         if (combatCheckPlayerDown(combatSession.monster.name)) return;
+        // Re-check: whatever just acted above may have moved into
+        // `destination` itself (see combatCellOccupied's own comment).
+        // The opportunity attack and the monsters' turn already happened
+        // either way -- only the player's own step is what's cancelled.
+        if (combatCellOccupied(destination)) {
+            combatSession.log.push_back("The way is blocked now.");
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
         std::string dirLabel = destination.y < combatSession.playerPos.y   ? "north"
                                 : destination.y > combatSession.playerPos.y ? "south"
                                 : destination.x < combatSession.playerPos.x ? "west"

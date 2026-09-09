@@ -2757,6 +2757,30 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         character::PurchaseResult result = character::useStaffCure(state_.character, state_.hoursElapsed / 24);
         log.push_back(result.message);
     };
+    // Shared by the move-key handling below and by playerMoves itself,
+    // which calls it a second time after monsters may have already acted
+    // this round -- a monster that wasn't yet adjacent when the move was
+    // declared can close in during its own turn and land exactly on the
+    // cell the player is mid-step into, since nothing else re-checks that
+    // cell between the initial validation and the position commit. Left
+    // uncaught, that puts two combatants on the same GridPos, which
+    // combat::isAdjacent's own "never adjacent to itself" rule then masks
+    // as both being permanently too far away to attack each other --
+    // found via live SFML-port playtesting (docs/CURRENT_WORK.md), ported
+    // back here since GameLoop::runCombat has the exact same ordering.
+    auto isCellOccupied = [&](combat::GridPos cell) {
+        for (size_t i = 0; i < instances.size(); ++i) {
+            if (instances[i].hp > 0 && instancePositions[i].x == cell.x && instancePositions[i].y == cell.y) {
+                return true;
+            }
+        }
+        for (size_t ci = 0; ci < state_.companions.size(); ++ci) {
+            if (companionAlive(ci) && companionPositions[ci].x == cell.x && companionPositions[ci].y == cell.y) {
+                return true;
+            }
+        }
+        return false;
+    };
     // Moves to an already-validated `destination` (the main loop's key
     // handling below checks bounds/occupancy before ever setting this
     // action up, same "reject before it costs a round" pattern Cast/
@@ -2769,6 +2793,15 @@ void GameLoop::runCombat(const combat::Monster& monster) {
         if (state_.character.currentHp <= 0) {
             knockedOutBy(monster.name);
             fightAlreadyEnded = true;
+            return;
+        }
+        // Re-check: the opportunity attack above (or, if monsters acted
+        // first this round, their own turn before playerMoves was even
+        // called) may have moved something into `destination` itself --
+        // see isCellOccupied's own comment. Whatever already happened
+        // this round still stands; only the player's own step is cancelled.
+        if (isCellOccupied(destination)) {
+            log.push_back("The way is blocked now.");
             return;
         }
         std::string dirLabel = destination.y < playerPos.y   ? "north"
@@ -2844,23 +2877,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You can't move that way.");
                 continue;
             }
-            bool occupied = false;
-            for (size_t i = 0; i < instances.size(); ++i) {
-                if (instances[i].hp > 0 && instancePositions[i].x == destination.x &&
-                    instancePositions[i].y == destination.y) {
-                    occupied = true;
-                    break;
-                }
-            }
-            // Milestone 117/118: every alive companion's own cell is
-            // occupied too.
-            for (size_t ci = 0; ci < state_.companions.size() && !occupied; ++ci) {
-                if (companionAlive(ci) && companionPositions[ci].x == destination.x &&
-                    companionPositions[ci].y == destination.y) {
-                    occupied = true;
-                }
-            }
-            if (occupied) {
+            if (isCellOccupied(destination)) {
                 log.push_back("Something's in the way.");
                 continue;
             }
