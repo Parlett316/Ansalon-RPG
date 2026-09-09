@@ -5,18 +5,37 @@ Instructions for any future session (human or AI) working in this repo.
 ## What this project is
 
 **Ansalon: Age of Despair** — a personal, non-commercial fan RPG set on
-Krynn (Dragonlance) during the War of the Lance, 2nd Edition AD&D rules,
-presented Caves-of-Qud style: a colored ASCII overworld walked in real
-time, C++17, terminal-based, built with CMake for MSVC on Windows. Not
-affiliated with or endorsed by Wizards of the Coast.
+Krynn (Dragonlance) during the War of the Lance, 2nd Edition AD&D rules.
+C++17, built with CMake for MSVC on Windows. Not affiliated with or
+endorsed by Wizards of the Coast.
 
-The core pitch: canon Heroes of the Lance (Tanis, Sturm, Raistlin,
-Caramon, Goldmoon, Riverwind, Tasslehoff, Flint) move through their real
-novel-timeline locations on a schedule, so the player can stumble into a
-"chance encounter" with them. Everything else (character creation,
-combat, equipment, leveling, zones) exists in service of that.
+The core pitch (unchanged since the project's start): canon Heroes of
+the Lance (Tanis, Sturm, Raistlin, Caramon, Goldmoon, Riverwind,
+Tasslehoff, Flint) move through their real novel-timeline locations on a
+schedule, so the player can stumble into a "chance encounter" with them.
+Everything else (character creation, combat, equipment, leveling, zones)
+exists in service of that.
 
-Full player-facing feature list: `README.md`.
+**Presentation is mid-migration, away from ASCII.** The project
+originally shipped Caves-of-Qud style — a colored ASCII overworld walked
+in real time in a terminal (`render::Console`, the `ansalon_rpg` target,
+still on `master`). The user has since committed to a full move to real
+pixel-space rendering via SFML (a monospace-grid recreation was tried
+first and rejected as "looks almost exactly the same" as the terminal).
+Every screen has since been ported to a second, standalone target
+(`ansalon_sfml_phase1`, `sfml_phase1/main.cpp`, developed on branch
+`sfml-trial-3`) — placeholder shapes/text for now, ready for real sprite
+art later. **Both targets currently build and exist side by side**: the
+console build hasn't been retired and the SFML build hasn't been
+promoted to replace it — that's a still-open decision. See
+`docs/CURRENT_WORK.md` for exactly which SFML screens are implemented
+vs. still needing a live interactive playtest, and
+`docs/ARCHITECTURE.md`'s SFML section for why the codebase is split this
+way instead of a big-bang rewrite.
+
+Full player-facing feature list: `README.md` — written for the console
+build's UI and not yet updated for the SFML target's; the underlying
+game systems/rules/content it describes apply to both.
 
 ## Coding standards and constraints
 
@@ -24,19 +43,30 @@ Full player-facing feature list: `README.md`.
   should be portable to a future GCC/Clang build even though only MSVC is
   used today.
 - **`/W4` clean, always.** Zero new warnings is the bar for every change,
-  not just "it compiles."
-- **True 7-bit ASCII only** — no Unicode box-drawing glyphs. Every ANSI
-  color-set code must be paired with a reset (`\x1b[0m`) immediately
-  after.
-- **All Windows-specific code stays inside `render/Console.cpp`**, guarded
-  by `#ifdef _WIN32`. Every other file is portable standard C++17.
+  across every build target (`ansalon_rpg` and `ansalon_sfml_phase1`
+  alike) — not just "it compiles."
+- **The ASCII/ANSI rendering rule applies only to the legacy console
+  target** (`render::Console`, `ansalon_rpg`): true 7-bit ASCII only, no
+  Unicode box-drawing glyphs, and every ANSI color-set code paired with
+  a reset (`\x1b[0m`) immediately after. The SFML target
+  (`ansalon_sfml_phase1`) draws real pixel-space shapes/text instead and
+  isn't bound by this — see `docs/ARCHITECTURE.md`'s SFML section.
+- **Windows-specific code for the console target stays inside
+  `render/Console.cpp`**, guarded by `#ifdef _WIN32`; every other console
+  file is portable standard C++17. The SFML target has no equivalent
+  need — SFML itself abstracts windowing/input/graphics across
+  platforms, so `sfml_phase1/main.cpp` calls SFML APIs directly rather
+  than going through `Console`.
 - **Data over code**: locations, zones, timeline, and monsters are
   hand-rolled text files under `data/`, not JSON/XML, parsed by small
   fail-fast loaders (`file:line: message` on any malformed line). Follow
   the existing `trim`/`splitKeyword`/fail-fast idiom when adding a new
   loader or grammar line — don't introduce a new parsing style.
 - **Explicit source file list in `CMakeLists.txt`**, not globbed — adding
-  a `.cpp` is a visible, reviewable line.
+  a `.cpp` is a visible, reviewable line. Three targets currently share
+  this file (`ansalon_rpg`, the parked `ansalon_sfml_trial` spike, and
+  the active `ansalon_sfml_phase1`), each listing its own sources
+  explicitly.
 - **Sourced content is verified against actual scanned rulebooks**
   (Player's Handbook, DMG, Dragonlance Adventures, Monstrous Manual, the
   Chronicles novels), not written from memory and left unchecked. When
@@ -100,7 +130,15 @@ cmake -G "Visual Studio 18 2026" -A x64 -S . -B build
 cmake --build build --config Debug
 ```
 
-Executable lands at `build\Debug\ansalon_rpg.exe`. It locates
+This configures and builds all three CMake targets: `ansalon_rpg` (the
+legacy ASCII console build), `ansalon_sfml_phase1` (the active SFML
+migration target), and `ansalon_sfml_trial` (a parked round-2 spike —
+see `docs/CURRENT_WORK.md`). The **first** configure fetches SFML via
+`FetchContent` from GitHub — this project's only external dependency —
+which needs network access and takes noticeably longer than later
+configures.
+
+**`ansalon_rpg`** lands at `build\Debug\ansalon_rpg.exe`. It locates
 `data/locations.txt` etc. (and its save-slot files, `save1.txt`/
 `save2.txt`/`save3.txt`) next to itself at runtime — a CMake post-build
 step keeps `data/` populated in `build\Debug`/`build\Release`
@@ -108,11 +146,19 @@ automatically, so this needs no extra step in normal dev use (see
 `docs/GOTCHAS.md`). To hand a runnable build to someone outside this
 source tree, run `tools/package_release.ps1` — see its header comment.
 
+**`ansalon_sfml_phase1`** lands at `build\Debug\ansalon_sfml_phase1.exe`,
+but unlike `ansalon_rpg` it gets **no post-build data copy** — it reads
+`data/*.txt` and `References/dragonlancemap2.png` straight from the
+source tree at runtime, so it must be **run with the repo root as the
+working directory**, not from inside `build\Debug`. To hand a runnable
+demo to someone outside this source tree, run
+`tools/package_sfml_demo.ps1` instead.
+
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.
 
-**`_getch()` ignores piped stdin** — the real keypress loop can't be
-tested headlessly. The one exception is character creation
+**`_getch()` ignores piped stdin** — `ansalon_rpg`'s real keypress loop
+can't be tested headlessly. The one exception is character creation
 (`CharacterCreator::run()`), which uses plain `std::cin`/`std::cout` and
 *can* be piped — the standard way to verify data files parse cleanly
 end-to-end without a human at the keyboard:
@@ -137,13 +183,27 @@ them) before EOF-failing — proof `World`/`ZoneCatalog`/`Timeline`/
 then move them back — never leave the user's real save clobbered or
 missing.
 
+**`ansalon_sfml_phase1` can't be verified this way at all** — it's a
+real SFML window driven by `sf::Event`, with no piped-input path, and a
+session typically has no desktop/GUI access to drive it interactively
+either. The available self-check from inside a session is a **launch
+smoke test**: run the exe briefly (from the repo root, per the CWD note
+above) and confirm it opens without crashing/throwing and every catalog
+it loads (World, ZoneCatalog, Timeline, MonsterCatalog, a real save file
+via `SaveGame`) succeeds — necessary but not sufficient. Anything that
+actually needs a keypress or a rendered frame to confirm (does a picker
+render right, does a fight resolve, does an overlay dismiss on the right
+key) must be flagged as **"not yet interactively confirmed"** in the
+hand-off and added to `docs/CURRENT_WORK.md`'s Playtest backlog for the
+user to check live at their own keyboard — never claim a screen works
+just because it compiled and smoke-tested clean.
+
 **Throwaway self-test pattern** for verifying new logic: write a
 `*SelfTest.cpp`, add a temporary `add_executable` CMake target with only
 the needed source files, build and run it, confirm it passes, then
 **delete the file and the CMake target block** before the final clean
-rebuild of the real `ansalon_rpg` target. Self-tests are a verification
-step, not a permanent test suite — this project has none checked in by
-design.
+rebuild of the real target(s). Self-tests are a verification step, not a
+permanent test suite — this project has none checked in by design.
 
 ## Session workflow
 
@@ -160,9 +220,13 @@ sessions. Established loop for any non-trivial change:
 3. **Implement.**
 4. **Self-test** via the throwaway pattern above, then clean up.
 5. **Clean rebuild**, zero new `/W4` warnings.
-6. **Verify** via piped character creation (and a real playthrough
-   against the user's actual save if the change touches save format or
-   is otherwise risky to their in-progress character).
+6. **Verify**: for `ansalon_rpg` changes, via piped character creation
+   (and a real playthrough against the user's actual save if the change
+   touches save format or is otherwise risky to their in-progress
+   character); for `ansalon_sfml_phase1` changes, via a launch smoke
+   test (see "Build process" above), flagging anything not
+   interactively confirmed on `docs/CURRENT_WORK.md`'s Playtest backlog
+   for the user to check live.
 7. **Update the relevant `docs/*.md`** (the ones in the table above,
    whichever apply) and `README.md`'s Status paragraph if the change is
    player-visible.
