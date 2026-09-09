@@ -577,6 +577,64 @@ actually watch the loading screen draw or press `Q` and see the confirm
 dialog. **Not yet interactively confirmed** -- moved to the Playtest
 backlog below.
 
+**Combat spellcasting (`M`) shipped this session, same
+`sfml_phase1/main.cpp`.** User picked it off Phase 3's own deferred list
+(item use, thief backstab, and Fighter sweep all stay deferred,
+untouched). Direct port of `GameLoop::playerCasts`'s full switch
+(`GameLoop.cpp:2616-2722`) -- all 13 `SpellEffect` cases, so every
+sourced spell in `character::spellListFor` actually works in this build
+now, not a hand-picked subset -- as a new `combatApplySpellEffect`, plus
+the rest of `GameLoop::runCombat`'s this-fight-only buff/debuff locals
+(`GameLoop.cpp:1955-1978`) added to `CombatSession` alongside the two
+(`playerThac0Bonus`/`playerDamageBonus`) Phase 3 already carried for the
+Frostreaver/Weapon Specialization fight-start bonuses:
+`playerAcBonus`, `hasteAttackMultiplier`, and four new per-instance
+vectors (`monsterThac0Penalty`/`monsterDamagePenalty`/`monsterAcPenalty`/
+`blockedAttacksRemaining`/`incapacitatedRestOfFight`), sized fresh in
+`combatStartEncounter` same as the console's own per-fight vectors. All
+threaded into the existing `resolvePlayerAttack`/`resolveMonsterAttack`
+call sites (player attack, companion attack, monster attack, opportunity
+attacks), and `combatMonstersAct` gained the
+Web/Hold-style incapacitated/blocked skip-guard (with the same
+attack-suppressed log lines) the console's `monstersAct` always had.
+`globeActive`/Brooch of Imog stays out -- that's Item-use scope, not
+touched.
+
+**The real design problem, solved by sequencing carefully rather than
+inventing new mechanics:** traced exactly in `GameLoop.cpp`, the
+console's own "which spell?" chooser resolves entirely *before*
+initiative is rolled (free to cancel), but `character::castSpell` itself
+and "which target?" both live inside `playerCasts`, which only runs as
+part of the shared `playerActsFirst()` dispatch every action goes
+through -- so if the monsters act first and that knocks the player out,
+the chosen spell is never actually cast or consumed. Reproduced in this
+non-blocking build with a new `PickingSpell` `CombatUiState` (2+
+distinct memorized spells -- a full list via the existing
+`drawPickerOverlay`, unlike `PickingTarget`'s roster-embedded grid
+cursor; exactly one distinct spell skips straight past it, same
+"no picker needed for one candidate" rule every other combat chooser
+here already follows) that resolves with **no initiative roll and no
+round consumed**, Escape/Q cancelling it for free (a new guard ahead of
+the general quit-confirm catch-all, same placement every other
+screen's own Quit override uses). Only once a spell is truly chosen does
+`combatCommitSpellChoice` roll initiative (`combatRollGoFirstAndMaybeActMonsters`,
+already established by `combatBeginPlayerAttack`) and *then* call
+`character::castSpell` -- so a monsters-act-first knockout correctly
+prevents the cast, matching the console exactly. `PickingTarget` itself
+is reused for a spell's target choice (a new `pickingForSpell` bool +
+`pendingSpellResult` on `CombatSession` disambiguate it from an ordinary
+melee attack) rather than adding a second grid-cursor state -- same
+single mechanism `GameLoop::pickTarget` already is for both. Unlike
+melee, spell targeting isn't adjacency-restricted (every alive instance
+is eligible, matching `GameLoop.cpp:1935`'s own `anyAlive` filter).
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+test against real `save2.txt` (Regan, level 20 Human Mage -- a caster
+with Fireball per Milestone 152's own playtest note) confirming every
+catalog still loads and the window opens with no crash/exception -- this
+session again had no desktop/GUI access to press `M` live. **Not yet
+interactively confirmed** -- moved to the Playtest backlog below.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -670,6 +728,30 @@ piling on more unverified content. Full sourcing/detail for each is in its
   dialog). See `sfml_phase1/main.cpp` and this file's writeup above, not
   a numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
+- **SFML combat spellcasting** -- on save2 (Regan, level 20 Human Mage),
+  memorize and cast: a single-target damage spell (Magic Missile) at a
+  solo monster (should resolve immediately, no target picker, since
+  there's only one alive candidate) and at a multi-instance group (picker
+  opens, up/down + Enter picks correctly, and the footer reads "Cast
+  Magic Missile at which enemy?" not "Attack which enemy?"); Fireball at
+  a multi-instance group with 2+ instances within 2 cells of the chosen
+  epicenter (both take the same damage, both named in one log line);
+  Cure Light Wounds on yourself (no target picker at all, HP increases);
+  a buff (Bless/Prayer-equivalent, if memorized) and confirm subsequent
+  attack rolls actually reflect it; Web (or another `BlockMonsterAttacks`
+  spell) on one instance and confirm its next turn logs "can't bring
+  itself to attack!" and is actually skipped, with the counter running
+  out on schedule. Also confirm: memorizing 2+ *different* spells opens
+  "Cast which spell?" (a real overlay, not the roster-embedded picker);
+  Escape/Q on that picker cancels back to Idle with no round consumed
+  (HP/round number unchanged); pressing `M` with nothing memorized (or
+  nothing left today) logs the right message and doesn't consume a
+  round either. Hardest to force but worth a real attempt: get the
+  monsters to act first (retry until initiative favors them) on a round
+  where you press `M`, and confirm a knockout that round means the spell
+  was never actually cast (still shows as memorized afterward). See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
   untested: Flee (`f` during an idle combat round), a multi-instance group
   encounter's in-frame target picker (up/down to cycle, Enter to confirm --

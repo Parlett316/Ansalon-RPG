@@ -10,11 +10,12 @@
 // random encounters, positional movement, target picking, monster/companion
 // AI (including each monster's own passive on-turn/on-death specials, which
 // cost nothing extra since they're not chooser-driven), flee, victory/
-// leveling, and knockout. Spellcasting, item use, thief backstab, and
-// Fighter sweep are each a real chunk of new chooser UI or extra positional
-// bookkeeping on top of `GameLoop::runCombat` -- deferred to a later phase,
-// same "not yet in this build" convention Phase 1 already established for
-// Look/Journal/etc. See docs/CURRENT_WORK.md for the full scope writeup.
+// leveling, and knockout. Item use, thief backstab, and Fighter sweep are
+// each a real chunk of new chooser UI or extra positional bookkeeping on
+// top of `GameLoop::runCombat` -- deferred to a later phase, same "not yet
+// in this build" convention Phase 1 already established for Look/Journal/
+// etc. Spellcasting (M) shipped in a later session, see
+// docs/CURRENT_WORK.md for its own scope writeup and the full picture.
 
 #include "character/Alignment.h"
 #include "character/CharClass.h"
@@ -493,8 +494,15 @@ void drawPoiIcon(sf::RenderWindow& window, PoiIconShapes& shapes, PoiKind kind, 
 // to choosing one target per round (see CombatSession::pendingTargetIsFirst
 // below) rather than porting GameLoop::runCombat's mid-round retarget-on-
 // kill loop, which would need real cross-frame resumable state to redo
-// non-blockingly -- a deliberate scope cut, not an oversight.
-enum class CombatUiState { AwaitContinue, Idle, PickingTarget, Won, Lost, Fled };
+// non-blockingly -- a deliberate scope cut, not an oversight. PickingSpell
+// is a second pre-round pause (which of 2+ memorized spells to cast) --
+// like the console's own blocking spell-choice loop
+// (GameLoop.cpp:2906-2928), it resolves entirely before initiative is
+// rolled, so cancelling it (Escape/Q) costs nothing; PickingTarget itself
+// is reused for a spell's target choice once one is picked (see
+// CombatSession::pickingForSpell below), same single mechanism
+// GameLoop::pickTarget already is for both attack and spell targeting.
+enum class CombatUiState { AwaitContinue, Idle, PickingTarget, PickingSpell, Won, Lost, Fled };
 
 struct CombatInstance {
     int hp = 0;
@@ -533,12 +541,38 @@ struct CombatSession {
     // Specialization) plus Aurak's blind-on-failed-save debuff, which
     // further adjusts playerThac0Bonus mid-fight -- same "this-fight-only
     // local, never written to the real Character" precedent
-    // GameLoop::runCombat's own identically-named locals establish. Every
-    // other this-fight buff/debuff in the console version (Bless, Prayer,
-    // Slow, Haste, ...) is spell-driven and out of this phase's scope, so
-    // there's nothing else to carry here yet.
+    // GameLoop::runCombat's own identically-named locals establish.
     int playerThac0Bonus = 0;
     int playerDamageBonus = 0;
+
+    // The rest of GameLoop::runCombat's own this-fight-only spell buff/
+    // debuff locals (GameLoop.cpp:1955-1978) -- Bless/Prayer/Protection
+    // from Evil/Strength/Slow/Haste/Web/... (character/Spellcasting.h's
+    // SpellEffect). Sized to instances.size() fresh in combatStartEncounter,
+    // same as the console's own per-fight vectors.
+    int playerAcBonus = 0;
+    int hasteAttackMultiplier = 1;
+    std::vector<int> monsterThac0Penalty;
+    std::vector<int> monsterDamagePenalty;
+    std::vector<int> monsterAcPenalty;
+    std::vector<int> blockedAttacksRemaining;
+    std::vector<bool> incapacitatedRestOfFight;
+
+    // Spell-choice picker state -- only meaningful while uiState ==
+    // PickingSpell. spellPickIds/spellPickLabels are parallel (distinct
+    // memorized spell ids in memorization order, and their display
+    // labels -- "Name" or "Name (xN)" if memorized more than once).
+    std::vector<std::string> spellPickIds;
+    std::vector<std::string> spellPickLabels;
+    int spellPickSelected = 0;
+
+    // Distinguishes PickingTarget's reused picker (see CombatUiState's own
+    // doc comment): true means this round's target choice resolves
+    // pendingSpellResult (character::castSpell has already run, consuming
+    // the memorized slot -- see combatCommitSpellChoice), false means an
+    // ordinary melee attack, same as before this feature existed.
+    bool pickingForSpell = false;
+    character::SpellCastResult pendingSpellResult;
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
@@ -1322,8 +1356,14 @@ int runPhase1(const std::string& savePath) {
             bool leavingReach = combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i]) &&
                                  !combat::isAdjacent(destination, combatSession.instancePositions[i]);
             if (!leavingReach) continue;
+            // A Web/Hold-style blocked or incapacitated instance can't
+            // swing at all, opportunity attack included -- mirrors
+            // GameLoop.cpp:2182's own guard on this exact loop.
+            if (combatSession.incapacitatedRestOfFight[i] || combatSession.blockedAttacksRemaining[i] > 0) continue;
             std::string name = combatMonsterLabel(static_cast<int>(i));
-            combat::AttackOutcome outcome = combat::resolveMonsterAttack(combatSession.monster, state.character);
+            combat::AttackOutcome outcome = combat::resolveMonsterAttack(
+                combatSession.monster, state.character, combatSession.playerAcBonus,
+                combatSession.monsterThac0Penalty[i], combatSession.monsterDamagePenalty[i]);
             if (outcome.hit) {
                 state.character.currentHp -= outcome.damage;
                 combatSession.log.push_back("As you pull back, the " + name + " gets a free strike! It hits you for " +
@@ -1405,7 +1445,12 @@ int runPhase1(const std::string& savePath) {
             for (int i = 0; i < attacks; ++i) {
                 if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) break;
                 std::string targetName = combatMonsterLabel(targetIndex);
-                combat::AttackOutcome outcome = combat::resolvePlayerAttack(companion, combatSession.monster);
+                // A slowed instance (Slow's AC penalty) is easier for every
+                // attacker to hit, not just whoever cast it -- see
+                // GameLoop.cpp:2362-2364's own companion-attack call.
+                combat::AttackOutcome outcome = combat::resolvePlayerAttack(
+                    companion, combatSession.monster, 0, 0, 1,
+                    combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)]);
                 if (outcome.hit) {
                     combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                     combatSession.log.push_back(companion.name + " hits the " + targetName + " for " +
@@ -1423,8 +1468,8 @@ int runPhase1(const std::string& savePath) {
     // Every alive monster instance's own turn: Bozak's Magic Missile and
     // Aurak's breath weapon (both real, sourced, passive specials that
     // fire on their own turn with no player choice involved -- see this
-    // file's top-of-file comment for why these stay in scope despite
-    // spellcasting itself being deferred) take priority over its plain
+    // file's top-of-file comment for why these stayed in scope even before
+    // the player's own spellcasting did) take priority over its plain
     // weapon attack; otherwise it attacks whichever of the player/alive
     // companions it's adjacent to (uniformly at random if more than one),
     // or closes on whichever is nearest. Mirrors GameLoop::monstersAct.
@@ -1437,6 +1482,18 @@ int runPhase1(const std::string& savePath) {
         for (size_t i = 0; i < combatSession.instances.size() && state.character.currentHp > 0; ++i) {
             if (combatSession.instances[i].hp <= 0) continue;
             std::string name = combatMonsterLabel(static_cast<int>(i));
+            // Web/Hold-style block (character::SpellEffect::
+            // BlockMonsterAttacks) -- checked before even Magic Missile/
+            // breath weapon, same ordering as GameLoop.cpp:2438-2446.
+            if (combatSession.incapacitatedRestOfFight[i]) {
+                combatSession.log.push_back("The " + name + " is unable to act!");
+                continue;
+            }
+            if (combatSession.blockedAttacksRemaining[i] > 0) {
+                --combatSession.blockedAttacksRemaining[i];
+                combatSession.log.push_back("The " + name + " can't bring itself to attack!");
+                continue;
+            }
             const combat::Monster& monster = combatSession.monster;
             if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
                 int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
@@ -1496,7 +1553,12 @@ int runPhase1(const std::string& savePath) {
                                        character::roll(1, static_cast<int>(adjacentTargets.size())) - 1)];
             const CombatPartyTarget& target = party[chosen];
             std::string targetName = target.isPlayer ? "you" : target.character->name;
-            combat::AttackOutcome outcome = combat::resolveMonsterAttack(monster, *target.character);
+            // playerAcBonus (Protection from Evil/Shield/...) only wards the
+            // player, same as GameLoop.cpp:2559's own target.isPlayer check
+            // -- it never applies to a companion.
+            combat::AttackOutcome outcome =
+                combat::resolveMonsterAttack(monster, *target.character, target.isPlayer ? combatSession.playerAcBonus : 0,
+                                              combatSession.monsterThac0Penalty[i], combatSession.monsterDamagePenalty[i]);
             if (outcome.hit) {
                 target.character->currentHp -= outcome.damage;
                 combatSession.log.push_back("The " + name + " hits " + targetName + " for " +
@@ -1556,13 +1618,17 @@ int runPhase1(const std::string& savePath) {
     // onto a fresh instance in the console version is simply skipped here
     // instead.
     auto combatResolveAttackAgainstTarget = [&](int targetIndex) {
+        // hasteAttackMultiplier (Haste, PHB p.192): multiplies the whole
+        // attacks-per-round count, same as GameLoop.cpp:2257-2259.
         int attacks = character::meleeAttacksThisRound(state.character.charClass, state.character.level,
-                                                         combatSession.roundNumber, state.character.specializedWeapon);
+                                                         combatSession.roundNumber, state.character.specializedWeapon) *
+                      combatSession.hasteAttackMultiplier;
         for (int i = 0; i < attacks; ++i) {
             if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) break;
             std::string targetName = combatMonsterLabel(targetIndex);
             combat::AttackOutcome outcome = combat::resolvePlayerAttack(
-                state.character, combatSession.monster, combatSession.playerThac0Bonus, combatSession.playerDamageBonus);
+                state.character, combatSession.monster, combatSession.playerThac0Bonus, combatSession.playerDamageBonus,
+                1, combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)]);
             if (outcome.hit) {
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                 combatSession.log.push_back("You hit the " + targetName + " for " + std::to_string(outcome.damage) +
@@ -1574,6 +1640,209 @@ int runPhase1(const std::string& savePath) {
                 combatSession.log.push_back("You miss the " + targetName + ".");
             }
         }
+    };
+
+    // Direct port of GameLoop::playerCasts's own switch (GameLoop.cpp:
+    // 2616-2722), minus character::castSpell (already run by the caller --
+    // see combatCommitSpellChoice below) and minus target-picking (already
+    // resolved, passed in as targetIndex -- -1 for the self-only effects:
+    // HealCaster and the three player-only buffs). Every SpellEffect case
+    // is handled, so any sourced spell in character::spellListFor resolves
+    // correctly here, not just a hand-picked subset.
+    auto combatApplySpellEffect = [&](const character::SpellCastResult& result, int targetIndex) {
+        std::string targetName = targetIndex >= 0 ? combatMonsterLabel(targetIndex) : combatSession.monster.name;
+        switch (result.effect) {
+            case character::SpellEffect::DamageMonster:
+                combatSession.instances[static_cast<size_t>(targetIndex)].hp -= result.amount;
+                combatSession.log.push_back("Your " + result.spellName + " strikes the " + targetName + " for " +
+                                             std::to_string(result.amount) + ".");
+                if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
+                    if (combatHandleInstanceDeath(targetIndex)) return;
+                }
+                break;
+            case character::SpellEffect::DamageArea: {
+                // Fireball/Delayed Blast Fireball (PHB p.193): the picked
+                // target's cell is the burst's epicenter, and every alive
+                // instance within result.radius cells (Chebyshev distance)
+                // takes the same single damage roll -- see
+                // GameLoop::playerCasts's own DamageArea case.
+                combat::GridPos epicenter = combatSession.instancePositions[static_cast<size_t>(targetIndex)];
+                std::vector<int> hitTargets;
+                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                    if (combatSession.instances[i].hp <= 0) continue;
+                    if (combat::chebyshevDistance(epicenter, combatSession.instancePositions[i]) <= result.radius) {
+                        hitTargets.push_back(static_cast<int>(i));
+                    }
+                }
+                std::vector<std::string> hitNames;
+                for (int idx : hitTargets) hitNames.push_back(combatMonsterLabel(idx));
+                std::string names;
+                for (size_t i = 0; i < hitNames.size(); ++i) {
+                    if (i > 0) names += (i + 1 == hitNames.size()) ? " and " : ", ";
+                    names += hitNames[i];
+                }
+                combatSession.log.push_back("Your " + result.spellName + " engulfs the " + names + " for " +
+                                             std::to_string(result.amount) + (hitNames.size() > 1 ? " each." : "."));
+                for (int idx : hitTargets) {
+                    // Mirrors GameLoop::playerCasts's own fightAlreadyEnded
+                    // check here -- once a death-burst from an earlier
+                    // target in this same blast has already knocked the
+                    // player out, later targets in the blast stop taking
+                    // damage too.
+                    if (combatSession.uiState == CombatUiState::Lost) return;
+                    if (combatSession.instances[static_cast<size_t>(idx)].hp <= 0) continue;
+                    combatSession.instances[static_cast<size_t>(idx)].hp -= result.amount;
+                    if (combatSession.instances[static_cast<size_t>(idx)].hp <= 0) {
+                        combatHandleInstanceDeath(idx);
+                    }
+                }
+                break;
+            }
+            case character::SpellEffect::HealCaster: {
+                int healed = std::min(result.amount, state.character.maxHp - state.character.currentHp);
+                state.character.currentHp += healed;
+                combatSession.log.push_back("You cast " + result.spellName + " and heal " +
+                                             std::to_string(healed) + " hit points.");
+                break;
+            }
+            case character::SpellEffect::BlockMonsterAttacks:
+                if (result.amount == character::kBlockRestOfFight) {
+                    combatSession.incapacitatedRestOfFight[static_cast<size_t>(targetIndex)] = true;
+                } else {
+                    combatSession.blockedAttacksRemaining[static_cast<size_t>(targetIndex)] += result.amount;
+                }
+                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::BuffPlayerThac0:
+                combatSession.playerThac0Bonus += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerDamage:
+                combatSession.playerDamageBonus += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::BuffPlayerAc:
+                combatSession.playerAcBonus += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::DebuffMonsterThac0:
+                combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::DebuffMonsterDamage:
+                combatSession.monsterDamagePenalty[static_cast<size_t>(targetIndex)] += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::BuffPlayerAndDebuffMonsterThac0:
+                combatSession.playerThac0Bonus += result.amount;
+                combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + ".");
+                break;
+            case character::SpellEffect::HastePlayer:
+                combatSession.hasteAttackMultiplier = result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + "! Your attacks quicken.");
+                break;
+            case character::SpellEffect::DebuffMonsterThac0AndAc:
+                combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
+                combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)] += result.amount;
+                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                break;
+            case character::SpellEffect::InstantDefeat:
+                combatSession.log.push_back("Your " + result.spellName + " destroys the " + targetName +
+                                             " outright!");
+                combatSession.instances[static_cast<size_t>(targetIndex)].hp = 0;
+                if (combatHandleInstanceDeath(targetIndex)) return;
+                break;
+        }
+    };
+
+    // A spell has been definitively chosen (the only one memorized, or
+    // picked from PickingSpell) -- rolls initiative now, exactly like
+    // GameLoop::playerCasts only ever running as part of the shared
+    // playerActsFirst() dispatch (GameLoop.cpp:3009-3021), AFTER any spell/
+    // target choice. If the monsters go first and that already knocks the
+    // player out, the spell is never cast at all -- same real console
+    // behavior (its own castSpell() call is inside playerCasts, itself
+    // gated on the player still being conscious, GameLoop.cpp:3017-3020).
+    auto combatCommitSpellChoice = [&](const std::string& spellId) {
+        if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        character::SpellCastResult result = character::castSpell(state.character, spellId);
+        if (!result.success) { // defensive -- shouldn't happen, combatBeginCast already checked
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        bool needsTarget = result.effect == character::SpellEffect::DamageMonster ||
+                            result.effect == character::SpellEffect::DamageArea ||
+                            result.effect == character::SpellEffect::BlockMonsterAttacks ||
+                            result.effect == character::SpellEffect::DebuffMonsterThac0 ||
+                            result.effect == character::SpellEffect::DebuffMonsterDamage ||
+                            result.effect == character::SpellEffect::BuffPlayerAndDebuffMonsterThac0 ||
+                            result.effect == character::SpellEffect::DebuffMonsterThac0AndAc ||
+                            result.effect == character::SpellEffect::InstantDefeat;
+        if (!needsTarget) {
+            combatApplySpellEffect(result, -1);
+            if (combatSession.uiState == CombatUiState::Lost) return;
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        // Spell targeting is never adjacency-restricted (PHB spell ranges
+        // aren't modeled on the grid) -- every alive instance is eligible,
+        // matching GameLoop.cpp:1935's own anyAlive filter for casting.
+        std::vector<int> candidates;
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp > 0) candidates.push_back(static_cast<int>(i));
+        }
+        if (candidates.size() == 1) {
+            combatApplySpellEffect(result, candidates.front());
+            if (combatSession.uiState == CombatUiState::Lost) return;
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
+        }
+        combatSession.pickingForSpell = true;
+        combatSession.pendingSpellResult = result;
+        combatSession.pickCandidates = candidates;
+        combatSession.pickSelected = 0;
+        combatSession.uiState = CombatUiState::PickingTarget;
+    };
+
+    // M pressed while Idle: mirrors GameLoop::runCombat's own Cast key
+    // handling (GameLoop.cpp:2869-2929) up through choosing WHICH spell --
+    // validated, and (for 2+ distinct memorized spells) chosen, entirely
+    // before initiative is rolled, same as the console's own blocking
+    // spell-choice loop running before its shared playerActsFirst()
+    // dispatch. No round is consumed by an invalid Cast or a cancelled
+    // spell choice (see PickingSpell's own Escape/Q handling in the key
+    // dispatch below).
+    auto combatBeginCast = [&]() {
+        if (!character::canCastSpells(state.character.charClass)) {
+            combatSession.log.push_back("You have no spell to cast.");
+            return;
+        }
+        if (!character::hasMemorizedSpellsAvailable(state.character, state.hoursElapsed / 24)) {
+            combatSession.log.push_back("You have no spells remaining today.");
+            return;
+        }
+        std::vector<std::string> distinctIds;
+        for (const std::string& id : state.character.memorizedSpellIds) {
+            if (std::find(distinctIds.begin(), distinctIds.end(), id) == distinctIds.end()) {
+                distinctIds.push_back(id);
+            }
+        }
+        if (distinctIds.size() == 1) {
+            combatCommitSpellChoice(distinctIds.front());
+            return;
+        }
+        combatSession.spellPickIds = distinctIds;
+        combatSession.spellPickLabels.clear();
+        for (const std::string& id : distinctIds) {
+            const character::SpellInfo* spell = character::findSpell(state.character.charClass, id);
+            int count = static_cast<int>(std::count(state.character.memorizedSpellIds.begin(),
+                                                       state.character.memorizedSpellIds.end(), id));
+            combatSession.spellPickLabels.push_back((spell != nullptr ? spell->name : id) +
+                                                      (count > 1 ? " (x" + std::to_string(count) + ")" : ""));
+        }
+        combatSession.spellPickSelected = 0;
+        combatSession.uiState = CombatUiState::PickingSpell;
     };
 
     // Enter pressed while Idle: commit to attacking this round. Melee-locked
@@ -1615,6 +1884,7 @@ int runPhase1(const std::string& savePath) {
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
+        combatSession.pickingForSpell = false;
         combatSession.pickCandidates = candidates;
         combatSession.pickSelected = 0;
         combatSession.uiState = CombatUiState::PickingTarget;
@@ -1672,7 +1942,11 @@ int runPhase1(const std::string& savePath) {
     // immediate (0/1-candidate) path in combatBeginPlayerAttack does.
     auto combatConfirmTarget = [&]() {
         int target = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
-        combatResolveAttackAgainstTarget(target);
+        if (combatSession.pickingForSpell) {
+            combatApplySpellEffect(combatSession.pendingSpellResult, target);
+        } else {
+            combatResolveAttackAgainstTarget(target);
+        }
         if (combatSession.uiState == CombatUiState::Lost) return;
         combatFinishPlayerAction(combatSession.pendingGoFirst);
     };
@@ -1692,6 +1966,13 @@ int runPhase1(const std::string& savePath) {
             inst.maxHp = character::roll(monster.hpDiceCount, monster.hpDiceSides) + monster.hpFlatBonus;
             inst.hp = inst.maxHp;
         }
+        // Fresh per-instance spell debuff/block state -- same "zeroed for
+        // every new fight" initialization as GameLoop.cpp:1967-1978.
+        combatSession.monsterThac0Penalty.assign(static_cast<size_t>(groupSize), 0);
+        combatSession.monsterDamagePenalty.assign(static_cast<size_t>(groupSize), 0);
+        combatSession.monsterAcPenalty.assign(static_cast<size_t>(groupSize), 0);
+        combatSession.blockedAttacksRemaining.assign(static_cast<size_t>(groupSize), 0);
+        combatSession.incapacitatedRestOfFight.assign(static_cast<size_t>(groupSize), false);
         combatSession.floorTerrainCode = grid.terrainCodeAt(state.x, state.y);
         combatSession.playerPos = {kCombatGridWidth / 2, kCombatGridHeight - 1};
         combatSession.instancePositions.resize(static_cast<size_t>(groupSize));
@@ -2046,6 +2327,17 @@ int runPhase1(const std::string& savePath) {
         };
         drawPickerOverlay("Are you sure you want to end your adventure?", kQuitOptions,
                            quitConfirmSelected, "up/down=select   Enter=confirm   Escape=cancel");
+    };
+
+    // Cast-which-spell picker (M, 2+ distinct memorized spells) -- reuses
+    // drawPickerOverlay the same way every other list-shaped overlay here
+    // does, composited on top of the ordinary combat frame exactly like
+    // drawQuitConfirmOverlay is. Mirrors GameLoop::runCombat's own blocking
+    // "Cast which spell?" chooser (GameLoop.cpp:2906-2928), which draws
+    // over drawCombatFrame the same way.
+    auto drawCombatSpellPickerOverlay = [&]() {
+        drawPickerOverlay("Cast which spell?", combatSession.spellPickLabels, combatSession.spellPickSelected,
+                           "up/down=select   Enter=cast   Escape=cancel");
     };
 
     // Full event log ('v') -- pixel-space equivalent of
@@ -2632,6 +2924,17 @@ int runPhase1(const std::string& savePath) {
                         } else if (wantsQuit || key == sf::Keyboard::Key::V) {
                             logSession.active = false;
                         }
+                    } else if (combatSession.active && combatSession.uiState == CombatUiState::PickingSpell &&
+                               wantsQuit) {
+                        // Escape/Q cancels the spell choice itself, back to
+                        // Idle, no round consumed -- mirrors
+                        // GameLoop::runCombat's own blocking spell-choice
+                        // loop, where Quit sets cancelled=true and the round
+                        // loop `continue`s without ever reaching the
+                        // initiative dispatch (GameLoop.cpp:2923-2928).
+                        // Checked ahead of the general quit branch below for
+                        // the same reason every other overlay guard above is.
+                        combatSession.uiState = CombatUiState::Idle;
                     } else if (wantsQuit && !askInputActive) {
                         // Opens the confirmation instead of closing outright
                         // -- see quitConfirmOpen's own declaration comment
@@ -2665,6 +2968,19 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                             }
+                            case CombatUiState::PickingSpell: {
+                                const int optionCount = static_cast<int>(combatSession.spellPickIds.size());
+                                if (dy < 0) {
+                                    combatSession.spellPickSelected =
+                                        (combatSession.spellPickSelected - 1 + optionCount) % optionCount;
+                                } else if (dy > 0) {
+                                    combatSession.spellPickSelected = (combatSession.spellPickSelected + 1) % optionCount;
+                                } else if (handleEnter) {
+                                    combatCommitSpellChoice(
+                                        combatSession.spellPickIds[static_cast<size_t>(combatSession.spellPickSelected)]);
+                                }
+                                break;
+                            }
                             case CombatUiState::Won:
                             case CombatUiState::Lost:
                             case CombatUiState::Fled:
@@ -2674,7 +2990,7 @@ int runPhase1(const std::string& savePath) {
                                 if (key == sf::Keyboard::Key::F) {
                                     combatBeginFlee();
                                 } else if (key == sf::Keyboard::Key::M) {
-                                    combatSession.log.push_back("Cast: not yet implemented in this build.");
+                                    combatBeginCast();
                                 } else if (key == sf::Keyboard::Key::I) {
                                     combatSession.log.push_back("Item use: not yet implemented in this build.");
                                 } else if (handleEnter) {
@@ -3149,8 +3465,19 @@ int runPhase1(const std::string& savePath) {
                         drawWrappedLine("Press Enter to continue.", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::PickingTarget:
-                        drawWrappedLine("Attack which enemy?", sf::Color(230, 220, 160));
+                        drawWrappedLine(combatSession.pickingForSpell
+                                             ? ("Cast " + combatSession.pendingSpellResult.spellName +
+                                                " at which enemy?")
+                                             : "Attack which enemy?",
+                                         sf::Color(230, 220, 160));
                         drawWrappedLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
+                        break;
+                    case CombatUiState::PickingSpell:
+                        // The real picker (drawCombatSpellPickerOverlay)
+                        // draws on top of this whole frame -- this line is
+                        // never actually seen, just here so the switch
+                        // covers every CombatUiState value.
+                        drawWrappedLine("Choose a spell...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::Won:
                         drawWrappedLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
@@ -3162,7 +3489,7 @@ int runPhase1(const std::string& savePath) {
                         drawWrappedLine("Press Enter to continue.", sf::Color(220, 190, 120));
                         break;
                     case CombatUiState::Idle:
-                        drawWrappedLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)", sf::Color(190, 190, 200));
+                        drawWrappedLine("ATTACK (Enter)   MOVE (wasd)   FLEE (f)   CAST (m)", sf::Color(190, 190, 200));
                         break;
                 }
             } else {
@@ -3193,6 +3520,11 @@ int runPhase1(const std::string& savePath) {
             } else if (sheetOpen) {
                 window.setView(uiView);
                 drawCharacterSheetOverlay();
+            }
+
+            if (combatSession.active && combatSession.uiState == CombatUiState::PickingSpell) {
+                window.setView(uiView);
+                drawCombatSpellPickerOverlay();
             }
 
             if (dialogueSession.active) {
