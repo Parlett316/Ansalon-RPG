@@ -1038,10 +1038,17 @@ already made and flagged -- now covering a real selection step instead of
 "nothing to choose between."
 
 `character::hasMemorizedSpellsAvailable` is a pure query: false unless
-`Character::spellsCastDay` equals the day asked about AND
-`memorizedSpellIds` is non-empty -- no slots are available at all until
-memorization has happened that day, same no-silent-refill guarantee
-Milestone 40 established.
+`memorizedSpellIds` is non-empty. **Update, SFML branch:** it used to also
+require `Character::spellsCastDay` equal the current day -- real 2e's
+"spells expire at midnight" rule -- but that was dropped by user request
+once overworld movement started genuinely advancing the clock (see
+`docs/CURRENT_WORK.md`): combined with real per-tile travel time, a caster
+could burn through a freshly-memorized day just repositioning around one
+fight, which read as punishing rather than authentic. Memorized spells now
+stay usable until cast or the character Rests again, with no calendar-day
+expiry. `spellsCastDay` is still tracked on `Character` (set by
+`memorizeSpells`) in case per-day granularity is revisited later, but
+nothing reads it for availability anymore.
 
 Ordinary Rest still heals 1 hp (DMG p.74's base natural-healing rate) and
 Bed Rest still heals fully to `maxHp` -- neither changed this pass, see

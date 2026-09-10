@@ -686,7 +686,7 @@ void MapRenderer::drawZoneFrame(const world::OverworldGrid& grid, const world::Z
     std::cout << out.str();
 }
 
-void MapRenderer::drawCharacterSheet(const character::Character& c, long long currentDay,
+void MapRenderer::drawCharacterSheet(const character::Character& c,
                                       const std::vector<character::Character>& companions) {
     const auto& race = character::raceInfo(c.race);
     const auto& cls = character::classInfo(c.charClass);
@@ -778,12 +778,8 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
         lines.push_back({"", nullptr});
         if (character::maxAccessibleSpellLevel(c) == 0) {
             lines.push_back({"Spells: cannot cast arcane magic", nullptr});
-        } else if (c.spellsCastDay != currentDay) {
-            // Not memorized today -- see character::memorizeSpells /
-            // game::GameLoop::handleRest ('r').
-            lines.push_back({"Spells: not memorized today -- rest to prepare", nullptr});
         } else if (c.memorizedSpellIds.empty()) {
-            lines.push_back({"Spells: none remaining today -- rest to re-prepare", nullptr});
+            lines.push_back({"Spells: none memorized -- rest to prepare", nullptr});
         } else {
             std::ostringstream spellLine;
             spellLine << "Spells memorized: ";
@@ -839,14 +835,13 @@ void MapRenderer::drawCharacterSheet(const character::Character& c, long long cu
     std::cout << out.str();
 }
 
-void MapRenderer::drawSpellbookFrame(const character::Character& c, long long currentDay) {
+void MapRenderer::drawSpellbookFrame(const character::Character& c) {
     std::vector<BoxLine> lines;
 
     int maxLevel = character::maxAccessibleSpellLevel(c);
     if (maxLevel == 0) {
         lines.push_back({"Cannot cast arcane magic.", nullptr});
     } else {
-        bool memorizedToday = c.spellsCastDay == currentDay;
         for (int lvl = 1; lvl <= maxLevel; ++lvl) {
             std::vector<const character::SpellInfo*> atLevel;
             for (const auto& spell : character::spellListFor(c.charClass)) {
@@ -861,14 +856,12 @@ void MapRenderer::drawSpellbookFrame(const character::Character& c, long long cu
             for (const auto* spell : atLevel) {
                 std::ostringstream line;
                 line << "  " << spell->name;
-                if (memorizedToday) {
-                    int count = static_cast<int>(
-                        std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
-                    if (count > 0) {
-                        line << " (memorized";
-                        if (count > 1) line << " x" << count;
-                        line << ")";
-                    }
+                int count = static_cast<int>(
+                    std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
+                if (count > 0) {
+                    line << " (memorized";
+                    if (count > 1) line << " x" << count;
+                    line << ")";
                 }
                 lines.push_back({line.str(), nullptr});
             }
@@ -1029,7 +1022,7 @@ void MapRenderer::drawCombatFrame(const character::Character& character,
         footer << "ATTACK (Enter)   MOVE (wasd)";
         // Only hinted when a spell is actually memorized and unspent today --
         // same "only show it when it's usable" precedent USE below follows.
-        if (character::hasMemorizedSpellsAvailable(character, currentDay)) {
+        if (character::hasMemorizedSpellsAvailable(character)) {
             footer << "   CAST (m)";
         }
         // Names whichever consumable/item pressing 'i' will actually open --

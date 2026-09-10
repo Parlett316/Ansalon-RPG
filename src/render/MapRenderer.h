@@ -165,26 +165,23 @@ public:
 
     // Renders the full character sheet as its own frame. GameLoop shows
     // this on demand ('c'), blocks for one keypress to dismiss it, then
-    // resumes normal rendering -- see docs/ARCHITECTURE.md. `currentDay`
-    // (hoursElapsed/24) is only used to display whether today's spells
-    // have been memorized yet (character::Character::spellsCastDay) and,
-    // if so, how many slots remain -- see character::memorizeSpells.
-    // `companions` (Milestone 116 Phase 1's one slot; a real roster as of
-    // Milestone 118) appends a short, terse "Companions:" block, one entry
-    // per recruited companion (identity + HP/AC/THAC0 only) -- see
-    // docs/COMBAT_NOTES.md's "Extending this later".
-    static void drawCharacterSheet(const character::Character& character, long long currentDay,
+    // resumes normal rendering -- see docs/ARCHITECTURE.md. `companions`
+    // (Milestone 116 Phase 1's one slot; a real roster as of Milestone 118)
+    // appends a short, terse "Companions:" block, one entry per recruited
+    // companion (identity + HP/AC/THAC0 only) -- see docs/COMBAT_NOTES.md's
+    // "Extending this later".
+    static void drawCharacterSheet(const character::Character& character,
                                     const std::vector<character::Character>& companions = {});
 
     // Renders the full spell roster for the character's class
     // (character::spellListFor), grouped by level up to
     // character::maxAccessibleSpellLevel -- the detail drawCharacterSheet's
     // own terse "Spells memorized: ..." line leaves out. Each spell still
-    // memorized-and-uncast today is marked. Reached from the character
-    // sheet ('s', only offered to a caster -- see game::GameLoop::
+    // memorized-and-uncast is marked. Reached from the character sheet
+    // ('s', only offered to a caster -- see game::GameLoop::
     // showCharacterSheet/showSpellbook). Same one-keypress-blocks shape as
     // drawCharacterSheet.
-    static void drawSpellbookFrame(const character::Character& character, long long currentDay);
+    static void drawSpellbookFrame(const character::Character& character);
 
     // The tactical combat grid's fixed size (Milestone 114, bumped at
     // Milestone 129 -- see docs/COMBAT_NOTES.md's "Positional combat grid"

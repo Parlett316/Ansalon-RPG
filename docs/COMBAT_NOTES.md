@@ -620,12 +620,12 @@ spellcasting work (`character::Spellcasting`, see
 `docs/CHARACTER_NOTES.md`, a real multi-level spellbook, not one fixed
 spell): a Mage or Cleric can spend their round casting instead of
 swinging their weapon. Pressing it validates `character::canCastSpells`
-and `hasMemorizedSpellsAvailable` first — on failure (wrong class, no
-spells memorized today, or a racially-blocked Mage whose slot count is
-always 0) it logs a message and does **not** consume the round, same
-forgiving UX as any other out-of-context key press. With exactly one
-distinct memorized spell left today it casts directly (the original
-one-spell UX, unchanged); with more than one, an in-frame chooser ("Cast
+and `hasMemorizedSpellsAvailable` first — on failure (wrong class, nothing
+currently memorized, or a racially-blocked Mage whose slot count is always
+0) it logs a message and does **not** consume the round, same forgiving UX
+as any other out-of-context key press. With exactly one distinct memorized
+spell left it casts directly (the original one-spell UX, unchanged); with
+more than one, an in-frame chooser ("Cast
 which spell?" — see "In-frame combat actions" below) asks which before
 spending the round. On success, `GameLoop::runCombat` swaps a
 `playerCasts(spellId)` lambda in for `playerAttacks()` inside the exact

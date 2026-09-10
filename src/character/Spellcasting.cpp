@@ -192,8 +192,8 @@ int maxAccessibleSpellLevel(const Character& character) {
     return 0;
 }
 
-bool hasMemorizedSpellsAvailable(const Character& character, long long currentDay) {
-    return character.spellsCastDay == currentDay && !character.memorizedSpellIds.empty();
+bool hasMemorizedSpellsAvailable(const Character& character) {
+    return !character.memorizedSpellIds.empty();
 }
 
 void memorizeSpells(Character& character, long long currentDay, std::vector<std::string> spellIds) {

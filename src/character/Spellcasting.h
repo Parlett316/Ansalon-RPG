@@ -64,9 +64,16 @@ int spellSlotsPerDay(const Character& character, int spellLevel);
 // spell yet (including a Mage blocked from arcane magic entirely).
 int maxAccessibleSpellLevel(const Character& character);
 
-// True if the character has memorized at least one spell today
-// (character.spellsCastDay == currentDay) that hasn't been cast yet.
-bool hasMemorizedSpellsAvailable(const Character& character, long long currentDay);
+// True if the character has at least one memorized spell left that hasn't
+// been cast yet. Deliberately NOT gated on Character::spellsCastDay/what day
+// it currently is -- 2e's "spells expire at midnight" rule was tried and
+// explicitly dropped (user call: too punishing combined with real travel
+// time once overworld movement started advancing the clock) in favor of a
+// simpler "memorized spells stay usable until cast or re-Rested" model.
+// spellsCastDay is still tracked (see memorizeSpells below) in case this
+// gets revisited with more granularity later, but nothing reads it for
+// availability anymore.
+bool hasMemorizedSpellsAvailable(const Character& character);
 
 // PHB p.107 (Wizard)/p.111 (Priest): a caster needs a restful night's sleep
 // before they can (re-)memorize their spells for the day. Replaces

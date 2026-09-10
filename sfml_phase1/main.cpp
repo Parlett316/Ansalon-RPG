@@ -2229,7 +2229,7 @@ int runPhase1(const std::string& savePath) {
             combatSession.log.push_back("You have no spell to cast.");
             return;
         }
-        if (!character::hasMemorizedSpellsAvailable(state.character, state.hoursElapsed / 24)) {
+        if (!character::hasMemorizedSpellsAvailable(state.character)) {
             combatSession.log.push_back("You have no spells remaining today.");
             return;
         }
@@ -2615,7 +2615,6 @@ int runPhase1(const std::string& savePath) {
         const auto& race = character::raceInfo(c.race);
         const auto& cls = character::classInfo(c.charClass);
         const character::SubraceInfo* sub = character::subraceInfo(c.subrace);
-        const long long currentDay = state.hoursElapsed / 24;
 
         auto drawAt = [&](float x, float& yRef, const std::string& text, sf::Color color, unsigned size) {
             sf::Text sfText(font, text, size);
@@ -2746,10 +2745,8 @@ int runPhase1(const std::string& savePath) {
             std::string spellsLine;
             if (character::maxAccessibleSpellLevel(c) == 0) {
                 spellsLine = "Spells: cannot cast arcane magic";
-            } else if (c.spellsCastDay != currentDay) {
-                spellsLine = "Spells: not memorized today -- rest to prepare";
             } else if (c.memorizedSpellIds.empty()) {
-                spellsLine = "Spells: none remaining today -- rest to re-prepare";
+                spellsLine = "Spells: none memorized -- rest to prepare";
             } else {
                 std::vector<std::string> distinctIds;
                 for (const auto& id : c.memorizedSpellIds) {
@@ -3125,13 +3122,11 @@ int runPhase1(const std::string& savePath) {
     // already uses for its own leading header rows.
     auto drawSpellbookOverlay = [&]() {
         const character::Character& c = state.character;
-        const long long currentDay = state.hoursElapsed / 24;
         std::vector<std::string> rows;
         const int maxLevel = character::maxAccessibleSpellLevel(c);
         if (maxLevel == 0) {
             rows.push_back("Cannot cast arcane magic.");
         } else {
-            const bool memorizedToday = c.spellsCastDay == currentDay;
             for (int lvl = 1; lvl <= maxLevel; ++lvl) {
                 std::vector<const character::SpellInfo*> atLevel;
                 for (const auto& spell : character::spellListFor(c.charClass)) {
@@ -3145,14 +3140,12 @@ int runPhase1(const std::string& savePath) {
                 for (const auto* spell : atLevel) {
                     std::ostringstream line;
                     line << "  " << spell->name;
-                    if (memorizedToday) {
-                        const int count = static_cast<int>(
-                            std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
-                        if (count > 0) {
-                            line << " (memorized";
-                            if (count > 1) line << " x" << count;
-                            line << ")";
-                        }
+                    const int count = static_cast<int>(
+                        std::count(c.memorizedSpellIds.begin(), c.memorizedSpellIds.end(), spell->id));
+                    if (count > 0) {
+                        line << " (memorized";
+                        if (count > 1) line << " x" << count;
+                        line << ")";
                     }
                     rows.push_back(line.str());
                 }

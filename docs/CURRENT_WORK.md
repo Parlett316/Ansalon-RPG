@@ -24,7 +24,24 @@ placeholder was hit some other way (e.g. testing a `BOAT` POI directly).
 **Real bug fixed this session, live-playtest-discovered:** the SFML port's
 overworld movement never advanced `state.hoursElapsed` (see this file's
 "overworld movement never advanced the in-game clock" writeup below) --
-fixed and confirmed working (Rest's day-gate now cycles correctly).
+fixed and confirmed working.
+
+**Design change this session, also live-playtest-driven:** the above clock
+fix surfaced real 2e's "spells expire at midnight" rule for the first time
+(previously invisible since the clock never moved) -- a caster could burn
+through a freshly-memorized day just repositioning around one fight,
+which read as a bug ("I rested, confirmed via the character sheet that
+everything was memorized, then couldn't cast in the very next fight") before
+the log evidence traced it to a second day boundary crossed via ordinary
+travel. User's call: drop the day-expiry entirely rather than tune it --
+"if we want to get that granular we can do that much later." Memorized
+spells now stay usable until cast or the character Rests again, with no
+calendar-day cutoff; `character::hasMemorizedSpellsAvailable` dropped its
+`currentDay` parameter and now just checks `!memorizedSpellIds.empty()`.
+Rest itself is UNCHANGED -- still gated to once per in-game day
+(`Character::lastRestDay`), that's a separate mechanic (preventing
+Rest-spam healing) untouched by this. See this file's own writeup below
+for the full list of touched call sites.
 
 **Full SFML engine migration -- decided and started, Phase 1 shipped and
 confirmed.** On branch `sfml-trial-3` (off `master`; do not merge without
@@ -1053,6 +1070,63 @@ clock now advances and a second Rest becomes available the next day; added
 to the Playtest backlog below. No `docs/MILESTONES.md` entry, same
 reasoning as every other SFML-branch entry above.
 
+**Design change this session, both `sfml_phase1/main.cpp` and the console
+(`src/game/GameLoop.cpp`, `src/render/MapRenderer.cpp`): dropped real 2e's
+"spells expire at midnight" rule.** Directly surfaced by the clock fix just
+above: `character::hasMemorizedSpellsAvailable` required
+`Character::spellsCastDay == currentDay`, so once overworld movement
+started genuinely advancing `hoursElapsed`, a caster's freshly-memorized
+loadout could expire mid-session just from ordinary travel between fights
+-- reproduced live on save2 (Regan): opened the character sheet after a
+Rest and saw the full loadout memorized, walked into a fight through
+mountains (90 in-game minutes/tile), and `M` logged "You have no spells
+remaining today." User's call, not a tuning pass: remove the day-expiry
+entirely rather than adjust its pacing -- "screw that 2e rule... if we
+want to get that granular we can do that much later."
+
+`character::hasMemorizedSpellsAvailable` (`Spellcasting.cpp`/`.h`) dropped
+its `currentDay` parameter; it's now a pure `!memorizedSpellIds.empty()`
+check. Updated every call site: the `M`-key gate in both builds' combat
+(`GameLoop.cpp`/`main.cpp`), and the console's `CAST (m)` footer hint
+(`MapRenderer.cpp`'s `drawCombatFrame`). The character sheet's spell
+summary and the spellbook's per-spell "(memorized)" annotation (both
+`MapRenderer.cpp` and `main.cpp`) each had their own separate
+`spellsCastDay != currentDay` branch/gate -- removed the same way, merging
+"not memorized today" into the existing "none memorized" wording and
+always computing the "(memorized xN)" count straight from
+`memorizedSpellIds` with no day check. This also dropped `currentDay` as a
+parameter entirely from `MapRenderer::drawCharacterSheet`/
+`drawSpellbookFrame` (and their one call site each in `GameLoop.cpp`),
+since after these edits neither function had any remaining use for it --
+`drawCombatFrame` keeps its own `currentDay` parameter unchanged, still
+needed there for Brooch of Imog/Staff of Curing's unrelated once-per-day
+item gates.
+
+**Deliberately NOT touched:** `Character::lastRestDay`'s own once-per-day
+gate on Rest itself (`c.lastRestDay == currentDay` -> "You've already
+rested today.") -- a different mechanic (preventing infinite Rest-spam
+healing), not what was reported as a problem. `Character::spellsCastDay`
+itself is also still there, still set by `character::memorizeSpells` on
+every Rest -- kept as an inert record rather than deleted outright, per
+the user's own "much later" framing, in case per-day granularity is
+revisited.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings), a piped character-creation smoke test against `ansalon_rpg`
+(real save1/save2/save3 moved aside during the test, confirmed restored
+and intact -- `NAME Mike`/`NAME Regan`/`NAME Melissa` -- immediately
+after), and a launch smoke test of `ansalon_sfml_phase1` against real
+`save2.txt` confirming every catalog still loads and the window opens with
+no crash/exception. **Not yet re-confirmed live** -- worth memorizing
+spells, deliberately walking/fighting across at least one day boundary
+(mountains are the fastest way, 90 min/tile), and confirming `M` still
+offers the full loadout instead of "no spells remaining"; added to the
+Playtest backlog below. No `docs/MILESTONES.md` entry, same reasoning as
+every other SFML-branch entry above -- though this specific change also
+touches the console build directly (unlike most of this branch's other
+writeups), since `hasMemorizedSpellsAvailable` is shared `character::`
+code.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -1182,7 +1256,13 @@ piling on more unverified content. Full sourcing/detail for each is in its
   dialog). See `sfml_phase1/main.cpp` and this file's writeup above, not
   a numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
-- **SFML combat spellcasting** -- on save2 (Regan, level 20 Human Mage),
+- **SFML combat spellcasting** -- **also re-check after the spell-day-expiry
+  removal above**: memorize spells, deliberately cross at least one day
+  boundary via ordinary travel (mountains are fastest, 90 min/tile), and
+  confirm `M` still offers the full memorized loadout instead of "You have
+  no spells remaining today." -- this is the scenario that was reported as
+  a bug and led to removing the day-expiry rule entirely, so it's the one
+  most worth re-confirming first. On save2 (Regan, level 20 Human Mage),
   memorize and cast: ~~a single-target damage spell (Magic Missile) at a
   solo monster (should resolve immediately, no target picker, since
   there's only one alive candidate) and at a multi-instance group (picker
@@ -1223,8 +1303,8 @@ piling on more unverified content. Full sourcing/detail for each is in its
   "Cast which spell?" (a real overlay, not the roster-embedded picker);
   Escape/Q on that picker cancels back to Idle with no round consumed
   (HP/round number unchanged); pressing `M` with nothing memorized (or
-  nothing left today) logs the right message and doesn't consume a
-  round either. Hardest to force but worth a real attempt: get the
+  everything already cast since the last Rest) logs the right message and
+  doesn't consume a round either. Hardest to force but worth a real attempt: get the
   monsters to act first (retry until initiative favors them) on a round
   where you press `M`, and confirm a knockout that round means the spell
   was never actually cast (still shows as memorized afterward). See

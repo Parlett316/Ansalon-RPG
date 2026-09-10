@@ -627,7 +627,7 @@ void GameLoop::showCharacterSheet() {
     std::vector<character::Character> companions;
     for (const RecruitedCompanion& companion : state_.companions) companions.push_back(companion.character);
     for (;;) {
-        render::MapRenderer::drawCharacterSheet(state_.character, state_.hoursElapsed / 24, companions);
+        render::MapRenderer::drawCharacterSheet(state_.character, companions);
         render::Key key = render::Console::readKey();
         // 's' (South, off the sheet's own dismiss-with-any-key convention)
         // drills into the full spell roster, then loops back to the sheet
@@ -642,7 +642,7 @@ void GameLoop::showCharacterSheet() {
 }
 
 void GameLoop::showSpellbook() {
-    render::MapRenderer::drawSpellbookFrame(state_.character, state_.hoursElapsed / 24);
+    render::MapRenderer::drawSpellbookFrame(state_.character);
     render::Console::readKey(); // block for one keypress to dismiss, any key
 }
 
@@ -2888,7 +2888,7 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                 log.push_back("You have no spell to cast.");
                 continue;
             }
-            if (!character::hasMemorizedSpellsAvailable(state_.character, state_.hoursElapsed / 24)) {
+            if (!character::hasMemorizedSpellsAvailable(state_.character)) {
                 log.push_back("You have no spells remaining today.");
                 continue;
             }
