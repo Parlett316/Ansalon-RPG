@@ -28,8 +28,10 @@ struct Monster {
     // True only for the Giant Spider (Type F poison, Monstrous Manual
     // p.329) -- a single flag rather than a general poison-type system,
     // since this is currently the only poison-bearing creature in the
-    // roster. See docs/COMBAT_NOTES.md for the sourcing and how a failed
-    // save is handled (knocked out, not the book's literal "die").
+    // roster whose real effect is death (reconciled here as a knockout,
+    // not the book's literal "die"). The Kapak's and Giant Centipede's real
+    // poisons both cause paralysis instead, a mechanically different
+    // effect this flag would misrepresent -- see docs/COMBAT_NOTES.md.
     bool poisonOnHit = false;
 
     // True only for the Bozak Draconian -- casts Magic Missile (Dragonlance

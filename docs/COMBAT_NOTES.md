@@ -573,6 +573,27 @@ list rather than needing a second, positive-bias mechanism: once the HD4+
 threats and Kapak are gated out near town, the remaining uniform pool
 *is* the low/mid-HD tier.
 
+**Milestone 156 extended this scale past Aurak's 45 for the first time.**
+Calibrated against modeled HD/damage output, not the raw XP label, since
+several of the new monsters' scariest real traits (fear, disease, energy
+drain, silver-or-better-to-hit) are left unmodeled the same way Wight's
+level drain already is — a monster whose real terror is mostly flavor
+text shouldn't be gated as if that terror were live in combat. **Wereboar**
+(`20`, same HD5+2 bracket as Owlbear); **Hydra**/**Wraith** (`30`, one
+step above Owlbear/Wight — Hydra's real multi-head regrowth is simplified
+away entirely, so only its base HD5 remains); **Weretiger** (`35`, same
+HD6-ish bracket as Sivak/Troll/Harpy/Griffon); **Gorgon**/**White
+Pudding**/**Mummy**/**Spectre** (`40`, the same "big HD or big real XP,
+but no spellcasting once its specials are left unmodeled" bracket as
+Ettin); **Brown Pudding** (`45`, tied with Aurak — HD11, the single
+highest Hit Dice added this batch); **Shambling Mound** (`55`, a
+genuinely new ceiling — its real XP, 6,000, is more than double anything
+else in this roster even though its own two identical grip attacks are
+simplified to one representative die same as every other multi-attack
+monster here, so this gate honors that real XP gap rather than
+understating it). See Milestone 156 in `docs/MILESTONES.md` for the full
+per-monster reasoning.
+
 **Known limitation, not addressed by this pass**: this only keeps
 dangerous monsters away from *civilian* population centers. It does not
 attempt to place Draconians preferentially near actual war-front
@@ -1514,27 +1535,38 @@ nothing else in range) still reads as a clean single-target hit.
   resistance (a related but different mechanic -- resistance to being
   targeted at all, not a saving throw) still isn't modeled for any of
   them.
-- **More monsters**: twenty-nine creatures are in the roster now (Goblin,
+- **More monsters**: forty-three creatures are in the roster now (Goblin,
   Kobold, Hobgoblin, Timber Wolf, Giant Spider, Baaz/Kapak/Bozak/Sivak/
   Aurak Draconian, Bugbear, Ogre, Gnoll, Ghoul, Skeleton, Zombie, Thanoi,
   Owlbear, Wight, Troll, Black Bear, Worg, Ice Bear, Lizard Man, Giant
-  Toad, Ettin, Harpy, Griffon, Stirge); `Monster Manual (2nd ed).pdf` and
-  *Dragonlance Adventures* still have more of Krynn's actual bestiary
+  Toad, Ettin, Harpy, Griffon, Stirge, Giant Rat, Giant Centipede, Ghast,
+  Wereboar, Weretiger, Boring Beetle, Gorgon, Hydra, Wraith, White/Brown
+  Pudding, Mummy, Spectre, Shambling Mound); `Monster Manual (2nd ed).pdf`
+  and *Dragonlance Adventures* still have more of Krynn's actual bestiary
   untouched, though the DLA well (its "Common Creatures of Krynn"
   chapter) is now confirmed dry beyond Ice Bear — see Milestone 112's
   writeup in `docs/MILESTONES.md` for why Dreamshadow/Dreamwraith/Fetch/
   Minotaur/Shadowpeople/Spectral Minion don't fit this project's
   wandering-encounter model. Milestone 142 added the roster's first
   flying/aerial predators (Harpy p.184, Griffon p.178) plus a low-tier
-  swarm pest (Stirge p.332), all visually confirmed against rendered
-  Monster Manual page images — see that entry for the terrain-code
-  honesty notes (no coast/subterranean code exists in this engine) and
-  gating rationale. Can be added the same way, one more sourced
-  `MONSTER` block at a time. A new monster with real terrain flavor can
-  also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN` lines — see
-  "Terrain-specific monster pools" above. A new low/mid-HD monster can
-  also carry a sourced `GROUP <min> <max>` line from the start — see
-  "Monster encounter groups" above.
+  swarm pest (Stirge p.332). Milestone 156 cross-referenced three
+  fan-transcribed Gold Box video-game monster manuals (References/*.html,
+  video-game balance numbers, not sourcing on their own) against this
+  roster purely as a "what's missing" gap-finder, then added 14 real,
+  independently-sourced monsters the cross-reference surfaced — see that
+  entry for the full page-citation table, the new danger ceiling it
+  introduces (Shambling Mound, `MIN_TOWN_DISTANCE 55`), and why Purple
+  Worm/Otyugh/Umber Hulk/Black Pudding/Rhinoceros Beetle/Disir were all
+  deliberately left out. All new monsters (both milestones) were visually
+  confirmed against rendered Monster Manual page images — see the
+  terrain-code honesty notes (no coast/subterranean code exists in this
+  engine, so a purely aquatic or purely subterranean real monster can
+  never be represented) and gating rationale in each entry. Can be added
+  the same way, one more sourced `MONSTER` block at a time. A new monster
+  with real terrain flavor can also carry `TERRAIN_BIAS`/`EXCLUDE_TERRAIN`
+  lines — see "Terrain-specific monster pools" above. A new low/mid-HD
+  monster can also carry a sourced `GROUP <min> <max>` line from the
+  start — see "Monster encounter groups" above.
 - **The rest of Bozak/Sivak/Aurak's abilities** (Milestone 99 shipped the
   parts that ground out in this engine's real combat math -- Bozak's
   signature Magic Missile, Aurak's breath weapon, Sivak's death-burst; see

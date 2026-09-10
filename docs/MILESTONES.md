@@ -5912,6 +5912,198 @@ now fully verified, nothing further outstanding.
      test (real save files untouched), and a terrain-validity check on the
      new coordinate.
 
+156. Fourteen new monsters, cross-referenced from three fan-transcribed
+     Gold Box video-game monster manuals the user added to the project
+     (`References/Champions of Krynn - Monster Manual.html`, `Death
+     Knights of Krynn - Monster Manual.html`, `The Dark Queen of Krynn -
+     Monster Manual.html` -- SSI's Champions/Death Knights/Dark Queen of
+     Krynn trilogy, the same games `DQoK.pdf` already informed this
+     project's combat-grid design at Milestone 114). These pages are
+     video-game balance numbers, not tabletop sourcing on their own --
+     used only to flag "which real creatures does this universe have that
+     the roster is missing," cross-referencing all 185 unique Gold Box
+     creature names against the then-29-monster roster. Every monster
+     actually added below is independently sourced and visually confirmed
+     against a rendered `Monster Manual (2nd ed).pdf` page image, same
+     discipline as every entry before it -- poppler's `pdftotext` produces
+     a badly broken text layer for this specific PDF (confirmed: even
+     already-sourced headers like "Troll"/"Wight"/"Owlbear" fail to
+     extract as clean text), so `pymupdf`'s own text-extraction API was
+     used to locate candidate pages instead, then each page was rendered
+     and read as an image, never transcribed from extracted text.
+
+     Filtered out before sourcing anything: named Gold Box NPCs/bosses
+     (Lord Soth, Myrtani, Tasslehoff, etc.), generic "Evil Fighter/Cleric"
+     class templates (not this project's Monstrous-Manual-style bestiary),
+     video-game-only reskins (Enchanted-X Draconian, Undead/Zombie-X,
+     2-Headed Troll -- the last already implicitly declined, since Troll's
+     own Monster Manual p.349 entry prints a Two-Headed column this
+     project's existing Troll already chose not to model), Minotaur
+     (already excluded in `data/monsters.txt`'s own header comment as a
+     civilized race, same reasoning as Kender/Gnomes), and every true
+     aquatic monster (Sahuagin, Giant Squid, Kuo-Toa, Eye of the Deep,
+     etc.) -- ocean and shallow water are both non-walkable in this
+     engine, so nothing can ever be purely aquatic here. Dragons stay
+     excluded too, user-confirmed: matches the novels' treatment of
+     dragons as rare, individually significant beings, not random
+     encounters. Disir/Greater Disir (recalled from memory as a
+     Dragonlance creature) could not be located in either
+     `Monster Manual (2nd ed).pdf` or *Dragonlance Adventures* via text
+     search across the whole book -- dropped rather than invented from
+     memory. Also dropped on inspection: **Otyugh, Umber Hulk, and Black
+     Pudding** are purely subterranean in their real Climate/Terrain (no
+     outdoor habitat printed at all) -- the same structural gap that
+     already excludes aquatic monsters, since this roster is
+     overworld-wandering-encounter only (no zone-interior encounter path
+     exists); user confirmed dropping these three rather than inventing a
+     stretch "cave mouth" justification. **Purple Worm** (Monster Manual
+     p.364, XP13,000/HD15) and **Rhinoceros Beetle** (p.19, XP4,000,
+     tropical jungle -- no jungle terrain code exists) were both dropped
+     as far outside any workable power/terrain bracket, same restraint as
+     the dragon exclusion; the latter is also redundant with Boring Beetle
+     being added from the very same page.
+
+     The 14 additions, each with an inline sourcing comment in
+     `data/monsters.txt` matching this project's established voice (page
+     citation, what's simplified and why, what's left unmodeled and why):
+
+     - **Giant Rat** (p.300, `Rat` entry's italic Giant column): HD 1/2 --
+       lower than anything else in this roster, approximated as a 1d4
+       roll (half this project's usual 1d8 shape, no sub-1-HD precedent
+       existed to follow). AC7/THAC0 20, bite `DAMAGE 1 3 0`, XP 15,
+       `GROUP 4 4` (real 5-50, clamped). Fills a real gap: no low-tier
+       dungeon/scavenger vermin existed below Goblin/Kobold.
+     - **Giant Centipede** (p.42, `Centipede` entry's Giant column):
+       AC9/THAC0 20. Real Damage/Attack is printed as flat "Nil" -- the
+       bite carries no hit-point damage of its own, only a poison save --
+       represented as a small fixed 1 point (`DAMAGE 1 1 0`, a dummy
+       1-sided die), documented as an invented compromise since this
+       combat loop needs some damage number per hit. Its real poison
+       paralyzes rather than kills, a mechanically different effect from
+       the Giant Spider's real Type F death-poison this project's
+       `POISON` flag models -- same reasoning the Kapak's own
+       paralysis-poison bite already established for leaving it
+       unmodeled, so `POISON` is deliberately *not* set here. XP 35,
+       `GROUP 4 4` (real 2-24, clamped).
+     - **Ghast** (p.131, the Ghoul page's own Ghast column): HD4,
+       AC4/THAC0 17, bite `DAMAGE 1 8 0` (one representative die from its
+       real claw/claw/bite), XP 650. Real elf-affecting paralysis and
+       carrion-stench aura are both left unmodeled, same restraint as the
+       Ghoul's own paralyzing touch. Real No. Appearing is "1-4, with
+       Ghoul packs" -- not an independent roll, so left solo rather than
+       invent a standalone band size.
+     - **Wereboar** (p.235, `Lycanthrope, Wereboar`): HD5+2, same bracket
+       as Owlbear. AC4/THAC0 15, `DAMAGE 2 6 0`, XP 650,
+       `TERRAIN_BIAS %` (forest, informed by its real "prefers dense
+       woodlands" text), `MIN_TOWN_DISTANCE 20` (same bracket as Owlbear).
+       Real silver-or-better-to-hit defense left unmodeled, same restraint
+       as Wight's own silver/magic-only vulnerability.
+     - **Weretiger** (p.239, `Lycanthrope, Weretiger`): HD6+2.
+       AC3/THAC0 15, bite `DAMAGE 1 12 0` (one representative die from its
+       real claw/claw/bite/rake), XP 975, `TERRAIN_BIAS % ^` (forest+
+       hills, informed by its real 7-10 square mile wilderness range),
+       `MIN_TOWN_DISTANCE 35` (same bracket as Sivak/Troll/Harpy/Griffon).
+       Same unmodeled silver defense as the Wereboar.
+     - **Boring Beetle** (p.18, `Beetle, Giant` entry's Boring column):
+       HD5. AC3/THAC0 15, `DAMAGE 1 16 4` (expresses the real "5-20"
+       range exactly), XP175, `TERRAIN_BIAS % ^` (forest+hills, informed
+       by its real "inside huge trees or underground tunnel complexes"
+       text), `GROUP 4 4` (real 3-18, clamped), no distance gate --
+       comparable to the Black Bear/Worg tier.
+     - **Gorgon** (p.172): HD8, same bracket as Aurak. AC2/THAC0 13, gore
+       `DAMAGE 2 6 0`, XP1400, `TERRAIN_BIAS ^ A` (hills+mountains,
+       informed by its real cavern/wilderness lair text),
+       `MIN_TOWN_DISTANCE 40` (same "big HD, single hit, no spellcasting"
+       bracket as Ettin). Real breath-weapon petrification left
+       unmodeled -- no petrification/status-effect system exists for
+       anyone yet.
+     - **Hydra** (p.200, base 5-headed column): HD5. Its real per-head
+       regrowth and higher-head variants are left unmodeled entirely, same
+       restraint as the Troll's own un-modeled variants -- one head's bite
+       stands in for the whole creature. AC5/THAC0 15, `DAMAGE 1 6 0`,
+       XP2000, `ONLY_TERRAIN *` (bog -- a direct, sourced match for its
+       real "any swamp" Climate/Terrain), `MIN_TOWN_DISTANCE 30`.
+     - **Wraith** (p.365): HD5+3, one bracket above Wight. AC4/THAC0 15,
+       `DAMAGE 1 6 0`, XP2000, no terrain restriction,
+       `MIN_TOWN_DISTANCE 30`. Real energy drain and silver-or-better
+       defense both left unmodeled, same restraint as Wight's own.
+     - **White Pudding** (p.297, `Pudding, Deadly` entry's White column):
+       HD9. AC8/THAC0 11, `DAMAGE 3 8 4` (expresses the real "7-28" range
+       exactly), XP1400, `ONLY_TERRAIN :` (glacier -- a direct match for
+       its real "Arctic plain," the same climate slot as Thanoi/Ice Bear),
+       `MIN_TOWN_DISTANCE 40`.
+     - **Brown Pudding** (p.297, same entry's Brown column): HD11, the
+       single highest Hit Dice added this batch. AC5/THAC0 9,
+       `DAMAGE 1 16 4` (expresses the real "5-20" range exactly), XP1400,
+       `ONLY_TERRAIN *` (bog -- a direct match for its real "Any marsh"),
+       `MIN_TOWN_DISTANCE 45`, tied with Aurak at the previous ceiling.
+     - **Mummy** (p.261, the base Mummy column, not the Greater Mummy
+       variant on the facing page): HD6+3, one bracket above Troll.
+       AC3/THAC0 13, `DAMAGE 1 12 0`, XP3000, `ONLY_TERRAIN _` (salt
+       flat -- an invented stand-in for its real "Desert subterranean,"
+       since no desert terrain code exists in this engine, flagged
+       explicitly as informed-not-sourced, same honesty as Thanoi's
+       glacier lock), `MIN_TOWN_DISTANCE 40`. Real fear and mummy-rot
+       disease both left unmodeled -- no fear or disease-over-time system
+       exists for anyone yet.
+     - **Spectre** (p.323): HD7+3, one bracket above the Harpy/Griffon
+       pair. AC2/THAC0 13, `DAMAGE 1 8 0`, XP3000, no terrain restriction,
+       `MIN_TOWN_DISTANCE 40`. Real 2-level energy drain and flight both
+       left unmodeled, same restraint as Wight's drain and Harpy/
+       Griffon's own unmodeled aerial approach.
+     - **Shambling Mound** (p.293, `Plant, Intelligent` entry's Shambling
+       Mound column, base 8-HD variant): HD8. AC5/THAC0 13. Real attack is
+       two identical crushing grips, "2-16/2-16" -- simplified to a single
+       representative die (`DAMAGE 2 8 0`), same "one representative die"
+       treatment as every other multi-attack monster in this roster (this
+       project doesn't model multiple attacks per round for anyone,
+       monster or player -- `combat::resolveMonsterAttack` rolls exactly
+       one hit/one damage per call). XP6000 (the real "+1,000 XP per added
+       Hit Die" scaling above 8 is left unmodeled). `ONLY_TERRAIN *` (bog
+       -- a direct match for its real "Swamps or wet subterranean").
+       `MIN_TOWN_DISTANCE 55` -- a genuinely new ceiling above the
+       Aurak/Ettin/Brown Pudding tier: its real XP is more than double
+       anything else in this roster even though its modeled single hit
+       isn't dramatically stronger than the Ettin's/Aurak's once
+       simplified the same way, so this gate honors that real XP gap
+       rather than understating it.
+
+     `STEEL` isn't a sourced field in this project (same honesty as
+     every prior batch) -- each new monster is tier-matched to its
+     nearest HD neighbor already in the roster (e.g. Ghast/Gorgon to
+     Bozak/Aurak's own HD-matched STEEL lines). `MIN_TOWN_DISTANCE` is
+     calibrated against modeled HD/damage output, not the raw XP label --
+     several of these monsters' scariest real traits (fear, disease,
+     energy drain, silver-or-better-to-hit) are left unmodeled the same
+     way Wight's level drain already is, so a monster whose real terror is
+     mostly flavor text isn't gated as if that terror were live in
+     combat; see `docs/COMBAT_NOTES.md`'s "Town-proximity monster pools"
+     section for the full per-monster placement alongside the existing
+     20-45 scale.
+
+     Zero C++ source changes needed -- every field used already has a
+     loader/grammar keyword (confirmed by reading `MonsterLoader.cpp`/
+     `Monster.h` directly before writing any block). One small doc-only
+     correction alongside this batch: `Monster.h`'s own `poisonOnHit`
+     comment previously said the Giant Spider was "currently the only
+     poison-bearing creature in the roster" -- updated to name the Giant
+     Centipede too and explain why it deliberately does *not* set that
+     flag (paralysis, not death, same distinction the Kapak's own
+     unmodeled paralysis-poison already established).
+
+     Verified via a throwaway `MonsterLoaderSelfTest.cpp` confirming all
+     43 blocks parse fail-fast-clean, then a clean rebuild of all three
+     CMake targets (zero new `/W4` warnings) and a piped
+     character-creation smoke test (real save files untouched). Roster
+     grows from 29 to 43. **Not yet interactively walked** -- same
+     standing `_getch()` limitation as every prior monster batch; confirm
+     on the next play session that a wilderness encounter reads correctly
+     for each new terrain assignment (bog: Hydra/Brown Pudding/Shambling
+     Mound; glacier: White Pudding; salt flat: Mummy; forest/hills:
+     Wereboar/Weretiger/Boring Beetle/Gorgon), and that the new
+     `MIN_TOWN_DISTANCE 55` Shambling Mound genuinely reads as the
+     roster's scariest encounter.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

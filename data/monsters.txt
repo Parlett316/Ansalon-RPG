@@ -154,6 +154,43 @@
 # a swarm-tier "Clusters" organization, clamped to this project's
 # playability cap), same "always a full band of 4" treatment as the
 # Goblin/Kobold/Lizard Man above.
+#
+# 14 more monsters were cross-referenced from three fan-transcribed Gold Box
+# video-game monster manuals (Champions/Death Knights/Dark Queen of Krynn,
+# References/*.html) the user added to the project -- those pages are
+# video-game balance numbers, not tabletop sourcing, so they were used only
+# to flag "which real creatures does this universe have that this roster is
+# missing," never transcribed directly. Every one of the 14 below is
+# independently sourced and visually confirmed against a rendered
+# Monster Manual (2nd ed).pdf page image, same standard as every entry
+# above (poppler's pdftotext produces a badly broken text layer for this
+# particular PDF -- pymupdf's own text extraction was used instead to
+# locate pages, then each page was rendered and read as an image, not
+# transcribed from the extracted text). Giant Rat, Giant Centipede, Ghast,
+# Boring Beetle, Wereboar, Weretiger, Gorgon, Hydra, Wraith, White Pudding,
+# Brown Pudding, Mummy, Spectre, and Shambling Mound (p.300/42/131/18/235/
+# 239/172/200/365/297/297/261/323/293) are all real, Krynn-appropriate
+# creatures the cross-reference surfaced as gaps. Dragons, true aquatic
+# monsters (Sahuagin/Kuo-Toa/Giant Squid/etc. -- ocean and shallow water are
+# both non-walkable, so nothing can ever be purely aquatic in this engine),
+# Minotaur (already excluded above as a civilized race), Purple Worm
+# (XP13,000/HD15, wildly outside any workable bracket), and purely
+# subterranean creatures with no outdoor Climate/Terrain at all (Otyugh,
+# Umber Hulk, Black Pudding -- the same structural gap that excludes
+# aquatic monsters, since this roster is overworld-wandering-encounter only)
+# were all deliberately left out rather than stretched to fit. Several of
+# these (Mummy/Spectre/Shambling Mound especially) land well above every
+# existing monster's XP -- their scarier real traits (fear, disease,
+# energy drain, suffocation, silver-or-better-to-hit) are left unmodeled,
+# same restraint as every such trait above, so most of this batch's
+# MIN_TOWN_DISTANCE is calibrated against modeled HD/damage output the way
+# Ettin's already is, not the raw XP label. The one exception is the
+# Shambling Mound: its real XP (6,000) is more than double anything else
+# in this roster even though its modeled single hit isn't dramatically
+# stronger once simplified the same way as every other multi-attack
+# monster here -- kept farther from town than anything yet, a genuinely
+# new danger ceiling above the Aurak/Ettin tier, honoring that real XP gap
+# rather than understating it.
 
 MONSTER goblin
 NAME Goblin Raider
@@ -821,4 +858,386 @@ ONLY_TERRAIN %
 # 4, same treatment as the Goblin/Kobold/Lizard Man above.
 GROUP 4 4
 DESC A rusty-red, bat-winged shape darts in on clicking pincer legs, its long proboscis already questing for a vein.
+END
+
+MONSTER giantrat
+NAME Giant Rat
+# Real HD is 1/2 (Monster Manual p.300, italic "Rat (Giant)" column) --
+# lower than any other monster in this roster. No sub-1-HD precedent exists
+# to follow, so this is approximated as a 1d4 roll (half of this project's
+# usual 1d8 shape), the same order of magnitude as the real average.
+HP 1 4 0
+AC 7
+THAC0 20
+# Real attack is a single bite, "1 (1-3)" -- no simplification needed.
+DAMAGE 1 3 0
+# Real Treasure is Nil for a wandering encounter (C only applies in a lair,
+# which this project has no concept of) -- same "Nil means STEEL 0 0 0"
+# treatment as the Skeleton/Black Bear/Giant Toad above.
+STEEL 0 0 0
+XP 15
+# Real disease-on-bite (5% chance per wound) is left unmodeled -- no
+# disease mechanic exists for anyone yet, same restraint as the Mummy's
+# rot and the Ghoul's paralyzing touch below/above.
+# Real No. Appearing (Giant column) is 5-50 -- clamped to this project's
+# playability cap, so giant rats always turn up in a full band of 4. Fills
+# a real gap: no low-tier dungeon/scavenger vermin exists in this roster
+# below Goblin/Kobold.
+GROUP 4 4
+DESC A rat the size of a small dog bares yellowed teeth, driven bold by hunger and the smell of blood.
+END
+
+MONSTER centipede
+NAME Giant Centipede
+# Real Hit Dice is printed as a fixed "2 hp," not a die roll -- represented
+# here as a dummy 1-sided die (always rolls 1) plus a flat 1, the only way
+# this grammar can express a fixed non-dice value.
+HP 1 1 1
+AC 9
+THAC0 20
+# Real Damage/Attack is printed as "Nil" -- the centipede's bite carries no
+# hit-point damage of its own, only a poison save (see below). Since this
+# project's combat loop needs some damage number per hit, a small fixed
+# 1 point (another 1-sided-die trick) stands in for it, documented as an
+# invented compromise rather than a sourced value -- nothing else in this
+# roster has a real Nil-damage attack.
+DAMAGE 1 1 0
+# Real poison paralyzes for 2d6 hours (Monster Manual p.42) -- a
+# mechanically different effect from the Giant Spider's real Type F
+# death-poison this project's POISON flag models, same reasoning the
+# Kapak's own paralysis-poison bite above already established for not
+# reusing it. Left unmodeled (flavor-only), same restraint as the Kapak's
+# and Ghoul's own paralyzing attacks -- no status-effect system exists for
+# anyone yet.
+STEEL 0 0 0
+XP 35
+# Real No. Appearing is 2-24 -- clamped to this project's playability cap.
+GROUP 4 4
+DESC A centipede as long as a forearm skitters out from beneath a stone, mandibles glistening with venom.
+END
+
+MONSTER ghast
+NAME Ghast
+# Real HD is a plain 4 (Monster Manual p.131, Ghast column of the Ghoul
+# page) -- the natural next tier above the Ghoul already in this roster.
+HP 4 8 0
+AC 4
+THAC0 17
+# Real attack is three hits (claw/claw/bite, 1-4/1-4/1-8) -- simplified to
+# one representative die, same treatment as the Ghoul's own claw/claw/bite:
+# the bite, its single most damaging hit.
+DAMAGE 1 8 0
+# Real Treasure (B, Q, R, S, T) is richer than the Ghoul's (B, T) -- tier
+# matched to the Bozak's own HD4 STEEL line above.
+STEEL 3 8 0
+XP 650
+# Real paralysis (like the Ghoul's, but affecting elves too) is left
+# unmodeled, same restraint as the Ghoul's own paralyzing touch and the
+# Kapak's paralysis-poison bite above -- no status-effect system exists
+# for anyone yet. Its real carrion-stench aura (10' radius, causes
+# retching/nausea) is likewise unmodeled.
+# Real No. Appearing is "1-4, with Ghoul packs" -- not an independent roll
+# of its own, so left solo (no GROUP line) rather than invent a standalone
+# band size the real text doesn't support.
+DESC A ghast crouches over a half-eaten corpse, uglier and larger than any ghoul, a stench of rot rolling off it in waves.
+END
+
+MONSTER wereboar
+NAME Wereboar
+# Real HD is 5+2 (Monster Manual p.235, Lycanthrope: Wereboar), the same
+# bracket as the Owlbear already in this roster.
+HP 5 8 2
+AC 4
+THAC0 15
+# Real attack is "2-12 or by weapon" -- no simplification needed.
+DAMAGE 2 6 0
+# Real Treasure (B, S) tier-matched to the Owlbear's own HD5+2 STEEL line.
+STEEL 2 10 0
+XP 650
+# Real Special Defense (hit only by silver or +1-or-better weapons) is left
+# unmodeled -- no weapon-enchantment-gate mechanic exists for anyone yet,
+# same restraint as the Wight's own silver/magic-only vulnerability.
+# Real Climate/Terrain is "Any dry land," but the book's own text says
+# wereboars "prefer dense woodlands" -- forest bias is informed by, not
+# transcribed from, that line, same treatment as the Black Bear's own bias.
+TERRAIN_BIAS %
+# Same HD5+2 bracket as the Owlbear above -- gated the same distance.
+# Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 20
+DESC A hunched, tusked shape rises on two legs at the treeline, bristled hide catching the light, a boar's scream twisting into something worse.
+END
+
+MONSTER weretiger
+NAME Weretiger
+# Real HD is 6+2 (Monster Manual p.239, Lycanthrope: Weretiger), one
+# bracket above the Wereboar.
+HP 6 8 2
+AC 3
+THAC0 15
+# Real attack is three hits (claw/claw/bite, 1-4/1-4/1-12) plus a rake
+# (2-5/2-5) -- simplified to one representative die, same treatment as the
+# Ghoul's claw/claw/bite above: the bite, its single most damaging hit.
+DAMAGE 1 12 0
+# Real Treasure (D, Q x5) tier-matched to the Sivak's own HD6 STEEL line.
+STEEL 3 10 0
+XP 975
+# Same silver/+1-or-better defense as the Wereboar above, left unmodeled
+# for the same reason.
+# Real Climate/Terrain is "Any wilderness" -- forest/hills bias is
+# informed by, not transcribed from, its real 7-10 square mile roaming
+# territory, same treatment as the Black Bear's own bias.
+TERRAIN_BIAS % ^
+# Same HD6-ish bracket as the Sivak/Troll pair above -- gated the same
+# distance. Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 35
+DESC A lean, striped shape uncoils from a crouch, human enough to have been mistaken for one a moment ago, tiger enough that the mistake is now fatal.
+END
+
+MONSTER boringbeetle
+NAME Boring Beetle
+# Real HD is a plain 5 (Monster Manual p.18, Beetle, Giant: Boring column).
+HP 5 8 0
+AC 3
+THAC0 15
+# Real attack is a single bite, "5-20" -- expressed as 1d16+4 (range 5-20),
+# the closest fit to this grammar's dice-roll shape.
+DAMAGE 1 16 4
+# Real Intelligence is Animal (1) -- same "Animal-int means STEEL 0 0 0"
+# treatment as the Wolf/Black Bear/Worg/Ice Bear/Giant Toad/Stirge above,
+# regardless of its real Treasure entry.
+STEEL 0 0 0
+XP 175
+# Real Climate/Terrain is "Any land," but the book's own text says boring
+# beetles are "usually found individually inside huge trees or massed in
+# underground tunnel complexes" -- forest/hills bias is informed by, not
+# transcribed from, that line, same treatment as the Black Bear's own bias.
+TERRAIN_BIAS % ^
+# Real No. Appearing is 3-18 -- clamped to this project's playability cap.
+# No MIN_TOWN_DISTANCE gate, matching the Black Bear/Worg's own
+# ungated mid-tier treatment (comparable XP, no special defenses).
+GROUP 4 4
+DESC A beetle the size of a hound grinds its mandibles together with a sound like a millstone, ready to bore through anything in reach.
+END
+
+MONSTER gorgon
+NAME Gorgon
+# Real HD is a plain 8 (Monster Manual p.172), the same bracket as the
+# Aurak Draconian already in this roster.
+HP 8 8 0
+AC 2
+THAC0 13
+# Real attack is a single gore, "2-12" -- no simplification needed.
+DAMAGE 2 6 0
+# Real Intelligence is Animal (1) -- same "Animal-int means STEEL 0 0 0"
+# treatment as above, regardless of its real Treasure (E) entry.
+STEEL 0 0 0
+XP 1400
+# Real breath-weapon petrification (a cone, 4x/day, save vs. petrification
+# or turn to stone) is left unmodeled -- no petrification/status-effect
+# system exists for anyone yet, same restraint as the Griffon's/Harpy's own
+# unmodeled specials above.
+# Real Climate/Terrain is "Temperate or tropical / Wilderness or
+# subterranean" -- hills/mountains bias is informed by, not transcribed
+# from, its real "dreary caverns or the fastness of a wilderness" lair
+# description, same treatment as the Bugbear's own bias.
+TERRAIN_BIAS ^ A
+# Same HD8 bracket as the Aurak above, but without its spellcasting/breath-
+# weapon complexity once petrification stays unmodeled -- kept at the same
+# distance as the similarly "big HD, single hit, no spellcasting" Ettin.
+# Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 40
+DESC A monstrous, iron-scaled bull paws the ground, twin plumes of venting vapor curling from its nostrils.
+END
+
+MONSTER hydra
+NAME Hydra
+# Real HD is 5-12 depending on head count (1d8+4 heads); this entry uses
+# the base 5-headed column (Monster Manual p.200) -- its higher-head
+# variants and its real per-head regrowth/multi-bite mechanic are left
+# unmodeled entirely, same restraint as the Troll's own un-modeled
+# variants above.
+HP 5 8 0
+AC 5
+# Real THAC0 for the 5-headed column is 15.
+THAC0 15
+# Real per-head bite is "1-6" -- one head's hit stands in for the whole
+# creature, same "one representative die" treatment as every multi-attack
+# monster above.
+DAMAGE 1 6 0
+# Real Intelligence is Semi- (2-4) and Treasure is Nil -- STEEL 0 0 0.
+STEEL 0 0 0
+XP 2000
+# Real Climate/Terrain is "Any swamp or subterranean" -- bog is a direct,
+# sourced match (this project's closest code to "swamp"), same mapping the
+# Lizard Man/Giant Toad above already use.
+ONLY_TERRAIN *
+# HD5 only, once the multi-head mechanic is simplified away -- gated
+# modestly above the Owlbear/Wereboar tier to honor its real fearsome
+# reputation without pretending the modeled encounter is as dangerous as
+# its real stat block. Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 30
+DESC A five-necked reptilian shape rises out of the reeds, each head hissing a challenge of its own.
+END
+
+MONSTER wraith
+NAME Wraith
+# Real HD is 5+3 (Monster Manual p.365), one bracket above the Wight
+# already in this roster.
+HP 5 8 3
+AC 4
+THAC0 15
+# Real attack is a single chilling touch, "1-6" -- no simplification
+# needed.
+DAMAGE 1 6 0
+# Real Treasure (E) tier-matched to the Wight's own STEEL line above.
+STEEL 4 8 0
+XP 2000
+# Real energy drain (1 level per hit) and Special Defense (hit only by
+# silver or +1-or-better weapons) are both left unmodeled, same restraint
+# as the Wight's own level drain and silver/magic-only vulnerability above.
+# Real Climate/Terrain is "Any" -- no bias, same treatment as the Wight.
+# One HD bracket and roughly one danger-step above the Wight -- gated
+# accordingly. Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 30
+DESC A man-shaped shadow rises off the ground with no feet to stand on, twin points of cold red light fixed on you like a hunger given eyes.
+END
+
+MONSTER whitepudding
+NAME White Pudding
+# Real HD is 9 (Monster Manual p.297, Pudding, Deadly: White column).
+HP 9 8 0
+AC 8
+THAC0 11
+# Real attack is a single "7-28" -- expressed as 3d8+4 (range 7-28), the
+# closest fit to this grammar's dice-roll shape.
+DAMAGE 3 8 4
+# Real Intelligence is Non- (0) and Treasure is Nil -- STEEL 0 0 0.
+STEEL 0 0 0
+XP 1400
+# Real splitting-when-struck-by-lightning and immunity to acid/cold/poison
+# are left unmodeled -- no such reactive/immunity system exists for
+# anyone yet, same restraint as the Black Pudding-adjacent traits this
+# roster otherwise leaves untouched.
+# Real Climate/Terrain is "Arctic plain" -- glacier is a direct, sourced
+# match, the same climate slot the Thanoi/Ice Bear already occupy.
+ONLY_TERRAIN :
+# HD9 and a real single-hit ceiling of 28 -- gated in the same "big HD,
+# single big hit" bracket as the Gorgon above. Invented gameplay tuning,
+# not sourced.
+MIN_TOWN_DISTANCE 40
+DESC A heap of glistening white ooze humps forward across the ice, indistinguishable from a snowbank until it moves.
+END
+
+MONSTER brownpudding
+NAME Brown Pudding
+# Real HD is 11 (Monster Manual p.297, Pudding, Deadly: Brown column) --
+# the highest Hit Dice of any monster added this batch.
+HP 11 8 0
+AC 5
+THAC0 9
+# Real attack is a single "5-20" -- expressed as 1d16+4 (range 5-20), same
+# dice shape as the Boring Beetle above.
+DAMAGE 1 16 4
+STEEL 0 0 0
+XP 1400
+# Real Climate/Terrain is "Any marsh" -- bog is a direct, sourced match,
+# same code the Hydra above and Lizard Man/Giant Toad already use.
+ONLY_TERRAIN *
+# HD11, the single highest Hit Dice in this roster -- gated at the
+# existing ceiling alongside the Aurak. Invented gameplay tuning, not
+# sourced.
+MIN_TOWN_DISTANCE 45
+DESC A sluggish brown mass oozes out from beneath the muck, dissolving the reeds it passes with a faint, acrid hiss.
+END
+
+MONSTER mummy
+NAME Mummy
+# Real HD is 6+3 (Monster Manual p.261), one bracket above the Troll
+# already in this roster.
+HP 6 8 3
+AC 3
+THAC0 13
+# Real attack is a single "1-12" -- no simplification needed.
+DAMAGE 1 12 0
+# Real Treasure (P, (D)) tier-matched to the Troll's own STEEL line above.
+STEEL 4 8 0
+XP 3000
+# Real fear (save vs. spell or be paralyzed 1-4 rounds) and mummy rot
+# (a disease, fatal in 1-6 months) are both left unmodeled -- no fear or
+# disease-over-time system exists for anyone yet, same restraint as the
+# Wraith's/Wight's own unmodeled specials.
+# Real Climate/Terrain is "Desert subterranean" -- no desert terrain code
+# exists in this project. Salt flat is proposed as the closest invented
+# stand-in (informed, not sourced -- flagged explicitly, same honesty as
+# the Thanoi's glacier lock).
+ONLY_TERRAIN _
+# One HD bracket above the Troll, and a real XP value that ties the Ettin
+# -- gated in the same "big real XP, but its scariest traits are left
+# unmodeled" bracket as the Gorgon/Puddings above. Invented gameplay
+# tuning, not sourced.
+MIN_TOWN_DISTANCE 40
+DESC Rotted linen wrappings shift as a corpse hauls itself upright, dry and ancient, its tomb's rest broken by trespassers at last.
+END
+
+MONSTER spectre
+NAME Spectre
+# Real HD is 7+3 (Monster Manual p.323), one bracket above the Harpy/
+# Griffon pair already in this roster.
+HP 7 8 3
+AC 2
+THAC0 13
+# Real attack is a single chilling touch, "1-8" -- no simplification
+# needed.
+DAMAGE 1 8 0
+# Real Treasure (Q(x3), X, Y) tier-matched to the Harpy's/Griffon's own
+# STEEL line above.
+STEEL 3 10 0
+XP 3000
+# Real energy drain (2 levels per hit) and flight are both left unmodeled
+# -- no level-drain mechanic and no flying-monster mechanic exist for
+# anyone yet (the Harpy/Griffon above already leave their own aerial
+# approach unmodeled the same way).
+# Real Climate/Terrain is "Desolate dungeons and ruins" -- no terrain
+# restriction, same "any, gated purely by distance" treatment as the
+# Wraith above.
+# One HD bracket above the Harpy/Griffon pair, and real XP well above
+# theirs -- gated one step farther out. Invented gameplay tuning, not
+# sourced.
+MIN_TOWN_DISTANCE 40
+DESC A translucent, robed figure drifts a hand's breadth off the ground, its ancient finery undisturbed by any wind.
+END
+
+MONSTER shamblingmound
+NAME Shambling Mound
+# Real HD is 8-11; this entry uses the base 8-HD column (Monster Manual
+# p.293, Plant, Intelligent: Shambling Mound) -- its real "+1,000 XP per
+# added Hit Die" scaling above 8 is left unmodeled, same restraint as the
+# Hydra's own un-modeled higher-head variants above.
+HP 8 8 0
+AC 5
+THAC0 13
+# Real attack is two identical crushing grips, "2-16/2-16" -- simplified
+# to a single representative die, same "one representative die" treatment
+# as every other multi-attack monster above (this project doesn't model
+# multiple attacks per round for anyone, monster or player).
+DAMAGE 2 8 0
+# Real Treasure (B, T, X) tier-matched above the Ettin's own STEEL line,
+# the new top of this roster.
+STEEL 5 10 0
+XP 6000
+# Real suffocation (once both grips hit, 2-12 rounds to death unless
+# freed) is left unmodeled -- no grapple/ongoing-effect system exists for
+# anyone yet, same restraint as the Owlbear's hug and the Otyugh-adjacent
+# traits this roster otherwise leaves untouched.
+# Real Climate/Terrain is "Swamps or wet subterranean" -- bog is a direct,
+# sourced match, same code the Hydra/Brown Pudding above already use.
+ONLY_TERRAIN *
+# Real XP is by far the highest in this roster (6000, more than double the
+# Mummy/Spectre/Ettin tier) even though its modeled single hit isn't
+# dramatically stronger than theirs once simplified the same way as every
+# other multi-attack monster -- gated at a genuinely new ceiling above the
+# Aurak/Ettin/Brown Pudding tier to honor that real XP gap rather than
+# understating it. Invented gameplay tuning, not sourced.
+MIN_TOWN_DISTANCE 55
+DESC A tangle of rotten vegetation heaves upright at the bog's edge, roots peeling free of the muck like a nightmare shrugging off sleep.
 END
