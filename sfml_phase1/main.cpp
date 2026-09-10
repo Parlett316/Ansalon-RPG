@@ -47,6 +47,16 @@
 
 #include <SFML/Graphics.hpp>
 
+#ifdef _WIN32
+// Only used to reach the real OS window handle for a genuine maximize
+// (ShowWindow/SW_MAXIMIZE) -- SFML has no native "maximized" window state.
+// NOMINMAX avoids windows.h's min/max macros breaking the std::min/std::max
+// calls used throughout this file.
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -728,16 +738,29 @@ struct RestSession {
 };
 
 int runPhase1(const std::string& savePath) {
-    const unsigned windowW = 1280;
-    const unsigned windowH = 800;
+    unsigned windowW = 1280;
+    unsigned windowH = 800;
     const float sidebarWidth = 320.f;
-    const float mapWidth = static_cast<float>(windowW) - sidebarWidth;
 
     std::cout << "step 0: starting, save = " << savePath << std::endl;
 
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(windowW, windowH)),
                              "Ansalon SFML Phase 1+2+3 -- Real Overworld + Zones + Combat (WIP)");
     window.setFramerateLimit(60);
+
+#ifdef _WIN32
+    // Launch maximized. SFML 3's sf::State only distinguishes Windowed/
+    // Fullscreen (the latter is exclusive borderless, not what "maximized"
+    // means -- title bar + working minimize/restore/close, taskbar
+    // respected), so this reaches through to the real OS handle instead.
+    // Done before any drawing happens, so the loading screen itself already
+    // renders at the maximized size, not a small window that then grows.
+    ShowWindow(window.getNativeHandle(), SW_MAXIMIZE);
+    const sf::Vector2u maximizedSize = window.getSize();
+    windowW = maximizedSize.x;
+    windowH = maximizedSize.y;
+#endif
+    const float mapWidth = static_cast<float>(windowW) - sidebarWidth;
 
     sf::Font font;
     if (!font.openFromFile("C:/Windows/Fonts/consola.ttf")) {
@@ -836,7 +859,13 @@ int runPhase1(const std::string& savePath) {
     sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
-    const sf::View uiView = window.getDefaultView();
+    // Built explicitly from windowW/windowH rather than window.getDefaultView():
+    // RenderTarget's default view is only computed once, at window-creation
+    // time (1280x800, before the SW_MAXIMIZE resize above), and SFML never
+    // recomputes it on resize -- getDefaultView() would keep returning that
+    // stale, too-small view for the rest of the run.
+    const sf::View uiView(sf::FloatRect({0.f, 0.f},
+                                         sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH))));
 
     sf::Sprite mapSprite(mapTexture);
 
@@ -1463,7 +1492,8 @@ int runPhase1(const std::string& savePath) {
     // to the sheet (which stays open), matching the console's
     // showCharacterSheet loop -- except the console prints to a terminal
     // that can show/scroll arbitrarily many lines, while this window is a
-    // fixed 1280x800, so a high-level caster's full list (a 20th-level Mage
+    // fixed size for the run (whatever it launched maximized at), so a
+    // high-level caster's full list (a 20th-level Mage
     // has 9 spell levels' worth) needs the same real scroll treatment
     // logSession already has, unlike the console original. scrollOffset
     // resets to 0 each time the spellbook is (re)opened.
@@ -2937,11 +2967,13 @@ int runPhase1(const std::string& savePath) {
             for (std::string& line : wrapToWidth(entry, maxLineChars)) wrapped.push_back(std::move(line));
         }
         const int total = static_cast<int>(wrapped.size());
-        // Sized to comfortably fit this build's fixed 1280x800 window
-        // alongside drawPickerOverlay's own title/status/footer lines --
-        // this file hardcodes windowW/windowH elsewhere too (e.g.
-        // kSheetRightX), so a fixed row count matches existing style
-        // rather than measuring live text extents.
+        // Sized to comfortably fit this build's original 1280x800 design
+        // size alongside drawPickerOverlay's own title/status/footer lines
+        // -- since launching maximized (windowW/windowH reflect the real,
+        // larger runtime size) this under-fills the available height rather
+        // than overflowing it, which is the safe direction to be wrong in;
+        // a live-measured row count is a reasonable follow-up, not done
+        // here.
         constexpr int kLogVisibleRows = 20;
         const int maxOffset = std::max(0, total - kLogVisibleRows);
         const int offset =

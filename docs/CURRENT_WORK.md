@@ -940,6 +940,60 @@ were rewritten to describe the new autosave behavior instead. No
 `docs/MILESTONES.md` entry, same reasoning as every other SFML-branch
 entry above.
 
+**The window now launches maximized, same `sfml_phase1/main.cpp`.** User
+request. SFML 3 (this project's pinned version) has no native "maximized"
+window state -- `sf::State` only distinguishes `Windowed`/`Fullscreen`, and
+`Fullscreen` means exclusive borderless (no title bar, no minimize/restore),
+not what a user means by "maximized" -- so this reaches through to the real
+OS handle instead: right after window creation (before the loading screen
+or any other drawing happens), a new `#ifdef _WIN32` block calls
+`ShowWindow(window.getNativeHandle(), SW_MAXIMIZE)`, then reads back the
+real resulting size via `window.getSize()` (confirmed against the vendored
+SFML source, `WindowImplWin32::getSize()`, that this queries `GetClientRect`
+live rather than a cached pre-maximize value) into `windowW`/`windowH`,
+which were changed from `const` to plain `unsigned` to allow this.
+`mapWidth`'s computation moved to right after this block so it derives from
+the real, final width. Also fixed `uiView` (used for every full-window
+overlay -- sheet/dialogue/shop/inventory/spellbook/help/log/world map/
+journal/quit-confirm), which used to just alias `window.getDefaultView()`:
+confirmed by reading `RenderTarget`/`RenderWindow`'s own source that the
+default view is computed once at window-creation time and never recomputed
+on resize, so left alone it would have kept every full-window overlay
+locked to the original 1280x800 in the corner of the now-larger window.
+Replaced with a view built directly from the final `windowW`/`windowH`.
+`mapView` needed no equivalent fix -- it already read those variables fresh.
+
+**This is the first `#ifdef _WIN32`/Windows-API code in `sfml_phase1/
+main.cpp`** -- previously true that nothing outside `render/Console.cpp`
+touched a Windows API directly (`docs/ARCHITECTURE.md`'s SFML section,
+updated to note this one narrow exception and why SFML itself can't cover
+it). `NOMINMAX`/`WIN32_LEAN_AND_MEAN` are defined ahead of the `<windows.h>`
+include specifically because this file uses `std::min`/`std::max`/
+`std::clamp` extensively, which `<windows.h>`'s own unguarded `min`/`max`
+macros would otherwise silently break.
+
+**Deliberately out of scope:** live window resizing -- this file has no
+`sf::Event::Resized` handling anywhere (pre-existing, not touched here), so
+dragging the window smaller/larger after launch still stretches content
+exactly as it latently already would have before this change; not a
+regression this introduces. Non-Windows platforms fall back to the
+original fixed 1280x800, consistent with this being a Windows-only project
+today. `ansalon_rpg` (the console build) is unaffected. Also noticed but
+not changed: two comments (the spellbook's own scroll-treatment rationale
+and `drawLogOverlay`'s fixed `kLogVisibleRows = 20`) referenced the old
+"fixed 1280x800" window literally -- reworded both to stay accurate now
+that the runtime size varies, but `kLogVisibleRows` itself is untouched, so
+the log overlay now under-fills the taller maximized window rather than
+using the full available height; a reasonable follow-up, not done here.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings) and a launch smoke test against real `save2.txt` confirming every
+catalog and the map texture still load and the window opens with no crash/
+exception -- this session again had no desktop/GUI access to actually see
+the window open maximized. **Not yet interactively confirmed** -- moved to
+the Playtest backlog below. No `docs/MILESTONES.md` entry, same reasoning
+as every other SFML-branch entry above.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -1022,6 +1076,22 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML launch-maximized** -- launch `ansalon_sfml_phase1` and confirm the
+  window opens already maximized (title bar with working minimize/restore/
+  close buttons, taskbar respected) rather than a small fixed window, with
+  no visible flash of a small window before it grows (the OS's own
+  maximize-animation, if enabled in Windows settings, is normal). Confirm
+  the loading screen's title/status text is positioned sensibly at the
+  larger size, the overworld map/sidebar split fills the full maximized
+  width with no stretching, black gaps, or content confined to a
+  1280x800-sized region in the corner, and that a full-window overlay (`C`
+  for the character sheet is the simplest check) also fills the real
+  window rather than that same corner. Also worth a glance: the Full Log
+  (`V`) will under-fill the taller window rather than using all of the
+  available height (see this file's writeup above, `kLogVisibleRows`) --
+  expected, not a bug to report. See `sfml_phase1/main.cpp` and this
+  file's writeup above, not a numbered `docs/MILESTONES.md` entry -- this
+  branch isn't merged to `master` yet.
 - ~~**SFML save persistence**~~ -- **confirmed working 2026-09-09** via the
   user's own keyboard: real play against a real save autosaves correctly
   and the file reloads cleanly afterward. Not separately re-tried: an

@@ -164,6 +164,18 @@ it already did for `ansalon_rpg` — otherwise "the main game" would have
 only run correctly when launched with the repo root as the working
 directory.
 
+**One narrow, deliberate exception to "nothing outside `render/Console.cpp`
+touches a Windows API directly" (above):** `sfml_phase1/main.cpp` now has a
+small `#ifdef _WIN32` block that calls `ShowWindow`/`GetClientRect` (via
+`sf::WindowBase::getNativeHandle()`) to launch the window maximized — SFML
+3's `sf::State` only distinguishes `Windowed`/`Fullscreen` (the latter is
+exclusive borderless, not a real maximize with working title-bar buttons),
+so there's no portable SFML-only way to do this. Scoped narrowly (one
+`ShowWindow` call plus reading back the resulting size) and guarded the
+same way `Console.cpp` already guards its own Windows-only code — not a
+reversal of "SFML abstracts windowing", just the one thing it doesn't
+cover.
+
 ## Why location data is a hand-rolled text format, not JSON
 
 Unchanged reasoning from Milestone 1: no external dependency to vendor for
