@@ -1630,3 +1630,86 @@ Re-verified the same way as Milestone 153: no `POS` collisions, all
 three moved coordinates confirmed on walkable terrain (`%` forest at
 Southern Ergoth's new spot, `^` hills at Pax Tharkas, `A` mountains at
 Qualinost), a clean rebuild, and a piped character-creation smoke test.
+
+## Fixing false "ocean" pockets inside forest (Qualinesti and beyond)
+
+User report, from a live `ansalon_sfml_phase1` playtest: walking the
+Qualinesti forest near Bianost got blocked. Traced to Regan's save
+(`save2.txt`, `POS 176 214`) -- both its north and west neighbor tiles
+were classified `~` (ocean, impassable) despite the reference map
+drawing solid forest there.
+
+**Root cause: Qualinesti and Silvanesti are drawn with unusually dark,
+densely-hatched tree-icon shading**, dark enough that a real share of it
+quantizes into the same 32-color-palette indices already assigned to
+real mountain (index 17) and real ocean (indices 18-31) elsewhere on the
+map (see Milestone 85's `INDEX_TO_TERRAIN` writeup above). Confirmed by
+sampling raw pixel colors at several offending tiles (all dark muddy
+green, nowhere near true ocean blue or mountain brown) and by a red/blue
+index-highlight overlay crop of both regions showing the interior of
+both elven-forest landmasses riddled with fake "ocean"/"mountain" tiles
+-- something no prior placement or classification pass in this file ever
+checked for, since neither Qualinesti nor Silvanesti had had a
+close, tile-level look since Milestone 85 first placed them.
+
+**Confirmed map-wide, not Qualinesti-only.** A 4-connected flood fill
+over every `ocean`/`blood_sea` tile (post-`smooth_terrain`, the point in
+the pipeline this matters) found one dominant real component (the world
+ocean/Blood Sea, tens of thousands of tiles) and ~400 far smaller ones
+(largest under 250 tiles). Visually spot-checked the largest several
+dozen: every one sits inside a forest -- Qualinesti, Silvanesti, Lemish,
+the Vale of the Serpent, the Nevermind/Qualimori area -- never a real
+lake. Same bug, recurring anywhere this map draws forest darkly.
+
+**Fix**: a new pass, `fix_spurious_water_islands()` in
+`tools/generate_overworld.py`, run right after `smooth_terrain()` and
+before `MANUAL_TERRAIN_OVERRIDES` (same ordering rationale every pass in
+this file already follows -- hand-verified exceptions still get the
+final say). It flood-fills every `ocean`/`blood_sea` tile into
+components, leaves the single dominant component alone (the real sea),
+and reclassifies every other component by a majority vote over its
+bordering neighbor tiles -- the same neighbor-majority-vote method
+already used by hand for the Blood Sea's 64 stray tiles at Milestone
+128, just automated and applied map-wide instead of to one feature.
+
+The vote excludes `mountain` as a valid answer, not just
+`ocean`/`blood_sea` -- verified empirically that without this exclusion,
+pockets next to Qualinesti's *also*-miscoded mountain patches "fixed"
+into fake mountain instead of forest, just trading one wrong answer for
+another. `river` is excluded too, for a more basic reason: it's shallow
+coastal water, impassable exactly like ocean/blood_sea
+(`src/world/Terrain.cpp`) -- voting a pocket into `river` would swap one
+impassable terrain for another and leave the reported bug just as
+reproducible. A small number of components (~80, max 23 tiles each) have
+no valid neighbor at all -- every neighbor is itself
+ocean/blood_sea/mountain/river -- and are left unchanged rather than
+guessed at; they sit deep inside real mountain ranges or real coastline,
+not somewhere an ordinary walking route would cross.
+
+**`mountain` misclassification from the same root cause is deliberately
+left alone.** It's passable (just slower, riskier -- `src/world/
+Terrain.cpp`), so it doesn't reproduce "blocked", and telling a real
+small mountain range from a fake one needs a fuzzier judgment call than
+ocean's: real ranges span a continuous size spectrum down to ~40 tiles
+map-wide, unlike ocean's stark two-orders-of-magnitude gap between the
+one real component and every spurious one. A future pass could revisit
+this (both elven forests still render with a visible red mountain
+speckle over their tree icons, and pay mountain's slower travel time/
+higher encounter chance for it) but risks erasing a real small range
+without it.
+
+**Verification**: diffed old vs. regenerated `data/overworld.grid`
+(~3,700 tiles changed, all `ocean`/`blood_sea` becoming forest/hills/
+grassland, or -- as an expected, harmless side effect of
+`shrink_river_to_coastal_fringe` reacting to the newly-corrected land
+layout -- occasionally `river`, itself equally impassable either way, so
+no passability regression); total impassable tile count dropped
+map-wide (90,923 -> 87,262). A throwaway BFS from Solace confirmed every
+`LOCATION` and `ROAD_PAIRS` connection's reachability is unchanged
+(`sancrist_isle`/`southern_ergoth` remain foot-unreachable exactly as
+before -- both are `SEA_LOCKED`, boat-only by design). Regan's actual
+save position and its immediate neighborhood were confirmed walkable in
+every direction that should be forest. Re-cropped the same index-
+highlight overlays for Qualinesti and Silvanesti afterward: both read as
+clean solid forest now (mountain's red speckle still visible, as
+intended -- out of scope this pass).

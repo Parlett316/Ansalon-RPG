@@ -532,3 +532,12 @@ you hit something surprising — that's the whole point of it existing.
   diagonal-only — see `docs/MAP_NOTES.md`'s "Road 4-connectivity fix" — so
   this simplification no longer risks a walkability dead end, just an
   occasionally-wrong-looking terrain crossing.
+- **Dark, densely-hatched forest art (Qualinesti, Silvanesti) can
+  quantize into the same color indices as real mountain/ocean** —
+  confirmed and fixed for the impassable (`ocean`/`blood_sea`) side of
+  this map-wide, not just for those two regions; see
+  `docs/MAP_NOTES.md`'s "Fixing false 'ocean' pockets inside forest".
+  `mountain` misclassification from the same cause is a known, deliberately
+  unfixed residual (cosmetic/pacing only — mountain is passable, so it
+  doesn't block movement) — both elven forests still render with a visible
+  fake-mountain speckle.

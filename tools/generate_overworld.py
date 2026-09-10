@@ -521,6 +521,118 @@ def smooth_terrain(grid: list[list[str]], self_weight: int = 2) -> None:
             grid[y][x] = max(counts, key=counts.get)
 
 
+def fix_spurious_water_islands(grid: list[list[str]]) -> None:
+    """Reclassifies small, landlocked 'ocean'/'blood_sea' pockets in place,
+    fixing a real player-facing bug found this session: a player walking the
+    Qualinesti forest near Bianost got blocked mid-forest by "ocean" tiles
+    that the reference map draws as plain trees.
+
+    Root cause: Qualinesti and Silvanesti are drawn with unusually dark,
+    densely-hatched tree-icon shading -- dark enough that a meaningful
+    fraction of it quantizes into the same 32-color-palette indices already
+    assigned to real mountain (index 17) and real ocean (indices 18-31)
+    elsewhere on the map (see the INDEX_TO_TERRAIN comment above). The result
+    is both elven-forest landmasses riddled with fake "ocean"/"mountain"
+    tiles. `ocean`/`blood_sea` is impassable (src/world/Terrain.cpp) --
+    that's what actually blocks movement; `mountain` is passable (just
+    slower, riskier) so it doesn't reproduce the bug and is deliberately left
+    alone here (see docs/MAP_NOTES.md for why a mountain-side fix needs a
+    fuzzier judgment call and isn't done in this pass).
+
+    A 4-connected flood fill over every ocean/blood_sea tile map-wide finds
+    one dominant real component (the world ocean/Blood Sea, tens of
+    thousands of tiles) and many far smaller ones (the largest non-dominant
+    component found this session was 239 tiles) -- confirmed by visual
+    inspection of the largest several dozen that every one sits inside a
+    forest, never a real lake. Every component except the dominant one is
+    reclassified here by a majority vote over its bordering neighbor tiles
+    (the same neighbor-majority-vote method already used by hand for the
+    Blood Sea's 64 stray tiles at Milestone 128 -- see docs/MAP_NOTES.md --
+    just automated and applied map-wide instead of to one feature).
+
+    The vote deliberately excludes `mountain` as a valid answer, not just
+    `ocean`/`blood_sea` -- verified empirically that without this exclusion,
+    pockets sitting next to Qualinesti's *also*-miscoded mountain patches
+    would "fix" into fake mountain instead of forest, self-reinforcing the
+    same bug instead of fixing it. `river` is excluded too, for a more
+    basic reason: it's shallow coastal water, impassable exactly like
+    ocean/blood_sea (src/world/Terrain.cpp) -- voting a pocket into 'river'
+    would swap one impassable terrain for another and leave the reported
+    bug just as reproducible, whether or not a real river happens to be
+    nearby. A small number of components end up with no valid neighbor at
+    all (every neighbor is itself ocean/blood_sea/mountain/river) -- these
+    sit deep inside real mountain ranges or real coastline with no reliable
+    land signal nearby, so they're left unchanged rather than guessed at;
+    found this session to be a negligible residual (max 23 tiles per
+    pocket).
+
+    Must run after smooth_terrain() (denoise first) and before
+    MANUAL_TERRAIN_OVERRIDES (those hand-verified exceptions still get the
+    final say, same ordering rationale every other pass here already
+    documents) and before shrink_river_to_coastal_fringe()/ROAD_PAIRS are
+    drawn.
+    """
+    from collections import deque
+
+    water_chars = {TERRAIN_CHARS["ocean"], TERRAIN_CHARS["blood_sea"]}
+    excluded_from_vote = water_chars | {TERRAIN_CHARS["mountain"], TERRAIN_CHARS["river"]}
+    height = len(grid)
+    width = len(grid[0])
+
+    comp_id = [[-1] * width for _ in range(height)]
+    components: list[list[tuple[int, int]]] = []
+    for y in range(height):
+        for x in range(width):
+            if grid[y][x] not in water_chars or comp_id[y][x] != -1:
+                continue
+            cid = len(components)
+            cells: list[tuple[int, int]] = []
+            queue: deque[tuple[int, int]] = deque([(x, y)])
+            comp_id[y][x] = cid
+            while queue:
+                cx, cy = queue.popleft()
+                cells.append((cx, cy))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = cx + dx, cy + dy
+                    if (0 <= nx < width and 0 <= ny < height and grid[ny][nx] in water_chars
+                            and comp_id[ny][nx] == -1):
+                        comp_id[ny][nx] = cid
+                        queue.append((nx, ny))
+            components.append(cells)
+
+    if not components:
+        return
+    dominant_cid = max(range(len(components)), key=lambda i: len(components[i]))
+
+    reclassified_tiles = 0
+    reclassified_pockets = 0
+    for cid, cells in enumerate(components):
+        if cid == dominant_cid:
+            continue
+        cell_set = set(cells)
+        votes: dict[str, int] = {}
+        for (x, y) in cells:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                nx, ny = x + dx, y + dy
+                if not (0 <= nx < width and 0 <= ny < height) or (nx, ny) in cell_set:
+                    continue
+                neighbor = grid[ny][nx]
+                if neighbor in excluded_from_vote:
+                    continue
+                votes[neighbor] = votes.get(neighbor, 0) + 1
+        if not votes:
+            continue  # no reliable land signal nearby -- leave this tiny pocket as-is
+        winner = max(votes, key=votes.get)
+        for (x, y) in cells:
+            grid[y][x] = winner
+        reclassified_tiles += len(cells)
+        reclassified_pockets += 1
+
+    print(f"fix_spurious_water_islands: reclassified {reclassified_tiles} tiles across "
+          f"{reclassified_pockets} spurious ocean/Blood-Sea pockets "
+          f"({len(components) - 1 - reclassified_pockets} left untouched, no reliable neighbor)")
+
+
 def compute_region_layer(grid: list[list[str]], radius: int = 8) -> list[list[str]]:
     """A second, much coarser classification of the same finished grid, used
     only to decide where MapRenderer draws a region-boundary highlight --
@@ -615,6 +727,7 @@ def main() -> None:
         grid.append(row)
 
     smooth_terrain(grid)
+    fix_spurious_water_islands(grid)
 
     for (ox, oy), terrain_key in MANUAL_TERRAIN_OVERRIDES.items():
         grid[oy][ox] = TERRAIN_CHARS[terrain_key]

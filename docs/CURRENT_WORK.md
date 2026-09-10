@@ -1413,6 +1413,19 @@ piling on more unverified content. Full sourcing/detail for each is in its
   day-gated. Ask before/after day 69/190/193 respectively.
 - **151** -- 2 more Astinus SUBJECT topics (Alhana Starbreeze, Porthios),
   each day-gated. Ask before/after day 51/70 respectively.
+- **False "ocean" pockets inside Qualinesti/Silvanesti forest** -- fixed
+  this session (see `docs/MAP_NOTES.md`'s "Fixing false 'ocean' pockets
+  inside forest"), triggered by a live report: walking the Qualinesti
+  forest near Bianost got blocked by tiles the map draws as plain trees.
+  Regan's own save (`save2.txt`, `POS 176 214`) sat right against two of
+  the fixed tiles -- confirmed via direct grid inspection (both are now
+  passable forest) and a map-wide reachability BFS (no location/road
+  regressed), but not yet walked live. Worth deliberately walking north
+  and west from Regan's saved position, and generally through Qualinesti
+  near Bianost/Dark Tower, to confirm no more spurious "Blocked: cannot
+  walk onto the ocean." Data-only change (`data/overworld.grid`,
+  `tools/generate_overworld.py`) -- no C++ touched, so this applies to
+  `ansalon_rpg` too, not just the SFML build.
 
 ## Parked: SFML rendering + variant tile art (round 2, `sfml-trial-2`)
 
