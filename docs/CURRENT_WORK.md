@@ -1225,44 +1225,23 @@ piling on more unverified content. Full sourcing/detail for each is in its
   this branch isn't merged to `master` yet.
 - ~~**SFML Rest and Bed Rest**~~ -- **confirmed working 2026-09-09** via the
   user's own keyboard, on both save1 (Mike, non-caster: 1 HP heal) and save2
-  (Regan, caster, after the clock-advance fix above): the day-gate cycle and
-  the "keep the same spells memorized?"/level-by-level picker both work.
-  **Not separately confirmed**: Bed Rest (`Z`) itself specifically -- worth a
-  quick check standing on the Inn of the Last Home's upstairs bed, confirming
-  it fully heals (not just 1 HP) with the matching "You wake fully healed."
-  wording. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  (Regan, caster, after the clock-advance fix above): the day-gate cycle,
+  the "keep the same spells memorized?"/level-by-level picker, and Bed
+  Rest (`Z`) all work. See `sfml_phase1/main.cpp` and this file's writeup
+  above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
+  merged to `master` yet.
+- ~~**SFML same-cell collision fix**~~ -- **confirmed working 2026-09-09**
+  via the user's own keyboard. See this file's writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
-- **SFML same-cell collision fix** -- deliberately retreat (move away) from
-  an adjacent monster on a round where it's likely to win initiative and
-  close in on the same cell (retry a few times if needed -- it's
-  initiative-dependent). Confirm the move is refused with "The way is
-  blocked now." instead of letting you overlap it, and that ordinary
-  retreats (where the monster doesn't happen to fill your destination)
-  still work exactly as before. See this file's writeup above, not a
-  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
-  `master` yet.
-- **SFML loading screen + quit confirmation** -- launch the game and
-  confirm a real "Ansalon: Age of Despair" screen with an updating status
-  line is visible (even briefly) instead of a blank window before the
-  overworld appears; press `Q`/Escape from the Overworld, from inside a
-  Zone, and mid-Combat and confirm each opens "Are you sure you want to
-  end your adventure?" instead of quitting outright; confirm up/down
-  moves the selection, Enter on "No, keep playing" (or Escape/Q) returns
-  to the game unchanged, and Enter on "Yes, end my adventure" actually
-  closes the window. Also confirm every other screen's own `Q`/Escape
-  behavior is unaffected (dialogue/shop/inventory/spellbook/sheet/help/
-  world map/journal/log all still close just that screen, not this new
-  dialog). See `sfml_phase1/main.cpp` and this file's writeup above, not
-  a numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
-  `master` yet.
-- **SFML combat spellcasting** -- **also re-check after the spell-day-expiry
-  removal above**: memorize spells, deliberately cross at least one day
-  boundary via ordinary travel (mountains are fastest, 90 min/tile), and
-  confirm `M` still offers the full memorized loadout instead of "You have
-  no spells remaining today." -- this is the scenario that was reported as
-  a bug and led to removing the day-expiry rule entirely, so it's the one
-  most worth re-confirming first. On save2 (Regan, level 20 Human Mage),
+- ~~**SFML loading screen + quit confirmation**~~ -- **confirmed working
+  2026-09-09** via the user's own keyboard. See `sfml_phase1/main.cpp` and
+  this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
+  this branch isn't merged to `master` yet.
+- **SFML combat spellcasting** -- ~~spell-day-expiry removal re-check~~ --
+  **confirmed working 2026-09-09**: memorized spells stayed available
+  through a day-boundary crossing, `M` correctly still offered the full
+  loadout. On save2 (Regan, level 20 Human Mage),
   memorize and cast: ~~a single-target damage spell (Magic Missile) at a
   solo monster (should resolve immediately, no target picker, since
   there's only one alive candidate) and at a multi-instance group (picker
@@ -1310,38 +1289,24 @@ piling on more unverified content. Full sourcing/detail for each is in its
   was never actually cast (still shows as memorized afterward). See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML combat item use** -- **neither real save carries anything usable
-  yet** (`save1.txt`'s Mike and `save2.txt`'s Regan both show
-  `INVENTORY 0`), so this needs buying a Potion of Healing (any shop) and,
-  for the Mage-only items, a Webnet and/or Brooch of Imog (Solace's Item
-  Shop per `docs/CHARACTER_NOTES.md`'s "Magic items" section) via the SFML
-  Shop screen first -- itself still on this same backlog, so confirming
-  Shop purchases actually land in inventory doubles as a prerequisite check
-  here. Once carrying at least a Potion: press `I` in combat with exactly
-  one usable item and confirm it resolves immediately (no picker) --
-  drinking a Potion heals HP and ends the round with no picker shown. With
-  2+ usable items carried, confirm "Use which item?" opens (a real overlay,
-  not the roster-embedded picker) and Escape/Q cancels it back to Idle with
-  no round consumed (HP/round number unchanged), same as the spell picker
-  above. For Webnet specifically: against a solo monster it should tangle
-  immediately with no target picker; against a multi-instance group the
-  picker should open and the footer should read "Tangle which enemy?" (not
-  "Attack"/"Cast"), and the tangled instance's next turn should log "can't
-  bring itself to attack!" and actually skip its turn. For the Brooch:
-  activating it once should absorb the *next* monster attack against the
-  player specifically (a log line naming "globe of invulnerability") but
-  NOT protect a companion, if one is recruited, hit in the same round --
-  and confirm it can't be activated twice in the same in-game day
-  (`character::broochAvailableToday`'s own gate). If the save carries a
-  Staff of Striking/Curing (a quest reward, likely absent on both current
-  saves), confirm it heals once per day without being consumed. Hardest to
-  force but worth a real attempt: get the monsters to act first (retry
-  until initiative favors them) on a round where you press `I` and choose
-  an item, and confirm a knockout that round means the item was never
-  actually used (Potion still shows in inventory afterward, Brooch's globe
-  never actually activated). See `sfml_phase1/main.cpp` and this file's
-  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
-  isn't merged to `master` yet.
+- ~~**SFML combat item use**~~ -- **confirmed working 2026-09-09** via the
+  user's own keyboard: a Potion healed on drink, a Webnet tangled a
+  monster ("stopped someone"), and activating the Brooch "blocked a lot of
+  attacks" -- correctly matches its actual documented design (`docs/
+  MILESTONES.md:879-883`): unlike the real DLA item's "10 rounds," this
+  project deliberately simplified it to "negates *all* the monster's
+  remaining attacks for the rest of the current fight" once activated, not
+  just the next one -- an earlier draft of this very backlog entry
+  described it as "absorb the next attack," which was simply wrong; fixed
+  here rather than repeated. **Not separately confirmed**: the picker
+  itself with 2+ usable items and Escape/Q cancelling it (probably moot
+  now with only a Potion+Webnet+Brooch combo, likely auto-resolved or a
+  small picker either way -- worth a glance), Staff of Curing (no current
+  save carries one), the Brooch's once-per-day gate and companion
+  exclusion, and a monsters-act-first knockout preventing an item from
+  being consumed. See `sfml_phase1/main.cpp` and this file's writeup
+  above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
+  merged to `master` yet.
 - **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
   untested: Flee (`f` during an idle combat round), a multi-instance group
   encounter's in-frame target picker (up/down to cycle, Enter to confirm --
@@ -1412,33 +1377,26 @@ piling on more unverified content. Full sourcing/detail for each is in its
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
 - **SFML inventory** -- **partially confirmed 2026-09-09**: the empty-state
-  path works (`I` renders the header lines and "(nothing carried)" with no
-  cursor). **Not yet confirmed**: equip/drink/no-op, since neither save
-  currently carries enough steel for a Potion -- once carrying at least one
-  item (from Shop, now confirmed working above), press `I` from the
-  Overworld and again from inside a Zone; equip a weapon/armor/shield and
-  confirm the header line updates to match; drink a potion and confirm
-  current HP increases and a result message appears; confirm a Webnet/
-  Brooch of Imog/quest item shows its no-op message instead of equipping;
-  confirm `Q` returns to the map (not the whole window); confirm pressing
-  `I` while a shop is open still toggles buy/sell instead of opening this
-  screen. See `sfml_phase1/main.cpp` and this file's writeup above, not a
-  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
-  `master` yet.
+  path (`I` renders the header lines and "(nothing carried)" with no
+  cursor) and drinking a potion (healed, as expected) both work. **Not yet
+  confirmed**: equipping a weapon/armor/shield (header line updating to
+  match), the Webnet/Brooch of Imog/quest-item no-op message, `Q` returning
+  to the map (not the whole window), and `I` still toggling buy/sell
+  instead of opening this screen while a shop is open. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - ~~**SFML help/full log/world map/journal**~~ -- **confirmed working
   2026-09-09** via the user's own keyboard: `/`, `V`, `O`, and `G` all
   work. See `sfml_phase1/main.cpp` and this file's writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
-- **152** -- Fireball/Delayed Blast Fireball are now real area attacks
-  (radius 2 grid cells, Chebyshev distance). The underlying area-damage
-  math is now confirmed (2026-09-09, via the SFML build -- see the SFML
-  combat spellcasting item above). Still open: confirming a
-  solo/isolated target reads as a clean single-target hit, and separately
-  walking this through the *console* (`ansalon_rpg`) build's own
-  `pickTarget` epicenter-picking UI, which hasn't been exercised at all
-  yet (same standing `_getch()` limitation). Save slot 2 (`Regan`, level
-  20 Human Mage) should already have Fireball available.
+- ~~**152**~~ -- Fireball/Delayed Blast Fireball are now real area attacks
+  (radius 2 grid cells, Chebyshev distance). Both the multi-target and
+  solo/isolated-target cases are **confirmed 2026-09-09** via the SFML
+  build. Still open: walking this through the *console* (`ansalon_rpg`)
+  build's own `pickTarget` epicenter-picking UI specifically, which hasn't
+  been exercised at all (same standing `_getch()` limitation) -- low
+  priority given the underlying area-damage math itself is now proven.
 - **137** -- day-gated Astinus dialogue, fixing 12 shipped spoilers. Talk to
   Astinus in Palanthas before day 2/3/12/17 and again after day 160; confirm
   both halves read correctly.
