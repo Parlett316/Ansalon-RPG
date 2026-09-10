@@ -1,5 +1,31 @@
 # Current work
 
+**Right now: mid live playtest session of `ansalon_sfml_phase1` on
+`sfml-trial-3`, paused, resume here.** See the Playtest backlog far below
+for the full item-by-item status; most items are now confirmed (save
+persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
+help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop).
+Still open: Astinus's free-text ask-input, the quest/boat/recruit
+placeholder lines, Inventory's equip/drink paths (blocked on steel for a
+potion), and most of combat (spellcasting edge cases, item use, Flee, group
+target picker, the same-cell collision fix, sweep/backstab -- the last
+needs a companion recruited via `ansalon_rpg` first, neither save has one).
+
+**Concrete next step, user-requested:** implement boat-voyage accept/
+decline (currently a placeholder log line, see Dialogue's writeup below) --
+the user hit this trying to reach Palanthas (needed for the Astinus
+ask-input item above) and asked for it explicitly. Not started yet. Note
+Palanthas itself has a normal walkable overworld approach too (High
+Clerist's Tower's own `DESC` in `data/locations.txt:139` calls it "guarding
+the road to Palanthas beyond") -- worth checking during that work whether
+the user's current position genuinely needs a boat, or whether the
+placeholder was hit some other way (e.g. testing a `BOAT` POI directly).
+
+**Real bug fixed this session, live-playtest-discovered:** the SFML port's
+overworld movement never advanced `state.hoursElapsed` (see this file's
+"overworld movement never advanced the in-game clock" writeup below) --
+fixed and confirmed working (Rest's day-gate now cycles correctly).
+
 **Full SFML engine migration -- decided and started, Phase 1 shipped and
 confirmed.** On branch `sfml-trial-3` (off `master`; do not merge without
 an explicit go-ahead). History: the round-3 real-map spike (real
@@ -990,9 +1016,42 @@ Verified: clean rebuild of all three CMake targets (zero new `/W4`
 warnings) and a launch smoke test against real `save2.txt` confirming every
 catalog and the map texture still load and the window opens with no crash/
 exception -- this session again had no desktop/GUI access to actually see
-the window open maximized. **Not yet interactively confirmed** -- moved to
-the Playtest backlog below. No `docs/MILESTONES.md` entry, same reasoning
-as every other SFML-branch entry above.
+the window open maximized. **Confirmed working** via the user's own
+keyboard, 2026-09-09 -- window opens maximized, loading screen and quit
+confirm both read correctly.
+
+**Real bug found and fixed this session via live playtesting, same
+`sfml_phase1/main.cpp`: overworld movement never advanced the in-game
+clock.** `GameState.h`'s own doc comment names `hoursElapsed` as the sole
+source of truth for in-game time, advanced only by overworld travel
+(`GameLoop::tryMoveOverworld`, `GameLoop.cpp:685-687`, `state_.minutesElapsed
++= terrain.minutesToCross` rolled into `hoursElapsed`) -- zone movement
+deliberately does not touch it (`GameLoop.cpp:746-747`'s own comment, "indoor
+shuffling isn't meaningful travel time"). This build's overworld movement
+block (`main.cpp`, the `dx != 0 || dy != 0` handler) ported the position
+update, the arrival announcement, and the random-encounter roll from
+`tryMoveOverworld`, but silently dropped the three-line time-advance in the
+middle of it -- so the sidebar's day/time display never moved no matter how
+far the player walked. Reproduced live: save2 (Regan) rested once
+successfully (consuming that day's rest), then every subsequent Rest
+attempt -- after walking extensively -- kept reporting "already rested
+today" because the day genuinely never advanced. Save1 (Mike, a fresh
+character's very first rest) worked by coincidence: a first-ever rest needs
+no day change to succeed, so the missing clock was invisible until a second
+rest was attempted.
+
+Fixed by inserting the same three lines from `tryMoveOverworld`, in the same
+position relative to the rest of the block (right after `state.x`/`state.y`
+commit, before the arrival/encounter logic that follows it) -- no other
+behavior in the block changed.
+
+Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke test
+against real `save2.txt` confirming every catalog still loads and the
+window opens with no crash/exception. **Not yet re-confirmed live** --
+worth walking several overworld tiles on save2 and confirming the sidebar
+clock now advances and a second Rest becomes available the next day; added
+to the Playtest backlog below. No `docs/MILESTONES.md` entry, same
+reasoning as every other SFML-branch entry above.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -1076,22 +1135,11 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
-- **SFML launch-maximized** -- launch `ansalon_sfml_phase1` and confirm the
-  window opens already maximized (title bar with working minimize/restore/
-  close buttons, taskbar respected) rather than a small fixed window, with
-  no visible flash of a small window before it grows (the OS's own
-  maximize-animation, if enabled in Windows settings, is normal). Confirm
-  the loading screen's title/status text is positioned sensibly at the
-  larger size, the overworld map/sidebar split fills the full maximized
-  width with no stretching, black gaps, or content confined to a
-  1280x800-sized region in the corner, and that a full-window overlay (`C`
-  for the character sheet is the simplest check) also fills the real
-  window rather than that same corner. Also worth a glance: the Full Log
-  (`V`) will under-fill the taller window rather than using all of the
-  available height (see this file's writeup above, `kLogVisibleRows`) --
-  expected, not a bug to report. See `sfml_phase1/main.cpp` and this
-  file's writeup above, not a numbered `docs/MILESTONES.md` entry -- this
-  branch isn't merged to `master` yet.
+- ~~**SFML launch-maximized**~~ -- **confirmed working 2026-09-09** via the
+  user's own keyboard: window opens maximized, loading screen and quit
+  confirm both read correctly. See `sfml_phase1/main.cpp` and this file's
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
 - ~~**SFML save persistence**~~ -- **confirmed working 2026-09-09** via the
   user's own keyboard: real play against a real save autosaves correctly
   and the file reloads cleanly afterward. Not separately re-tried: an
@@ -1101,31 +1149,16 @@ piling on more unverified content. Full sourcing/detail for each is in its
   not blocking. See `sfml_phase1/main.cpp` and this file's Save
   persistence writeup above, not a numbered `docs/MILESTONES.md` entry --
   this branch isn't merged to `master` yet.
-- **SFML Rest and Bed Rest** -- press `R` from the Overworld or a Zone on a
-  non-caster (Fighter/Thief/Tinker) and confirm: the first rest of a day
-  heals 1 HP (or logs "You were already at full health." at full HP), every
-  recruited companion heals 1 HP too, and a second `R` the same day logs
-  "You've already rested today." with no further change. Press `Z` away
-  from a bed and confirm "There's no bed here."; standing on the Inn of the
-  Last Home's upstairs bed, confirm `Z` fully heals the player and every
-  companion in one go (not just 1 HP) with the matching "You wake fully
-  healed."/"You were already at full health." wording. On a Mage or Cleric
-  (save2, Regan, is a caster): the very first rest of a fresh character
-  should skip straight to the level-by-level/slot-by-slot spell picker with
-  no "keep the same?" prompt; a later rest with a standing loadout should
-  show "Keep the same spells memorized?" first, "Yes" keeping it unchanged
-  (confirm via `C`'s character sheet or the spellbook's `s` drill-down) and
-  "No" reopening the full picker; up/down should cycle each level's spell
-  choices and Enter should advance to the next slot, with the title
-  reading "Level N spell (X/Y)" matching the console's own wording; press
-  Q/Escape at any point during either the prompt or the picker and confirm
-  it's simply ignored (no cancel, no window-close, no quit-confirm dialog)
-  since there's deliberately no way to back out of a rest already taken.
-  If a level-up since the last rest opened extra spell slots, confirm
-  "Yes" silently tops them up with a spell rather than leaving them empty
-  or reopening the full picker. See `sfml_phase1/main.cpp` and this file's
-  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
-  isn't merged to `master` yet.
+- ~~**SFML Rest and Bed Rest**~~ -- **confirmed working 2026-09-09** via the
+  user's own keyboard, on both save1 (Mike, non-caster: 1 HP heal) and save2
+  (Regan, caster, after the clock-advance fix above): the day-gate cycle and
+  the "keep the same spells memorized?"/level-by-level picker both work.
+  **Not separately confirmed**: Bed Rest (`Z`) itself specifically -- worth a
+  quick check standing on the Inn of the Last Home's upstairs bed, confirming
+  it fully heals (not just 1 HP) with the matching "You wake fully healed."
+  wording. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - **SFML same-cell collision fix** -- deliberately retreat (move away) from
   an adjacent monster on a round where it's likely to win initiative and
   close in on the same cell (retry a few times if needed -- it's
@@ -1259,37 +1292,23 @@ piling on more unverified content. Full sourcing/detail for each is in its
   engagement, and vice versa) if the party composition allows. See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML character sheet (+ spellbook)** -- press `C` from the overworld
-  and again from inside a zone; confirm every field renders correctly
-  (ability scores, saves, weapon/armor, steel/inventory, the
-  spells-memorized summary against save2's caster, companions if
-  save1/save2 has one recruited), the HP bar reflects current/max HP, and
-  an ordinary key (e.g. Enter/W/A/D) dismisses back to the prior screen
-  without also moving the character or opening combat. On a caster,
-  confirm the footer reads "(s=view spells known, any other key to
-  continue)" and pressing `s`/Down opens the spellbook overlay -- check
-  its per-level grouping and memorized annotations match the sheet's own
-  summary line, and that any key returns to the (still-open) sheet rather
-  than closing it. On a non-caster (if one exists in a save slot), confirm
-  the footer omits the `s` hint and the spellbook shows "Cannot cast
-  arcane magic." if somehow reached. Also confirm the just-fixed bug:
-  pressing `Q`/Escape while the sheet (or spellbook) is open dismisses
-  just that screen, not the whole window. See `sfml_phase1/main.cpp` and
-  this file's Character Sheet and Spellbook writeups above, not a numbered
-  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML dialogue (core conversation)** -- press `T` at a zone-native NPC
-  (greeting, then topics if any, `TALK_AGAIN` on a second visit) and at a
-  canon Hero's scheduled tile (overworld or a zone's `TIMELINE_ANCHOR`);
-  confirm a multi-candidate tile picks correctly (up/down, Enter); confirm
-  the quest/boat/recruit placeholder log lines appear at a POI marked with
-  each (e.g. Kalaman's Curiosities Cart for `QUEST`, Crossing/Port O'Call
-  for `BOAT`, Haven or Solace for `RECRUIT`). Also covers the generic
-  picker overlay below -- `PickingCandidate`/`TopicPicker` now render via
-  `drawPickerOverlay`, a render-path change with no intended visual
-  difference, so confirming these two still look right (title, cursor
-  list, footer) doubles as that item's confirmation too. See
-  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
-  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- ~~**SFML character sheet (+ spellbook)**~~ -- **confirmed working
+  2026-09-09** via the user's own keyboard: `C` from overworld and zone,
+  fields rendering, `Q`/Escape dismissing just the sheet (not the whole
+  window), and the spellbook's `s` drill-down all work. See
+  `sfml_phase1/main.cpp` and this file's Character Sheet and Spellbook
+  writeups above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
+- **SFML dialogue (core conversation)** -- **partially confirmed
+  2026-09-09** via the user's own keyboard: zone-native NPC talk, canon
+  Hero talk, and a multi-candidate tile's picker (which also covers the
+  generic picker overlay item, since `PickingCandidate`/`TopicPicker`
+  render through it) all work. **Not yet separately confirmed**: the
+  quest/boat/recruit placeholder log lines at a POI marked with each (e.g.
+  Kalaman's Curiosities Cart for `QUEST`, Crossing/Port O'Call for `BOAT`,
+  Haven or Solace for `RECRUIT`). See `sfml_phase1/main.cpp` and this
+  file's writeup above, not a numbered `docs/MILESTONES.md` entry -- this
+  branch isn't merged to `master` yet.
 - **SFML ask-input (free-text "Ask about something else...")** -- press `T`
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus
@@ -1308,43 +1327,29 @@ piling on more unverified content. Full sourcing/detail for each is in its
   confirm the common case works without any of Astinus's limit machinery.
   See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML shop** -- press `P` at a shop POI (e.g. Flint's Smithy in Solace
-  once `ore_for_the_forge` is complete, or any other shop -- see
-  `docs/CHARACTER_NOTES.md`'s "Six shops, six catalogs" for the full
-  list); confirm the buy list shows real prices and correctly marks
-  already-owned/cannot-use items; buy something and confirm steel is
-  deducted and the item lands in inventory; press `I` to switch to the
-  sell view, sell something back, confirm steel increases and the
-  cannot-sell flag appears on a starting weapon; confirm `Q` returns to
-  the zone (not the whole window); confirm Flint's Smithy shows the
-  quest-locked placeholder line instead of opening. See
-  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
-  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML inventory** -- press `I` from the Overworld and again from
-  inside a Zone; confirm the HP/Weapon/Armor(+Shield) header lines and
-  the carried-item list render, with an empty inventory correctly
-  showing "(nothing carried)" and no cursor; equip a weapon/armor/shield
-  and confirm the header line updates to match; drink a potion and
-  confirm current HP increases and a result message appears; confirm a
-  Webnet/Brooch of Imog/quest item shows its no-op message instead of
-  equipping; confirm `Q` returns to the map (not the whole window);
-  confirm pressing `I` while a shop is open still toggles buy/sell
-  instead of opening this screen. See `sfml_phase1/main.cpp` and this
-  file's writeup above, not a numbered `docs/MILESTONES.md` entry --
-  this branch isn't merged to `master` yet.
-- **SFML help/full log/world map/journal** -- press `/` from the
-  Overworld and again from inside a Zone, confirm the command reference
-  renders and any key dismisses; press `V`, confirm the event log shows
-  the most recent entries first, North/South scroll by a chunk and the
-  "Lines X-Y of Z" status line updates correctly, and `V`/`Q` both close
-  it; press `O`, confirm the real map image renders scaled down with a
-  marker at every location (green for towns, red otherwise) plus the
-  player's own marker in the right place, and the side legend lists every
-  location alphabetically and stays readable; press `G`, confirm it shows
-  the "quest tracking isn't wired up in this build yet" message rather
-  than crashing or silently doing nothing. See `sfml_phase1/main.cpp` and
-  this file's writeup above, not a numbered `docs/MILESTONES.md` entry --
-  this branch isn't merged to `master` yet.
+- ~~**SFML shop**~~ -- **confirmed working 2026-09-09** via the user's own
+  keyboard. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
+- **SFML inventory** -- **partially confirmed 2026-09-09**: the empty-state
+  path works (`I` renders the header lines and "(nothing carried)" with no
+  cursor). **Not yet confirmed**: equip/drink/no-op, since neither save
+  currently carries enough steel for a Potion -- once carrying at least one
+  item (from Shop, now confirmed working above), press `I` from the
+  Overworld and again from inside a Zone; equip a weapon/armor/shield and
+  confirm the header line updates to match; drink a potion and confirm
+  current HP increases and a result message appears; confirm a Webnet/
+  Brooch of Imog/quest item shows its no-op message instead of equipping;
+  confirm `Q` returns to the map (not the whole window); confirm pressing
+  `I` while a shop is open still toggles buy/sell instead of opening this
+  screen. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
+- ~~**SFML help/full log/world map/journal**~~ -- **confirmed working
+  2026-09-09** via the user's own keyboard: `/`, `V`, `O`, and `G` all
+  work. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - **152** -- Fireball/Delayed Blast Fireball are now real area attacks
   (radius 2 grid cells, Chebyshev distance). The underlying area-damage
   math is now confirmed (2026-09-09, via the SFML build -- see the SFML

@@ -3854,6 +3854,13 @@ int runPhase1(const std::string& savePath) {
                             if (terrain.passable) {
                                 state.x = nx;
                                 state.y = ny;
+                                // hoursElapsed is the sole source of truth for
+                                // in-game time (GameState.h) -- only overworld
+                                // travel advances it, matching
+                                // GameLoop::tryMoveOverworld exactly.
+                                state.minutesElapsed += terrain.minutesToCross;
+                                state.hoursElapsed += state.minutesElapsed / 60;
+                                state.minutesElapsed %= 60;
                                 const world::Location* here = world.locationAt(state.x, state.y);
                                 if (here != nullptr) {
                                     pushLog("Arrived at " + here->name + ".");
