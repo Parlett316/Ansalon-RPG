@@ -284,9 +284,8 @@ Other canon characters are talkable too, with their own arcs:
 
 ### Sea travel
 
-*(The SFML build's dialogue doesn't yet offer boat voyages — a boat-offer
-POI logs a placeholder line instead. Sea travel works fully in the
-console build.)*
+*(Sea travel now works in both builds — the SFML build's Talk offers the
+same Board/Not yet choice the console build does.)*
 
 Some places — Ice Wall Castle, Southern Ergoth, and Sancrist Isle — sit on
 their own sea-locked landmasses with no road to them at all.
@@ -680,10 +679,11 @@ Movement is immediate — no Enter key needed:
 - `T` — talk to whoever's here (a canon character the timeline places at
   your current location today, or a talkable zone NPC — a picker asks
   who first if more than one is present). Covers greetings, repeat-visit
-  lines, aftermath/anticipation text, the topic picker, and free-text
-  "Ask about something else..."; quest offers, boat-voyage offers, and
-  companion recruitment each log a placeholder line instead of actually
-  opening (console-only for now — see the caveats under "Status" above).
+  lines, aftermath/anticipation text, the topic picker, free-text "Ask
+  about something else...", and boat-voyage accept/decline (Board/Not
+  yet); quest offers and companion recruitment each still log a
+  placeholder line instead of actually opening (console-only for now —
+  see the caveats under "Status" above).
 - `P` — browse/buy at a shop POI; `I` while inside toggles to selling.
   Purchases land in your carried inventory, not straight onto your body.
 - `I` (outside a shop) — view carried items; Enter equips a weapon/

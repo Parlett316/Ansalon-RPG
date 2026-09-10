@@ -5,21 +5,14 @@
 for the full item-by-item status; most items are now confirmed (save
 persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
 help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop).
-Still open: Astinus's free-text ask-input, the quest/boat/recruit
-placeholder lines, Inventory's equip/drink paths (blocked on steel for a
-potion), and most of combat (spellcasting edge cases, item use, Flee, group
-target picker, the same-cell collision fix, sweep/backstab -- the last
-needs a companion recruited via `ansalon_rpg` first, neither save has one).
-
-**Concrete next step, user-requested:** implement boat-voyage accept/
-decline (currently a placeholder log line, see Dialogue's writeup below) --
-the user hit this trying to reach Palanthas (needed for the Astinus
-ask-input item above) and asked for it explicitly. Not started yet. Note
-Palanthas itself has a normal walkable overworld approach too (High
-Clerist's Tower's own `DESC` in `data/locations.txt:139` calls it "guarding
-the road to Palanthas beyond") -- worth checking during that work whether
-the user's current position genuinely needs a boat, or whether the
-placeholder was hit some other way (e.g. testing a `BOAT` POI directly).
+Boat-voyage accept/decline is newly implemented this pass (see its own
+writeup below) but **not yet interactively confirmed** -- that's the
+natural next live-keyboard check. Still open otherwise: Astinus's
+free-text ask-input, the quest/recruit placeholder lines, Inventory's
+equip/drink paths (blocked on steel for a potion), and most of combat
+(spellcasting edge cases, item use, Flee, group target picker, the
+same-cell collision fix, sweep/backstab -- the last needs a companion
+recruited via `ansalon_rpg` first, neither save has one).
 
 **Real bug fixed this session, live-playtest-discovered:** the SFML port's
 overworld movement never advanced `state.hoursElapsed` (see this file's
@@ -1127,6 +1120,68 @@ touches the console build directly (unlike most of this branch's other
 writeups), since `hasMemorizedSpellsAvailable` is shared `character::`
 code.
 
+**Boat-voyage accept/decline shipped this session, same
+`sfml_phase1/main.cpp`.** The user's own explicitly-flagged next step
+(hit trying to reach Palanthas for the Astinus ask-input Playtest backlog
+item) -- previously just a `(Boat voyages aren't wired up in this build
+yet.)` placeholder log line, same as the quest/recruit placeholders that
+remain deferred. Direct port of `GameLoop::talkTo`'s boat block
+(`GameLoop.cpp:1061-1115`): `DialogueCandidate` gained real
+`boatDestinationId`/`boatHours` fields (replacing the old placeholder-only
+`hasBoat` bool -- `hasQuest`/`hasRecruit` are unchanged, still
+placeholder-only), populated in `gatherTalkCandidates` from the same
+`world::Zone::boatAt` query the console uses. A new `BoatOffer`
+`DialogueUiState` (Board/Not yet, via the existing `drawPickerOverlay`)
+is reached from `dialogueContinue`'s `Greeting` branch whenever the
+candidate carries a destination, ahead of the topic menu -- matching
+`talkTo`'s own precedence exactly, and firing regardless of which greeting
+text was actually shown (plain/again/`TALK_BEFORE`/`TALK_AFTER`/
+`askLimitLocked` all fall through to it the same way, since talkTo's own
+boat check runs unconditionally after the greeting, not gated on which
+branch produced it). "Board" (`dialogueBoardBoat`) teleports the player to
+the destination's overworld position, advances `hoursElapsed` by
+`boatHours`, records `voyagesTaken`/`visitedLocations` (kept as inert
+historical records, same reasoning `spellsCastDay` was kept when the
+day-expiry rule was dropped above -- nothing in this build reads either
+yet), and logs the same ferry/ship flavor text split at 24 hours the
+console uses, computed via a verbatim-copied `compassDirection` (`GameLoop.
+cpp:44-51`, same "not exported, GameLoop.cpp isn't linked here" idiom as
+`conditionMatches`/`tokenizeAskInput`/`matchSubject` above it in this
+file) -- then ends the conversation outright, matching `talkTo`'s own early
+return (never reaching the topic picker). "Not yet"/Q/Escape
+(`dialogueDeclineBoat`, shared by both) falls through to the ordinary
+topic picker instead, same as a declined quest/recruit offer in the
+console, and the same "offered again on every later visit, including
+after boarding once" behavior carries over for free -- nothing in this
+change gates on `voyagesTaken` being empty, matching the console's own
+Milestone 121 fix for the Crossing/Port O'Call round-trip ferry.
+
+**One simplification, noted rather than silently dropped:** the console's
+`checkQuestReadiness()` call after a successful voyage (a `VISIT`
+objective may have just been satisfied) and its `announceOverworldTile()`
+arrival call (checks for a canon character present at the destination,
+distinguishes town/non-town phrasing, etc.) aren't ported -- this build
+tracks no quest state at all yet (same gap the shop-lock/journal
+placeholders already flag) so the first has nothing to do, and this
+build's own ordinary overworld movement already uses a much simpler
+"Arrived at `<name>`." line instead of a ported `announceOverworldTile`,
+so the boat teleport intentionally stays consistent with that existing
+local convention rather than reintroducing the console's fuller version
+for this one call site.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings) and a launch smoke test of `ansalon_sfml_phase1.exe` against
+real `save2.txt` (run from `build\Debug`) confirming every catalog and the
+map texture still load and the window opens with no crash/exception --
+this session again had no desktop/GUI access to actually talk to a
+`BOAT`-carrying NPC and press Enter on the picker. **Not yet interactively
+confirmed** -- added to the Playtest backlog below. Boat-carrying POIs to
+test against, per `docs/ZONE_NOTES.md`'s "Boats" section: Tarsis (`R`),
+Ice Wall (`B`), Southern Ergoth (`S`), Flotsam (`E`), and the Crossing/Port
+O'Call ferry pair (`D`/`K`) for the round-trip-after-boarding case
+specifically. No `docs/MILESTONES.md` entry, same reasoning as every other
+SFML-branch entry above.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -1349,11 +1404,26 @@ piling on more unverified content. Full sourcing/detail for each is in its
   Hero talk, and a multi-candidate tile's picker (which also covers the
   generic picker overlay item, since `PickingCandidate`/`TopicPicker`
   render through it) all work. **Not yet separately confirmed**: the
-  quest/boat/recruit placeholder log lines at a POI marked with each (e.g.
-  Kalaman's Curiosities Cart for `QUEST`, Crossing/Port O'Call for `BOAT`,
-  Haven or Solace for `RECRUIT`). See `sfml_phase1/main.cpp` and this
-  file's writeup above, not a numbered `docs/MILESTONES.md` entry -- this
-  branch isn't merged to `master` yet.
+  quest/recruit placeholder log lines at a POI marked with each (e.g.
+  Kalaman's Curiosities Cart for `QUEST`, Haven or Solace for `RECRUIT`).
+  See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- **SFML boat-voyage accept/decline** -- newly implemented, not yet tried
+  live at all. Talk to a `BOAT`-carrying NPC (Tarsis `R`, Ice Wall `B`,
+  Southern Ergoth `S`, Flotsam `E`, or the Crossing/Port O'Call ferry pair
+  `D`/`K` -- see `docs/ZONE_NOTES.md`'s "Boats" section) and confirm: the
+  Board/Not yet picker appears after the greeting is dismissed, up/down
+  toggles between the two, "Board" teleports to the destination's real
+  overworld position with the sidebar clock advancing by the leg's hour
+  count and a ferry/ship flavor-text log line naming a real compass
+  direction, "Not yet" (and separately, Q/Escape) falls through to the
+  ordinary topic picker instead of teleporting or closing the window. Also
+  worth confirming the round-trip case specifically: board the
+  Crossing->Port O'Call ferry, walk back to Crossing, and talk to the same
+  ferry keeper again -- the offer should come back rather than staying
+  silently exhausted. See `sfml_phase1/main.cpp` and this file's writeup
+  above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
+  merged to `master` yet.
 - **SFML ask-input (free-text "Ask about something else...")** -- press `T`
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus

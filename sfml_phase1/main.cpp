@@ -151,12 +151,13 @@ struct DialogueSpeech {
 
 // One talkable candidate at the player's current tile -- trimmed local
 // counterpart to game::TalkCandidate (GameLoop.h), same "not linkable here"
-// reasoning as DialogueSpeech above. hasQuest/hasBoat/hasRecruit only
-// record *that* this candidate would offer one of those (in the console
-// build) so dialogueStartTalk can print a single placeholder line --
-// not the full payload (quest id, boat destination, companion id) the
-// console version's GameLoop::TalkCandidate carries, since none of those
-// flows are wired up yet.
+// reasoning as DialogueSpeech above. hasQuest/hasRecruit only record *that*
+// this candidate would offer one of those (in the console build) so
+// dialogueStartTalk can print a single placeholder line -- not the full
+// payload (quest id, companion id) the console version's
+// GameLoop::TalkCandidate carries, since those two flows aren't wired up
+// yet. boatDestinationId/boatHours, by contrast, carry the real payload --
+// boat voyages are wired up (see the BoatOffer DialogueUiState below).
 struct DialogueCandidate {
     std::string id;
     std::string name;
@@ -166,9 +167,29 @@ struct DialogueCandidate {
     std::string grantsItemId;
     std::string grantsItemName;
     bool hasQuest = false;
-    bool hasBoat = false;
     bool hasRecruit = false;
+    // Non-empty for a zone POI marked BOAT (world::Zone::boatAt) --
+    // dialogueContinue whisks the player straight to this world::Location
+    // id (a scripted voyage, boatHours in-game hours long) once "Board" is
+    // chosen. See Milestone 36 / docs/ZONE_NOTES.md for the console-side
+    // grammar this mirrors.
+    std::string boatDestinationId;
+    int boatHours = 0;
 };
+
+// Coarse 8-point compass direction from a dx/dy pair -- copied verbatim from
+// game::compassDirection (GameLoop.cpp:44-51), same "not exported,
+// GameLoop.cpp isn't linked here" reasoning as conditionMatches below. Grid y
+// grows downward (row 0 is the top), so "north" is negative dy -- easy to get
+// backwards, worth calling out same as the original.
+const char* compassDirection(int dx, int dy) {
+    constexpr double kPi = 3.14159265358979323846;
+    double angle = std::atan2(static_cast<double>(-dy), static_cast<double>(dx)); // 0 = east, increases counter-clockwise
+    static const char* kDirs[8] = {"east", "northeast", "north", "northwest",
+                                    "west", "southwest", "south", "southeast"};
+    int index = static_cast<int>(std::lround(angle / (kPi / 4.0))) & 7;
+    return kDirs[index];
+}
 
 // SAY_IF's condition vocabulary -- copied verbatim from game::conditionMatches
 // (GameLoop.cpp), same "not exported, GameLoop.cpp isn't linked here"
@@ -630,15 +651,19 @@ struct CombatSession {
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
-// conversation loop (see docs/CURRENT_WORK.md's scope writeup; quest/boat/
+// conversation loop (see docs/CURRENT_WORK.md's scope writeup; quest/
 // recruit choosers stay deferred, each getting a single placeholder log
-// line instead). PickingCandidate mirrors GameLoop::pickAndTalk's "more
-// than one candidate here" picker; Greeting/TopicText/TopicPicker mirror
-// talkTo's own greeting-then-topic-menu flow. AskInput/AskResponse are the
-// free-text "ask about something else..." flow -- AskInput is the typing
-// box, AskResponse shows the resulting response (and, when today's ask
-// limit is reached or extended, a queued 2nd message).
-enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker, AskInput, AskResponse };
+// line instead -- boat voyages are wired up, see BoatOffer below).
+// PickingCandidate mirrors GameLoop::pickAndTalk's "more than one candidate
+// here" picker; Greeting/TopicText/TopicPicker mirror talkTo's own
+// greeting-then-topic-menu flow. BoatOffer mirrors talkTo's own Board/Not
+// yet picker (GameLoop.cpp:1061-1115), reached from Greeting's dismissal
+// whenever the candidate carries a boatDestinationId, ahead of the topic
+// menu -- same precedence order talkTo itself uses. AskInput/AskResponse
+// are the free-text "ask about something else..." flow -- AskInput is the
+// typing box, AskResponse shows the resulting response (and, when today's
+// ask limit is reached or extended, a queued 2nd message).
+enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker, BoatOffer, AskInput, AskResponse };
 
 // All state for one conversation, local to this file -- same "not part of
 // game::GameState" reasoning as CombatSession above (a conversation is
@@ -653,6 +678,7 @@ struct DialogueSession {
     std::string displaySpeaker;            // usually current.name; overridden by askLimitLocked's speaker
     std::vector<std::string> topicLabels;  // topics [+ "Ask about..."] + "Nothing, thanks"
     int topicSelected = 0;
+    int boatOfferSelected = 0;             // BoatOffer's Board(0)/Not yet(1) picker cursor
     int askAnythingIndex = -1;             // index into topicLabels, or -1 if not offered this visit
     std::string askInputBuffer;            // free-typed text, built up from TextEntered events
     std::vector<std::string> askInputHints;
@@ -921,19 +947,20 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking, boat voyages, companion "
-            "recruitment, and Look aren't wired up in this build yet. Press / for the full command list.");
+    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking, companion recruitment, and Look "
+            "aren't wired up in this build yet. Press / for the full command list.");
 
     // --- Dialogue (core conversation): all state is DialogueSession above;
     // every lambda below is a non-blocking port of the matching piece of
     // GameLoop::handleTalk/talkTo (src/game/GameLoop.cpp:828-1306) -- see
     // this file's top-of-file comment and docs/CURRENT_WORK.md for the
     // scope this phase ports (greeting/again/aftermath/anticipation/
-    // conditional-greeting resolution, the topic picker, GRANTS_ITEM) vs.
-    // defers (free-text ask, quest turn-in, boat voyage, companion
-    // recruit -- each of the latter three gets a single placeholder log
-    // line via dialogueStartTalk's hasQuest/hasBoat/hasRecruit checks
-    // instead of silently doing nothing).
+    // conditional-greeting resolution, the topic picker, GRANTS_ITEM, boat
+    // voyage accept/decline) vs. defers (free-text ask -- shipped in a
+    // later session, see AskInput/AskResponse below -- quest turn-in and
+    // companion recruit still aren't: each gets a single placeholder log
+    // line via dialogueStartTalk's hasQuest/hasRecruit checks instead of
+    // silently doing nothing).
     DialogueSession dialogueSession;
     ShopSession shopSession;
     InventorySession inventorySession;
@@ -972,7 +999,10 @@ int runPhase1(const std::string& savePath) {
                 candidate.grantsItemId = poi->grantsItemId;
                 candidate.grantsItemName = poi->grantsItemName;
                 candidate.hasQuest = currentZone->questAt(state.zoneX, state.zoneY) != nullptr;
-                candidate.hasBoat = currentZone->boatAt(state.zoneX, state.zoneY) != nullptr;
+                if (const world::BoatVoyage* boat = currentZone->boatAt(state.zoneX, state.zoneY)) {
+                    candidate.boatDestinationId = boat->destinationLocationId;
+                    candidate.boatHours = boat->hours;
+                }
                 candidate.hasRecruit = !poi->recruitCompanionId.empty();
                 if (!poi->dialogueAfter.empty()) {
                     int latestDayEnd = timeline.latestDayEnd(effectiveId);
@@ -1091,7 +1121,6 @@ int runPhase1(const std::string& savePath) {
             pushLog("You've picked up " + candidate.grantsItemName + ".");
         }
         if (candidate.hasQuest) pushLog("(Quest content at this NPC isn't wired up in this build yet.)");
-        if (candidate.hasBoat) pushLog("(Boat voyages aren't wired up in this build yet.)");
         if (candidate.hasRecruit) pushLog("(Recruiting companions isn't wired up in this build yet.)");
 
         rebuildTopicLabels(candidate);
@@ -1118,8 +1147,8 @@ int runPhase1(const std::string& savePath) {
     // (GameLoop.cpp:1570-1596) verbatim, including its two pushLog
     // messages. shopLockAt (SHOP_LOCKED, docs/ZONE_NOTES.md) can't be
     // resolved here -- this build tracks no quest state at all yet, same
-    // gap dialogueStartTalk's hasQuest/hasBoat/hasRecruit checks already
-    // flag -- so a locked shop gets its own honest placeholder instead of
+    // gap dialogueStartTalk's hasQuest/hasRecruit checks already flag --
+    // so a locked shop gets its own honest placeholder instead of
     // silently always-locking (reads as "no shop here") or silently
     // unlocking (lets the player buy before earning it).
     auto shopBegin = [&]() {
@@ -1447,7 +1476,16 @@ int runPhase1(const std::string& savePath) {
     // freshly-rebuilt topic menu, per dialogueSubmitAsk's bookkeeping.
     auto dialogueContinue = [&]() {
         if (dialogueSession.uiState == DialogueUiState::Greeting) {
-            if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
+            if (!dialogueSession.current.boatDestinationId.empty()) {
+                // Offered on every talk (including after boarding once --
+                // see boatDestinationId's own comment), ahead of the topic
+                // menu -- mirrors talkTo's own precedence exactly
+                // (GameLoop.cpp:1061-1115), independent of which greeting
+                // text was actually shown above (plain/again/before/after/
+                // askLimitLocked all fall through to this the same way).
+                dialogueSession.boatOfferSelected = 0;
+                dialogueSession.uiState = DialogueUiState::BoatOffer;
+            } else if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
                 dialogueSession.uiState = DialogueUiState::TopicPicker;
             } else {
                 dialogueEnd();
@@ -1466,6 +1504,59 @@ int runPhase1(const std::string& savePath) {
                 dialogueSession.uiState = DialogueUiState::TopicPicker;
             }
         }
+    };
+
+    // "Not yet"/Q/Escape on the BoatOffer picker -- falls through to the
+    // ordinary topic picker (or ends the conversation if there's nothing to
+    // ask about), exactly what a plain Greeting dismissal would have done
+    // had there been no boat to offer. Mirrors talkTo's own fallthrough
+    // (GameLoop.cpp:1112-1114: "ends up here, falling through to the
+    // ordinary topics/SUBJECT picker below, same as any other POI's
+    // declined offer").
+    auto dialogueDeclineBoat = [&]() {
+        if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
+            dialogueSession.uiState = DialogueUiState::TopicPicker;
+        } else {
+            dialogueEnd();
+        }
+    };
+
+    // "Board" on the BoatOffer picker -- mirrors talkTo's own boat block
+    // (GameLoop.cpp:1080-1110) exactly: whisks the player straight to the
+    // destination and ends the conversation outright (talkTo itself
+    // `return`s from here, never reaching the topic picker below it).
+    auto dialogueBoardBoat = [&]() {
+        const DialogueCandidate& candidate = dialogueSession.current;
+        const world::Location* destination = world.getLocation(candidate.boatDestinationId);
+        if (destination == nullptr) {
+            // Defensive -- ZoneCatalog::loadForWorld already validated this
+            // id, same guard GameLoop.cpp:1063 carries for the same reason.
+            dialogueDeclineBoat();
+            return;
+        }
+        state.voyagesTaken.insert(candidate.id);
+        // Computed before x/y are overwritten below -- see compassDirection's
+        // own note on dy sign.
+        const char* dir = compassDirection(destination->x - state.x, destination->y - state.y);
+        state.mode = game::Mode::Overworld;
+        state.currentZoneId.clear();
+        state.zoneStack.clear();
+        currentZone = nullptr;
+        state.x = destination->x;
+        state.y = destination->y;
+        state.hoursElapsed += candidate.boatHours;
+        state.visitedLocations.insert(destination->id);
+        // Two phrasings, split at a day -- matches GameLoop.cpp:1100-1107's
+        // own split between the four original 48-96 hour open-water legs and
+        // the Crossing/Port O'Call strait hop's much shorter one.
+        if (candidate.boatHours < 24) {
+            pushLog("You board the ferry, and it carries you " + std::string(dir) +
+                    " across the water. Before long, " + destination->name + " comes into view.");
+        } else {
+            pushLog("You board the ship, and it carries you " + std::string(dir) +
+                    " across open water. Days pass before " + destination->name + " finally rises out of the fog.");
+        }
+        dialogueSession.active = false;
     };
 
     // --- Combat (Phase 3): all state is CombatSession above; every lambda
@@ -3229,6 +3320,14 @@ int runPhase1(const std::string& savePath) {
                 drawPickerOverlay("Ask " + dialogueSession.current.name + " about...", dialogueSession.topicLabels,
                                    dialogueSession.topicSelected, "(up/down = select, Enter = ask, q = leave)");
                 break;
+            case DialogueUiState::BoatOffer: {
+                const world::Location* destination = world.getLocation(dialogueSession.current.boatDestinationId);
+                const std::string title =
+                    "Depart for " + (destination != nullptr ? destination->name : std::string("?")) + "?";
+                drawPickerOverlay(title, {"Board", "Not yet"}, dialogueSession.boatOfferSelected,
+                                   "(up/down = select, Enter = choose, q = cancel)");
+                break;
+            }
             case DialogueUiState::AskInput:
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
                          kSheetTitleCharSize);
@@ -3446,6 +3545,9 @@ int runPhase1(const std::string& savePath) {
                                 break;
                             case DialogueUiState::TopicPicker:
                                 dialogueEnd();
+                                break;
+                            case DialogueUiState::BoatOffer:
+                                dialogueDeclineBoat(); // q=cancel, same as GameLoop.cpp:1076-1078
                                 break;
                             case DialogueUiState::Greeting:
                             case DialogueUiState::TopicText:
@@ -3693,6 +3795,23 @@ int runPhase1(const std::string& savePath) {
                                 }
                                 break;
                             }
+                            case DialogueUiState::BoatOffer:
+                                // Either North or South toggles between the
+                                // two options -- mirrors talkTo's own picker
+                                // loop exactly (GameLoop.cpp:1071-1072:
+                                // `selected = selected == 0 ? 1 : 0;` on
+                                // either direction, not a wrap-around list).
+                                if (dy != 0) {
+                                    dialogueSession.boatOfferSelected =
+                                        dialogueSession.boatOfferSelected == 0 ? 1 : 0;
+                                } else if (handleEnter) {
+                                    if (dialogueSession.boatOfferSelected == 0) {
+                                        dialogueBoardBoat();
+                                    } else {
+                                        dialogueDeclineBoat();
+                                    }
+                                }
+                                break;
                             case DialogueUiState::AskInput:
                                 if (wantsBackspace) {
                                     if (!dialogueSession.askInputBuffer.empty()) {
