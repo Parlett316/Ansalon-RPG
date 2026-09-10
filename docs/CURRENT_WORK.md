@@ -5,9 +5,11 @@
 for the full item-by-item status; most items are now confirmed (save
 persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
 help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop).
-Boat-voyage accept/decline is newly implemented this pass (see its own
-writeup below) but **not yet interactively confirmed** -- that's the
-natural next live-keyboard check. Still open otherwise: Astinus's
+Boat-voyage accept/decline is newly implemented this pass and **confirmed
+working 2026-09-10** via the user's own keyboard (see its own writeup
+below): the Crossing/Port O'Call round-trip ferry worked both directions,
+and declining an offer (quitting the conversation without boarding) also
+worked correctly. Still open otherwise: Astinus's
 free-text ask-input, the quest/recruit placeholder lines, Inventory's
 equip/drink paths (blocked on steel for a potion), and most of combat
 (spellcasting edge cases, item use, Flee, group target picker, the
@@ -1172,14 +1174,12 @@ for this one call site.
 Verified: clean rebuild of all three CMake targets (zero new `/W4`
 warnings) and a launch smoke test of `ansalon_sfml_phase1.exe` against
 real `save2.txt` (run from `build\Debug`) confirming every catalog and the
-map texture still load and the window opens with no crash/exception --
-this session again had no desktop/GUI access to actually talk to a
-`BOAT`-carrying NPC and press Enter on the picker. **Not yet interactively
-confirmed** -- added to the Playtest backlog below. Boat-carrying POIs to
-test against, per `docs/ZONE_NOTES.md`'s "Boats" section: Tarsis (`R`),
-Ice Wall (`B`), Southern Ergoth (`S`), Flotsam (`E`), and the Crossing/Port
-O'Call ferry pair (`D`/`K`) for the round-trip-after-boarding case
-specifically. No `docs/MILESTONES.md` entry, same reasoning as every other
+map texture still load and the window opens with no crash/exception, then
+**confirmed working 2026-09-10** via the user's own keyboard: the
+Crossing/Port O'Call round-trip ferry worked crossing and crossing back
+again, and declining an offer (quitting the conversation without
+boarding) also fell through correctly instead of teleporting or closing
+the window. No `docs/MILESTONES.md` entry, same reasoning as every other
 SFML-branch entry above.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
@@ -1408,22 +1408,13 @@ piling on more unverified content. Full sourcing/detail for each is in its
   Kalaman's Curiosities Cart for `QUEST`, Haven or Solace for `RECRUIT`).
   See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
-- **SFML boat-voyage accept/decline** -- newly implemented, not yet tried
-  live at all. Talk to a `BOAT`-carrying NPC (Tarsis `R`, Ice Wall `B`,
-  Southern Ergoth `S`, Flotsam `E`, or the Crossing/Port O'Call ferry pair
-  `D`/`K` -- see `docs/ZONE_NOTES.md`'s "Boats" section) and confirm: the
-  Board/Not yet picker appears after the greeting is dismissed, up/down
-  toggles between the two, "Board" teleports to the destination's real
-  overworld position with the sidebar clock advancing by the leg's hour
-  count and a ferry/ship flavor-text log line naming a real compass
-  direction, "Not yet" (and separately, Q/Escape) falls through to the
-  ordinary topic picker instead of teleporting or closing the window. Also
-  worth confirming the round-trip case specifically: board the
-  Crossing->Port O'Call ferry, walk back to Crossing, and talk to the same
-  ferry keeper again -- the offer should come back rather than staying
-  silently exhausted. See `sfml_phase1/main.cpp` and this file's writeup
-  above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
-  merged to `master` yet.
+- ~~**SFML boat-voyage accept/decline**~~ -- **confirmed working
+  2026-09-10** via the user's own keyboard: boarded the Crossing/Port
+  O'Call ferry, crossed back again (the round-trip case -- the offer came
+  back rather than staying silently exhausted), and declining an offer
+  (quitting the conversation without boarding) also worked correctly. See
+  `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - **SFML ask-input (free-text "Ask about something else...")** -- press `T`
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus
