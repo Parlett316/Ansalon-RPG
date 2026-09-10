@@ -859,26 +859,86 @@ again from the repo root to confirm that invocation still works too.
 the Playtest backlog below, same standing no-desktop/GUI-access
 limitation as everything else this session.
 
-One more real gap surfaced while updating the docs, bigger than any of
-quest/recruit/boat: **this build still never writes back to the save
-file at all** (`sfml_phase1/main.cpp:6`/`4226` say so directly) -- every
-combat win, level-up, rested night, shop purchase, or equipped item is
-lost the moment the window closes. Asked about explicitly: **out of
-scope for this pass, but to be documented prominently rather than glossed
-over** -- implementing it is a real feature with real risk of its own
-(this build's own not-yet-interactively-confirmed code paths writing to
-the user's actual `save1`/`save2`/`save3.txt`), deserving its own planning
-pass rather than a tack-on here. Flagged as the single biggest known
-limitation of "the main game" in `README.md` below.
+One more real gap surfaced while updating the docs during that same pass,
+bigger than any of quest/recruit/boat: **this build still never wrote
+back to the save file at all** -- every combat win, level-up, rested
+night, shop purchase, or equipped item was lost the moment the window
+closed. Flagged then as the single biggest known limitation of "the main
+game," deliberately deserving its own planning pass rather than a
+tack-on -- closed out later the same session, see directly below.
 
 `README.md` and `CLAUDE.md` were also updated to describe
 `ansalon_sfml_phase1` as the primary build (build/run instructions,
-control list, the no-save-persistence limitation just above, and honest
-per-feature caveats for the still-deferred quest/recruit/boat flows)
-rather than describing the console build as the only or default
-experience. No `docs/MILESTONES.md` entry -- matching every other
-Phase 1-3/dialogue/shop/etc. entry on this branch, which stays here only,
-not numbered, unless/until merged to `master`.
+control list, and honest per-feature caveats for the still-deferred
+quest/recruit/boat flows) rather than describing the console build as the
+only or default experience. No `docs/MILESTONES.md` entry -- matching
+every other Phase 1-3/dialogue/shop/etc. entry on this branch, which
+stays here only, not numbered, unless/until merged to `master`.
+
+**Save persistence shipped this session, same `sfml_phase1/main.cpp`.**
+Closes the gap flagged directly above -- the user picked it off the
+backlog as the next thing to build, right after the promotion pass. No
+new serialization: `game::SaveGame::save`/`load` (`src/game/SaveGame.h/
+.cpp`) already existed, unchanged, as the exact function
+`GameLoop::run()` has always called -- this was entirely about *when* to
+call it from `sfml_phase1/main.cpp`'s own event loop.
+
+Mirrors `GameLoop::run()`'s own documented convention
+(`docs/ARCHITECTURE.md`'s "When it saves", `GameLoop.cpp:408`): autosave
+unconditionally after every processed action, no per-key tracking of
+"did this mutate state" needed -- "cheap enough not to matter: a crash or
+an ungraceful close loses at most the single most recent keypress." This
+build's event loop is per-`sf::Event` rather than console's one-key-per-
+outer-iteration, so the equivalent single call site is the end of the
+`KeyPressed` handling block (after the whole quit-confirm/dialogue/shop/
+combat/movement dispatch chain, right before it hands off to the
+`TextEntered` branch) -- one `game::SaveGame::save(state, savePath)`
+call, reached by every branch including quit-confirm's "Yes" (which
+merely calls `window.close()` and falls through to it), same as
+console's own `Key::Quit` case falling through to its save instead of
+returning directly. A second, identical call sits in the `sf::Event::
+Closed` handler (the title-bar X / Alt+F4 path) for the same reason.
+Deliberately NOT added in the two top-level `catch` blocks -- if a
+`KeyPressed` event threw partway through handling, the in-memory
+`GameState` may reflect a half-applied action, and simply never reaching
+the end-of-block save call is the safe behavior for that one event.
+`TextEntered` (ask-input typing) needs no save call either -- it only
+ever mutates a local UI buffer, never `GameState`.
+
+**One real, documented granularity difference from console:** a
+multi-round SFML combat encounter is many separate `KeyPressed` events,
+not one blocking `GameLoop::runCombat` call the way console's single
+save-after-the-whole-fight is -- so this autosaves once per combat round
+too, not just once when a fight ends. Noted explicitly as a difference,
+not a bug: finer autosave granularity is strictly safer for crash
+recovery, never less safe. No `CMakeLists.txt` changes needed --
+`src/game/SaveGame.cpp` was already linked into this target for the
+existing `load()` call.
+
+Verified three ways: a clean rebuild of all three CMake targets (zero new
+`/W4` warnings); a throwaway `SaveGameRoundTripSelfTest.cpp` self-test
+(per `CLAUDE.md`'s throwaway-self-test pattern, deleted after) that
+copied `save3.txt` to a scratch path -- never touching the real file --
+and ran `SaveGame::load` -> `save` -> `load` again through the exact
+function pair now wired into `main.cpp`, asserting name/level/HP/
+position/mode/hours/inventory-count/companion-count all survived
+unchanged (**passed**: "Melissa, level 1, HP 9/9, at (191, 203)"); and a
+launch smoke test against a scratch copy of `save2.txt`, force-killed
+after 5 seconds with the window still open and no crash, then diffed
+byte-identical against the original -- confirming a hard kill (as
+opposed to a graceful close) correctly does *not* write anything, exactly
+as designed. The actual write path under real play -- an autosave landing
+correctly after a real action and the file still loading cleanly
+afterward -- needed a live keyboard session and couldn't be exercised
+this way, same standing no-desktop/GUI-access limitation as everything
+else this session; **confirmed working 2026-09-09** via the user's own
+keyboard immediately after, see the Playtest backlog below.
+
+`README.md`'s three "it never saves" callouts (the top-of-file
+limitation note, the packaged-demo section, and the "Playing" section)
+were rewritten to describe the new autosave behavior instead. No
+`docs/MILESTONES.md` entry, same reasoning as every other SFML-branch
+entry above.
 
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
@@ -962,6 +1022,15 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- ~~**SFML save persistence**~~ -- **confirmed working 2026-09-09** via the
+  user's own keyboard: real play against a real save autosaves correctly
+  and the file reloads cleanly afterward. Not separately re-tried: an
+  abrupt kill (Task Manager / Alt+F4-then-immediately-closing) losing at
+  most the last unsaved action, matching the "lose at most the most
+  recent keypress" console convention -- a reasonable follow-up check,
+  not blocking. See `sfml_phase1/main.cpp` and this file's Save
+  persistence writeup above, not a numbered `docs/MILESTONES.md` entry --
+  this branch isn't merged to `master` yet.
 - **SFML Rest and Bed Rest** -- press `R` from the Overworld or a Zone on a
   non-caster (Fighter/Thief/Tinker) and confirm: the first rest of a day
   heals 1 HP (or logs "You were already at full health." at full HP), every

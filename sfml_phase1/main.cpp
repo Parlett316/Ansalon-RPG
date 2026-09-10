@@ -3,8 +3,12 @@
 // screen driven by real save data: proves the rendering/collision/round-
 // resolution approach end to end. Deliberately standalone rather than
 // reusing game::GameLoop::run() -- see this file's CMakeLists.txt comment
-// for why. Loads a save file read-only via game::SaveGame -- never writes
-// back, never touches the real ansalon_rpg target's code path.
+// for why. Loads a save file via game::SaveGame and autosaves back to the
+// same path after every processed KeyPressed event, unconditionally --
+// the same convention GameLoop::run() uses (GameLoop.cpp:408,
+// docs/ARCHITECTURE.md's "When it saves"), just applied at this build's
+// own per-event granularity instead of console's per-outer-loop-iteration
+// one. Never touches the real ansalon_rpg target's code path.
 //
 // Phase 3 (combat) intentionally ports only the core melee loop -- real
 // random encounters, positional movement, target picking, monster/companion
@@ -816,8 +820,9 @@ int runPhase1(const std::string& savePath) {
     const float worldH = static_cast<float>(mapSize.y);
 
     // Real GameState fields drive position in both modes (state.x/y for
-    // Overworld, state.zoneX/zoneY for Zone) -- never written back to
-    // savePath, but mutated in memory exactly like game::GameLoop does.
+    // Overworld, state.zoneX/zoneY for Zone) -- mutated in memory exactly
+    // like game::GameLoop does, and autosaved back to savePath the same
+    // way too (see the autosave call sites in the event loop below).
     const world::Zone* currentZone = nullptr;
     if (state.mode == game::Mode::Zone) {
         currentZone = zones.getZone(state.currentZoneId);
@@ -3304,6 +3309,11 @@ int runPhase1(const std::string& savePath) {
         try {
             while (const std::optional<sf::Event> event = window.pollEvent()) {
                 if (event->is<sf::Event::Closed>()) {
+                    // Autosave on an abrupt OS-level close (title-bar X /
+                    // Alt+F4) too, same reasoning as the KeyPressed block's
+                    // own autosave call below -- capture the same final
+                    // state a deliberate quit would.
+                    game::SaveGame::save(state, savePath);
                     window.close();
                 } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
                     const sf::Keyboard::Key key = keyPressed->code;
@@ -3858,6 +3868,23 @@ int runPhase1(const std::string& savePath) {
                             }
                         }
                     }
+
+                    // Autosaved after every processed keypress, unconditionally
+                    // -- same convention GameLoop::run() uses (GameLoop.cpp:408,
+                    // docs/ARCHITECTURE.md's "When it saves"), just applied per
+                    // KeyPressed event here instead of per outer-loop iteration.
+                    // Falls through from every branch above (including the
+                    // quit-confirm "Yes" case, which just calls window.close()
+                    // and reaches here same as any other key), so this one call
+                    // site also covers "quit captures the last action" the same
+                    // way console's Key::Quit case does. One real difference
+                    // from console, worth noting: a multi-round SFML combat
+                    // encounter is many separate KeyPressed events rather than
+                    // one blocking GameLoop::runCombat call, so this autosaves
+                    // once per round, not just once when the fight ends --
+                    // finer granularity than console, not coarser, so no less
+                    // safe.
+                    game::SaveGame::save(state, savePath);
                 } else if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
                     // The only source of real typed characters in this build
                     // (KeyPressed carries a physical key code, not text) --
@@ -4224,7 +4251,7 @@ int main(int argc, char** argv) {
         std::cerr << "usage: ansalon_sfml_phase1 <path-to-save-file>\n"
                      "  run from the repo root, e.g.:\n"
                      "  .\\build\\Debug\\ansalon_sfml_phase1.exe build\\Debug\\save1.txt\n"
-                     "Read-only -- never writes back to the save file.\n";
+                     "Autosaves back to that file after every action.\n";
         return 1;
     }
     try {

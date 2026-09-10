@@ -13,11 +13,14 @@ one — the rules/content described below apply to both, and most of
 "Playing" below describes the primary SFML build specifically (see that
 section for the console build's own, different controls).
 
-**The single biggest limitation of the SFML build right now: it never
-saves.** It loads a save file and lets you play through it, but nothing —
-combat wins, leveling, resting, shopping, equipping — is written back
-when you close the window. Use the legacy console build (`ansalon_rpg`)
-for anything you want to actually keep; see "Playing" below.
+**The SFML build now saves.** It autosaves back to the save file you
+launched it with after every action — combat wins, leveling, resting,
+shopping, equipping all persist across a close/relaunch, the same
+"autosave after every action" convention the legacy console build has
+always used. This is newly added and not yet extensively playtested, so
+keep an eye on your save the first few sessions; the legacy console build
+(`ansalon_rpg`) remains available if you'd rather use it instead. See
+"Playing" below.
 
 The eventual goal is an open world where the canon Heroes of the Lance
 (Tanis, Sturm, Raistlin, Caramon, Goldmoon, Riverwind, Tasslehoff,
@@ -630,9 +633,10 @@ This builds a Release exe and stages it with the data/map it needs, plus
 a `RunDemo.bat` launcher and a sample save, into
 `dist\AnsalonSFMLDemo-v<N>.zip`. The recipient just unzips and runs
 `RunDemo.bat` — the MSVC runtime is statically linked, so no separate
-Visual C++ Redistributable install is needed. Remember: this build never
-saves, so it's a WIP tech demo, not a way to hand someone a persistent
-character.
+Visual C++ Redistributable install is needed. This build now autosaves,
+so their own unzipped `demo_save.txt` will genuinely pick up where they
+left off across relaunches — still a WIP tech demo, not a guarantee
+against save-breaking changes in a future update.
 
 ### Legacy console build (`ansalon_rpg`)
 
@@ -659,9 +663,10 @@ support the VT100 sequences the game relies on for color).
 ## Playing
 
 The primary build is `ansalon_sfml_phase1` — real pixel-space rendering,
-no terminal required. **It never saves** (see the note near the top of
-this file), so create or continue a character on the legacy console
-build first (below), then point the SFML build at that save file:
+no terminal required. It autosaves back to the save file it's launched
+with (see the note near the top of this file), so create or continue a
+character on the legacy console build first (below), then point the
+SFML build at that save file:
 
 ```powershell
 .\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt
