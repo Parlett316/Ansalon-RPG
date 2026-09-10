@@ -244,6 +244,18 @@ std::vector<character::Character> companionCharacters(const game::GameState& sta
     return result;
 }
 
+// True for a POI marked RECRUIT (world::PointOfInterest::recruitCompanionId)
+// whose companion is already in the party -- used by drawZoneFrame below to
+// stop rendering that tile's glyph once they've joined (they're travelling
+// with the party now, not still standing here). Confirmed live 2026-09-10:
+// Bren Alder's own Solace tile kept showing his glyph after joining, since
+// nothing here had ever checked state.companions before.
+bool isRecruitedCompanionPoi(const world::PointOfInterest& poi, const game::GameState& state) {
+    if (poi.recruitCompanionId.empty()) return false;
+    return std::any_of(state.companions.begin(), state.companions.end(),
+                        [&](const game::RecruitedCompanion& c) { return c.id == poi.recruitCompanionId; });
+}
+
 // Builds the status panel shown to the right of the map in
 // drawOverworldFrame/drawZoneFrame (Milestone 43): a fixed 12-row header
 // (mode, current location/zone, coordinates, and the AC/THAC0/Steel
@@ -639,7 +651,8 @@ void MapRenderer::drawZoneFrame(const world::OverworldGrid& grid, const world::Z
                 if (zx == state.zoneX && zy == state.zoneY) {
                     displayChar = '@';
                     color = "\x1b[97m";
-                } else if (const world::PointOfInterest* poi = zone.poiAt(zx, zy)) {
+                } else if (const world::PointOfInterest* poi = zone.poiAt(zx, zy);
+                           poi != nullptr && !isRecruitedCompanionPoi(*poi, state)) {
                     displayChar = poi->code;
                     color = "\x1b[93m"; // bright yellow, matching overworld location markers
                 } else if (zx == zone.entryX() && zy == zone.entryY()) {

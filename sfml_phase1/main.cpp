@@ -22,6 +22,7 @@
 
 #include "character/Alignment.h"
 #include "character/CharClass.h"
+#include "character/Companion.h"
 #include "character/Dice.h"
 #include "character/Equipment.h"
 #include "character/Knighthood.h"
@@ -151,13 +152,14 @@ struct DialogueSpeech {
 
 // One talkable candidate at the player's current tile -- trimmed local
 // counterpart to game::TalkCandidate (GameLoop.h), same "not linkable here"
-// reasoning as DialogueSpeech above. hasQuest/hasRecruit only record *that*
-// this candidate would offer one of those (in the console build) so
-// dialogueStartTalk can print a single placeholder line -- not the full
-// payload (quest id, companion id) the console version's
-// GameLoop::TalkCandidate carries, since those two flows aren't wired up
-// yet. boatDestinationId/boatHours, by contrast, carry the real payload --
-// boat voyages are wired up (see the BoatOffer DialogueUiState below).
+// reasoning as DialogueSpeech above. hasQuest only records *that* this
+// candidate would offer a quest (in the console build) so dialogueStartTalk
+// can print a single placeholder line -- not the full payload (the quest id)
+// the console version's GameLoop::TalkCandidate carries, since that flow
+// isn't wired up yet. boatDestinationId/boatHours and recruitCompanionId, by
+// contrast, carry the real payload -- boat voyages and companion recruiting
+// are both wired up (see the BoatOffer/RecruitOffer DialogueUiState values
+// below).
 struct DialogueCandidate {
     std::string id;
     std::string name;
@@ -167,7 +169,6 @@ struct DialogueCandidate {
     std::string grantsItemId;
     std::string grantsItemName;
     bool hasQuest = false;
-    bool hasRecruit = false;
     // Non-empty for a zone POI marked BOAT (world::Zone::boatAt) --
     // dialogueContinue whisks the player straight to this world::Location
     // id (a scripted voyage, boatHours in-game hours long) once "Board" is
@@ -175,6 +176,13 @@ struct DialogueCandidate {
     // grammar this mirrors.
     std::string boatDestinationId;
     int boatHours = 0;
+    // Non-empty for a zone POI marked RECRUIT (world::PointOfInterest::
+    // recruitCompanionId) -- dialogueOfferRecruitOrTopics offers to add this
+    // companion id to the party once "Join me" is chosen, unless it's
+    // already recruited. See Milestone 118 / docs/COMBAT_NOTES.md's
+    // "Extending this later" section for the console-side grammar this
+    // mirrors.
+    std::string recruitCompanionId;
 };
 
 // Coarse 8-point compass direction from a dx/dy pair -- copied verbatim from
@@ -651,19 +659,36 @@ struct CombatSession {
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
-// conversation loop (see docs/CURRENT_WORK.md's scope writeup; quest/
-// recruit choosers stay deferred, each getting a single placeholder log
-// line instead -- boat voyages are wired up, see BoatOffer below).
-// PickingCandidate mirrors GameLoop::pickAndTalk's "more than one candidate
-// here" picker; Greeting/TopicText/TopicPicker mirror talkTo's own
-// greeting-then-topic-menu flow. BoatOffer mirrors talkTo's own Board/Not
-// yet picker (GameLoop.cpp:1061-1115), reached from Greeting's dismissal
-// whenever the candidate carries a boatDestinationId, ahead of the topic
-// menu -- same precedence order talkTo itself uses. AskInput/AskResponse
-// are the free-text "ask about something else..." flow -- AskInput is the
-// typing box, AskResponse shows the resulting response (and, when today's
-// ask limit is reached or extended, a queued 2nd message).
-enum class DialogueUiState { PickingCandidate, Greeting, TopicText, TopicPicker, BoatOffer, AskInput, AskResponse };
+// conversation loop (see docs/CURRENT_WORK.md's scope writeup; the quest
+// chooser stays deferred, getting a single placeholder log line instead --
+// boat voyages and companion recruiting are both wired up, see BoatOffer/
+// RecruitOffer below). PickingCandidate mirrors GameLoop::pickAndTalk's
+// "more than one candidate here" picker; Greeting/TopicText/TopicPicker
+// mirror talkTo's own greeting-then-topic-menu flow. BoatOffer mirrors
+// talkTo's own Board/Not yet picker (GameLoop.cpp:1061-1115), reached from
+// Greeting's dismissal whenever the candidate carries a boatDestinationId,
+// ahead of the topic menu; RecruitOffer mirrors talkTo's own Join me/Not yet
+// picker (GameLoop.cpp:1116-1153), reached right after BoatOffer is resolved
+// (accepted or declined) whenever the candidate carries a
+// recruitCompanionId not already in the party -- same precedence order
+// talkTo itself uses (boat, then recruit, then topics), via the shared
+// dialogueOfferRecruitOrTopics tail. Unlike boarding a boat (which ends the
+// conversation outright), joining or declining a recruit offer falls
+// through to the topic picker either way, matching talkTo exactly.
+// AskInput/AskResponse are the free-text "ask about something else..."
+// flow -- AskInput is the typing box, AskResponse shows the resulting
+// response (and, when today's ask limit is reached or extended, a queued
+// 2nd message).
+enum class DialogueUiState {
+    PickingCandidate,
+    Greeting,
+    TopicText,
+    TopicPicker,
+    BoatOffer,
+    RecruitOffer,
+    AskInput,
+    AskResponse
+};
 
 // All state for one conversation, local to this file -- same "not part of
 // game::GameState" reasoning as CombatSession above (a conversation is
@@ -679,6 +704,7 @@ struct DialogueSession {
     std::vector<std::string> topicLabels;  // topics [+ "Ask about..."] + "Nothing, thanks"
     int topicSelected = 0;
     int boatOfferSelected = 0;             // BoatOffer's Board(0)/Not yet(1) picker cursor
+    int recruitOfferSelected = 0;          // RecruitOffer's Join me(0)/Not yet(1) picker cursor
     int askAnythingIndex = -1;             // index into topicLabels, or -1 if not offered this visit
     std::string askInputBuffer;            // free-typed text, built up from TextEntered events
     std::vector<std::string> askInputHints;
@@ -956,11 +982,11 @@ int runPhase1(const std::string& savePath) {
     // this file's top-of-file comment and docs/CURRENT_WORK.md for the
     // scope this phase ports (greeting/again/aftermath/anticipation/
     // conditional-greeting resolution, the topic picker, GRANTS_ITEM, boat
-    // voyage accept/decline) vs. defers (free-text ask -- shipped in a
-    // later session, see AskInput/AskResponse below -- quest turn-in and
-    // companion recruit still aren't: each gets a single placeholder log
-    // line via dialogueStartTalk's hasQuest/hasRecruit checks instead of
-    // silently doing nothing).
+    // voyage accept/decline, companion recruit accept/decline) vs. defers
+    // (free-text ask -- shipped in a later session, see AskInput/AskResponse
+    // below -- quest turn-in still isn't: it gets a single placeholder log
+    // line via dialogueStartTalk's hasQuest check instead of silently doing
+    // nothing).
     DialogueSession dialogueSession;
     ShopSession shopSession;
     InventorySession inventorySession;
@@ -1003,7 +1029,7 @@ int runPhase1(const std::string& savePath) {
                     candidate.boatDestinationId = boat->destinationLocationId;
                     candidate.boatHours = boat->hours;
                 }
-                candidate.hasRecruit = !poi->recruitCompanionId.empty();
+                candidate.recruitCompanionId = poi->recruitCompanionId;
                 if (!poi->dialogueAfter.empty()) {
                     int latestDayEnd = timeline.latestDayEnd(effectiveId);
                     if (latestDayEnd >= 0 && dayNow > latestDayEnd) candidate.dialogueAfter = poi->dialogueAfter;
@@ -1043,6 +1069,20 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // Whether `companionId` (a RECRUIT POI's recruitCompanionId) is already
+    // in the party. Also used by the zone-render loop below to stop drawing
+    // a recruited companion's own POI tile -- see its own comment.
+    auto companionAlreadyRecruited = [&](const std::string& companionId) {
+        return std::any_of(state.companions.begin(), state.companions.end(),
+                            [&](const game::RecruitedCompanion& c) { return c.id == companionId; });
+    };
+
+    // Whether `candidate`'s recruitCompanionId (if any) is already in the
+    // party -- mirrors GameLoop.cpp:1124-1126.
+    auto alreadyRecruited = [&](const DialogueCandidate& candidate) {
+        return companionAlreadyRecruited(candidate.recruitCompanionId);
+    };
+
     // Whether today's free-text ask limit is used up for `speech` -- same
     // formula as GameLoop.cpp:990-995. A pure query over state.character +
     // speech, safe to call every frame from multiple places (rebuilding the
@@ -1078,8 +1118,10 @@ int runPhase1(const std::string& savePath) {
 
     // Mirrors GameLoop::talkTo's greeting-resolution precedence exactly
     // (GameLoop.cpp:1002-1046), including the askLimitLocked override, minus
-    // boat/quest/recruit's real handling (a single placeholder log line
-    // each instead).
+    // quest's real handling (a single placeholder log line instead). Boat
+    // and recruit's real handling happens later, in dialogueContinue/
+    // dialogueOfferRecruitOrTopics -- not here, since talkTo itself doesn't
+    // resolve either until after the greeting is shown.
     auto dialogueStartTalk = [&](const DialogueCandidate& candidate) {
         dialogueSession.current = candidate;
         dialogueSession.displaySpeaker = candidate.name;
@@ -1121,7 +1163,6 @@ int runPhase1(const std::string& savePath) {
             pushLog("You've picked up " + candidate.grantsItemName + ".");
         }
         if (candidate.hasQuest) pushLog("(Quest content at this NPC isn't wired up in this build yet.)");
-        if (candidate.hasRecruit) pushLog("(Recruiting companions isn't wired up in this build yet.)");
 
         rebuildTopicLabels(candidate);
         dialogueSession.uiState = DialogueUiState::Greeting;
@@ -1147,8 +1188,8 @@ int runPhase1(const std::string& savePath) {
     // (GameLoop.cpp:1570-1596) verbatim, including its two pushLog
     // messages. shopLockAt (SHOP_LOCKED, docs/ZONE_NOTES.md) can't be
     // resolved here -- this build tracks no quest state at all yet, same
-    // gap dialogueStartTalk's hasQuest/hasRecruit checks already flag --
-    // so a locked shop gets its own honest placeholder instead of
+    // gap dialogueStartTalk's hasQuest check already flags -- so a locked
+    // shop gets its own honest placeholder instead of
     // silently always-locking (reads as "no shop here") or silently
     // unlocking (lets the player buy before earning it).
     auto shopBegin = [&]() {
@@ -1467,13 +1508,63 @@ int runPhase1(const std::string& savePath) {
         dialogueSession.uiState = DialogueUiState::AskResponse;
     };
 
+    // Shared tail reached both directly from Greeting (no boat to offer) and
+    // from a declined boat offer -- offers RecruitOffer next if this
+    // candidate carries a recruitCompanionId not already in the party,
+    // otherwise falls through to the ordinary topic picker (or ends the
+    // conversation if there's nothing to ask about). Mirrors talkTo's own
+    // linear fallthrough from the boat block into the recruit block into
+    // the topic picker (GameLoop.cpp:1112-1176) -- boat, then recruit, then
+    // topics, in that order, every time.
+    auto dialogueOfferRecruitOrTopics = [&]() {
+        const DialogueCandidate& candidate = dialogueSession.current;
+        if (!candidate.recruitCompanionId.empty() && !alreadyRecruited(candidate)) {
+            dialogueSession.recruitOfferSelected = 0;
+            dialogueSession.uiState = DialogueUiState::RecruitOffer;
+        } else if (!candidate.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
+            dialogueSession.uiState = DialogueUiState::TopicPicker;
+        } else {
+            dialogueEnd();
+        }
+    };
+
+    // "Not yet"/Q/Escape on the RecruitOffer picker -- falls through to the
+    // ordinary topic picker (or ends the conversation), same shape as
+    // dialogueOfferRecruitOrTopics's own topics-or-end tail. Mirrors talkTo's
+    // own fallthrough (GameLoop.cpp:1151-1153: "falls through to the
+    // ordinary topics/SUBJECT picker below, same as BOAT's decline path
+    // above").
+    auto dialogueDeclineRecruit = [&]() {
+        if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
+            dialogueSession.uiState = DialogueUiState::TopicPicker;
+        } else {
+            dialogueEnd();
+        }
+    };
+
+    // "Join me" on the RecruitOffer picker -- direct port of talkTo's own
+    // recruit block (GameLoop.cpp:1144-1150). Unlike boarding a boat, this
+    // does NOT end the conversation -- talkTo falls through to the topic
+    // picker whether the offer was accepted or declined, so this shares
+    // dialogueDeclineRecruit's own fallthrough rather than duplicating it.
+    auto dialogueJoinRecruit = [&]() {
+        const DialogueCandidate& candidate = dialogueSession.current;
+        game::RecruitedCompanion recruited;
+        recruited.id = candidate.recruitCompanionId;
+        recruited.character = character::buildCompanionById(candidate.recruitCompanionId);
+        state.companions.push_back(std::move(recruited));
+        pushLog(candidate.name + " joins your party.");
+        dialogueDeclineRecruit();
+    };
+
     // Enter (or any key, per the console's "press any key to continue") on
-    // a plain dialogue box. Greeting goes to the topic menu if there's
-    // anything to pick (a topic or the ask-anything option), else ends the
-    // conversation; TopicText always returns to the topic menu (mirroring
-    // talkTo's own topic loop); AskResponse advances to the next queued
-    // message if there is one, else ends the conversation or returns to a
-    // freshly-rebuilt topic menu, per dialogueSubmitAsk's bookkeeping.
+    // a plain dialogue box. Greeting goes to BoatOffer if there's a boat to
+    // offer, else to RecruitOffer/the topic menu/ends the conversation via
+    // dialogueOfferRecruitOrTopics; TopicText always returns to the topic
+    // menu (mirroring talkTo's own topic loop); AskResponse advances to the
+    // next queued message if there is one, else ends the conversation or
+    // returns to a freshly-rebuilt topic menu, per dialogueSubmitAsk's
+    // bookkeeping.
     auto dialogueContinue = [&]() {
         if (dialogueSession.uiState == DialogueUiState::Greeting) {
             if (!dialogueSession.current.boatDestinationId.empty()) {
@@ -1485,10 +1576,8 @@ int runPhase1(const std::string& savePath) {
                 // askLimitLocked all fall through to this the same way).
                 dialogueSession.boatOfferSelected = 0;
                 dialogueSession.uiState = DialogueUiState::BoatOffer;
-            } else if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
-                dialogueSession.uiState = DialogueUiState::TopicPicker;
             } else {
-                dialogueEnd();
+                dialogueOfferRecruitOrTopics();
             }
         } else if (dialogueSession.uiState == DialogueUiState::TopicText) {
             dialogueSession.uiState = DialogueUiState::TopicPicker;
@@ -1506,20 +1595,14 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
-    // "Not yet"/Q/Escape on the BoatOffer picker -- falls through to the
-    // ordinary topic picker (or ends the conversation if there's nothing to
-    // ask about), exactly what a plain Greeting dismissal would have done
-    // had there been no boat to offer. Mirrors talkTo's own fallthrough
-    // (GameLoop.cpp:1112-1114: "ends up here, falling through to the
-    // ordinary topics/SUBJECT picker below, same as any other POI's
-    // declined offer").
-    auto dialogueDeclineBoat = [&]() {
-        if (!dialogueSession.current.speech.topics.empty() || dialogueSession.askAnythingIndex >= 0) {
-            dialogueSession.uiState = DialogueUiState::TopicPicker;
-        } else {
-            dialogueEnd();
-        }
-    };
+    // "Not yet"/Q/Escape on the BoatOffer picker -- falls through to
+    // dialogueOfferRecruitOrTopics, exactly what a plain Greeting dismissal
+    // would have done had there been no boat to offer (recruit next, then
+    // topics). Mirrors talkTo's own fallthrough (GameLoop.cpp:1112-1114:
+    // "ends up here, falling through to the ordinary topics/SUBJECT picker
+    // below, same as any other POI's declined offer" -- which itself falls
+    // through the recruit block first).
+    auto dialogueDeclineBoat = [&]() { dialogueOfferRecruitOrTopics(); };
 
     // "Board" on the BoatOffer picker -- mirrors talkTo's own boat block
     // (GameLoop.cpp:1080-1110) exactly: whisks the player straight to the
@@ -3328,6 +3411,12 @@ int runPhase1(const std::string& savePath) {
                                    "(up/down = select, Enter = choose, q = cancel)");
                 break;
             }
+            case DialogueUiState::RecruitOffer: {
+                const std::string title = "Ask " + dialogueSession.current.name + " to join your journey?";
+                drawPickerOverlay(title, {"Join me", "Not yet"}, dialogueSession.recruitOfferSelected,
+                                   "(up/down = select, Enter = choose, q = cancel)");
+                break;
+            }
             case DialogueUiState::AskInput:
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
                          kSheetTitleCharSize);
@@ -3548,6 +3637,9 @@ int runPhase1(const std::string& savePath) {
                                 break;
                             case DialogueUiState::BoatOffer:
                                 dialogueDeclineBoat(); // q=cancel, same as GameLoop.cpp:1076-1078
+                                break;
+                            case DialogueUiState::RecruitOffer:
+                                dialogueDeclineRecruit(); // q=cancel, same as GameLoop.cpp:1140-1142
                                 break;
                             case DialogueUiState::Greeting:
                             case DialogueUiState::TopicText:
@@ -3809,6 +3901,22 @@ int runPhase1(const std::string& savePath) {
                                         dialogueBoardBoat();
                                     } else {
                                         dialogueDeclineBoat();
+                                    }
+                                }
+                                break;
+                            case DialogueUiState::RecruitOffer:
+                                // Same either-direction-toggles shape as
+                                // BoatOffer just above -- mirrors talkTo's
+                                // own recruit picker loop (GameLoop.cpp:
+                                // 1135-1136), identical to its boat picker.
+                                if (dy != 0) {
+                                    dialogueSession.recruitOfferSelected =
+                                        dialogueSession.recruitOfferSelected == 0 ? 1 : 0;
+                                } else if (handleEnter) {
+                                    if (dialogueSession.recruitOfferSelected == 0) {
+                                        dialogueJoinRecruit();
+                                    } else {
+                                        dialogueDeclineRecruit();
                                     }
                                 }
                                 break;
@@ -4163,6 +4271,18 @@ int runPhase1(const std::string& savePath) {
                         const float centerY = (static_cast<float>(zy) + 0.5f) * kZoneTilePx;
                         const std::string* portalTarget = currentZone->portalAt(zx, zy);
                         const world::PointOfInterest* poi = currentZone->poiAt(zx, zy);
+                        // A recruited companion's own POI stops rendering
+                        // entirely once they've joined -- they're travelling
+                        // with the party now, not still standing here.
+                        // Mirrors the same fix in render::MapRenderer::
+                        // drawZoneFrame (console build); both builds
+                        // previously kept drawing this tile's icon/label
+                        // forever. Confirmed live 2026-09-10: Bren Alder's
+                        // icon stayed in Solace after joining.
+                        if (poi != nullptr && !poi->recruitCompanionId.empty() &&
+                            companionAlreadyRecruited(poi->recruitCompanionId)) {
+                            poi = nullptr;
+                        }
                         if (poi) {
                             const PoiKind kind = poiKindFor(portalTarget != nullptr, *poi);
                             drawPoiIcon(window, poiIconShapes, kind, kZoneTilePx, centerX, centerY);

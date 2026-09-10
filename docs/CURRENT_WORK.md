@@ -4,17 +4,16 @@
 `sfml-trial-3`, paused, resume here.** See the Playtest backlog far below
 for the full item-by-item status; most items are now confirmed (save
 persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
-help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop).
-Boat-voyage accept/decline is newly implemented this pass and **confirmed
-working 2026-09-10** via the user's own keyboard (see its own writeup
-below): the Crossing/Port O'Call round-trip ferry worked both directions,
-and declining an offer (quitting the conversation without boarding) also
-worked correctly. Still open otherwise: Astinus's
-free-text ask-input, the quest/recruit placeholder lines, Inventory's
-equip/drink paths (blocked on steel for a potion), and most of combat
-(spellcasting edge cases, item use, Flee, group target picker, the
-same-cell collision fix, sweep/backstab -- the last needs a companion
-recruited via `ansalon_rpg` first, neither save has one).
+help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop,
+boat-voyage accept/decline, companion recruit accept/decline). That last
+one's live test surfaced a real bug -- a recruited companion's own POI kept
+rendering its icon/label in town forever, in both builds -- now fixed and
+also confirmed working 2026-09-10 (see its own writeup below). Still open
+otherwise: Astinus's free-text ask-input, the quest placeholder line,
+Inventory's equip/drink paths (blocked on steel for a potion), and most of
+combat (spellcasting edge cases, item use, Flee, group target picker, the
+same-cell collision fix, sweep/backstab -- save1 now actually carries a
+recruited companion (Bren Alder), so these are ready to test directly).
 
 **Real bug fixed this session, live-playtest-discovered:** the SFML port's
 overworld movement never advanced `state.hoursElapsed` (see this file's
@@ -1182,6 +1181,107 @@ boarding) also fell through correctly instead of teleporting or closing
 the window. No `docs/MILESTONES.md` entry, same reasoning as every other
 SFML-branch entry above.
 
+**Companion recruit accept/decline shipped this session, same
+`sfml_phase1/main.cpp`.** The user's own next pick off this file's backlog
+-- previously just a `(Recruiting companions isn't wired up in this build
+yet.)` placeholder log line, same as the quest placeholder that remains
+deferred. Direct port of `GameLoop::talkTo`'s recruit block
+(`GameLoop.cpp:1116-1153`), which sits immediately after the console's own
+boat block: `DialogueCandidate` gained a real `recruitCompanionId` field
+(replacing the old placeholder-only `hasRecruit` bool -- `hasQuest` is
+unchanged, still placeholder-only), populated in `gatherTalkCandidates`
+from the same `world::PointOfInterest::recruitCompanionId` the console
+reads (Haven's Dessa Corrin, Solace's Bren Alder). A new `RecruitOffer`
+`DialogueUiState` (Join me/Not yet, via the existing `drawPickerOverlay`)
+is reached whenever the candidate carries a `recruitCompanionId` not
+already in `state.companions`.
+
+**The one real sequencing wrinkle, solved rather than glossed over:**
+`talkTo`'s boat and recruit blocks run one after another in the same
+straight-line function -- boat offer/decline, then recruit offer/decline,
+then the topic picker -- but this build resolves each picker as its own
+non-blocking `DialogueUiState`, one key-press event at a time, so that
+linear chain had to become an explicit shared tail: a new
+`dialogueOfferRecruitOrTopics` lambda (checks recruit eligibility, else
+goes to the topic picker, else ends the conversation) is now called both
+directly from `Greeting`'s dismissal (when there's no boat to offer first)
+and from `dialogueDeclineBoat` (when there was one and it was declined) --
+preserving talkTo's exact boat-then-recruit-then-topics order either way.
+Also ported faithfully: unlike boarding a boat (which ends the conversation
+outright), accepting *or* declining a recruit offer both fall through to
+the topic picker afterward, matching `talkTo`'s own fallthrough exactly --
+so `dialogueJoinRecruit` (adds the `game::RecruitedCompanion` via
+`character::buildCompanionById`, logs "`<name>` joins your party.") ends by
+calling `dialogueDeclineRecruit` rather than ending the conversation the
+way `dialogueBoardBoat` does. No `CMakeLists.txt` changes needed --
+`src/character/Companion.cpp` was already linked into this target for the
+character sheet; only the missing `#include "character/Companion.h"` was
+added.
+
+**Deliberately not added:** a startup cross-check of `RECRUIT` ids against
+`character::isKnownCompanionId` -- that validation already runs in the
+console's `src/main.cpp:269`, and no other cross-checked id (quest ids,
+shop locks) is duplicated in this build either; both ids in the actual data
+(`bren_alder`, `dessa_corrin`) are already valid, confirmed via the
+existing piped-character-creation smoke test on `ansalon_rpg`, which
+exercises that same startup validation.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings) and a launch smoke test of `ansalon_sfml_phase1.exe` against real
+`save2.txt` (neither current save had a recruited companion at build time)
+confirming every catalog still loads and the window opens with no crash/
+exception, then **confirmed working 2026-09-10** via the user's own
+keyboard on save1 (Mike): declined Bren Alder's offer at Solace first,
+talked to him again, and accepted -- the offer correctly came back after
+declining, and joining added him (`COMPANION bren_alder` now in
+`save1.txt`) without ending the conversation. No `docs/MILESTONES.md`
+entry, same reasoning as every other SFML-branch entry above.
+
+**Real bug found and fixed via that same live playtest, both builds:
+a recruited companion's own POI kept rendering its icon/label in town
+forever.** After Bren Alder joined, his tile in Solace still showed his
+talkable-NPC icon and name label, as if he were still standing there
+unrecruited. Traced to both zone renderers -- `render::MapRenderer::
+drawZoneFrame` (console, `MapRenderer.cpp`) and this build's own zone-render
+loop (`sfml_phase1/main.cpp`) -- unconditionally drawing every `world::
+PointOfInterest` on the grid with no check against `state.companions` at
+all; not a regression from this session's recruit work, just never visible
+before now since nothing had ever actually recruited a companion inside
+`ansalon_sfml_phase1` until this pass. User's call on the fix: hide the
+icon/label entirely once recruited, reading as "they left to join you"
+rather than leaving the tile visible-but-inert.
+
+Fixed with matching one-line guards in both builds: a new
+`isRecruitedCompanionPoi(poi, state)` helper in `MapRenderer.cpp` (checked
+via an `else if (init; cond)` so an already-recruited POI's tile falls
+through to its ordinary underlying zone-tile glyph, exactly as if
+`zone.poiAt` had returned null there) and, in `main.cpp`, the existing
+per-candidate `alreadyRecruited` lambda was generalized into a shared
+`companionAlreadyRecruited(id)` (reused by both the dialogue offer logic
+and a new check in the zone-render loop that nulls out the local `poi`
+pointer before the icon/label draw calls that follow). Deliberately scoped
+to rendering only -- the POI itself, its dialogue, and collision (POIs are
+always passable) are untouched, so walking onto that tile and pressing Talk
+still works exactly as before (falls straight to the topic picker, since
+`alreadyRecruited` already prevented re-offering); only the visual glyph/
+icon disappeared.
+
+Verified: clean rebuild of all three CMake targets (zero new `/W4`
+warnings); a piped character-creation smoke test on `ansalon_rpg` (real
+save1/save2/save3 moved aside during the test, confirmed restored and
+intact afterward -- including save1's own `COMPANION bren_alder` line from
+the user's live recruit above); and a launch smoke test of
+`ansalon_sfml_phase1.exe` against real `save1.txt` (the one with a
+recruited companion) confirming every catalog still loads and the window
+opens with no crash/exception, then **confirmed working 2026-09-10** via
+the user's own keyboard on save1: Bren Alder's tile in Solace no longer
+shows his icon/label. Not separately confirmed: Dessa Corrin's tile in
+Haven once she's recruited (same code path, same fix). No `docs/
+MILESTONES.md` entry, same reasoning as every other SFML-branch entry
+above -- though this fix touches the console build directly too
+(`MapRenderer.cpp` is shared), not just the
+SFML side.
+
 ## Full-migration roadmap (screens still ASCII/terminal-only)
 
 Each needs its own real pixel-space design pass -- not a mechanical port,
@@ -1367,17 +1467,19 @@ piling on more unverified content. Full sourcing/detail for each is in its
   encounter's in-frame target picker (up/down to cycle, Enter to confirm --
   needs a monster with a `GROUP` line in `data/monsters.txt` to roll more
   than one instance), and a recruited companion fighting alongside the
-  player (check whether save1/save2 has one recruited first). See
-  `sfml_phase1/main.cpp` and this file's Phase 3 writeup above, not a
-  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
-  `master` yet.
-- **SFML thief backstab and Fighter sweep** -- **neither current save
-  carries a recruited companion** (checked directly), so this needs a
-  console-build (`ansalon_rpg`) playthrough that recruits one into
-  save1/save2 first (this build's own Dialogue phase still defers the
-  recruit flow, so it can't do this itself). For sweep: fight a Fighter
-  (or a Fighter companion) against a weak group (Goblin/Kobold/Hobgoblin/
-  Skeleton -- HD <=1, `combat::isSweepEligible`) with 2+ adjacent, and
+  player -- **save1 (Mike) now actually carries one, Bren Alder**, recruited
+  live 2026-09-10 (see the companion recruit entry below), so this is ready
+  to test directly. See `sfml_phase1/main.cpp` and this file's Phase 3
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
+- **SFML thief backstab and Fighter sweep** -- **save1 (Mike) now carries a
+  recruited companion, Bren Alder**, so this no longer needs a detour
+  through a console-build (`ansalon_rpg`) playthrough first -- Dessa Corrin
+  at Haven is still available too, if a second/Thief-type companion is
+  wanted for the backstab side specifically (Bren Alder is a Fighter). For
+  sweep: fight a Fighter (or a Fighter companion) against a weak group
+  (Goblin/Kobold/Hobgoblin/Skeleton -- HD <=1, `combat::isSweepEligible`)
+  with 2+ adjacent, and
   confirm the log reads "You sweep through the Goblins!" (or the
   companion's own name) followed by one hit/miss line per adjacent
   instance, no target picker opened, and no to-hit/damage bonus applied.
@@ -1403,11 +1505,12 @@ piling on more unverified content. Full sourcing/detail for each is in its
   2026-09-09** via the user's own keyboard: zone-native NPC talk, canon
   Hero talk, and a multi-candidate tile's picker (which also covers the
   generic picker overlay item, since `PickingCandidate`/`TopicPicker`
-  render through it) all work. **Not yet separately confirmed**: the
-  quest/recruit placeholder log lines at a POI marked with each (e.g.
-  Kalaman's Curiosities Cart for `QUEST`, Haven or Solace for `RECRUIT`).
-  See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
-  `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+  render through it) all work. **Not yet separately confirmed**: the quest
+  placeholder log line at a POI marked `QUEST` (e.g. Kalaman's Curiosities
+  Cart) -- `RECRUIT` is no longer a placeholder, see its own backlog entry
+  below. See `sfml_phase1/main.cpp` and this file's writeup above, not a
+  numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
+  `master` yet.
 - ~~**SFML boat-voyage accept/decline**~~ -- **confirmed working
   2026-09-10** via the user's own keyboard: boarded the Crossing/Port
   O'Call ferry, crossed back again (the round-trip case -- the offer came
@@ -1415,6 +1518,23 @@ piling on more unverified content. Full sourcing/detail for each is in its
   (quitting the conversation without boarding) also worked correctly. See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
+- ~~**SFML companion recruit accept/decline**~~ -- **confirmed working
+  2026-09-10** via the user's own keyboard on save1 (Mike): declined Bren
+  Alder's offer at Solace, talked to him again, and this time accepted --
+  the offer correctly re-appeared after the decline (not silently
+  exhausted), and joining added him without ending the conversation. Not
+  separately exercised: Dessa Corrin at Haven, and the boat-then-recruit
+  ordering at a single POI (neither RECRUIT POI currently also has a BOAT).
+  This same test surfaced a real bug, now fixed but not yet re-confirmed
+  live -- see the next item. See `sfml_phase1/main.cpp` and this file's
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
+- ~~**SFML recruited-companion POI icon/label fix**~~ -- **confirmed
+  working 2026-09-10** via the user's own keyboard: Bren Alder's tile in
+  Solace no longer shows his icon/label after joining. Not separately
+  confirmed: Dessa Corrin's tile in Haven once she's recruited (same code
+  path). See `sfml_phase1/main.cpp`/`src/render/MapRenderer.cpp` and this
+  file's writeup above, not a numbered `docs/MILESTONES.md` entry.
 - **SFML ask-input (free-text "Ask about something else...")** -- press `T`
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus

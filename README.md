@@ -307,11 +307,9 @@ comes back again even after you've sailed it once.
 
 ### Companions
 
-*(The SFML build's dialogue doesn't yet offer recruitment — a would-be
-companion logs a placeholder line instead of asking to join. A companion
-already recruited in a console-build save does fight alongside you in
-SFML combat, sweep/backstab included; recruiting one in the first place
-currently needs the console build.)*
+*(The SFML build's dialogue now offers recruitment too, confirmed working
+at the keyboard — the same as described below. A companion, however
+recruited, fights alongside you in SFML combat, sweep/backstab included.)*
 
 - Solace and Haven each have a would-be companion of their own: talk to
   **Bren Alder** in Solace or **Dessa Corrin** in Haven and they'll ask to
@@ -680,10 +678,9 @@ Movement is immediate — no Enter key needed:
   your current location today, or a talkable zone NPC — a picker asks
   who first if more than one is present). Covers greetings, repeat-visit
   lines, aftermath/anticipation text, the topic picker, free-text "Ask
-  about something else...", and boat-voyage accept/decline (Board/Not
-  yet); quest offers and companion recruitment each still log a
-  placeholder line instead of actually opening (console-only for now —
-  see the caveats under "Status" above).
+  about something else...", boat-voyage accept/decline (Board/Not yet),
+  and companion recruit accept/decline (Join me/Not yet); quest offers
+  still log a placeholder line instead of actually opening.
 - `P` — browse/buy at a shop POI; `I` while inside toggles to selling.
   Purchases land in your carried inventory, not straight onto your body.
 - `I` (outside a shop) — view carried items; Enter equips a weapon/
