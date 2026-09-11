@@ -1456,26 +1456,72 @@ piling on more unverified content. Full sourcing/detail for each is in its
   via the user's own keyboard: reached the Knight-of-Crown offer screen on
   a fresh slot (a Good-aligned Fighter), which implicitly exercises name
   entry, rolling/assigning ability scores, picking a race, and picking a
-  class/alignment along the way. **Real bug found and fixed during this
-  same test**: `drawPickerOverlay`'s title (and, separately, its list
-  items) were never wrapped, so the Knight-of-Crown/Weapon-Specialization
-  prompts' long sentences ran off the right edge of the window instead of
-  wrapping -- fixed by wrapping the title and message the same way the
-  dialogue overlay's body text already does, restructuring those two
-  prompts to use a short title with the sentence as wrapped body text
-  (matching the summary screen's own existing layout), and additionally
-  wrapping every list item generically (any item -- a race/class
-  annotation, the summary's saves line -- could in principle run long
-  too), with the `>` cursor only on an item's first visual line. Confirmed
-  fixed after a rebuild + relaunch. **Not yet confirmed**: the
-  Weapon-Specialization offer and final summary screen (does "Yes" land
-  you in Solace with correct stats, does "No" genuinely restart from
-  Name), an ineligible race/class/alignment pick's inline error and
-  re-prompt, the Elf/Dwarf subrace step, the Gnome-forced-Tinker path, and
-  the save-slot menu's own Continue/overwrite/delete branches (this test
-  used an empty slot straight into creation). See `sfml_phase1/main.cpp`
-  and this file's writeup above, not a numbered `docs/MILESTONES.md`
-  entry -- this branch isn't merged to `master` yet.
+  class/alignment along the way. **Real bug found this same test, fixed
+  twice -- the first fix didn't actually hold:** the Knight-of-Crown/
+  Weapon-Specialization prompts' long sentences ran off the right edge of
+  the window instead of wrapping. The first attempt (wrapping `drawPickerOverlay`'s
+  title/items/message, and restructuring both prompts to a short title +
+  wrapped body) read as fixed after a dev-build rebuild + relaunch, but
+  the **packaged Release/Dist exe still showed the identical clipped
+  Weapon-Specialization text** (caught via a screenshot of `dist/
+  AnsalonRPG-Playable`). Root cause traced properly this time: every wrap
+  call in this file (`wrapToWidth`) converted a pixel budget to a
+  *character-count* budget via one approximate constant,
+  `kSidebarCharWidth = 9.5f` -- calibrated (per its own comment) only for
+  short ~30-char sidebar log lines at 16px, then reused unrecalibrated for
+  these two long (123/127-char) full-window-width sentences at a different
+  size (15px). The first fix wrapped the right things but was still built
+  on that same approximate constant, so whether a given prompt actually
+  clips depends on the exact live window width -- it can render fine in
+  one session and clip in another, exactly matching "confirmed fixed" in
+  dev, still broken in the packaged build.
+  **Real fix:** `wrapToWidth` replaced with `wrapToPixelWidth`, which
+  measures each candidate line's actual rendered width via the real
+  `sf::Font`/`sf::Text::getLocalBounds()` instead of assuming an average
+  character-advance width -- removing the whole bug class rather than
+  re-tuning a constant that had already failed once. All 9 wrap call
+  sites in `sfml_phase1/main.cpp` (picker overlay title/body/message,
+  the Knight Offer/Specialization steps' own redundant pre-wrap -- deleted
+  entirely now that `drawPickerOverlay`'s own wrap is pixel-accurate,
+  character sheet carried-items/spells lines, the full log overlay,
+  dialogue body/ask-hint text, sidebar log/prompt wraps) converted; dead
+  `kSidebarCharWidth` constant removed. Verified via a throwaway
+  `WrapPixelWidthSelfTest.cpp` (built, run, then deleted) confirming no
+  wrapped line ever exceeds its pixel budget for either exact offending
+  sentence across window widths from 600px to 2560px -- correctly staying
+  one line above ~1152px and wrapping into 2-3 lines below it, never
+  overflowing at any width tested. Clean rebuild (Debug + Release, zero
+  new `/W4` warnings), a launch smoke test of both the dev Release build
+  and the repackaged `dist/AnsalonRPG-Playable-v4.zip` staged folder
+  (catalogs load, window opens, no crash). **Confirmed working
+  2026-09-11** via the user's own keyboard against the packaged
+  `AnsalonRPG-Playable-v4.zip` -- the Weapon Specialization prompt (the
+  one in the original screenshot) now wraps and reads in full. Still not
+  yet confirmed: the Knight Offer screen specifically, the final summary
+  screen (does "Yes" land you in Solace with correct stats, does "No"
+  genuinely restart from Name), an ineligible race/class/alignment pick's
+  inline error and re-prompt, the Elf/Dwarf subrace step, the
+  Gnome-forced-Tinker path, and the save-slot menu's own Continue/
+  overwrite/delete branches. See `sfml_phase1/main.cpp` and this file's
+  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
+  isn't merged to `master` yet.
+- **Stale startup banner fixed, found via the same live v4 test:** every
+  session's sidebar log opened with "Quest tracking, companion
+  recruitment, and Look aren't wired up in this build yet" -- leftover
+  text from Phase 1, before Dialogue's companion-recruit (`RecruitOffer`)
+  shipped. The user loaded `save1.txt` (Mike, a fresh level 1 Fighter with
+  no companions yet -- expected, nobody's been recruited) and read the
+  banner as confirming recruitment itself doesn't work, when it actually
+  has since `ff4183d`. Fixed by dropping "companion recruitment" from the
+  banner -- `DialogueCandidate`'s own comment (`sfml_phase1/main.cpp:150-159`)
+  already correctly documents boat voyages and companion recruiting as
+  both wired up, so this was purely a stale message, not a functional gap.
+  Quest tracking and Look are still genuinely unimplemented, so they stay
+  in the banner. Verified: clean rebuild (zero new `/W4` warnings), a
+  launch smoke test against `save1.txt`, and a repackage --
+  `dist/AnsalonRPG-Playable-v5.zip`. **Not yet interactively confirmed** --
+  this session again had no desktop/GUI access to watch the corrected
+  banner render.
 - ~~**SFML launch-maximized**~~ -- **confirmed working 2026-09-09** via the
   user's own keyboard: window opens maximized, loading screen and quit
   confirm both read correctly. See `sfml_phase1/main.cpp` and this file's

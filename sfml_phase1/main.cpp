@@ -74,10 +74,6 @@ namespace {
 
 constexpr std::size_t kMaxLogLines = 14;
 constexpr unsigned kSidebarCharSize = 16;
-// Rough monospace advance width for kSidebarCharSize in Consolas -- used
-// only to wrap placeholder log text to the sidebar's pixel width, not for
-// precise layout. Recalibrate if the font or character size changes.
-constexpr float kSidebarCharWidth = 9.5f;
 // Placeholder pixel-per-tile scale for zone interiors -- there's no real
 // reference image for these like the overworld has, so this is a plain
 // colored-tile placeholder, not art. Zones are capped at 44x16
@@ -355,18 +351,23 @@ std::string formatDayTime(long long hoursElapsed) {
     return oss.str();
 }
 
-// Greedy word-wrap so sidebar log lines don't run off the panel -- the
-// sidebar is placeholder-styled (per the approved plan), but unwrapped
-// overflowing text would undermine even that, so this one bit of layout
-// care is worth it.
-std::vector<std::string> wrapToWidth(const std::string& text, std::size_t maxChars) {
+// Greedy word-wrap so overlay/log text never runs off its panel. Measures
+// each candidate line's real rendered width via the actual font/size
+// rather than an assumed average character-advance width -- a fixed
+// per-character constant (tried first, see git history) drifts from the
+// font's true glyph widths just enough that the error compounds over a
+// long line and lets the tail run off the window edge, invisibly, since
+// nothing else clips it.
+std::vector<std::string> wrapToPixelWidth(const sf::Font& font, unsigned charSize, const std::string& text,
+                                           float maxWidthPx) {
     std::vector<std::string> lines;
     std::istringstream words(text);
     std::string word;
     std::string current;
     while (words >> word) {
         const std::string candidate = current.empty() ? word : current + " " + word;
-        if (candidate.size() > maxChars && !current.empty()) {
+        sf::Text probe(font, candidate, charSize);
+        if (probe.getLocalBounds().size.x > maxWidthPx && !current.empty()) {
             lines.push_back(current);
             current = word;
         } else {
@@ -850,15 +851,16 @@ int runPhase1(const std::string& savePath) {
         bg.setFillColor(sf::Color(18, 18, 24));
         window.draw(bg);
 
-        // kSidebarCharWidth is calibrated for kSidebarCharSize (16px) --
-        // scaled by size ratio here so a long title/message wraps instead
-        // of running off the right edge, same wrapToWidth helper the
-        // dialogue overlay's own body text already uses.
-        const std::size_t bodyMaxChars =
-            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
-        const std::size_t titleMaxChars = static_cast<std::size_t>(
-            (static_cast<float>(windowW) - 2.f * kSheetMarginX) /
-            (kSidebarCharWidth * static_cast<float>(kSheetTitleCharSize) / static_cast<float>(kSidebarCharSize)));
+        // Wrapped against the real rendered pixel width (wrapToPixelWidth
+        // measures via the actual font/size) so a long title/message wraps
+        // instead of running off the right edge, same helper the dialogue
+        // overlay's own body text already uses.
+        const float maxWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
+        // "> "/"  " is only ever drawn ahead of an item's first visual
+        // line (below), so items are wrapped a bit narrower to leave room
+        // for it -- measured directly rather than assumed, since it's
+        // drawn at the item's own body size, not the title's.
+        const float prefixWidthPx = sf::Text(font, "> ", kSheetBodyCharSize).getLocalBounds().size.x;
 
         float y = 40.f;
         auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
@@ -869,7 +871,7 @@ int runPhase1(const std::string& savePath) {
             y += static_cast<float>(size) + 10.f;
         };
 
-        for (const std::string& line : wrapToWidth(title, titleMaxChars)) {
+        for (const std::string& line : wrapToPixelWidth(font, kSheetTitleCharSize, title, maxWidthPx)) {
             drawLine(line, kSheetSectionColor, kSheetTitleCharSize);
         }
         y += 10.f;
@@ -880,7 +882,9 @@ int runPhase1(const std::string& savePath) {
         // several separate selectable rows.
         for (int i = 0; i < static_cast<int>(items.size()); ++i) {
             const bool isSelected = i == selectedIndex;
-            std::vector<std::string> wrapped = wrapToWidth(items[static_cast<size_t>(i)], bodyMaxChars - 2);
+            std::vector<std::string> wrapped = wrapToPixelWidth(font, kSheetBodyCharSize,
+                                                                  items[static_cast<size_t>(i)],
+                                                                  maxWidthPx - prefixWidthPx);
             if (wrapped.empty()) wrapped.push_back("");
             for (size_t lineIdx = 0; lineIdx < wrapped.size(); ++lineIdx) {
                 const std::string prefix = lineIdx == 0 ? (isSelected ? "> " : "  ") : "  ";
@@ -890,7 +894,7 @@ int runPhase1(const std::string& savePath) {
         }
         if (!message.empty()) {
             y += 10.f;
-            for (const std::string& line : wrapToWidth(message, bodyMaxChars)) {
+            for (const std::string& line : wrapToPixelWidth(font, kSheetBodyCharSize, message, maxWidthPx)) {
                 drawLine(line, sf::Color::White, kSheetBodyCharSize);
             }
         }
@@ -1579,20 +1583,18 @@ int runPhase1(const std::string& savePath) {
                             }
                             break;
                         case CreationStep::KnightOffer: {
-                            // Long descriptive text goes into wrapped
-                            // non-selectable leading items instead of the
+                            // Long descriptive text goes into a
+                            // non-selectable leading item instead of the
                             // title -- same idiom Summary already uses --
                             // since drawPickerOverlay's title line is meant
                             // to stay a short heading, not a full sentence.
+                            // drawPickerOverlay wraps this item itself
+                            // (measured against the real font/window
+                            // width), so it isn't pre-wrapped here too.
                             title = "Knights of Solamnia";
-                            const std::size_t wrapChars = static_cast<std::size_t>(
-                                (static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
-                            for (const std::string& line :
-                                 wrapToWidth("You meet the qualifications to be sponsored into the Knights "
-                                             "of Solamnia as a Knight of the Crown. Swear the oath and join?",
-                                             wrapChars)) {
-                                items.push_back(line);
-                            }
+                            items.push_back(
+                                "You meet the qualifications to be sponsored into the Knights "
+                                "of Solamnia as a Knight of the Crown. Swear the oath and join?");
                             items.push_back("Yes");
                             items.push_back("No");
                             selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
@@ -1601,15 +1603,10 @@ int runPhase1(const std::string& savePath) {
                         }
                         case CreationStep::Specialization: {
                             title = "Weapon Specialization";
-                            const std::size_t wrapChars = static_cast<std::size_t>(
-                                (static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
-                            for (const std::string& line :
-                                 wrapToWidth("You may specialize in your weapon, gaining +1 to hit and +2 "
-                                             "damage with it, plus faster extra attacks as you level. "
-                                             "Specialize?",
-                                             wrapChars)) {
-                                items.push_back(line);
-                            }
+                            items.push_back(
+                                "You may specialize in your weapon, gaining +1 to hit and +2 "
+                                "damage with it, plus faster extra attacks as you level. "
+                                "Specialize?");
                             items.push_back("Yes");
                             items.push_back("No");
                             selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
@@ -1806,8 +1803,8 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking, companion recruitment, and Look "
-            "aren't wired up in this build yet. Press / for the full command list.");
+    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking and Look aren't wired up in this "
+            "build yet. Press / for the full command list.");
 
     // --- Dialogue (core conversation): all state is DialogueSession above;
     // every lambda below is a non-blocking port of the matching piece of
@@ -3609,7 +3606,7 @@ int runPhase1(const std::string& savePath) {
     // constants specific to this two-column layout stay here.
     const float kSheetRightX = static_cast<float>(windowW) / 2.f + 20.f;
     const float kSheetColumnWidth = static_cast<float>(windowW) / 2.f - kSheetMarginX - 20.f;
-    const std::size_t kSheetMaxChars = static_cast<std::size_t>((kSheetColumnWidth - 10.f) / kSidebarCharWidth);
+    const float kSheetMaxWidthPx = kSheetColumnWidth - 10.f;
 
     auto drawCharacterSheetOverlay = [&]() {
         sf::RectangleShape sheetBg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
@@ -3741,7 +3738,7 @@ int runPhase1(const std::string& savePath) {
                 carriedLine << character::inventoryItemLabel(c.inventory[i]);
             }
         }
-        for (const std::string& wrapped : wrapToWidth(carriedLine.str(), kSheetMaxChars)) {
+        for (const std::string& wrapped : wrapToPixelWidth(font, kSheetBodyCharSize, carriedLine.str(), kSheetMaxWidthPx)) {
             drawAt(kSheetRightX, rightY, wrapped, kSheetBodyColor, kSheetBodyCharSize);
         }
         rightY += 14.f;
@@ -3771,7 +3768,7 @@ int runPhase1(const std::string& savePath) {
                 }
                 spellsLine = spellLine.str();
             }
-            for (const std::string& wrapped : wrapToWidth(spellsLine, kSheetMaxChars)) {
+            for (const std::string& wrapped : wrapToPixelWidth(font, kSheetBodyCharSize, spellsLine, kSheetMaxWidthPx)) {
                 drawAt(kSheetRightX, rightY, wrapped, kSheetBodyColor, kSheetBodyCharSize);
             }
             rightY += 14.f;
@@ -3929,11 +3926,12 @@ int runPhase1(const std::string& savePath) {
     // for the actual title/list/status/footer rendering, same as every
     // other picker-shaped screen in this file.
     auto drawLogOverlay = [&]() {
-        const std::size_t maxLineChars =
-            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+        const float maxLineWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
         std::vector<std::string> wrapped;
         for (const std::string& entry : log) {
-            for (std::string& line : wrapToWidth(entry, maxLineChars)) wrapped.push_back(std::move(line));
+            for (std::string& line : wrapToPixelWidth(font, kSheetBodyCharSize, entry, maxLineWidthPx)) {
+                wrapped.push_back(std::move(line));
+            }
         }
         const int total = static_cast<int>(wrapped.size());
         // Sized to comfortably fit this build's original 1280x800 design
@@ -4156,8 +4154,7 @@ int runPhase1(const std::string& savePath) {
         bg.setFillColor(sf::Color(18, 18, 24));
         window.draw(bg);
 
-        const std::size_t maxChars =
-            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+        const float maxWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
         float y = 40.f;
 
         auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
@@ -4182,7 +4179,8 @@ int runPhase1(const std::string& savePath) {
                                                   : dialogueSession.current.name;
                 drawLine(speaker, sf::Color::White, kSheetTitleCharSize);
                 y += 10.f;
-                for (const std::string& wrapped : wrapToWidth(dialogueSession.bodyText, maxChars)) {
+                for (const std::string& wrapped :
+                     wrapToPixelWidth(font, kSheetBodyCharSize, dialogueSession.bodyText, maxWidthPx)) {
                     drawLine(wrapped, kSheetBodyColor, kSheetBodyCharSize);
                 }
                 y += 10.f;
@@ -4225,7 +4223,8 @@ int runPhase1(const std::string& savePath) {
                         if (i > 0) hintLine += ", ";
                         hintLine += dialogueSession.askInputHints[i];
                     }
-                    for (const std::string& wrapped : wrapToWidth(hintLine, maxChars)) {
+                    for (const std::string& wrapped :
+                         wrapToPixelWidth(font, kSheetHeaderCharSize, hintLine, maxWidthPx)) {
                         drawLine(wrapped, sf::Color(150, 150, 160), kSheetHeaderCharSize);
                     }
                     y += 10.f;
@@ -5118,15 +5117,16 @@ int runPhase1(const std::string& savePath) {
                 lineY += lineHeight;
             };
 
-            const std::size_t maxLineChars =
-                static_cast<std::size_t>((sidebarWidth - 32.f) / kSidebarCharWidth);
+            const float maxLineWidthPx = sidebarWidth - 32.f;
             // The combat log below already wraps through this -- these
             // static/dynamic prompt lines (e.g. "ATTACK (Enter)   MOVE
             // (wasd)   FLEE (f)") didn't, so a long enough one ran past the
             // sidebar's own width and was clipped by the window's right
             // edge (found live, mid-fight). Wrapping them the same way.
             auto drawWrappedLine = [&](const std::string& text, sf::Color color) {
-                for (const std::string& wrapped : wrapToWidth(text, maxLineChars)) drawLine(wrapped, color);
+                for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, text, maxLineWidthPx)) {
+                    drawLine(wrapped, color);
+                }
             };
 
             if (combatSession.active) {
@@ -5170,7 +5170,8 @@ int runPhase1(const std::string& savePath) {
                 const std::size_t combatLogStart =
                     combatSession.log.size() > kCombatLogTail ? combatSession.log.size() - kCombatLogTail : 0;
                 for (std::size_t i = combatLogStart; i < combatSession.log.size(); ++i) {
-                    for (const std::string& wrapped : wrapToWidth(combatSession.log[i], maxLineChars)) {
+                    for (const std::string& wrapped :
+                         wrapToPixelWidth(font, kSidebarCharSize, combatSession.log[i], maxLineWidthPx)) {
                         drawLine(wrapped, sf::Color(190, 190, 200));
                     }
                 }
@@ -5239,7 +5240,7 @@ int runPhase1(const std::string& savePath) {
                 drawLine("-- Log --", sf::Color(140, 140, 160));
 
                 for (const std::string& entry : log) {
-                    for (const std::string& wrapped : wrapToWidth(entry, maxLineChars)) {
+                    for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, entry, maxLineWidthPx)) {
                         drawLine(wrapped, sf::Color(190, 190, 200));
                     }
                 }
