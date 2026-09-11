@@ -1,7 +1,80 @@
 # Current work
 
-**Right now: mid live playtest session of `ansalon_sfml_phase1` on
-`sfml-trial-3`, paused, resume here.** See the Playtest backlog far below
+**`sfml-trial-3` merged (fast-forward) into `master` and pushed 2026-09-10.**
+`master` and `sfml-trial-3` are now identical (`e5ec6f2`) -- `ansalon_sfml_phase1`
+is live on `master` as the primary/main build. Every "this branch isn't
+merged to `master` yet" aside elsewhere in this file (mostly in the
+Playtest backlog below) is now stale as a result; not hand-edited
+individually since they're historical asides, not actionable state.
+`ansalon_rpg` stays in the tree as a legacy/reference build, unchanged.
+Verified before merging: clean rebuild of all three targets on `master`
+(zero new `/W4` warnings).
+
+**Native character creation shipped for `ansalon_sfml_phase1`, same
+session.** User asked for this directly: launch the graphical build with
+no arguments and it now has its own save-slot menu and full character
+creation wizard, entirely in the window -- no more dependency on the
+console build for this. `main()`'s `argc < 2` case now calls
+`runPhase1("")` (empty = "show the slot menu") instead of erroring; a
+save path is still accepted directly too, unchanged, for a quick dev
+launch. Ports `src/main.cpp`'s save-slot menu (`describeSlot`/`slotLabel`/
+the picker loop) and `character::CharacterCreator::run()`
+(`CharacterCreator.cpp`, 521 lines) step by step as two new blocking
+event loops inside `runPhase1` (same self-contained-function shape
+`CharacterCreator::run()` itself already is, just driven by real
+`sf::Event` polling instead of `std::cin`) -- every `character::` rule
+function the wizard calls (race/subrace/class/alignment eligibility,
+racial adjustments, Knight-of-Crown/Weapon-Specialization checks, the
+HP/AC/THAC0/saves/steel formulas) was already linked into this target and
+is reused completely unchanged; **zero `CMakeLists.txt` changes needed**.
+`drawPickerOverlay` (this build's most-reused screen primitive) was
+relocated earlier in `runPhase1` -- a pure move, no logic change -- so
+both new bootstrap screens can reuse it too, the same way every other
+list/yes-no/recap screen in this build already does; name entry reuses
+the free-text ask-input's existing `TextEntered`/Backspace idiom. The
+slot menu adds one thing the console's typed `d1` syntax doesn't need in
+a graphical picker: a `D` key on the highlighted slot opens a delete
+confirmation. Escape/Q abandons the whole bootstrap flow (closes the
+window) at every step except the slot menu's own confirm sub-screens,
+where it steps back to the list instead -- same "sub-picker cancels back,
+top-level closes" convention every other overlay in this build follows.
+
+**Packaging simplified as a direct consequence**: `tools/
+package_playable_release.ps1` (shipped earlier this same session, see its
+own writeup below) no longer needs `ansalon_rpg.exe` or a two-step
+create-then-switch flow at all -- rewritten to package just
+`ansalon_sfml_phase1.exe` on its own, no batch-file launcher either: since
+it now takes no required argument, and Explorer already sets a
+double-clicked exe's working directory to its own containing folder, the
+exe itself is the whole thing a recipient runs (an earlier pass of this
+same session's work briefly added a `Play.bat` wrapper before realizing
+it wasn't needed -- corrected before hand-off). `README.txt` rewritten to
+match (one step, not two, no batch file mentioned).
+`ansalon_rpg.exe`/`tools/package_release.ps1` are untouched -- the legacy
+build stays available independently for whoever wants it.
+
+**Docs corrected**: `CLAUDE.md`'s "Build process" and `README.md`'s
+"Playing"/"Sharing a build" sections previously stated the SFML build
+requires a save-path argument and that character creation is console-only
+-- both updated to describe the new no-argument slot-menu/creation path
+(the argument still works, just isn't required anymore).
+
+Verified: clean rebuild of all three targets (zero new `/W4` warnings); a
+launch smoke test with an explicit save path (the unchanged path)
+confirming no regression; a launch smoke test with no argument, both in
+the dev build and in the repackaged zip copied to a scratch path outside
+the repo, confirming the window opens and reaches the new slot-menu
+screen with no crash. **Not yet interactively confirmed** -- there's no
+piped-stdin path for this (real `sf::Event`-driven UI, same standing
+limitation as every other SFML screen), and this session has no desktop/
+GUI access: the actual slot-menu navigation, every wizard step, and
+reaching real gameplay from a freshly created character all need a real
+keyboard session. This is a big enough feature (comparable to Dialogue or
+Combat) that it's worth trying the whole flow live before trusting it --
+added to the Playtest backlog below.
+
+**Right now: mid live playtest session of `ansalon_sfml_phase1`, paused,
+resume here.** See the Playtest backlog far below
 for the full item-by-item status; most items are now confirmed (save
 persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
 help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop,
@@ -576,6 +649,14 @@ playtest of the packaged copy itself. Zips to
 `dist/AnsalonSFMLDemo-v<N>.zip` (~76MB, dominated by the map PNG);
 `dist/` stays gitignored as before.
 
+**Retired 2026-09-10, see this file's own writeup near the top for the
+replacement (`tools/package_playable_release.ps1`)** -- this script's
+fixed-preset-character, read-only framing no longer matched the game
+(Cast/Item were unimplemented and nothing was ever saved when this was
+written; both are false now), and the user asked for a package that lets
+a real recipient create their own character instead of only viewing a
+premade one.
+
 **Loading screen and quit confirmation added this session, same
 `sfml_phase1/main.cpp` -- SFML-only by user decision** (the console
 build, `ansalon_rpg`, already has an established `promptYesNo("...(y/n)
@@ -848,13 +929,13 @@ a reasonable cherry-pick candidate to `master` independent of whenever (or
 whether) the broader branch itself gets merged. Not done automatically here;
 the user's call.
 
-**`ansalon_sfml_phase1` promoted to the primary/main build this session,
-still on `sfml-trial-3` (no merge to `master`).** With the full-migration
+**`ansalon_sfml_phase1` promoted to the primary/main build this session**
+(merged into `master` in a later session, 2026-09-10 -- see this file's
+own top note). With the full-migration
 roadmap below entirely closed out, the user asked to make it "the main
 game." Scoped down via a few rounds of questions: `ansalon_rpg` stays in
 the tree as a legacy/reference build rather than being retired (a
-separate, later call); no merge to `master` yet, since most of the
-Playtest backlog below is still unconfirmed; quest tracking/offer/
+separate, later call); quest tracking/offer/
 turn-in, companion recruit accept/decline, and boat-voyage accept/decline
 all stay deferred/placeholder, unchanged; the target keeps its
 `ansalon_sfml_phase1` name (no rename).
@@ -1371,6 +1452,30 @@ interactively walked with a real save/keyboard -- worth clearing before
 piling on more unverified content. Full sourcing/detail for each is in its
 `docs/MILESTONES.md` entry.
 
+- **SFML native character creation** -- **partially confirmed 2026-09-11**
+  via the user's own keyboard: reached the Knight-of-Crown offer screen on
+  a fresh slot (a Good-aligned Fighter), which implicitly exercises name
+  entry, rolling/assigning ability scores, picking a race, and picking a
+  class/alignment along the way. **Real bug found and fixed during this
+  same test**: `drawPickerOverlay`'s title (and, separately, its list
+  items) were never wrapped, so the Knight-of-Crown/Weapon-Specialization
+  prompts' long sentences ran off the right edge of the window instead of
+  wrapping -- fixed by wrapping the title and message the same way the
+  dialogue overlay's body text already does, restructuring those two
+  prompts to use a short title with the sentence as wrapped body text
+  (matching the summary screen's own existing layout), and additionally
+  wrapping every list item generically (any item -- a race/class
+  annotation, the summary's saves line -- could in principle run long
+  too), with the `>` cursor only on an item's first visual line. Confirmed
+  fixed after a rebuild + relaunch. **Not yet confirmed**: the
+  Weapon-Specialization offer and final summary screen (does "Yes" land
+  you in Solace with correct stats, does "No" genuinely restart from
+  Name), an ineligible race/class/alignment pick's inline error and
+  re-prompt, the Elf/Dwarf subrace step, the Gnome-forced-Tinker path, and
+  the save-slot menu's own Continue/overwrite/delete branches (this test
+  used an empty slot straight into creation). See `sfml_phase1/main.cpp`
+  and this file's writeup above, not a numbered `docs/MILESTONES.md`
+  entry -- this branch isn't merged to `master` yet.
 - ~~**SFML launch-maximized**~~ -- **confirmed working 2026-09-09** via the
   user's own keyboard: window opens maximized, loading screen and quit
   confirm both read correctly. See `sfml_phase1/main.cpp` and this file's

@@ -593,17 +593,18 @@ cmake --build build --config Debug
 
 This configures and builds every target, including the primary
 `ansalon_sfml_phase1`, which lands at
-`build\Debug\ansalon_sfml_phase1.exe`. It takes the save file to load as
-its one argument:
+`build\Debug\ansalon_sfml_phase1.exe`. Run it with no arguments to get its
+own save-slot menu and character creation wizard, entirely in the window:
 
 ```powershell
-.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt
+.\build\Debug\ansalon_sfml_phase1.exe
 ```
 
-(Any of the three slots works, once it holds a character — see "Playing"
-below for how to create one on the legacy console build first. A
-post-build step keeps `data/` and the reference map image populated next
-to the exe automatically, so this needs no extra step.)
+(A save path is still accepted directly too, for a quick dev launch
+against a known save: `.\build\Debug\ansalon_sfml_phase1.exe
+build\Debug\save1.txt`. A post-build step keeps `data/` and the reference
+map image populated next to the exe automatically, so this needs no extra
+step.)
 
 If you have a different Visual Studio version installed, list available
 generators with `cmake --help` and substitute the matching `-G` name.
@@ -620,20 +621,21 @@ cmake --build build
 
 ### Sharing a build
 
-To hand a runnable demo to someone who doesn't have this source tree, run:
+To hand a runnable copy to someone who doesn't have this source tree, run:
 
 ```powershell
-powershell -File tools\package_sfml_demo.ps1
+powershell -File tools\package_playable_release.ps1
 ```
 
-This builds a Release exe and stages it with the data/map it needs, plus
-a `RunDemo.bat` launcher and a sample save, into
-`dist\AnsalonSFMLDemo-v<N>.zip`. The recipient just unzips and runs
-`RunDemo.bat` — the MSVC runtime is statically linked, so no separate
-Visual C++ Redistributable install is needed. This build now autosaves,
-so their own unzipped `demo_save.txt` will genuinely pick up where they
-left off across relaunches — still a WIP tech demo, not a guarantee
-against save-breaking changes in a future update.
+This builds the graphical exe and stages it with the data/map it needs
+and a `README.txt`, into `dist\AnsalonRPG-Playable-v<N>.zip`. The
+recipient unzips and double-clicks `ansalon_sfml_phase1.exe` directly —
+no wrapper script needed, since it takes no required argument anymore and
+Explorer already sets the working directory to the exe's own folder — its
+own save-slot menu and character creation wizard handle everything from
+there, entirely in the window. The MSVC runtime is statically linked, so
+no separate Visual C++ Redistributable install is needed. Saves persist
+normally across relaunches.
 
 ### Legacy console build (`ansalon_rpg`)
 
@@ -660,14 +662,20 @@ support the VT100 sequences the game relies on for color).
 ## Playing
 
 The primary build is `ansalon_sfml_phase1` — real pixel-space rendering,
-no terminal required. It autosaves back to the save file it's launched
-with (see the note near the top of this file), so create or continue a
-character on the legacy console build first (below), then point the
-SFML build at that save file:
+no terminal required. Run it with no arguments and it opens its own
+save-slot menu, where you can create a brand-new character (name, race,
+class, ability scores, alignment, etc., all as graphical pickers/text
+entry) or continue an existing one, entirely in the window:
 
 ```powershell
-.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt
+.\build\Debug\ansalon_sfml_phase1.exe
 ```
+
+It autosaves back to whichever save file you picked/created (see the note
+near the top of this file). A save path is still accepted directly too,
+for a quick dev launch against a known save
+(`.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt`), skipping
+the slot menu entirely.
 
 Movement is immediate — no Enter key needed:
 
@@ -722,11 +730,11 @@ allowed to overwrite it), type `d1`/`d2`/`d3` to delete a slot's save
 immediately (with its own confirmation), or pick an empty slot to open
 character creation
 (plain typed prompts — enter a name, keep or reroll your ability scores,
-pick a race/class/alignment number, confirm). This is the only way today
-to create a character or a save file in the first place — see "Playing"
-above for the SFML build's own controls, which is the way to actually
-play once you have one. Once character creation's done, movement is
-immediate — no Enter key needed:
+pick a race/class/alignment number, confirm). The primary SFML build now
+has its own equivalent save-slot menu and character creation wizard (see
+"Playing" above) — this console version is an independent, still-fully-
+working alternative, not a required first step anymore. Once character
+creation's done, movement is immediate — no Enter key needed:
 
 - **Move**: `w a s d` for the 4 cardinal directions (no diagonals)
 - **Enter** — step into a location's walkable interior (every location has

@@ -183,8 +183,9 @@ endif()
 # docs/ARCHITECTURE.md's SFML section), so those need to actually exist next
 # to the built exe. Only dragonlancemap2.png is copied out of References/, not
 # the whole folder -- that folder also holds 460MB+ of reference PDFs/scratch
-# art never read at runtime, same one-file convention tools/package_sfml_demo.ps1
-# already uses for external distribution. Running from the repo root (this
+# art never read at runtime, same one-file convention
+# tools/package_playable_release.ps1 already uses for external distribution.
+# Running from the repo root (this
 # target's original convention) still works too, unaffected.
 add_custom_command(TARGET ansalon_sfml_phase1 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

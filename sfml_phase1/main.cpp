@@ -59,6 +59,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <deque>
@@ -794,7 +795,8 @@ int runPhase1(const std::string& savePath) {
     unsigned windowH = 800;
     const float sidebarWidth = 320.f;
 
-    std::cout << "step 0: starting, save = " << savePath << std::endl;
+    std::cout << "step 0: starting, save = "
+              << (savePath.empty() ? "(none -- will show the save-slot menu)" : savePath) << std::endl;
 
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(windowW, windowH)),
                              "Ansalon SFML Phase 1+2+3 -- Real Overworld + Zones + Combat (WIP)");
@@ -820,6 +822,81 @@ int runPhase1(const std::string& savePath) {
                      "this build uses a system font as a stand-in until this project has its own.\n";
         return 1;
     }
+
+    // Relocated here (originally declared much later, alongside the
+    // character sheet overlay) so the save-slot menu and character
+    // creation wizard below -- which run before game::GameState even
+    // exists -- can reuse it too. Pure move, no logic change: every
+    // existing caller further down in this function keeps working
+    // unchanged. Only the subset of kSheet* constants drawPickerOverlay
+    // itself actually reads comes with it; kSheetRightX/kSheetColumnWidth/
+    // kSheetMaxChars stay with the character sheet overlay that still
+    // needs them.
+    constexpr unsigned kSheetTitleCharSize = 26;
+    constexpr unsigned kSheetHeaderCharSize = 16;
+    constexpr unsigned kSheetBodyCharSize = 15;
+    const sf::Color kSheetSectionColor(230, 220, 160);
+    const sf::Color kSheetBodyColor(210, 210, 210);
+    const float kSheetMarginX = 40.f;
+
+    // "Title + selectable list + footer + optional message" frame -- this
+    // project's single most-reused screen primitive (see docs/CURRENT_WORK.md's
+    // "Generic picker overlay" writeup). A Yes/No prompt is just a 2-item
+    // list; a pure recap/info screen is a list with selectedIndex -1 (the
+    // same idiom Help/Journal/Spellbook already use).
+    auto drawPickerOverlay = [&](const std::string& title, const std::vector<std::string>& items,
+                                  int selectedIndex, const std::string& footer, const std::string& message = "") {
+        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        bg.setFillColor(sf::Color(18, 18, 24));
+        window.draw(bg);
+
+        // kSidebarCharWidth is calibrated for kSidebarCharSize (16px) --
+        // scaled by size ratio here so a long title/message wraps instead
+        // of running off the right edge, same wrapToWidth helper the
+        // dialogue overlay's own body text already uses.
+        const std::size_t bodyMaxChars =
+            static_cast<std::size_t>((static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+        const std::size_t titleMaxChars = static_cast<std::size_t>(
+            (static_cast<float>(windowW) - 2.f * kSheetMarginX) /
+            (kSidebarCharWidth * static_cast<float>(kSheetTitleCharSize) / static_cast<float>(kSidebarCharSize)));
+
+        float y = 40.f;
+        auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
+            sf::Text sfText(font, text, size);
+            sfText.setFillColor(color);
+            sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
+            window.draw(sfText);
+            y += static_cast<float>(size) + 10.f;
+        };
+
+        for (const std::string& line : wrapToWidth(title, titleMaxChars)) {
+            drawLine(line, kSheetSectionColor, kSheetTitleCharSize);
+        }
+        y += 10.f;
+        // Each item can itself run long (a race/class name plus an
+        // ineligibility annotation, a saves line, etc.) -- wrapped the same
+        // way title/message are, with the "> "/"  " selection prefix only
+        // on an item's first visual line so multi-line items don't read as
+        // several separate selectable rows.
+        for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+            const bool isSelected = i == selectedIndex;
+            std::vector<std::string> wrapped = wrapToWidth(items[static_cast<size_t>(i)], bodyMaxChars - 2);
+            if (wrapped.empty()) wrapped.push_back("");
+            for (size_t lineIdx = 0; lineIdx < wrapped.size(); ++lineIdx) {
+                const std::string prefix = lineIdx == 0 ? (isSelected ? "> " : "  ") : "  ";
+                drawLine(prefix + wrapped[lineIdx], isSelected ? sf::Color::White : kSheetBodyColor,
+                          kSheetBodyCharSize);
+            }
+        }
+        if (!message.empty()) {
+            y += 10.f;
+            for (const std::string& line : wrapToWidth(message, bodyMaxChars)) {
+                drawLine(line, sf::Color::White, kSheetBodyCharSize);
+            }
+        }
+        y += 10.f;
+        drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+    };
 
     // Loading screen: a real drawn frame instead of a blank/possibly
     // "Not Responding" window while the steps below run -- the map image
@@ -873,8 +950,764 @@ int runPhase1(const std::string& savePath) {
     timeline::TimelineLoader::loadFromFile("data/timeline.txt", timeline);
     std::cout << "step 2d: timeline loaded" << std::endl;
 
-    if (!drawLoadingScreen("Loading your character...")) return 0;
-    game::GameState state = game::SaveGame::load(savePath);
+    // ------------------------------------------------------------------
+    // No save path given (argc < 2 in main() -- see its own comment) means
+    // "show the save-slot menu." Both this and the character creation
+    // wizard below run as their own blocking event loops using the window/
+    // font/drawPickerOverlay already set up above, before game::GameState
+    // exists at all -- the same shape character::CharacterCreator::run()
+    // itself is (one big self-contained blocking function in the console
+    // build), just driven by real sf::Event polling instead of std::cin.
+    // Ports src/main.cpp's save-slot menu (describeSlot/slotLabel/the
+    // slot-picker loop, lines 107-380) and CharacterCreator.cpp step by
+    // step -- see docs/CURRENT_WORK.md for the full writeup.
+    // ------------------------------------------------------------------
+    std::string activeSavePath = savePath;
+    game::GameState state;
+    if (activeSavePath.empty()) {
+        struct SlotInfo {
+            std::string path;
+            bool exists = false;
+            bool valid = false;
+            game::GameState state;
+            std::string summary;
+            std::string error;
+        };
+        auto describeSlot = [&](std::string path) {
+            SlotInfo info;
+            info.exists = game::SaveGame::exists(path);
+            info.path = std::move(path);
+            if (!info.exists) return info;
+            try {
+                game::GameState loaded = game::SaveGame::load(info.path);
+                if (loaded.mode == game::Mode::Zone && !zones.hasZone(loaded.currentZoneId)) {
+                    throw std::runtime_error("references a zone ('" + loaded.currentZoneId +
+                                              "') that no longer exists");
+                }
+                const character::Character& c = loaded.character;
+                info.summary = c.name + ", level " + std::to_string(c.level) + " " +
+                               std::string(character::raceInfo(c.race).name) + " " +
+                               std::string(character::classInfo(c.charClass).name) + " (Day " +
+                               std::to_string(loaded.hoursElapsed / 24) + ")";
+                info.state = std::move(loaded);
+                info.valid = true;
+            } catch (const std::exception& ex) {
+                info.error = ex.what();
+            }
+            return info;
+        };
+        auto slotLabel = [](const SlotInfo& slot) -> std::string {
+            if (!slot.exists) return "(empty)";
+            if (slot.valid) return slot.summary;
+            return "(unreadable save: " + slot.error + ")";
+        };
+
+        std::array<SlotInfo, 3> slots = {describeSlot("save1.txt"), describeSlot("save2.txt"),
+                                          describeSlot("save3.txt")};
+
+        enum class SlotStep { List, ConfirmContinue, ConfirmOverwrite, ConfirmDelete };
+        SlotStep slotStep = SlotStep::List;
+        int slotCursor = 0;
+        int confirmCursor = 0;
+        bool creatingNew = false;
+        bool slotChosen = false;
+
+        while (!slotChosen) {
+            while (const std::optional<sf::Event> event = window.pollEvent()) {
+                if (event->is<sf::Event::Closed>()) {
+                    window.close();
+                } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+                    const sf::Keyboard::Key key = keyPressed->code;
+                    const bool wantsUp = key == sf::Keyboard::Key::Up || key == sf::Keyboard::Key::W;
+                    const bool wantsDown = key == sf::Keyboard::Key::Down || key == sf::Keyboard::Key::S;
+                    const bool wantsBack = key == sf::Keyboard::Key::Escape || key == sf::Keyboard::Key::Q;
+                    const bool wantsEnter = key == sf::Keyboard::Key::Enter;
+                    if (slotStep == SlotStep::List) {
+                        if (wantsUp) {
+                            slotCursor = (slotCursor + 2) % 3;
+                        } else if (wantsDown) {
+                            slotCursor = (slotCursor + 1) % 3;
+                        } else if (key == sf::Keyboard::Key::D) {
+                            confirmCursor = 1;
+                            slotStep = SlotStep::ConfirmDelete;
+                        } else if (wantsBack) {
+                            window.close();
+                        } else if (wantsEnter) {
+                            SlotInfo& slot = slots[static_cast<size_t>(slotCursor)];
+                            if (!slot.exists) {
+                                creatingNew = true;
+                                slotChosen = true;
+                            } else if (slot.valid) {
+                                confirmCursor = 0;
+                                slotStep = SlotStep::ConfirmContinue;
+                            } else {
+                                confirmCursor = 1;
+                                slotStep = SlotStep::ConfirmOverwrite;
+                            }
+                        }
+                    } else if (slotStep == SlotStep::ConfirmContinue) {
+                        if (wantsUp || wantsDown) {
+                            confirmCursor = 1 - confirmCursor;
+                        } else if (wantsBack) {
+                            slotStep = SlotStep::List;
+                        } else if (wantsEnter) {
+                            if (confirmCursor == 0) {
+                                state = std::move(slots[static_cast<size_t>(slotCursor)].state);
+                                creatingNew = false;
+                                slotChosen = true;
+                            } else {
+                                confirmCursor = 1;
+                                slotStep = SlotStep::ConfirmOverwrite;
+                            }
+                        }
+                    } else if (slotStep == SlotStep::ConfirmOverwrite) {
+                        if (wantsUp || wantsDown) {
+                            confirmCursor = 1 - confirmCursor;
+                        } else if (wantsBack) {
+                            slotStep = SlotStep::List;
+                        } else if (wantsEnter) {
+                            if (confirmCursor == 0) {
+                                creatingNew = true;
+                                slotChosen = true;
+                            } else {
+                                slotStep = SlotStep::List;
+                            }
+                        }
+                    } else if (slotStep == SlotStep::ConfirmDelete) {
+                        if (wantsUp || wantsDown) {
+                            confirmCursor = 1 - confirmCursor;
+                        } else if (wantsBack) {
+                            slotStep = SlotStep::List;
+                        } else if (wantsEnter) {
+                            if (confirmCursor == 0) {
+                                game::SaveGame::remove(slots[static_cast<size_t>(slotCursor)].path);
+                                slots[static_cast<size_t>(slotCursor)] =
+                                    describeSlot(slots[static_cast<size_t>(slotCursor)].path);
+                            }
+                            slotStep = SlotStep::List;
+                        }
+                    }
+                }
+            }
+            if (!window.isOpen()) return 0;
+
+            window.clear();
+            switch (slotStep) {
+                case SlotStep::List: {
+                    std::vector<std::string> items;
+                    for (int i = 0; i < 3; ++i) {
+                        items.push_back("Slot " + std::to_string(i + 1) + ": " +
+                                         slotLabel(slots[static_cast<size_t>(i)]));
+                    }
+                    drawPickerOverlay("Ansalon: Age of Despair -- Save Slots", items, slotCursor,
+                                       "up/down=select   Enter=choose   d=delete highlighted   q=quit");
+                    break;
+                }
+                case SlotStep::ConfirmContinue:
+                    drawPickerOverlay("Continue " + slots[static_cast<size_t>(slotCursor)].state.character.name +
+                                           "?",
+                                       {"Yes", "No"}, confirmCursor, "Enter=confirm   Esc=back");
+                    break;
+                case SlotStep::ConfirmOverwrite:
+                    drawPickerOverlay("Start a new character in Slot " + std::to_string(slotCursor + 1) +
+                                           "? This will overwrite any character already there.",
+                                       {"Yes", "No"}, confirmCursor, "Enter=confirm   Esc=back");
+                    break;
+                case SlotStep::ConfirmDelete:
+                    drawPickerOverlay("Delete Slot " + std::to_string(slotCursor + 1) + " -- " +
+                                           slotLabel(slots[static_cast<size_t>(slotCursor)]) +
+                                           "? This cannot be undone.",
+                                       {"Yes", "No"}, confirmCursor, "Enter=confirm   Esc=back");
+                    break;
+            }
+            window.display();
+        }
+
+        activeSavePath = slots[static_cast<size_t>(slotCursor)].path;
+        character::Character newCharacter;
+
+        if (creatingNew) {
+            // ---- Character creation wizard --------------------------------
+            // Ports character::CharacterCreator::run() (CharacterCreator.cpp,
+            // 521 lines) step by step: every character:: rule function it
+            // calls (eligibility checks, adjustments, HP/AC/THAC0/saves/steel
+            // formulas) is reused completely unchanged, only the presentation
+            // (std::cin/std::cout -> real sf::Event-driven pickers) differs.
+            constexpr std::array<character::Ability, 6> kCreationAbilityOrder = {
+                character::Ability::Strength,     character::Ability::Dexterity,
+                character::Ability::Constitution, character::Ability::Intelligence,
+                character::Ability::Wisdom,       character::Ability::Charisma,
+            };
+            auto creationRaceIsSelectable = [](character::RaceId race, const character::AbilityScores& sc) {
+                if (race == character::RaceId::Elf) {
+                    for (character::SubraceId sub : character::kElfSubraces) {
+                        if (character::meetsSubraceAbilityRange(sub, sc)) return true;
+                    }
+                    return false;
+                }
+                if (race == character::RaceId::Dwarf) {
+                    for (character::SubraceId sub : character::kDwarfSubraces) {
+                        if (character::meetsSubraceAbilityRange(sub, sc)) return true;
+                    }
+                    return false;
+                }
+                return character::meetsAbilityRange(race, sc);
+            };
+            // Verbatim port of CharacterCreator.cpp:446-473 -- the pure-logic
+            // block with no UI of its own, called once the class/race/scores
+            // are all final, right before the Summary step.
+            auto computeDerivedStats = [](character::Character& ch) {
+                const character::ClassInfo& chosenClass = character::classInfo(ch.charClass);
+                bool isWarrior = ch.charClass == character::ClassId::Fighter;
+                ch.maxHp = std::max(1, chosenClass.hitDieSides +
+                                            character::hpAdjustmentForConstitution(ch.scores.constitution, isWarrior));
+                ch.currentHp = ch.maxHp;
+                if (ch.race == character::RaceId::Kender) {
+                    ch.weaponName = character::kHoopakName;
+                    ch.weaponDamageSides = character::kHoopakDamageSides;
+                    ch.weaponDamageBonus = character::kHoopakDamageBonus;
+                } else {
+                    ch.weaponName = chosenClass.weaponName;
+                    ch.weaponDamageSides = chosenClass.weaponDamageSides;
+                    ch.weaponDamageBonus = 0;
+                }
+                character::recomputeArmorClass(ch);
+                ch.thac0 = 20;
+                ch.saves = chosenClass.level1Saves;
+                character::applyRacialSavingThrowBonus(ch.race, ch.scores.constitution, ch.saves);
+                ch.steelPieces = (character::roll(chosenClass.steelDiceCount, chosenClass.steelDiceSides) +
+                                   chosenClass.steelFlatBonus) *
+                                  chosenClass.steelMultiplier;
+            };
+
+            enum class CreationStep {
+                Name,
+                RollPool,
+                AssignAbility,
+                PickRace,
+                PickSubrace,
+                RaceAdjustments,
+                PickClass,
+                ClassForcedTinker,
+                PickAlignment,
+                KnightOffer,
+                Specialization,
+                Summary,
+            };
+
+            bool creationComplete = false;
+            while (!creationComplete) {
+                CreationStep step = CreationStep::Name;
+                std::string nameBuffer;
+                std::vector<int> pool;
+                character::AbilityScores scores;
+                character::AbilityScores beforeRaceAdjustments;
+                int assignIndex = 0;
+                int listCursor = 0;
+                int confirmCursor2 = 0;
+                std::string stepMessage;
+                character::Character character; // this attempt's in-progress character
+
+                bool stepDone = false;
+                while (!stepDone) {
+                    while (const std::optional<sf::Event> event = window.pollEvent()) {
+                        if (event->is<sf::Event::Closed>()) {
+                            window.close();
+                        }
+                        if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
+                            if (step == CreationStep::Name && textEntered->unicode >= 0x20 &&
+                                textEntered->unicode < 0x7F && nameBuffer.size() < 20) {
+                                nameBuffer.push_back(static_cast<char>(textEntered->unicode));
+                            }
+                        }
+                        if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+                            const sf::Keyboard::Key key = keyPressed->code;
+                            const bool wantsUp = key == sf::Keyboard::Key::Up || key == sf::Keyboard::Key::W;
+                            const bool wantsDown = key == sf::Keyboard::Key::Down || key == sf::Keyboard::Key::S;
+                            const bool wantsBack = key == sf::Keyboard::Key::Escape || key == sf::Keyboard::Key::Q;
+                            const bool wantsEnter = key == sf::Keyboard::Key::Enter;
+
+                            // Escape/Q abandons creation entirely (closes the
+                            // window) at every step -- there's no "cancel back
+                            // to the slot menu" in this wizard, same as the
+                            // console build's CharacterCreator::run() has no
+                            // mid-wizard cancel either. Backspace during Name
+                            // is a distinct, ordinary edit key, not this.
+                            if (wantsBack) {
+                                window.close();
+                            } else {
+                                switch (step) {
+                                case CreationStep::Name:
+                                    if (key == sf::Keyboard::Key::Backspace && !nameBuffer.empty()) {
+                                        nameBuffer.pop_back();
+                                    } else if (wantsEnter) {
+                                        character.name = nameBuffer;
+                                        pool.clear();
+                                        for (int i = 0; i < 6; ++i) pool.push_back(character::roll4d6DropLowest());
+                                        confirmCursor2 = 0;
+                                        step = CreationStep::RollPool;
+                                    }
+                                    break;
+                                case CreationStep::RollPool:
+                                    if (wantsUp || wantsDown) {
+                                        confirmCursor2 = 1 - confirmCursor2;
+                                    } else if (wantsEnter) {
+                                        if (confirmCursor2 == 0) {
+                                            scores = character::AbilityScores{};
+                                            assignIndex = 0;
+                                            listCursor = 0;
+                                            step = CreationStep::AssignAbility;
+                                        } else {
+                                            pool.clear();
+                                            for (int i = 0; i < 6; ++i) pool.push_back(character::roll4d6DropLowest());
+                                            confirmCursor2 = 0;
+                                        }
+                                    }
+                                    break;
+                                case CreationStep::AssignAbility:
+                                    if (wantsUp) {
+                                        listCursor = (listCursor + static_cast<int>(pool.size()) - 1) %
+                                                     static_cast<int>(pool.size());
+                                    } else if (wantsDown) {
+                                        listCursor = (listCursor + 1) % static_cast<int>(pool.size());
+                                    } else if (wantsEnter) {
+                                        character::Ability ability =
+                                            kCreationAbilityOrder[static_cast<size_t>(assignIndex)];
+                                        scores.adjust(ability, pool[static_cast<size_t>(listCursor)]);
+                                        pool.erase(pool.begin() + listCursor);
+                                        ++assignIndex;
+                                        listCursor = 0;
+                                        if (assignIndex >= 6) step = CreationStep::PickRace;
+                                    }
+                                    break;
+                                case CreationStep::PickRace:
+                                    if (wantsUp) {
+                                        listCursor = (listCursor + 5) % 6;
+                                    } else if (wantsDown) {
+                                        listCursor = (listCursor + 1) % 6;
+                                    } else if (wantsEnter) {
+                                        character::RaceId candidate =
+                                            character::kAllRaces[static_cast<size_t>(listCursor)];
+                                        if (!creationRaceIsSelectable(candidate, scores)) {
+                                            stepMessage = "Your rolled ability scores don't meet " +
+                                                          std::string(character::raceInfo(candidate).name) +
+                                                          "'s requirements. Choose a different race.";
+                                        } else {
+                                            character.race = candidate;
+                                            stepMessage.clear();
+                                            listCursor = 0;
+                                            if (candidate == character::RaceId::Elf ||
+                                                candidate == character::RaceId::Dwarf) {
+                                                step = CreationStep::PickSubrace;
+                                            } else {
+                                                beforeRaceAdjustments = scores;
+                                                character::applyRacialOrSubracialAdjustments(
+                                                    character.race, character.subrace, scores);
+                                                character.scores = scores;
+                                                step = CreationStep::RaceAdjustments;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                case CreationStep::PickSubrace: {
+                                    const std::vector<character::SubraceId> subraceList =
+                                        character.race == character::RaceId::Elf
+                                            ? std::vector<character::SubraceId>(character::kElfSubraces.begin(),
+                                                                                  character::kElfSubraces.end())
+                                            : std::vector<character::SubraceId>(character::kDwarfSubraces.begin(),
+                                                                                  character::kDwarfSubraces.end());
+                                    int count = static_cast<int>(subraceList.size());
+                                    if (wantsUp) {
+                                        listCursor = (listCursor + count - 1) % count;
+                                    } else if (wantsDown) {
+                                        listCursor = (listCursor + 1) % count;
+                                    } else if (wantsEnter) {
+                                        character::SubraceId candidate = subraceList[static_cast<size_t>(listCursor)];
+                                        if (!character::meetsSubraceAbilityRange(candidate, scores)) {
+                                            stepMessage = "Your rolled ability scores don't meet " +
+                                                          std::string(character::subraceInfo(candidate)->name) +
+                                                          "'s requirements. Choose a different one.";
+                                        } else {
+                                            character.subrace = candidate;
+                                            stepMessage.clear();
+                                            beforeRaceAdjustments = scores;
+                                            character::applyRacialOrSubracialAdjustments(character.race,
+                                                                                           character.subrace, scores);
+                                            character.scores = scores;
+                                            step = CreationStep::RaceAdjustments;
+                                        }
+                                    }
+                                    break;
+                                }
+                                case CreationStep::RaceAdjustments:
+                                    if (character.race == character::RaceId::Gnome) {
+                                        character.charClass = character::ClassId::Tinker;
+                                        step = CreationStep::ClassForcedTinker;
+                                    } else {
+                                        listCursor = 0;
+                                        step = CreationStep::PickClass;
+                                    }
+                                    break;
+                                case CreationStep::PickClass:
+                                    if (wantsUp) {
+                                        listCursor = (listCursor + 3) % 4;
+                                    } else if (wantsDown) {
+                                        listCursor = (listCursor + 1) % 4;
+                                    } else if (wantsEnter) {
+                                        character::ClassId candidate =
+                                            character::kAllClasses[static_cast<size_t>(listCursor)];
+                                        if (character::classLevelCap(character.race, character.subrace, candidate) ==
+                                            0) {
+                                            const char* who = character::subraceInfo(character.subrace) != nullptr
+                                                                  ? character::subraceInfo(character.subrace)->name
+                                                                  : character::raceInfo(character.race).name;
+                                            stepMessage = std::string(character::classInfo(candidate).name) +
+                                                          " is not open to a " + who +
+                                                          " character. Choose a different class.";
+                                        } else {
+                                            character.charClass = candidate;
+                                            stepMessage.clear();
+                                            if (character.charClass == character::ClassId::Fighter &&
+                                                scores.strength == 18) {
+                                                character.exceptionalStrengthPercentile = character::roll(1, 100);
+                                            }
+                                            listCursor = 0;
+                                            step = CreationStep::PickAlignment;
+                                        }
+                                    }
+                                    break;
+                                case CreationStep::ClassForcedTinker:
+                                    listCursor = 0;
+                                    step = CreationStep::PickAlignment;
+                                    break;
+                                case CreationStep::PickAlignment:
+                                    if (wantsUp) {
+                                        listCursor = (listCursor + 8) % 9;
+                                    } else if (wantsDown) {
+                                        listCursor = (listCursor + 1) % 9;
+                                    } else if (wantsEnter) {
+                                        character::Alignment candidate =
+                                            static_cast<character::Alignment>(listCursor);
+                                        if (!character::meetsAlignmentRestriction(character.race, candidate)) {
+                                            stepMessage =
+                                                "Kender cannot be of evil alignment. Choose a different alignment.";
+                                        } else {
+                                            character.alignment = candidate;
+                                            stepMessage.clear();
+                                            confirmCursor2 = 0;
+                                            if (character.charClass == character::ClassId::Fighter &&
+                                                character::meetsKnightOfCrownRequirements(
+                                                    character.race, character.subrace, scores, character.alignment)) {
+                                                step = CreationStep::KnightOffer;
+                                            } else if (character.charClass == character::ClassId::Fighter) {
+                                                step = CreationStep::Specialization;
+                                            } else {
+                                                computeDerivedStats(character);
+                                                step = CreationStep::Summary;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                case CreationStep::KnightOffer:
+                                    if (wantsUp || wantsDown) {
+                                        confirmCursor2 = 1 - confirmCursor2;
+                                    } else if (wantsEnter) {
+                                        if (confirmCursor2 == 0) character.knightOrder = character::KnightOrder::Crown;
+                                        confirmCursor2 = 0;
+                                        step = CreationStep::Specialization;
+                                    }
+                                    break;
+                                case CreationStep::Specialization:
+                                    if (wantsUp || wantsDown) {
+                                        confirmCursor2 = 1 - confirmCursor2;
+                                    } else if (wantsEnter) {
+                                        if (confirmCursor2 == 0) character.specializedWeapon = true;
+                                        computeDerivedStats(character);
+                                        confirmCursor2 = 0;
+                                        step = CreationStep::Summary;
+                                    }
+                                    break;
+                                case CreationStep::Summary:
+                                    if (wantsUp || wantsDown) {
+                                        confirmCursor2 = 1 - confirmCursor2;
+                                    } else if (wantsEnter) {
+                                        if (confirmCursor2 == 0) {
+                                            newCharacter = character;
+                                            creationComplete = true;
+                                        }
+                                        stepDone = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!window.isOpen()) return 0;
+                    if (stepDone) break;
+
+                    window.clear();
+                    if (step == CreationStep::Name) {
+                        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+                        bg.setFillColor(sf::Color(18, 18, 24));
+                        window.draw(bg);
+                        float y = 40.f;
+                        auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
+                            sf::Text sfText(font, text, size);
+                            sfText.setFillColor(color);
+                            sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
+                            window.draw(sfText);
+                            y += static_cast<float>(size) + 10.f;
+                        };
+                        drawLine("=== Character Creation (2nd Edition AD&D) ===", kSheetSectionColor,
+                                 kSheetTitleCharSize);
+                        y += 10.f;
+                        drawLine("What is your name, traveler?", kSheetBodyColor, kSheetBodyCharSize);
+                        drawLine("> " + nameBuffer + "_", sf::Color::White, kSheetBodyCharSize);
+                        y += 10.f;
+                        drawLine("(Enter=confirm, Backspace=edit, up to 20 characters)",
+                                 sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                    } else {
+                        std::vector<std::string> items;
+                        std::string title;
+                        std::string footer = "up/down=select   Enter=choose";
+                        int selectedIndex = listCursor;
+                        switch (step) {
+                        case CreationStep::RollPool: {
+                            std::ostringstream oss;
+                            oss << "Rolled: ";
+                            for (size_t i = 0; i < pool.size(); ++i) oss << (i == 0 ? "" : ", ") << pool[i];
+                            oss << " -- keep these rolls?";
+                            title = oss.str();
+                            items = {"Yes", "No"};
+                            selectedIndex = confirmCursor2;
+                            footer = "Enter=confirm";
+                            break;
+                        }
+                        case CreationStep::AssignAbility: {
+                            title = std::string("Assigning: ") +
+                                    character::abilityName(kCreationAbilityOrder[static_cast<size_t>(assignIndex)]);
+                            for (int i = 0; i < 6; ++i) {
+                                character::Ability shown = kCreationAbilityOrder[static_cast<size_t>(i)];
+                                std::string label = std::string(character::abilityName(shown)) + ": " +
+                                                     (i < assignIndex ? std::to_string(scores.get(shown)) : "--");
+                                items.push_back(label);
+                            }
+                            for (int v : pool) items.push_back(std::to_string(v));
+                            selectedIndex = 6 + listCursor;
+                            footer = "up/down=select   Enter=assign";
+                            break;
+                        }
+                        case CreationStep::PickRace:
+                            title = "Choose a race:";
+                            for (character::RaceId r : character::kAllRaces) {
+                                std::string label = character::raceInfo(r).name;
+                                if (!creationRaceIsSelectable(r, scores)) label += "  (your ability scores don't qualify)";
+                                items.push_back(label);
+                            }
+                            break;
+                        case CreationStep::PickSubrace: {
+                            const std::vector<character::SubraceId> subraceList =
+                                character.race == character::RaceId::Elf
+                                    ? std::vector<character::SubraceId>(character::kElfSubraces.begin(),
+                                                                          character::kElfSubraces.end())
+                                    : std::vector<character::SubraceId>(character::kDwarfSubraces.begin(),
+                                                                          character::kDwarfSubraces.end());
+                            title = character.race == character::RaceId::Elf ? "Choose an elven heritage:"
+                                                                              : "Choose a dwarven clan:";
+                            for (character::SubraceId sub : subraceList) {
+                                std::string label = character::subraceInfo(sub)->name;
+                                if (!character::meetsSubraceAbilityRange(sub, scores)) {
+                                    label += "  (your ability scores don't qualify)";
+                                }
+                                items.push_back(label);
+                            }
+                            break;
+                        }
+                        case CreationStep::RaceAdjustments: {
+                            title = "Race Adjustments";
+                            bool any = false;
+                            for (character::Ability a : kCreationAbilityOrder) {
+                                int before = beforeRaceAdjustments.get(a);
+                                int after = character.scores.get(a);
+                                if (before == after) continue;
+                                any = true;
+                                std::string delta = (after > before ? "+" : "") + std::to_string(after - before);
+                                items.push_back(std::string(character::abilityName(a)) + ": " +
+                                                 std::to_string(before) + " -> " + std::to_string(after) + " (" +
+                                                 delta + ")");
+                            }
+                            if (!any) items.push_back("No adjustments for this race.");
+                            selectedIndex = -1;
+                            footer = "(press any key to continue)";
+                            break;
+                        }
+                        case CreationStep::PickClass:
+                            title = "Choose a class:";
+                            for (character::ClassId c : character::kAllClasses) {
+                                const character::ClassInfo& info = character::classInfo(c);
+                                bool qualifies = scores.get(info.primeRequisite) >= info.primeRequisiteMinimum;
+                                bool blockedByRace =
+                                    character::classLevelCap(character.race, character.subrace, c) == 0;
+                                bool mageDexOk = scores.dexterity >= 6;
+                                std::string label = info.name;
+                                if (blockedByRace) {
+                                    label += c == character::ClassId::Mage ? "  (cannot learn arcane magic)"
+                                                                            : "  (not eligible for this race)";
+                                } else if (c == character::ClassId::Mage && !mageDexOk) {
+                                    label += "  (wizardry on Krynn also requires Dexterity 6+)";
+                                } else if (!qualifies) {
+                                    label += "  (does not meet prime requisite)";
+                                }
+                                items.push_back(label);
+                            }
+                            break;
+                        case CreationStep::ClassForcedTinker:
+                            title = "Class";
+                            items = {"As a Gnome, you are a Tinker -- Krynn's gnomes know no other calling."};
+                            selectedIndex = -1;
+                            footer = "(press any key to continue)";
+                            break;
+                        case CreationStep::PickAlignment:
+                            title = "Choose an alignment:";
+                            for (int i = 0; i < 9; ++i) {
+                                character::Alignment a = static_cast<character::Alignment>(i);
+                                std::string label = character::alignmentName(a);
+                                if (!character::meetsAlignmentRestriction(character.race, a)) {
+                                    label += "  (kender cannot be evil)";
+                                }
+                                items.push_back(label);
+                            }
+                            break;
+                        case CreationStep::KnightOffer: {
+                            // Long descriptive text goes into wrapped
+                            // non-selectable leading items instead of the
+                            // title -- same idiom Summary already uses --
+                            // since drawPickerOverlay's title line is meant
+                            // to stay a short heading, not a full sentence.
+                            title = "Knights of Solamnia";
+                            const std::size_t wrapChars = static_cast<std::size_t>(
+                                (static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+                            for (const std::string& line :
+                                 wrapToWidth("You meet the qualifications to be sponsored into the Knights "
+                                             "of Solamnia as a Knight of the Crown. Swear the oath and join?",
+                                             wrapChars)) {
+                                items.push_back(line);
+                            }
+                            items.push_back("Yes");
+                            items.push_back("No");
+                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
+                            footer = "Enter=confirm";
+                            break;
+                        }
+                        case CreationStep::Specialization: {
+                            title = "Weapon Specialization";
+                            const std::size_t wrapChars = static_cast<std::size_t>(
+                                (static_cast<float>(windowW) - 2.f * kSheetMarginX) / kSidebarCharWidth);
+                            for (const std::string& line :
+                                 wrapToWidth("You may specialize in your weapon, gaining +1 to hit and +2 "
+                                             "damage with it, plus faster extra attacks as you level. "
+                                             "Specialize?",
+                                             wrapChars)) {
+                                items.push_back(line);
+                            }
+                            items.push_back("Yes");
+                            items.push_back("No");
+                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
+                            footer = "Enter=confirm";
+                            break;
+                        }
+                        case CreationStep::Summary: {
+                            title = character.name;
+                            const character::SubraceInfo* sub = character::subraceInfo(character.subrace);
+                            std::ostringstream line1;
+                            line1 << (sub != nullptr ? sub->name : character::raceInfo(character.race).name) << " "
+                                  << character::classInfo(character.charClass).name << ", "
+                                  << character::alignmentName(character.alignment);
+                            items.push_back(line1.str());
+                            if (character.knightOrder != character::KnightOrder::None) {
+                                items.push_back(character::knightOrderName(character.knightOrder));
+                            }
+                            if (character.charClass == character::ClassId::Mage) {
+                                items.push_back("An unaffiliated student of the arcane -- a Robe and Order of "
+                                                 "High Sorcery await at higher levels.");
+                            }
+                            std::ostringstream scoresLine;
+                            scoresLine << "STR " << character.scores.strength << "  DEX " << character.scores.dexterity
+                                       << "  CON " << character.scores.constitution << "  INT "
+                                       << character.scores.intelligence << "  WIS " << character.scores.wisdom
+                                       << "  CHA " << character.scores.charisma;
+                            items.push_back(scoresLine.str());
+                            if (character.exceptionalStrengthPercentile > 0) {
+                                std::ostringstream ex;
+                                ex << "(exceptional Strength: 18/"
+                                   << (character.exceptionalStrengthPercentile == 100
+                                           ? "00"
+                                           : (character.exceptionalStrengthPercentile < 10 ? "0" : "") +
+                                                 std::to_string(character.exceptionalStrengthPercentile))
+                                   << ")";
+                                items.push_back(ex.str());
+                            }
+                            std::ostringstream statLine;
+                            statLine << "HP " << character.maxHp << "   AC " << character.armorClass << "   THAC0 "
+                                     << character.thac0;
+                            items.push_back(statLine.str());
+                            items.push_back("Weapon: " + character.weaponName);
+                            std::ostringstream savesLine;
+                            savesLine << "Saves -- "
+                                      << character::saveCategoryName(character::SaveCategory::ParalyzationPoisonDeath)
+                                      << ": "
+                                      << character.saves.at(character::SaveCategory::ParalyzationPoisonDeath) << "  "
+                                      << character::saveCategoryName(character::SaveCategory::RodStaffWand) << ": "
+                                      << character.saves.at(character::SaveCategory::RodStaffWand) << "  "
+                                      << character::saveCategoryName(character::SaveCategory::PetrificationPolymorph)
+                                      << ": "
+                                      << character.saves.at(character::SaveCategory::PetrificationPolymorph) << "  "
+                                      << character::saveCategoryName(character::SaveCategory::BreathWeapon) << ": "
+                                      << character.saves.at(character::SaveCategory::BreathWeapon) << "  "
+                                      << character::saveCategoryName(character::SaveCategory::Spell) << ": "
+                                      << character.saves.at(character::SaveCategory::Spell);
+                            items.push_back(savesLine.str());
+                            items.push_back("Steel: " + std::to_string(character.steelPieces) + " stl");
+                            items.push_back("Begin your journey as this character?");
+                            items.push_back("Yes");
+                            items.push_back("No");
+                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
+                            footer = "Enter=confirm";
+                            break;
+                        }
+                        default:
+                            break;
+                        }
+                        drawPickerOverlay(title, items, selectedIndex, footer, stepMessage);
+                    }
+                    window.display();
+                }
+            }
+        }
+
+        if (creatingNew) {
+            // Fresh character -> position at the starting location, same as
+            // src/main.cpp:386-391 does for the console build.
+            constexpr const char* kCreationStartingLocationId = "solace";
+            const world::Location* start = world.getLocation(kCreationStartingLocationId);
+            if (!start) {
+                std::cerr << "World data does not define the starting location '" << kCreationStartingLocationId
+                          << "'.\n";
+                return 1;
+            }
+            state = game::GameState{};
+            state.character = newCharacter;
+            state.x = start->x;
+            state.y = start->y;
+            state.visitedLocations.insert(start->id);
+        }
+        // Written immediately so the save file exists on disk right away,
+        // rather than relying on the later in-loop autosave triggers for
+        // this first write.
+        game::SaveGame::save(state, activeSavePath);
+    } else {
+        state = game::SaveGame::load(activeSavePath);
+    }
     std::cout << "step 3: save loaded -- " << state.character.name << ", level "
               << state.character.level << " " << character::raceInfo(state.character.race).name << " "
               << character::classInfo(state.character.charClass).name << ", at (" << state.x << ", "
@@ -2770,12 +3603,10 @@ int runPhase1(const std::string& savePath) {
     // drawSpellbookOverlay below -- laid out in two real pixel-space
     // columns instead of one long vertical dump, since covering the whole
     // window means there's no 320px sidebar constraint to work within.
-    constexpr unsigned kSheetTitleCharSize = 26;
-    constexpr unsigned kSheetHeaderCharSize = 16;
-    constexpr unsigned kSheetBodyCharSize = 15;
-    const sf::Color kSheetSectionColor(230, 220, 160);
-    const sf::Color kSheetBodyColor(210, 210, 210);
-    const float kSheetMarginX = 40.f;
+    // kSheetTitleCharSize/kSheetHeaderCharSize/kSheetBodyCharSize/
+    // kSheetSectionColor/kSheetBodyColor/kSheetMarginX moved up to right
+    // after font load -- see the comment there -- so only the two
+    // constants specific to this two-column layout stay here.
     const float kSheetRightX = static_cast<float>(windowW) / 2.f + 20.f;
     const float kSheetColumnWidth = static_cast<float>(windowW) / 2.f - kSheetMarginX - 20.f;
     const std::size_t kSheetMaxChars = static_cast<std::size_t>((kSheetColumnWidth - 10.f) / kSidebarCharWidth);
@@ -2977,50 +3808,17 @@ int runPhase1(const std::string& savePath) {
     // console build's single most-reused screen primitive (Talk-to-whom,
     // topic menus, Look-at-whom, quest offer/accept, boat departure,
     // companion recruit, spell-memorization keep-loadout -- see
-    // GameLoop.cpp's own callers). Extracted here because dialogue's
-    // PickingCandidate/TopicPicker cases below were the first two real
-    // call sites and already duplicated this exact title/cursor-list/
-    // footer shape; picker-shaped screens added since (Shop, Inventory,
-    // Spellbook) call this directly instead of re-deriving it again.
-    // Deliberately NOT used by combat's PickingTarget -- that picker's
-    // cursor is drawn embedded in the roster panel, a structurally
-    // different visual shape from this full-window overlay.
-    //
-    // The optional trailing `message` (default "") is drawn between the
-    // item list and the footer -- added for Shop's post-transaction
-    // feedback (e.g. "Bought Chain Mail" / "You don't have enough steel
-    // for that."), mirroring render::MapRenderer::drawShopFrame's own
-    // message placement (MapRenderer.cpp:1089-1092). Dialogue's two
-    // existing call sites are unaffected -- they just take the default.
-    auto drawPickerOverlay = [&](const std::string& title, const std::vector<std::string>& items,
-                                  int selectedIndex, const std::string& footer, const std::string& message = "") {
-        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-        bg.setFillColor(sf::Color(18, 18, 24));
-        window.draw(bg);
-
-        float y = 40.f;
-        auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
-            sf::Text sfText(font, text, size);
-            sfText.setFillColor(color);
-            sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
-            window.draw(sfText);
-            y += static_cast<float>(size) + 10.f;
-        };
-
-        drawLine(title, kSheetSectionColor, kSheetTitleCharSize);
-        y += 10.f;
-        for (int i = 0; i < static_cast<int>(items.size()); ++i) {
-            const bool isSelected = i == selectedIndex;
-            drawLine((isSelected ? "> " : "  ") + items[static_cast<size_t>(i)],
-                      isSelected ? sf::Color::White : kSheetBodyColor, kSheetBodyCharSize);
-        }
-        if (!message.empty()) {
-            y += 10.f;
-            drawLine(message, sf::Color::White, kSheetBodyCharSize);
-        }
-        y += 10.f;
-        drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
-    };
+    // GameLoop.cpp's own callers). Now declared right after font load (see
+    // the comment there) instead of here, so the save-slot menu and
+    // character creation wizard -- which run before this point, before
+    // game::GameState even exists -- can reuse it too. Every caller below
+    // (dialogue's PickingCandidate/TopicPicker, Shop, Inventory, Spellbook,
+    // Help/Log/World Map/Journal, the quit-confirm dialog) is unaffected by
+    // the move. Deliberately NOT used by combat's PickingTarget -- that
+    // picker's cursor is drawn embedded in the roster panel, a structurally
+    // different visual shape from this full-window overlay. Its optional
+    // trailing `message` param (default "") is drawn between the item list
+    // and the footer -- added for Shop's post-transaction feedback.
 
     // Help ('/', this build's bind for the console's '?') -- pixel-space
     // equivalent of render::MapRenderer::drawHelpFrame
@@ -3526,7 +4324,7 @@ int runPhase1(const std::string& savePath) {
                     // Alt+F4) too, same reasoning as the KeyPressed block's
                     // own autosave call below -- capture the same final
                     // state a deliberate quit would.
-                    game::SaveGame::save(state, savePath);
+                    game::SaveGame::save(state, activeSavePath);
                     window.close();
                 } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
                     const sf::Keyboard::Key key = keyPressed->code;
@@ -4143,7 +4941,7 @@ int runPhase1(const std::string& savePath) {
                     // once per round, not just once when the fight ends --
                     // finer granularity than console, not coarser, so no less
                     // safe.
-                    game::SaveGame::save(state, savePath);
+                    game::SaveGame::save(state, activeSavePath);
                 } else if (const auto* textEntered = event->getIf<sf::Event::TextEntered>()) {
                     // The only source of real typed characters in this build
                     // (KeyPressed carries a physical key code, not text) --
@@ -4518,15 +5316,12 @@ int runPhase1(const std::string& savePath) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "usage: ansalon_sfml_phase1 <path-to-save-file>\n"
-                     "  run from the repo root, e.g.:\n"
-                     "  .\\build\\Debug\\ansalon_sfml_phase1.exe build\\Debug\\save1.txt\n"
-                     "Autosaves back to that file after every action.\n";
-        return 1;
-    }
     try {
-        return runPhase1(argv[1]);
+        // No save path given -> show the save-slot menu (and, from an
+        // empty/overwritten slot, the character creation wizard) instead of
+        // requiring one up front. A path is still accepted directly too
+        // (unchanged), e.g. for a quick dev launch against a known save.
+        return runPhase1(argc >= 2 ? argv[1] : "");
     } catch (const std::exception& e) {
         std::cerr << "FATAL EXCEPTION: " << e.what() << std::endl;
         return 1;

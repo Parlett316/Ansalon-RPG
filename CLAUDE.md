@@ -159,12 +159,16 @@ CMake post-build step keeps both a `data/` copy and just
 folder) populated next to it in `build\Debug`/`build\Release` — the same
 "runs straight from the build output" convention `ansalon_rpg` already
 has. Running with the repo root as the working directory instead still
-works too (its original convention, unaffected). It takes the save file
-to load as its one required argument: `.\ansalon_sfml_phase1.exe
+works too (its original convention, unaffected). Run it with **no
+arguments** to get its own native save-slot menu and character creation
+wizard (create or continue a character entirely in the window, no
+console step needed) — `.\ansalon_sfml_phase1.exe` from inside
+`build\Debug`. A save path is still accepted directly too, unchanged, for
+a quick dev launch against a known save: `.\ansalon_sfml_phase1.exe
 save1.txt` from inside `build\Debug`, or
 `.\build\Debug\ansalon_sfml_phase1.exe build\Debug\save1.txt` from the
-repo root. To hand a runnable demo to someone outside this source tree,
-run `tools/package_sfml_demo.ps1` instead.
+repo root. To hand a runnable build to someone outside this source tree,
+run `tools/package_playable_release.ps1` instead.
 
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.
