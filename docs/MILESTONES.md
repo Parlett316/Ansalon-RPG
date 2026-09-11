@@ -6527,10 +6527,13 @@ now fully verified, nothing further outstanding.
      attack an instance, for its whole lifetime).
 
      Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
-     test against both real saves. **Not yet interactively confirmed** --
-     needs a party member (save1's Bren Alder, a Fighter, now covers
-     sweep; a Thief-type party member, e.g. Haven's Dessa Corrin once
-     recruited, covers backstab specifically).
+     test against both real saves. **Fighter sweep confirmed live
+     2026-09-11**: save1's Bren Alder swept a weak (HD<=1) Giant Rat
+     group, one hit/miss line per instance, no picker opened, no bonus
+     applied -- matches spec. **Backstab still not interactively
+     confirmed** -- needs a Thief-type party member (e.g. Haven's Dessa
+     Corrin once recruited) positioned opposite whoever first attacked an
+     instance.
 
 172. **Same-cell combat-movement collision bug fixed, both builds.**
      Retreating from an adjacent monster could end up sharing its exact
@@ -6942,6 +6945,68 @@ now fully verified, nothing further outstanding.
      finally makes backlog item 143 (the Kalaman `a_widows_due` DELIVER
      quest) actually testable for the first time -- it depended on this
      system existing at all.
+
+184. **Save hardening (`docs/NEXT_STEPS_v7.md`'s P2, done deliberately
+     before P1)** -- `game::SaveGame` is shared verbatim by both targets
+     (`ansalon_sfml_phase1` autosaves after every processed keypress,
+     even finer-grained than `ansalon_rpg`'s once-per-loop-iteration
+     autosave), and `save()` used to truncate the real slot file
+     in place -- a crash, Alt+F4, or a locked file mid-write left a
+     truncated, unparseable save with no recourse. Fixed in
+     `src/game/SaveGame.cpp`:
+
+     - **Atomic write**: the full new content now goes to `<path>.tmp`
+       first (explicitly closed and checked, catching a flush failure
+       like a full disk), then `std::filesystem::rename(tmpPath, path)`
+       -- atomic on Windows/NTFS, and the *only* step that ever touches
+       `path` itself.
+     - **Rotated backups**: before any of that, `rotateBackups` shifts
+       `path.bak1`/`.bak2` down a slot (`kMaxSaveBackups = 3`) then
+       *copies* (not moves) the current `path` into `.bak1` -- copying,
+       not moving, is what keeps `path` present and valid throughout.
+       `SaveGame::remove` (the slot menu's `d1`/`d2`/`d3`) now also
+       cleans up a slot's own backups + any stray `.tmp`, so an
+       explicitly deleted slot doesn't leave recoverable-looking files
+       behind. `.gitignore` gained `save*.txt.bak*`/`save*.txt.tmp`.
+     - **`VERSION <n>` header** (`kSaveFormatVersion = 1`, written first):
+       absent on every pre-existing save (loads exactly as before,
+       implicitly version 0); `load()` fails fast with a clear message
+       if a save declares a version newer than this build understands,
+       rather than misparsing it. Deliberately narrow -- a guard against
+       opening a future build's save, not a migration framework; every
+       other field still uses the existing optional/default-if-absent
+       idiom for ordinary additive changes.
+     - Deliberately **not** attempted: platform-specific
+       `fsync`/`FlushFileBuffers` durability against a hard power-loss
+       event -- out of scope per `docs/GOTCHAS.md`'s new entry (would need
+       `#ifdef _WIN32` code in an otherwise portable file, for a failure
+       mode far rarer than the crash/force-close this milestone targets).
+
+     Also recorded this session, not code: the console-retirement
+     decision (`docs/CONSOLE_RETIREMENT_PROPOSAL.md`'s Option A, a
+     parity-based trigger, adopted and logged in
+     `docs/ARCHITECTURE.md` -- no action taken beyond recording it), and
+     a new release-versioning convention (`docs/CLAUDE.md`'s "Release
+     versioning": `tools/package_release.ps1` and
+     `tools/package_playable_release.ps1` now require an explicit
+     `-Major`/`-Minor` flag per run rather than silently bumping a bare
+     counter, version files switched to `<major>.<minor>`).
+
+     Verified: a throwaway `SaveHardeningSelfTest.cpp` (58 checks --
+     full round-trip of every serialized field including a populated
+     inventory/companions/quest/kill/zone-stack set, atomicity, backup
+     rotation across three successive saves, the version guard, legacy
+     no-`VERSION`-line compatibility, and `remove()`'s backup cleanup)
+     all passed, then deleted along with its temporary CMake target;
+     clean rebuild of all three targets (zero new `/W4` warnings); a
+     `ansalon_sfml_phase1` launch smoke test against a copy of a real
+     save confirmed every catalog loads and the save (predating
+     `VERSION`) loads correctly; a piped `ansalon_rpg` character-creation
+     run confirmed the same shared `SaveGame` path still reads both of
+     the user's real saves correctly and reaches character creation
+     cleanly. No new player-facing capability -- purely a save-path
+     hardening pass, so no `README.md` feature-list change, only the
+     "keep an eye on your save" caveat softened now that it's hardened.
 
 ## NEXT UP
 

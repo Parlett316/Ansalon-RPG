@@ -32,6 +32,14 @@ save1.txt
 save2.txt
 save3.txt
 
+# Rotated backups + in-progress temp file from game::SaveGame's atomic-write
+# path (save() writes to <path>.tmp then renames it over <path>, and copies
+# the previous good <path> to <path>.bak1/.bak2/.bak3 before doing so -- see
+# docs/ARCHITECTURE.md / docs/GOTCHAS.md). Same "personal session state, not
+# project data" reasoning as the save files themselves above.
+save*.txt.bak*
+save*.txt.tmp
+
 # Editor/IDE cruft
 .vs/
 *.user

@@ -420,6 +420,50 @@ you hit something surprising — that's the whole point of it existing.
   the same treatment: a new optional trailing token, defaulted sensibly
   when absent, never breaking an older save. Must stay before `ZONESTACK`,
   same ordering rule as every other optional keyword above.
+- **`save()` writes to `<path>.tmp` then atomically renames it over
+  `<path>` — never write directly to `<path>` again.** Before Playable
+  v7's P2 (save hardening), `save()` truncated the real slot file in
+  place; a crash/Alt+F4/locked-file mid-write left a truncated,
+  unparseable save with no recourse — a real risk given
+  `ansalon_sfml_phase1` autosaves after every processed keypress. Fixed
+  by writing the full new content to a temp file, explicitly closing and
+  checking the stream (catches a flush failure like a full disk), then
+  `std::filesystem::rename(tmpPath, path)` — the one and only step that
+  touches `path`, atomic on Windows/NTFS. **Ordering matters**: backup
+  rotation (below) happens *before* the temp file is even opened, so if
+  the process dies at any point before the final rename, `path` still
+  holds exactly what it held before `save()` was called. Deliberately
+  does NOT add `FlushFileBuffers`/`fsync`-style durability against a hard
+  power-loss event (would need `#ifdef _WIN32` code in an otherwise
+  portable file, for a failure mode far rarer than the crash/force-close
+  this change actually targets) — see `docs/ARCHITECTURE.md`.
+- **Rotated backups (`<path>.bak1`/`.bak2`/`.bak3`, `kMaxSaveBackups`)
+  are copies, not moves, of the previous good save — made before `path`
+  is touched at all.** `rotateBackups` shifts existing backups down a
+  slot then copies (not moves) the current `path` into `.bak1`; only the
+  save's own final rename ever actually replaces `path`'s content. This
+  is why `path` is never observed missing even mid-rotation. Best-effort
+  (uses the `std::error_code` overloads and swallows failures) — a
+  backup failing must never block the real save. `.bak*`/`.tmp` files
+  are gitignored (`save*.txt.bak*`, `save*.txt.tmp`) right alongside
+  `save1.txt`/etc., and `SaveGame::remove` (the slot menu's `d1`/`d2`/
+  `d3`) cleans up a slot's own backups + any stray `.tmp` too, so an
+  explicitly deleted slot doesn't leave recoverable-looking files
+  behind.
+- **A save file's first real line is now `VERSION <n>`**
+  (`kSaveFormatVersion` in `SaveGame.cpp`, currently `1`) — absent on
+  every save written before Playable v7's P2, which still loads exactly
+  as it always did (implicitly version 0). `load()` fails fast with a
+  clear message if a save declares a version **newer** than
+  `kSaveFormatVersion`, instead of silently misparsing whatever new
+  format that version implies. This does NOT replace the existing
+  "optional keyword, sensible default if absent" migration idiom this
+  file already uses everywhere (`RESTDAY`/`BROOCHDAY`/`SPELLDAY`/etc.
+  above) — it's a narrow guard against opening a save from a future
+  build, not a migration framework. If a genuinely breaking save-format
+  change is ever needed, that's when `kSaveFormatVersion` should actually
+  gain per-version branching logic in `load()` — there's only been one
+  version so far, so there's nothing to branch on yet.
 - **A quest's `TALK <met-id>` objective isn't validated against real
   character/NPC ids at load time.** `quest::QuestLoader` can't see
   `data/timeline.txt` or `data/zones/*.txt` (same one-way dependency

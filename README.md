@@ -17,8 +17,11 @@ section for the console build's own, different controls).
 launched it with after every action — combat wins, leveling, resting,
 shopping, equipping all persist across a close/relaunch, the same
 "autosave after every action" convention the legacy console build has
-always used. This is newly added and not yet extensively playtested, so
-keep an eye on your save the first few sessions; the legacy console build
+always used. The save path itself is hardened (atomic write-then-rename,
+rotated backups of the last few good saves, a version header that
+refuses to misparse a save from a future build) — see
+`docs/ARCHITECTURE.md`'s Save/load section — so a crash or force-close
+mid-write can't corrupt your save. The legacy console build
 (`ansalon_rpg`) remains available if you'd rather use it instead. See
 "Playing" below.
 

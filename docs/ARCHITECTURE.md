@@ -164,6 +164,19 @@ it already did for `ansalon_rpg` — otherwise "the main game" would have
 only run correctly when launched with the repo root as the working
 directory.
 
+**Console-retirement trigger, decided 2026-09-11**: `docs/
+CONSOLE_RETIREMENT_PROPOSAL.md`'s Option A was adopted — retire
+`ansalon_rpg` (Stage 1: deprecate, per that doc's staged/reversible
+plan) once `ansalon_sfml_phase1` reaches full **quest and save** parity
+with the console build (the two systems it's currently ahead on),
+confirmed live at the keyboard rather than just smoke-tested, with no
+remaining SFML `Placeholder`/`Not yet` rows representing lost
+functionality, and the user has played a full SFML session satisfied
+it's the build they'd hand to someone else. See that doc for the full
+rationale and the later, separately-approved stages (freeze, remove
+from default build, archive). Not yet met — see `docs/CURRENT_WORK.md`
+for the current stage.
+
 **One narrow, deliberate exception to "nothing outside `render/Console.cpp`
 touches a Windows API directly" (above):** `sfml_phase1/main.cpp` now has a
 small `#ifdef _WIN32` block that calls `ShowWindow`/`GetClientRect` (via
@@ -351,6 +364,69 @@ Deletion itself is `game::SaveGame::remove` (a thin, non-throwing
 `std::filesystem::remove` wrapper next to `exists()`); the affected
 `SlotInfo` is then refreshed via the same `describeSlot` helper so it
 comes back showing `(empty)` without any special-case reset logic.
+
+### Atomic writes, rotated backups, and a version header (Playable v7's P2)
+
+Prompted by `docs/NEXT_STEPS_v7.md`'s P2: `ansalon_sfml_phase1` autosaves
+after *every processed keypress* (`sfml_phase1/main.cpp`, finer-grained
+than `ansalon_rpg`'s once-per-loop-iteration autosave), and `SaveGame::save`
+used to `std::ofstream(path, std::ios::trunc)` the real slot file
+directly — a crash, Alt+F4, or a locked file mid-write left a truncated,
+unparseable save with no recourse. Both targets share this exact
+`SaveGame::save`/`load` (confirmed by grep — `sfml_phase1/main.cpp`
+calls it directly, same as `src/main.cpp`), so hardening this one file
+covers both.
+
+**The write is now: rotate backups, write to a temp file, then atomically
+rename over the real path** — `path` itself is never observed
+half-written:
+
+1. If `path` already exists, `rotateBackups` shifts existing backups
+   down a slot (`path.bak2` → `path.bak3`, `path.bak1` → `path.bak2`,
+   `kMaxSaveBackups = 3`) then **copies** (not moves) `path` →
+   `path.bak1`. Copying, not moving, is what keeps `path` itself present
+   and valid throughout this step.
+2. The full new content is written to `path + ".tmp"`, then the stream is
+   explicitly closed and checked (catches a flush failure, e.g. a full
+   disk, before it can become a truncated real save).
+3. `std::filesystem::rename(tmpPath, path)` — on Windows/NTFS this is a
+   single atomic replace (MSVC's STL implementation uses `MoveFileExW`
+   with `MOVEFILE_REPLACE_EXISTING`). This is the *only* step that
+   touches `path`.
+
+If the process dies at any point before step 3, `path` still holds
+exactly what it held before `save()` was called — the worst case is a
+redundant/skipped backup rotation, never a missing or corrupted save.
+`SaveGame::remove` (the slot-menu `d1`/`d2`/`d3` delete) also cleans up
+a slot's rotated backups and any stray `.tmp`, so an explicitly deleted
+slot doesn't leave recoverable-looking files behind.
+
+**Deliberately not attempted**: platform-specific `fsync`/
+`FlushFileBuffers` calls for durability against a hard power-loss event
+(disk write caching). That would need `#ifdef _WIN32` code in a file
+that's currently fully portable, in exchange for protecting against a
+failure mode (power loss) far rarer than the one this milestone actually
+targets (a crash or force-close mid-write, which the flushed-stream +
+atomic-rename design above already covers). See `docs/GOTCHAS.md`.
+
+**A `VERSION <n>` line** (`kSaveFormatVersion`, currently `1`) is now
+written first, right after the file's comment header. `load()` accepts
+any version `<= kSaveFormatVersion` (including absent, i.e. every save
+written before this milestone, treated as version 0 — loads exactly as
+it always has) and fails fast with a clear message if a save declares a
+version *newer* than this build understands, rather than silently
+misparsing whatever new format that version implies. Deliberately
+narrow: a guard against opening a save from a future build, not a
+migration framework — every other field addition in this file already
+uses the existing "optional, sensible default if absent" idiom (see
+`RESTDAY`/`BROOCHDAY`/`SPELLDAY` above) for ordinary additive changes,
+so there's nothing to branch on per-version yet.
+
+Verified by a throwaway `SaveHardeningSelfTest.cpp` (round-trip of every
+serialized field including a full inventory/companions/quest/zone-stack
+set, atomicity, backup rotation across three successive saves, the
+version guard, and legacy-file compatibility) — see
+`docs/CURRENT_WORK.md`.
 
 ## Timeline / chance-encounter engine
 

@@ -173,6 +173,28 @@ run `tools/package_playable_release.ps1` instead.
 Faster incremental alternative: open a "Developer PowerShell for VS
 2026" and use `cmake -G Ninja -S . -B build` / `cmake --build build`.
 
+### Release versioning
+
+`tools/package_release.ps1` and `tools/package_playable_release.ps1` each
+require exactly one of `-Major`/`-Minor` (they refuse to run, printing
+this rule, if given neither or both) to classify the release being
+packaged — a version file (`tools/release_version.txt`/
+`tools/playable_release_version.txt`, format `<major>.<minor>`) drives
+the zip name (`AnsalonRPG-v<N>.zip`/`AnsalonRPG-Playable-v<N>.zip`). The
+two build targets version independently — a console-only change bumps
+`release_version.txt`, an SFML-only change bumps
+`playable_release_version.txt`, and a shared change (like `SaveGame.cpp`)
+affects both.
+
+**The classification rule** (apply it, don't guess — ask the user first
+if genuinely unsure which side of it a change falls on):
+
+> A major increment (v6 → v7) is a new milestone that adds or completes
+> a player-visible system or changes the save format. A minor increment
+> (v6 → v6.1) is a bug fix, a doc-only change, a parity/cleanup pass, or
+> a tweak that doesn't add new player-facing capability or touch save
+> compatibility. When unsure, ask before tagging.
+
 **`_getch()` ignores piped stdin** — `ansalon_rpg`'s real keypress loop
 can't be tested headlessly. The one exception is character creation
 (`CharacterCreator::run()`), which uses plain `std::cin`/`std::cout` and

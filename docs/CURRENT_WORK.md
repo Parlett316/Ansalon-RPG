@@ -1,6 +1,24 @@
 # Current work
 
-**Nothing in-flight code-wise.** `ansalon_sfml_phase1` (the primary/main
+**Nothing in-flight code-wise.** Playable v7 status: **P2 (save
+hardening) is done** — see Milestone 184 (atomic write-then-rename,
+rotated backups, a `VERSION` header, all in the `game::SaveGame` both
+targets share). Console-retirement trigger is **decided but not
+met**: Option A from `docs/CONSOLE_RETIREMENT_PROPOSAL.md` (parity-based,
+gating Stage 1/Deprecate), recorded in `docs/ARCHITECTURE.md` — Stage 0
+(both targets fully live) still applies today.
+
+**Stop-and-flag for the next session (or the user) before touching P1**:
+`docs/NEXT_STEPS_v7.md`'s P1 ("port quest tracking to the SFML build")
+and most of `docs/PARITY_MATRIX.md`'s Quests/Look rows describe a gap
+that **Milestones 182-183 already closed**, in the commit immediately
+before this session started (`f8d20a9`, "SFML: port the quest system and
+Look command"). Both docs are untracked/uncommitted and read as drafts
+from before that port happened, never revised afterward — `PARITY_MATRIX.md`
+still says "Quests: Placeholder" and "Look: Not yet," which is now wrong.
+Don't treat `NEXT_STEPS_v7.md`'s P1 as a real to-do without first
+reconciling it against Milestones 182-183; P3 (the parity matrix itself)
+is also largely already done, just needs its stale rows refreshed. `ansalon_sfml_phase1` (the primary/main
 build) now has real quest/mechanic parity with `ansalon_rpg`. Previous
 wording here claimed the SFML migration was "complete" -- that was
 **wrong**: a three-way Haiku-agent audit (run 2026-09-11 after the user
@@ -64,16 +82,15 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   save carries one), the Brooch's once-per-day gate and companion
   exclusion, and a monsters-act-first knockout preventing an item from
   being consumed.
-- **Thief backstab and Fighter sweep** (Milestone 171) -- not yet
-  interactively confirmed at all. Save1 (Mike) carries a recruited
-  companion, Bren Alder (a Fighter, covers sweep); Dessa Corrin at Haven
-  covers backstab specifically once recruited. For sweep: fight a
-  Fighter against a weak group (HD<=1) with 2+ adjacent, confirm one
-  hit/miss line per instance, no picker opened, no bonus applied. For
-  backstab: get a Thief-type party member in light-or-no armor
-  positioned opposite whoever first attacked an instance, confirm the
-  log reads "Backstab! " with a visibly larger damage number; also
-  confirm no bonus from any other square or in heavier armor.
+- **Thief backstab** (Milestone 171) -- still not interactively
+  confirmed. Fighter sweep half is now confirmed (2026-09-11: Bren Alder
+  swept a Giant Rat group, one hit/miss line per instance, no picker, no
+  bonus -- see `docs/MILESTONES.md` entry 171). Backstab needs a
+  Thief-type party member in light-or-no armor (e.g. Dessa Corrin at
+  Haven, once recruited) positioned opposite whoever first attacked an
+  instance; confirm the log reads "Backstab! " with a visibly larger
+  damage number, and that there's no bonus from any other square or in
+  heavier armor.
 - **Same-cell combat-movement collision fix** (Milestone 172, both
   builds) -- not yet re-confirmed live. Worth deliberately re-triggering:
   retreat from an adjacent monster on a round where it can close the

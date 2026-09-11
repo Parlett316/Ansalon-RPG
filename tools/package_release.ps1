@@ -17,17 +17,53 @@
     a VT100-capable terminal (Windows 10+ Terminal or cmd/PowerShell both
     qualify) at least 80x24.
 
-    Each run bumps a build counter in tools/release_version.txt (checked
-    into git, so it persists and the increment shows up in `git diff`) and
-    stamps it into the zip name (dist/AnsalonRPG-v<N>.zip) and a VERSION.txt
-    dropped inside the package, so successive builds handed to the same
-    person are distinguishable.
+    Each run bumps a version counter in tools/release_version.txt (checked
+    into git, so it persists and the increment shows up in `git diff`,
+    format "<major>.<minor>") and stamps it into the zip name
+    (dist/AnsalonRPG-v<major>[.<minor>].zip) and a VERSION.txt dropped
+    inside the package, so successive builds handed to the same person are
+    distinguishable. The caller must pass exactly one of -Major/-Minor to
+    classify the release -- see CLAUDE.md's "Release versioning" for the
+    classification rule; this script refuses to guess.
+
+.PARAMETER Major
+    This release adds or completes a player-visible system, or changes the
+    save format. Bumps the major number and resets minor to 0 (v6 -> v7).
+
+.PARAMETER Minor
+    This release is a bug fix, a doc-only change, a parity/cleanup pass, or
+    a tweak with no new player-facing capability and no save-format change.
+    Bumps the minor number, keeping major (v6 -> v6.1).
 
 .EXAMPLE
-    powershell -File tools\package_release.ps1
+    powershell -File tools\package_release.ps1 -Major
+.EXAMPLE
+    powershell -File tools\package_release.ps1 -Minor
 #>
 
+param(
+    [switch]$Major,
+    [switch]$Minor
+)
+
 $ErrorActionPreference = "Stop"
+
+if ($Major -and $Minor) {
+    throw "Pass exactly one of -Major or -Minor, not both."
+}
+if (-not $Major -and -not $Minor) {
+    throw @"
+Pass -Major or -Minor to classify this release (see CLAUDE.md's "Release versioning"):
+
+  A major increment (v6 -> v7) is a new milestone that adds or completes a
+  player-visible system or changes the save format. A minor increment
+  (v6 -> v6.1) is a bug fix, a doc-only change, a parity/cleanup pass, or a
+  tweak that doesn't add new player-facing capability or touch save
+  compatibility. When unsure, ask before tagging.
+
+Example: powershell -File tools\package_release.ps1 -Major
+"@
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $repoRoot "build"
@@ -35,13 +71,30 @@ $releaseDir = Join-Path $buildDir "Release"
 $stageDir = Join-Path $repoRoot "dist\AnsalonRPG"
 
 $versionFile = Join-Path $PSScriptRoot "release_version.txt"
-$version = 0
+$majorVersion = 0
+$minorVersion = 0
 if (Test-Path $versionFile) {
-    $version = [int](Get-Content $versionFile -Raw).Trim()
+    $raw = (Get-Content $versionFile -Raw).Trim()
+    if ($raw -match '^(\d+)\.(\d+)$') {
+        $majorVersion = [int]$Matches[1]
+        $minorVersion = [int]$Matches[2]
+    } elseif ($raw -match '^\d+$') {
+        # Pre-major.minor bare integer (every build before this convention) --
+        # read as major.0, matching how that number was always displayed.
+        $majorVersion = [int]$raw
+    } else {
+        throw "Unrecognized content in ${versionFile}: '$raw'"
+    }
 }
-$version++
-Set-Content -Path $versionFile -Value $version -NoNewline
+if ($Major) {
+    $majorVersion++
+    $minorVersion = 0
+} else {
+    $minorVersion++
+}
+Set-Content -Path $versionFile -Value "$majorVersion.$minorVersion" -NoNewline
 
+$version = if ($minorVersion -eq 0) { "$majorVersion" } else { "$majorVersion.$minorVersion" }
 $zipPath = Join-Path $repoRoot "dist\AnsalonRPG-v$version.zip"
 
 Write-Host "Building Release..."
