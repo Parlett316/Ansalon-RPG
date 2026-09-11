@@ -6104,6 +6104,757 @@ now fully verified, nothing further outstanding.
      `MIN_TOWN_DISTANCE 55` Shambling Mound genuinely reads as the
      roster's scariest encounter.
 
+157. **Full SFML migration decided; Phase 1 (real pixel-space overworld)
+     shipped.** Following the round-3 real-map spike's "continue down this
+     path" verdict (its data fixes already shipped as Milestones 153-155)
+     and real collision-checked movement proven in that trial, the user
+     committed to migrating the overworld, zones, and combat to SFML --
+     not the "hybrid" alternative (an SFML window and the Windows console
+     coexisting mid-session, no precedent in this codebase) -- and to real
+     pixel-space rendering per screen, not a monospace-grid recreation
+     (already tried once as an isolated stage-1 trial, rejected as "looks
+     almost exactly the same" as the terminal -- see the former `NEXT UP`
+     item 3, now retired below). New standalone target
+     `ansalon_sfml_phase1` (`sfml_phase1/main.cpp`, developed on branch
+     `sfml-trial-3`; not reusing `GameLoop::run()` since `render::Console`'s
+     methods are `static` on a concrete class, not an interface -- a true
+     drop-in swap would need `Console.h` restructured via PIMPL, deferred
+     until a phase actually needs it) loads a real save file read-only via
+     `game::SaveGame`, walks the real map with real collision, and renders
+     a real pixel-space sidebar (character name/level/race/class, HP,
+     in-game day/time, a short event log) via SFML text against a
+     placeholder Consolas system font -- not a terminal recreation.
+     Unimplemented keys (zone entry, talk, shop, inventory, journal, rest,
+     etc.) log a plain "not yet in this build" line instead of doing
+     anything. See `docs/ARCHITECTURE.md`'s SFML section for the full
+     architecture this unlocked.
+
+     Committed as `778a57c`. Verified: clean rebuild (zero new `/W4`
+     warnings). **Confirmed working** via the user's own keyboard against
+     a real save -- "looks good."
+
+158. **Zone interiors, plus a placeholder-icon rework, shipped in
+     `ansalon_sfml_phase1`.** Added `world::Zone`/`ZoneTile`/`ZoneLoader`/
+     `ZoneCatalog` to the target; `state.mode` now genuinely switches
+     between Overworld and Zone rendering/movement, matching
+     `game::GameState` exactly. Real collision (POIs always passable),
+     real entry/exit via `Enter` (including `PORTAL`-nested sub-zones like
+     Solace's Inn, pushing/popping `GameState::zoneStack`), and
+     placeholder pixel-space tile colors (no reference art exists for
+     interiors, unlike the overworld's real map). Committed as `4ff3bfb`.
+     Verified: clean rebuild (zero new `/W4` warnings). **Confirmed
+     working** via the user's own keyboard: walked into Solace, into its
+     Inn via the portal, and back out through both exits.
+
+     A follow-up pass reworked the POI placeholder visuals the same
+     session: every POI had fallen through `colorForZoneTile`'s
+     unhandled-code branch to a flat magenta square (user's words: "yellow
+     and pink squares"). Fixed two ways -- the fallback now renders as
+     plain open-ground floor instead of magenta, and each POI draws a
+     small 2-primitive placeholder icon instead of a flat dot: a doorway
+     for portals, a counter+awning for shops, a mattress+pillow for beds,
+     a head+robe figure for talkable NPCs, a small muted diamond for pure
+     scenery -- classified purely from data already on
+     `world::PointOfInterest`/`world::Zone` (`isShop`/`isBed`/`dialogue`-
+     non-empty/`portalAt`), no data-file or `world::` changes needed.
+     Committed as `ef1ac77`. Verified: clean rebuild (zero new `/W4`
+     warnings). **Confirmed working**: user tested live in Solace and the
+     Inn (all 5 icon kinds) -- "much better, a decent starting spot."
+
+159. **Combat (Phase 3), core melee loop, shipped in `ansalon_sfml_phase1`.**
+     `GameLoop::runCombat` (the console reference, ~1300 lines) is one big
+     blocking loop with nested blocking pickers; this build replaces that
+     with a non-blocking `CombatSession`/`CombatUiState` state machine
+     driven by the same per-`KeyPressed`-event loop Phase 1/2 already use,
+     reusing every sourced combat primitive
+     (`combat::resolvePlayerAttack`/`resolveMonsterAttack`/
+     `playerActsFirst`/`rollSavingThrow`, `combat::isAdjacent`/
+     `chebyshevDistance`/`stepToward`, `combat::rollGroupSize`/
+     `MonsterCatalog::randomMonster`, `character::meleeAttacksThisRound`/
+     `applyPendingLevelUps`) completely unchanged.
+
+     **Scoped to the core melee loop**, deliberately deferring real
+     spellcasting/item use/backstab/sweep to later phases (all four
+     shipped in later entries below): real random encounters, positional
+     movement, one-target-per-round target picking (this phase's own
+     simplification of the console's mid-round retarget-on-kill), monster
+     AI including each monster's passive on-turn/on-death specials (Bozak
+     Magic Missile, Aurak breath weapon, Sivak death-burst, Baaz
+     stone-death, Giant Spider poison), companion AI (fighting, no sweep),
+     flee, and victory/XP/leveling/knockout-to-nearest-refuge all shipped.
+     `CMakeLists.txt` gained `src/combat/Combat.cpp`/`Monster.cpp`/
+     `MonsterLoader.cpp`/`CombatGrid.cpp` for this target. Committed as
+     `a3e30fc`.
+
+     Verified: clean rebuild (zero new `/W4` warnings), a launch smoke
+     test, and the user testing it live at the keyboard. **Confirmed
+     working**: won a fight and lost one (knockout) at ship time; Flee, a
+     multi-instance group encounter's in-frame target picker, and a
+     recruited companion fighting alongside the player were each
+     separately confirmed working 2026-09-10.
+
+160. **Character sheet shipped in `ansalon_sfml_phase1`.** A read-only,
+     full-window overlay bound to `C` (works from Overworld or Zone,
+     dismissed by any key), composited as a final draw-on-top layer.
+     Content mirrors `render::MapRenderer::drawCharacterSheet` field-for-
+     field -- race/subrace, class, level, XP, alignment, knight order,
+     robe affiliation, all 6 ability scores, HP/AC/THAC0, weapon/armor,
+     all 5 saving throws, steel, carried items, a spells-memorized
+     summary (casters only), and recruited companions -- laid out as two
+     real pixel-space columns plus a small HP bar (a genuine visual the
+     console version structurally can't do). Deliberately dropped: the
+     console sheet's `'s'` full-spellbook drill-down, shipped separately
+     at Milestone 166 below.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test against `save2.txt` (a caster, exercising the robe/spells-
+     summary paths). **Confirmed working** 2026-09-09 via the user's own
+     keyboard: `C` from overworld and zone, fields rendering, `Q`/Escape
+     dismissing just the sheet, all work.
+
+161. **Dialogue (core conversation) shipped in `ansalon_sfml_phase1`.** The
+     biggest screen ported by underlying logic size --
+     `GameLoop::talkTo`/`offerOrTurnInQuest` is the single largest screen
+     in the console build. Added `src/timeline/Timeline.cpp`/
+     `TimelineLoader.cpp` to this target (previously unlinked -- without
+     it, Talk could never find a canon Hero, and a POI's own
+     `TALK_AFTER`/`TALK_BEFORE` gating couldn't work either), loading
+     `data/timeline.txt` alongside the existing World/ZoneCatalog/
+     MonsterCatalog.
+
+     **Scoped to the core conversation loop**: TALK/TALK_AGAIN,
+     TALK_AFTER/TALK_BEFORE, conditional greeting (`SAY_IF`), the curated
+     TOPIC picker, and `GRANTS_ITEM`. Free-text "Ask about something
+     else...", quest offer/accept/progress/turn-in, boat-voyage
+     accept/decline, and companion-recruit accept/decline were each
+     deferred to later phases (all shipped in later entries below) -- a
+     POI carrying any of those printed one placeholder log line instead.
+     `ASK_LIMIT_LOCKED` was dropped from this phase's local `Speech` shape
+     entirely (it can only ever fire once free-text asking exhausts a
+     daily cap, which couldn't happen yet) rather than carried as dead
+     code -- restored once ask-input shipped, see Milestone 162.
+     `GameLoop.cpp`'s own `talkTo` machinery isn't linkable here (built on
+     `render::Console`/`render::MapRenderer`, which this target excludes),
+     so its logic was ported as new local code: `DialogueSpeech`/
+     `DialogueCandidate`, `conditionMatches` copied verbatim,
+     `gatherTalkCandidates()` mirroring `GameLoop::handleTalk`, and a
+     `DialogueSession`/`DialogueUiState` state machine.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test confirming the new `timeline::Timeline` load succeeds.
+     **Confirmed working (partially)** 2026-09-09 via the user's own
+     keyboard: zone-native NPC talk, canon Hero talk, and a multi-
+     candidate tile's picker all work. Not yet separately confirmed: the
+     quest placeholder line at a `QUEST`-marked POI (e.g. Kalaman's
+     Curiosities Cart).
+
+162. **Free-text "Ask about something else..." shipped in
+     `ansalon_sfml_phase1`.** This codebase's first real
+     `sf::Event::TextEntered` handling. `DialogueSpeech`/
+     `speechFromWindow`/`speechFromPoi` regained full parity with
+     `game::Speech`/`game::speechFromWindow`/`game::speechFromPoi`
+     (`subjects`/`subjectUnknown`/`askLimit*`/`suppressAskHints`/
+     `askLimitLocked*`), restoring the `ASK_LIMIT_LOCKED` path Milestone
+     161 had dropped as unreachable. `tokenizeAskInput`/`matchSubject` are
+     copied verbatim from `GameLoop.cpp`. Two new `DialogueUiState` values
+     (`AskInput` for typing, `AskResponse` for the result) drive a
+     non-blocking port of `GameLoop::talkTo`'s ask-anything block and its
+     `askLimitLocked` greeting override, including the homebrew
+     Intelligence+Wisdom hard-cap-extension check, unchanged.
+
+     **Real behavior fix found during implementation:** this build's rule
+     is "Escape/Q always closes the whole window" -- but during free-text
+     typing, `q` is an ordinary letter a player may need to type, not a
+     quit key. Fixed by deferring Q/Escape's `window.close()` into a
+     guarded check: while the ask-input box is open, Q is swallowed
+     (harmless, reaches the buffer via `TextEntered`) and Escape cancels
+     the box back to the topic picker instead of closing the window.
+     Empty-buffer Enter also cancels, mirroring `Console::readLine`'s own
+     Esc-returns-empty behavior.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test. **Confirmed working** 2026-09-10 via the user's own keyboard: a
+     full 10-question run against Astinus in Palanthas (the only POI with
+     `ASK_LIMIT` configured) exercised `SUBJECT_UNKNOWN`'s flavor
+     response, the Int+Wis extension roll at question 5 (passed,
+     `ASK_LIMIT_EXTENDED`), and the hard cap correctly ending the
+     conversation at question 10 with no second extension attempt. Not
+     yet confirmed: matching a real keyword (only gibberish tried),
+     Backspace editing the buffer, `ASK_LIMIT_LOCKED`'s greeting override
+     on a same-day return visit, and the extension-roll *fail* path (pure
+     chance which branch fires live).
+
+163. **Generic picker overlay extracted in `ansalon_sfml_phase1`.** The
+     console's `render::MapRenderer::drawPickerFrame` is its single
+     most-reused screen primitive; the SFML port had no equivalent --
+     dialogue's `PickingCandidate`/`TopicPicker` states each hand-rolled a
+     near-identical title/cursor-list/footer block. Added a
+     `drawPickerOverlay(title, items, selectedIndex, footer)` lambda,
+     mirroring `drawPickerFrame`'s signature; `PickingCandidate`/
+     `TopicPicker` now delegate to it (pure extraction, no behavior
+     change). Deliberately not used by combat's `PickingTarget` (its
+     cursor is embedded in the roster panel, a structurally different
+     shape). Unlocked Shop/Inventory/Spellbook (Milestones 164-166) to
+     reuse it instead of each re-deriving the picker loop.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test run from the repo root (confirms the map texture load).
+     **Confirmed working** -- covered by Milestone 161's own dialogue
+     confirmation, since `PickingCandidate`/`TopicPicker` render through
+     this overlay.
+
+164. **Shop shipped in `ansalon_sfml_phase1`.** Ports `GameLoop::
+     handleShop` faithfully: browse a shop's catalog (buy), toggle to the
+     sell view (`I`), purchase/sell with the same insufficient-steel/
+     already-owned/cannot-use/cannot-sell checks, all computed fresh each
+     call via `character::availableShopItems`/`sellableItems`/
+     `purchaseItem`/`sellItem` (unchanged, already linked into this
+     target for the character sheet). Zero `CMakeLists.txt` changes
+     needed. `drawPickerOverlay` gained an optional trailing `message`
+     parameter for post-transaction feedback.
+
+     **One real gap, flagged rather than faked:** `SHOP_LOCKED` gates
+     Flint's Smithy in Solace behind a quest being Complete -- this build
+     tracks no quest state at all yet, so that shop prints a placeholder
+     line instead of silently always- or never-locking. **One deliberate
+     deviation from this build's "Q always closes the window" rule:**
+     `GameLoop::handleShop` documents `Key::Quit` as exiting the shop, not
+     the whole game -- backing in and out of a shop repeatedly is the
+     normal case, so Shop gets a local Quit override checked ahead of the
+     general branch.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test. **Confirmed working** 2026-09-09 via the user's own keyboard.
+
+165. **Inventory shipped in `ansalon_sfml_phase1`.** Ports `GameLoop::
+     handleInventory` faithfully: North/South cycles the carried-item
+     list; Enter dispatches on `InventoryItem::kind` -- a Potion is drunk
+     via `character::drinkPotion`, a Webnet/Brooch shows "only in
+     combat," a QuestItem shows "meant for someone else," everything else
+     is equipped via `character::equipInventoryItem` -- cursor resets to
+     0 after any action. Zero `CMakeLists.txt` changes needed. New local
+     `InventorySession` (flat struct, one screen shape throughout);
+     reuses `drawPickerOverlay` with the HP/Weapon/Armor+Shield summary
+     lines prepended as non-selectable leading rows, cursor suppressed
+     (index -1) when empty. `I` opens Inventory normally; while a shop is
+     open it still toggles buy/sell (Shop's own dispatch is checked
+     first, so the two never conflict). `Q` closes just the screen, same
+     deliberate deviation Shop established.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test run from the repo root. **Confirmed working (partially)**
+     2026-09-09/2026-09-10: the empty-state path, drinking a potion, `Q`
+     returning to the map, and `I` still toggling buy/sell while a shop is
+     open all work. Not yet confirmed: equipping a weapon/armor/shield
+     (header line updating) and the Webnet/Brooch/quest-item no-op
+     message.
+
+166. **Spellbook shipped in `ansalon_sfml_phase1`.** Ports `GameLoop::
+     showCharacterSheet`/`showSpellbook` faithfully: while the sheet (`C`)
+     is open, `s`/Down (offered only when `character::canCastSpells`)
+     opens a `spellbookOpen` overlay listing every known spell grouped by
+     level with "(memorized)"/"(memorized xN)" annotations; any key
+     returns to the still-open sheet. Reuses `drawPickerOverlay` with
+     `selectedIndex` always -1 (pure information, no selection). Zero
+     `CMakeLists.txt` changes needed -- `src/character/Spellcasting.cpp`
+     was already linked in.
+
+     **Real bug found and fixed while touching this code:** the general
+     "Q/Escape closes the window" branch was checked *before* the
+     character sheet's own dismiss branch, so Q/Escape while the sheet was
+     open closed the whole window instead of just dismissing the sheet --
+     contradicted both the sheet's own doc comment and the console's
+     behavior. Fixed by moving the sheet/spellbook dismiss guards ahead of
+     the general quit branch, same placement Shop's and Inventory's own
+     Quit overrides already use.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test against `save2.txt` (a caster). **Confirmed working** 2026-09-09
+     via the user's own keyboard, alongside the character sheet
+     (Milestone 160).
+
+167. **Help, Full Log, World Map, and Journal shipped in
+     `ansalon_sfml_phase1` -- closed out the full-migration roadmap
+     entirely.** All four follow the established `bool xOpen`/"any key
+     dismisses" overlay convention, composited as a final draw-on-top
+     layer. Zero `CMakeLists.txt` changes across all four.
+
+     **Help** (`/`) -- ported verbatim from `render::MapRenderer::
+     drawHelpFrame`, static content, `drawPickerOverlay` with no
+     selection. **Full Log** (`V`) -- new `LogSession { active,
+     scrollOffset }`; North/South scroll by a fixed 10-line chunk
+     (matches `GameLoop::handleLog`'s own `kLogScrollStep`); `V` or `Q`
+     closes it. **World Map** (`O`) -- real design choice: rather than
+     porting `drawWorldMapFrame`'s ~180-line ASCII box-majority-vote
+     downsampling, this screen draws the real `dragonlancemap2.png`
+     scaled to fit (already loaded for the live overworld), with location
+     markers and a side legend listing all 25 locations alphabetically --
+     higher fidelity than the console version, less code. **Journal**
+     (`G`) -- real judgment call: `GameLoop::showJournal` iterates
+     `game::GameState::quests`, which this build never populates (quest
+     dialogue is still deferred), so Journal's body says explicitly that
+     quest tracking isn't wired up yet rather than silently rendering the
+     console's "(no quests yet)" line, which would misleadingly read as
+     "you truly have zero quests."
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test. **Confirmed working** 2026-09-09 via the user's own keyboard:
+     `/`, `V`, `O`, and `G` all work.
+
+     This closed the full-migration roadmap entirely: every screen in
+     `ansalon_sfml_phase1` was now a real pixel-space port; nothing on the
+     original list stayed ASCII/terminal-only aside from character
+     creation and the save-slot menu (always out of scope -- no window
+     exists yet when they run; both later shipped natively too, see
+     Milestone 180).
+
+168. **Loading screen and quit confirmation added to
+     `ansalon_sfml_phase1` -- SFML-only by design** (the console build
+     already has its own `promptYesNo` confirmation convention and a
+     different, already-instant text loading trace; touching it wasn't
+     asked for). `runPhase1()` used to create the window *after* every
+     load step, a real risk of a blank/"Not Responding" window on a slow
+     disk. Window and font construction moved to the top of the function;
+     a `drawLoadingScreen` lambda now draws a real status-line frame (and
+     pumps the window-close event) before each existing load step.
+
+     Separately, `Q`/Escape used to call `window.close()` unconditionally
+     from the outermost catch-all -- every other overlay already had its
+     own override that closes just that screen, but Combat did not, so
+     `Q` mid-fight force-quit with zero warning. That catch-all now opens
+     a `quitConfirmOpen` overlay ("Are you sure you want to end your
+     adventure?", reusing `drawPickerOverlay`) instead, fixing the Combat
+     gap for free since it shares the same catch-all. The OS close button
+     (title-bar X / Alt+F4) still closes immediately, deliberately
+     unguarded -- the ask was about an accidental keypress, not a
+     deliberate OS-level gesture.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test confirming every load-step trace line still prints in order.
+     **Confirmed working** 2026-09-09 via the user's own keyboard,
+     alongside launch-maximized (Milestone 175): loading screen and quit
+     confirm both read correctly.
+
+169. **Combat spellcasting (`M`) shipped in `ansalon_sfml_phase1`.** Direct
+     port of `GameLoop::playerCasts`'s full switch -- all 13
+     `SpellEffect` cases, so every sourced spell in
+     `character::spellListFor` works in this build, not a hand-picked
+     subset -- as a new `combatApplySpellEffect`, plus
+     `GameLoop::runCombat`'s this-fight-only buff/debuff locals added to
+     `CombatSession`: `playerAcBonus`, `hasteAttackMultiplier`, and four
+     new per-instance vectors (`monsterThac0Penalty`/`monsterDamagePenalty`/
+     `monsterAcPenalty`/`blockedAttacksRemaining`/
+     `incapacitatedRestOfFight`).
+
+     **The real design problem, solved by sequencing:** the console's
+     "which spell?" chooser resolves entirely *before* initiative is
+     rolled (free to cancel), but `character::castSpell` itself only runs
+     as part of the shared `playerActsFirst()` dispatch -- so if the
+     monsters act first and knock the player out, the chosen spell should
+     never actually be cast. Reproduced in this non-blocking build with a
+     new `PickingSpell` state that resolves with **no initiative roll and
+     no round consumed**; only once a spell is truly chosen does
+     `combatCommitSpellChoice` roll initiative and *then* call
+     `character::castSpell`, so a monsters-act-first knockout correctly
+     prevents the cast, matching the console exactly. `PickingTarget` is
+     reused for spell targeting (not adjacency-restricted, unlike melee),
+     generalized via a new `TargetPickReason` enum.
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test against `save2.txt` (has Fireball). **Confirmed working
+     (mostly)** 2026-09-09/2026-09-10: Magic Missile (solo, no picker;
+     group, picker opens), Fireball (multi-instance, single damage roll
+     shared correctly), Cure Light Wounds (full-HP correctly wastes the
+     roll; damaged correctly heals -- real gap surfaced, not a bug: it can
+     never target an injured companion, only the caster, logged in
+     `docs/COMBAT_NOTES.md`'s "Extending this later"), Bless (ran through
+     `playerThac0Bonus`, provable only statistically since roll-math
+     breakdowns were dropped from log lines at commit `c657a44`), Charm
+     Person/Monster (as a `BlockMonsterAttacks` stand-in for Web -- the
+     charmed monster correctly stood down rather than switching sides,
+     which this project deliberately doesn't model), the multi-spell
+     picker and its free cancel, and casting with nothing memorized. Still
+     open, hardest to force: getting monsters to act first on a round
+     where `M` is pressed, to confirm the spell was never actually cast.
+
+170. **Combat item use (`I`) shipped in `ansalon_sfml_phase1`.** Direct
+     port of `GameLoop::runCombat`'s four item-use lambdas
+     (`playerDrinksPotion`/`playerUsesWebnet`/`playerActivatesBrooch`/
+     `playerUsesStaffCure`) and its `I`-key USE-menu chooser, reusing
+     `character::availableCombatItems`/`CombatItem`/`CombatItemKind`
+     unchanged. Zero `CMakeLists.txt` changes needed. Same "pick before
+     initiative, resolve after" shape spellcasting established (Milestone
+     169): a new `combatBeginUseItem` auto-resolves 0/1-item cases for
+     free, opens `PickingItem` for 2+, and `combatCommitItemChoice` only
+     applies the item after initiative -- so a monsters-act-first knockout
+     also now prevents a chosen item from being consumed. Webnet reuses
+     `PickingTarget` a third way via the `TargetPickReason` enum.
+
+     **One real gap closed in the same pass:** the Brooch of Imog's
+     `globeActive` flag hadn't existed anywhere in this build's combat
+     yet, which would have made the Brooch a real no-op. Added
+     `CombatSession::globeActive` and wired it into all four spots
+     `GameLoop.cpp` gates on it (Bozak Magic Missile, Aurak breath weapon,
+     a melee hit against the player specifically, and opportunity
+     attacks).
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test. **Confirmed working** 2026-09-09 via the user's own keyboard: a
+     Potion healed on drink, a Webnet tangled a monster, activating the
+     Brooch blocked all the monster's remaining attacks for the fight
+     (this project's deliberate simplification of the real DLA item's
+     "10 rounds" -- negates everything for the rest of the current fight
+     once activated). Not separately confirmed: the 2+-item picker and its
+     cancel, Staff of Curing (no current save carries one), the Brooch's
+     once-per-day gate and companion exclusion, and a monsters-act-first
+     knockout preventing item consumption.
+
+171. **Thief backstab and Fighter sweep shipped in
+     `ansalon_sfml_phase1` -- closed out every item Combat (Phase 3,
+     Milestone 159) had originally deferred.** Direct port of
+     `GameLoop::runCombat`'s shared `firstAttackerId`/
+     `positionOfAttacker`/`backstabBonus`/`adjacentWeakInstances` lambdas,
+     its player sweep block, backstab wired into the player's ordinary
+     attack loop, and companion sweep+backstab -- reusing
+     `character::classGroupFor`/`ClassGroup::Warrior`/`ClassGroup::Rogue`,
+     `character::canBackstab`, `character::backstabDamageMultiplier`,
+     `combat::isSweepEligible`, and `combat::oppositeSide` unchanged.
+     Zero `CMakeLists.txt` changes needed. Unlike every other feature in
+     this migration, neither ability gets a new key binding -- both are
+     automatic, position/class/HP-dice-driven, exactly as in the console
+     build. `CombatSession` gained one new fight-long field,
+     `firstAttackerId` (not reset per round -- the first character to
+     attack an instance, for its whole lifetime).
+
+     Verified: clean rebuild (zero new `/W4` warnings) and a launch smoke
+     test against both real saves. **Not yet interactively confirmed** --
+     needs a party member (save1's Bren Alder, a Fighter, now covers
+     sweep; a Thief-type party member, e.g. Haven's Dessa Corrin once
+     recruited, covers backstab specifically).
+
+172. **Same-cell combat-movement collision bug fixed, both builds.**
+     Retreating from an adjacent monster could end up sharing its exact
+     grid cell: `combatBeginPlayerMove`/`playerMoves` validated the
+     destination was empty, then let the monster act (possibly closing
+     in) *before* ever committing the player's own position -- if the
+     monster's step landed exactly on that already-validated cell, both
+     combatants ended up on the same `GridPos`, and `combat::isAdjacent`'s
+     "never adjacent to itself" rule then made both sides read the other
+     as permanently too far away to attack, with no recovery except
+     fleeing. Reproduced live in `ansalon_sfml_phase1` on save3 (Melissa,
+     Cleric vs. a Black Bear): both markers rendered on the same tile
+     afterward.
+
+     Fixed by extracting the occupancy check into a shared lambda
+     (`combatCellOccupied` in `main.cpp`, `isCellOccupied` in
+     `GameLoop.cpp`) and calling it a second time right before the
+     position commit -- if the cell filled up in the meantime, the move is
+     cancelled ("The way is blocked now.") but everything that already
+     happened that round still stands. **This exact bug existed in the
+     console build too** -- the SFML port had faithfully copied the
+     console's own structure, so this was a latent bug in `ansalon_rpg`'s
+     shipped combat that SFML playtesting happened to surface first, not
+     a migration regression; fixed there identically.
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings), a launch smoke test against save3, and a piped character-
+     creation smoke test (real saves moved aside, confirmed restored
+     intact). **Not yet re-confirmed live** in either build -- worth
+     deliberately re-triggering the retreat-while-a-monster-closes-in
+     scenario.
+
+173. **`ansalon_sfml_phase1` promoted to the primary/main build; Look,
+     Rest, and Bed Rest shipped.** With the full-migration roadmap closed
+     out (Milestone 167), the user asked to make it "the main game."
+     `ansalon_rpg` stays in the tree as a legacy/reference build rather
+     than being retired (a separate, later call); quest tracking,
+     companion recruit, and boat-voyage all stayed deferred/placeholder at
+     this point (each shipped in later entries below).
+
+     `CMakeLists.txt` now copies `data/` and just
+     `References/dragonlancemap2.png` (not the whole 460MB+ `References/`
+     folder) next to the built exe, the same post-build treatment
+     `ansalon_rpg` already had -- previously this target only worked
+     launched with the repo root as the working directory. Researching the
+     promotion also surfaced that Look, Rest, and Bed Rest (`L`/`R`/`Z`)
+     were still unconditional stub placeholders, not tracked on any
+     backlog at all. Rest matters far more than the deliberately-deferred
+     gaps: without it, a caster could never heal naturally or
+     re-memorize spells day-to-day, a core gameplay loop. Rest and Bed
+     Rest were ported from `GameLoop::handleRest`/`handleBedRest`/
+     `performSpellMemorization`/`chooseSpellLoadout` via a new
+     `RestSession` state machine; Look stayed deferred (minor, cosmetic).
+
+     A standalone demo-packaging tool, `tools/package_sfml_demo.ps1`, was
+     also added around this time (a fixed-preset-character, read-only
+     package for handing the build to someone outside the source tree) --
+     later fully retired once native character creation (Milestone 180)
+     and save persistence (Milestone 174) made a real createable/writable
+     demo possible instead.
+
+     `README.md`/`CLAUDE.md` updated to describe `ansalon_sfml_phase1` as
+     the primary build. Verified: clean rebuild of all three CMake
+     targets (zero new `/W4` warnings) and a launch smoke test confirming
+     the new post-build copy. **Confirmed working** 2026-09-09 via the
+     user's own keyboard on save1 (non-caster, 1 HP heal) and save2
+     (caster, after Milestone 176's clock fix): the day-gate cycle, the
+     keep-loadout picker, and Bed Rest all work.
+
+174. **Save persistence (autosave) shipped in `ansalon_sfml_phase1`.**
+     Closed the single biggest known gap in "the main game" -- every
+     combat win, level-up, rested night, shop purchase, or equipped item
+     was previously lost the moment the window closed. No new
+     serialization: `game::SaveGame::save`/`load` already existed,
+     unchanged; this was entirely about *when* to call it from this
+     build's own event loop.
+
+     Mirrors `GameLoop::run()`'s own documented convention (autosave
+     unconditionally after every processed action -- "a crash or an
+     ungraceful close loses at most the single most recent keypress").
+     This build's event loop is per-`sf::Event` rather than console's
+     one-key-per-outer-iteration, so the save call sits at the end of the
+     `KeyPressed` handling block and in the `sf::Event::Closed` handler.
+     Deliberately NOT added in the top-level `catch` blocks (a half-
+     applied action from a thrown exception shouldn't be saved). **One
+     real, documented granularity difference from console:** a multi-round
+     SFML combat encounter autosaves once per round, not once when the
+     fight ends -- strictly safer for crash recovery, noted as a
+     difference, not a bug.
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings); a throwaway `SaveGameRoundTripSelfTest.cpp` (save3 copied
+     to a scratch path, `load`->`save`->`load` round-tripped, all fields
+     confirmed unchanged, then deleted); and a force-killed launch smoke
+     test confirming a hard kill correctly writes nothing, byte-identical
+     to the original. **Confirmed working** 2026-09-09 via the user's own
+     keyboard: real play autosaves correctly and the file reloads
+     cleanly.
+
+175. **`ansalon_sfml_phase1`'s window now launches maximized.** SFML 3
+     (this project's pinned version) has no native "maximized" window
+     state, so this reaches through to the real OS handle: a new
+     `#ifdef _WIN32` block calls `ShowWindow(window.getNativeHandle(),
+     SW_MAXIMIZE)` right after window creation, then reads back the real
+     resulting size via `window.getSize()`. Also fixed `uiView` (used for
+     every full-window overlay), which previously aliased
+     `window.getDefaultView()` -- confirmed via the vendored SFML source
+     that the default view is computed once at window-creation and never
+     recomputed on resize, which would have left every overlay locked to
+     the original 1280x800 in the corner of the larger window.
+
+     **This is the first `#ifdef _WIN32`/Windows-API code in
+     `sfml_phase1/main.cpp`** -- `docs/ARCHITECTURE.md`'s SFML section was
+     updated to note this one narrow exception (`NOMINMAX`/
+     `WIN32_LEAN_AND_MEAN` defined ahead of `<windows.h>` since this file
+     uses `std::min`/`std::max`/`std::clamp` extensively). Deliberately out
+     of scope: live window resizing (no `sf::Event::Resized` handling
+     exists, pre-existing, not a regression here). Non-Windows platforms
+     fall back to the original fixed 1280x800.
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings) and a launch smoke test. **Confirmed working** 2026-09-09
+     via the user's own keyboard: window opens maximized, loading screen
+     and quit confirm (Milestone 168) both read correctly.
+
+176. **Overworld-clock-advance bug fixed; the "spells expire at midnight"
+     rule dropped -- both builds.** `GameState.h`'s own doc comment names
+     `hoursElapsed` as the sole source of truth for in-game time, advanced
+     only by overworld travel. This build's overworld movement block had
+     ported the position update and arrival/encounter logic from
+     `tryMoveOverworld` but silently dropped the three-line time-advance
+     in the middle of it -- so the sidebar's day/time display never moved
+     no matter how far the player walked. Reproduced live: save2 (Regan)
+     rested once successfully, then every subsequent Rest kept reporting
+     "already rested today" because the day genuinely never advanced.
+     Save1's very first rest worked by coincidence (a first-ever rest
+     needs no day change to succeed). Fixed by inserting the same three
+     lines from `tryMoveOverworld` in the same relative position.
+
+     **Design change, directly surfaced by the fix:** once overworld
+     movement started genuinely advancing `hoursElapsed`, real 2e's
+     "spells expire at midnight" rule became visible for the first time --
+     a caster could burn through a freshly-memorized day just
+     repositioning around one fight. User's call, not a tuning pass: drop
+     day-expiry entirely -- "if we want to get that granular we can do
+     that much later." `character::hasMemorizedSpellsAvailable`
+     (`Spellcasting.cpp`/`.h`) dropped its `currentDay` parameter, now a
+     pure `!memorizedSpellIds.empty()` check; every call site in both
+     builds updated (the `M`-key gate, the console's `CAST (m)` footer
+     hint, the character sheet's spell summary, the spellbook's
+     per-spell annotation), which also dropped `currentDay` as a
+     parameter from `MapRenderer::drawCharacterSheet`/`drawSpellbookFrame`
+     entirely. **Deliberately NOT touched:** `Character::lastRestDay`'s
+     own once-per-day gate on Rest itself (a separate mechanic, preventing
+     Rest-spam healing) and `Character::spellsCastDay` (kept as an inert
+     record, in case per-day granularity is revisited "much later").
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings), a piped character-creation smoke test on `ansalon_rpg`
+     (real saves moved aside, confirmed restored intact), and a launch
+     smoke test of `ansalon_sfml_phase1`. **Confirmed working** 2026-09-09:
+     memorized spells stayed available through a real day-boundary
+     crossing, `M` still offered the full loadout.
+
+177. **Boat-voyage accept/decline shipped in `ansalon_sfml_phase1`.**
+     Previously a placeholder log line. Direct port of `GameLoop::
+     talkTo`'s boat block: `DialogueCandidate` gained real
+     `boatDestinationId`/`boatHours` fields, populated from the same
+     `world::Zone::boatAt` query the console uses. A new `BoatOffer`
+     `DialogueUiState` (Board/Not yet) is reached from `Greeting`'s
+     dismissal whenever the candidate carries a destination, ahead of the
+     topic menu -- matching `talkTo`'s own precedence regardless of which
+     greeting text was shown. "Board" teleports the player, advances
+     `hoursElapsed` by `boatHours`, logs the same ferry/ship flavor text
+     split at 24 hours the console uses (via a verbatim-copied
+     `compassDirection`), then ends the conversation outright, matching
+     `talkTo`'s early return. "Not yet"/Q/Escape falls through to the
+     ordinary topic picker, and the offer reappears on every later visit
+     including after boarding once (matching the console's own Milestone
+     121 round-trip-ferry fix). One simplification, noted rather than
+     silently dropped: the console's post-voyage `checkQuestReadiness()`
+     and fuller `announceOverworldTile()` arrival call aren't ported --
+     this build tracks no quest state yet and already uses a simpler
+     arrival line for ordinary movement.
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings) and a launch smoke test. **Confirmed working** 2026-09-10
+     via the user's own keyboard: the Crossing/Port O'Call round-trip
+     ferry worked crossing and crossing back, and declining an offer
+     correctly fell through without teleporting or closing the window.
+
+178. **Companion recruit accept/decline shipped in `ansalon_sfml_phase1`;
+     a real recruited-companion rendering bug found and fixed, both
+     builds.** Direct port of `GameLoop::talkTo`'s recruit block, which
+     sits immediately after its boat block: `DialogueCandidate` gained a
+     real `recruitCompanionId` field, populated from the same
+     `world::PointOfInterest::recruitCompanionId` the console reads
+     (Haven's Dessa Corrin, Solace's Bren Alder). A new `RecruitOffer`
+     state (Join me/Not yet) fires whenever the candidate carries an id
+     not already in `state.companions`. **The one real sequencing
+     wrinkle:** `talkTo`'s boat and recruit blocks run one after another
+     in a straight-line function, but this build resolves each picker as
+     its own non-blocking state one key-press at a time -- solved with a
+     shared `dialogueOfferRecruitOrTopics` tail lambda, called both from
+     `Greeting`'s dismissal and from a declined boat offer, preserving
+     `talkTo`'s exact boat-then-recruit-then-topics order either way.
+     Unlike boarding a boat, both accepting and declining a recruit offer
+     fall through to the topic picker afterward, matching `talkTo` exactly.
+
+     **Real bug found via the same live playtest, both builds: a
+     recruited companion's own POI kept rendering its icon/label in town
+     forever.** Neither zone renderer (`MapRenderer::drawZoneFrame` in the
+     console, this build's own zone-render loop) checked a POI's owner
+     against `state.companions` before drawing it -- not a regression from
+     this session, just never visible before now. User's call: hide the
+     icon/label entirely once recruited. Fixed with matching one-line
+     guards in both builds (`isRecruitedCompanionPoi` in `MapRenderer.cpp`,
+     a generalized `companionAlreadyRecruited(id)` in `main.cpp`),
+     deliberately scoped to rendering only -- the POI's dialogue and
+     collision are untouched.
+
+     Verified: clean rebuild of all three CMake targets (zero new `/W4`
+     warnings), a piped character-creation smoke test on `ansalon_rpg`,
+     and a launch smoke test of `ansalon_sfml_phase1`. **Confirmed
+     working** 2026-09-10 via the user's own keyboard on save1: declined
+     Bren Alder's offer at Solace, talked to him again, accepted -- the
+     offer correctly came back, joining added him without ending the
+     conversation, and his tile in Solace no longer showed his icon/label
+     afterward. Not separately confirmed: Dessa Corrin's tile in Haven
+     once recruited (same code path).
+
+179. **`sfml-trial-3` merged (fast-forward) into `master`, 2026-09-10.**
+     With the full-migration roadmap (Milestone 167) and its own
+     deferred items (Milestones 169-171, 177-178) all closed out,
+     `master` and `sfml-trial-3` became identical --
+     `ansalon_sfml_phase1` is now live on `master` as the primary/main
+     build. `ansalon_rpg` stays in the tree unchanged, as a legacy/
+     reference build. Verified before merging: clean rebuild of all three
+     targets on `master` (zero new `/W4` warnings).
+
+180. **Native character creation and save-slot menu shipped for
+     `ansalon_sfml_phase1`, same session as the merge above.** Launching
+     the graphical build with no arguments now has its own save-slot menu
+     and full character creation wizard, entirely in the window -- no more
+     dependency on the console build. `main()`'s `argc < 2` case now calls
+     `runPhase1("")` (empty = "show the slot menu"); a save path is still
+     accepted directly too, unchanged. Ports `src/main.cpp`'s save-slot
+     menu and `character::CharacterCreator::run()` step by step as two new
+     blocking event loops inside `runPhase1`, driven by real `sf::Event`
+     polling instead of `std::cin` -- every `character::` rule function
+     the wizard calls (race/subrace/class/alignment eligibility, racial
+     adjustments, Knight-of-Crown/Weapon-Specialization checks, the
+     HP/AC/THAC0/saves/steel formulas) was already linked into this target
+     and is reused completely unchanged. **Zero `CMakeLists.txt` changes
+     needed.** The slot menu adds one thing the console's typed syntax
+     doesn't need: a `D` key on the highlighted slot opens a delete
+     confirmation.
+
+     **Packaging simplified as a direct consequence:** `tools/
+     package_playable_release.ps1` (replacing the fixed-preset-character
+     `package_sfml_demo.ps1` mentioned at Milestone 173) no longer needs
+     `ansalon_rpg.exe` or a two-step create-then-switch flow -- rewritten
+     to package just `ansalon_sfml_phase1.exe` on its own, no batch-file
+     launcher either, since Explorer already sets a double-clicked exe's
+     working directory to its own folder. `CLAUDE.md`'s "Build process"
+     and `README.md`'s "Playing"/"Sharing a build" sections updated to
+     match.
+
+     Verified: clean rebuild of all three targets (zero new `/W4`
+     warnings); launch smoke tests with and without an explicit save path,
+     in both the dev build and the repackaged zip. **Confirmed working
+     (partially)** 2026-09-11 via the user's own keyboard: reached the
+     Knight-of-Crown offer screen on a fresh slot, implicitly exercising
+     name entry, ability-score rolling/assignment, race, and class/
+     alignment picking. Still not confirmed: the Knight Offer screen
+     itself, the final summary screen, an ineligible pick's inline error
+     and re-prompt, the Elf/Dwarf subrace step, the Gnome-forced-Tinker
+     path, and the save-slot menu's own Continue/overwrite/delete
+     branches.
+
+181. **Character-creation text-clipping bug fixed (properly, on the second
+     attempt); stale startup banner fixed -- both found via the live
+     2026-09-11 test of Milestone 180.** The Knight-of-Crown/Weapon-
+     Specialization prompts' long sentences ran off the right edge of the
+     window instead of wrapping. A first fix (wrapping `drawPickerOverlay`'s
+     title/items/message) read as fixed after a dev rebuild, but **the
+     packaged Release/Dist exe still showed the identical clipped text**
+     (caught via a screenshot). Root cause: every wrap call in this file
+     (`wrapToWidth`) converted a pixel budget to a *character-count*
+     budget via one approximate constant (`kSidebarCharWidth = 9.5f`),
+     calibrated only for short ~30-char sidebar log lines at 16px, then
+     reused unrecalibrated for these two long (123/127-char) full-window
+     sentences at 15px -- whether a given prompt clips depends on the
+     exact live window width, so it could render fine in one session and
+     clip in another.
+
+     **Real fix:** `wrapToWidth` replaced with `wrapToPixelWidth`, which
+     measures each candidate line's actual rendered width via real
+     `sf::Font`/`sf::Text::getLocalBounds()` instead of an average
+     character-advance assumption -- removing the whole bug class rather
+     than re-tuning a constant that had already failed once. All 9 wrap
+     call sites in `sfml_phase1/main.cpp` converted; the dead
+     `kSidebarCharWidth` constant removed. Verified via a throwaway
+     `WrapPixelWidthSelfTest.cpp` confirming no wrapped line exceeds its
+     pixel budget for either offending sentence across window widths from
+     600px to 2560px.
+
+     Separately: every session's sidebar log opened with a stale line
+     claiming "companion recruitment... aren't wired up in this build
+     yet" -- leftover text from before Milestone 178 shipped recruitment.
+     The user read it as a real regression on a fresh, companion-less
+     save. Fixed by dropping "companion recruitment" from the banner;
+     quest tracking and Look are still genuinely unimplemented, so they
+     stay.
+
+     Verified: clean rebuild (Debug + Release, zero new `/W4` warnings), a
+     launch smoke test of both the dev Release build and the repackaged
+     `dist/AnsalonRPG-Playable-v5.zip`. **Confirmed working** 2026-09-11
+     via the user's own keyboard against the packaged
+     `AnsalonRPG-Playable-v4.zip` for the text-clipping fix specifically
+     (the Weapon Specialization prompt now wraps and reads in full). The
+     stale-banner fix (v5) is **not yet interactively confirmed** -- no
+     desktop/GUI access this session to watch the corrected banner render.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
@@ -6127,24 +6878,21 @@ session's work.
    positionless, no-monster-persistence combat loop -- not being pursued
    further absent a concrete reason to revisit. See `docs/COMBAT_NOTES.md`'s
    "Extending this later" and `docs/MILESTONES.md` entry 99.
-3. **SFML-backed rendering, in place of the raw Windows console** — tried
-   as an isolated stage-1 trial (2026-08-24, its own branch, never merged,
-   fully reverted): a second `ansalon_sfml_trial` CMake target (SFML 3.0.0
-   via `FetchContent`) rendering the real overworld data as colored
-   monospace glyphs in a resizable window, with zero changes to
-   `render::Console`/`MapRenderer`/`game::GameLoop` or the real
-   `ansalon_rpg` target. User's verdict after seeing it run: "looks almost
-   exactly the same" as the terminal -- rejected. That's an honest result,
-   not a failed trial: stage 1 was always just glyphs-in-a-window: no
-   sprite/tile art, since the whole point was testing the dependency and
-   window mechanics before investing in art. The real visual payoff (stage
-   2, actual sprites) was never attempted, so it remains a real option, but
-   only if revisited *with real art*, not as plain glyphs again -- see
-   `docs/ARCHITECTURE.md`'s "Why `Console` is the only platform-specific
-   file" for the scoping this trial confirmed still holds (only
-   `render/Console.cpp`, `render/MapRenderer.cpp`, and `GameLoop.cpp`'s
-   input-polling call sites would need to change for a real migration;
-   every data loader and all game logic stays untouched either way).
+3. ~~**SFML-backed rendering, in place of the raw Windows console**~~ --
+   the stage-1 monospace-glyph trial (2026-08-24) was rejected as "looks
+   almost exactly the same" as the terminal, same verdict this item
+   originally recorded. But the real payoff wasn't abandoned: the user
+   later committed to a full migration with real pixel-space rendering
+   per screen instead, which shipped entirely across Milestones 157-181
+   -- overworld, zones, combat (incl. spellcasting/items/backstab/sweep),
+   dialogue, shop, inventory, character sheet/spellbook, and every other
+   screen, plus native character creation/save-slot menu and save
+   persistence. `ansalon_sfml_phase1` is now the primary/main build,
+   merged to `master` (Milestone 179). Still genuinely open, not
+   resolved by this: real hand-drawn sprite art (everything above still
+   draws placeholder shapes/text) -- see `docs/CURRENT_WORK.md`'s
+   "Parked: SFML rendering + variant tile art" section for a related,
+   still-uncommitted tile-atlas art approach from an earlier round.
 4. **More locations surfaced by the Milestone 85 map re-derivation --
    mostly resolved this session (research complete, one already shipped).**
    Thorbardin and Sancrist Isle, the two strongest candidates, shipped at
