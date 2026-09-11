@@ -1248,6 +1248,36 @@ surfaced the request that became "Proactive readiness notification"
 above, and separately a real crash bug (unrelated to quests — see
 `docs/COMBAT_NOTES.md`'s "Bug fixed" section).
 
+## SFML port (Milestone 183)
+
+Everything above describes `GameLoop.cpp`/`ansalon_rpg`'s implementation.
+`ansalon_sfml_phase1` ported all of it in Milestone 183 (2026-09-11),
+found missing entirely — not just unconfirmed — by an audit run after the
+user asked to reach real quest/mechanic parity before a final release.
+`src/quest/Quest.cpp`/`QuestLoader.cpp` simply weren't in
+`ansalon_sfml_phase1`'s `CMakeLists.txt` source list, so no
+`quest::QuestCatalog` was ever constructed on that side at all — every
+zone POI's `QUEST`/`SHOP_LOCKED` id silently went nowhere.
+
+The port follows this migration's established pattern rather than
+sharing code directly: `objectiveProgress`/`objectiveMet`/
+`allObjectivesMet` and `EthicChoice`/`withEthic` (pure functions,
+declared in `GameLoop.h`) are copied verbatim into `sfml_phase1/main.cpp`,
+since `GameLoop.cpp` itself isn't a link target there (it depends on
+`render::Console`). Turn-in/reward logic is reimplemented as new
+`DialogueUiState` values (`QuestOfferText`, `QuestAcceptDecline`,
+`QuestAcceptText`, `QuestProgressText`, `QuestCompleteText`,
+`WayrethIntro`, `WayrethChoice`) inside the existing `DialogueSession`
+state machine, reached from a Greeting dismissal ahead of `BoatOffer` —
+the same precedence `GameLoop::talkTo` itself uses — rather than the
+console's blocking `readKey()` loop. `GameState::quests`/`monsterKills`
+already round-tripped through `SaveGame.cpp` before this port (already
+linked into the SFML target); this was pure UI/logic wiring, not a
+save-format change. `docs/MILESTONES.md`'s entry 183 has the full list of
+what changed, including a real pre-existing bug this surfaced (ordinary
+overworld walking never populated `visitedLocations` at all in that
+build, silently breaking every `VISIT` objective).
+
 ## Deliberately not in v1
 
 - **A *generic* item-reward mapping.** Mapping an arbitrary data string to

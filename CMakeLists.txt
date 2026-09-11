@@ -149,6 +149,8 @@ add_executable(ansalon_sfml_phase1
     src/world/ZoneCatalog.cpp
     src/timeline/Timeline.cpp
     src/timeline/TimelineLoader.cpp
+    src/quest/Quest.cpp
+    src/quest/QuestLoader.cpp
     src/game/SaveGame.cpp
     src/character/Dice.cpp
     src/character/Ability.cpp

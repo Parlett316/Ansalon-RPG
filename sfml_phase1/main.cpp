@@ -36,6 +36,8 @@
 #include "combat/MonsterLoader.h"
 #include "game/GameState.h"
 #include "game/SaveGame.h"
+#include "quest/Quest.h"
+#include "quest/QuestLoader.h"
 #include "timeline/Timeline.h"
 #include "timeline/TimelineLoader.h"
 #include "world/OverworldGrid.h"
@@ -149,14 +151,10 @@ struct DialogueSpeech {
 
 // One talkable candidate at the player's current tile -- trimmed local
 // counterpart to game::TalkCandidate (GameLoop.h), same "not linkable here"
-// reasoning as DialogueSpeech above. hasQuest only records *that* this
-// candidate would offer a quest (in the console build) so dialogueStartTalk
-// can print a single placeholder line -- not the full payload (the quest id)
-// the console version's GameLoop::TalkCandidate carries, since that flow
-// isn't wired up yet. boatDestinationId/boatHours and recruitCompanionId, by
-// contrast, carry the real payload -- boat voyages and companion recruiting
-// are both wired up (see the BoatOffer/RecruitOffer DialogueUiState values
-// below).
+// reasoning as DialogueSpeech above. questId carries the real quest id (see
+// world::Zone::questAt) the same way boatDestinationId/recruitCompanionId
+// below carry theirs -- quest turn-in is wired up via questBegin/
+// DialogueUiState::Quest* (see dialogueContinue).
 struct DialogueCandidate {
     std::string id;
     std::string name;
@@ -165,7 +163,7 @@ struct DialogueCandidate {
     std::string dialogueBefore;
     std::string grantsItemId;
     std::string grantsItemName;
-    bool hasQuest = false;
+    std::string questId;
     // Non-empty for a zone POI marked BOAT (world::Zone::boatAt) --
     // dialogueContinue whisks the player straight to this world::Location
     // id (a scripted voyage, boatHours in-game hours long) once "Board" is
@@ -180,6 +178,15 @@ struct DialogueCandidate {
     // "Extending this later" section for the console-side grammar this
     // mirrors.
     std::string recruitCompanionId;
+};
+
+// A look-at-someone/something candidate -- trimmed local counterpart to
+// game::LookCandidate (GameLoop.h:192-195), same "not linkable here"
+// reasoning as DialogueCandidate above. No id/speech: Look never mutates
+// state.metCharacters or grants anything, it's read-only.
+struct LookCandidate {
+    std::string name;
+    std::string description;
 };
 
 // Coarse 8-point compass direction from a dx/dy pair -- copied verbatim from
@@ -235,6 +242,63 @@ bool conditionMatches(const std::string& condition, const character::Character& 
         return c.charClass == character::ClassId::Mage && c.level >= 3;
     }
     return false;
+}
+
+// The wayreth_summons turn-in's real Test -- which "law" (good/neutral/
+// evil) the player's choice keeps -- copied verbatim from game::EthicChoice
+// (GameLoop.h:84), same "not linkable here" reasoning as conditionMatches
+// above. See docs/QUEST_NOTES.md.
+enum class EthicChoice { Good, Neutral, Evil };
+
+// Preserves the Lawful/Neutral/Chaotic axis of `current`, replaces only the
+// Good/Neutral/Evil axis with `choice` -- copied verbatim from
+// game::withEthic (GameLoop.cpp:252-256). Alignment's declaration order
+// (LawfulGood..ChaoticGood, LawfulNeutral..ChaoticNeutral,
+// LawfulEvil..ChaoticEvil) makes this exact: index % 3 is the law/chaos
+// component, index / 3 is the good/neutral/evil group -- EthicChoice's own
+// declaration order (Good, Neutral, Evil) matches that group order, so no
+// separate lookup table is needed.
+character::Alignment withEthic(character::Alignment current, EthicChoice choice) {
+    int lawChaos = static_cast<int>(current) % 3;
+    int ethicGroup = static_cast<int>(choice);
+    return static_cast<character::Alignment>(ethicGroup * 3 + lawChaos);
+}
+
+// How far GameState satisfies one quest::Objective -- copied verbatim from
+// game::objectiveProgress/objectiveMet/allObjectivesMet (GameLoop.cpp:
+// 317-349), same "not linkable here" reasoning as conditionMatches above.
+int objectiveProgress(const quest::Objective& objective, const game::GameState& state) {
+    switch (objective.kind) {
+        case quest::ObjectiveKind::Visit:
+            return state.visitedLocations.count(objective.targetId) > 0 ? 1 : 0;
+        case quest::ObjectiveKind::Talk:
+            return state.metCharacters.count(objective.targetId) > 0 ? 1 : 0;
+        case quest::ObjectiveKind::Slay: {
+            auto it = state.monsterKills.find(objective.targetId);
+            return it == state.monsterKills.end() ? 0 : it->second;
+        }
+        case quest::ObjectiveKind::Deliver: {
+            int count = 0;
+            for (const auto& item : state.character.inventory) {
+                if (item.kind == character::ItemKind::QuestItem && item.questItemId == objective.targetId) {
+                    ++count;
+                }
+            }
+            return count;
+        }
+    }
+    return 0; // unreachable -- every ObjectiveKind is handled above
+}
+
+bool objectiveMet(const quest::Objective& objective, const game::GameState& state) {
+    return objectiveProgress(objective, state) >= objective.count;
+}
+
+bool allObjectivesMet(const quest::Quest& quest, const game::GameState& state) {
+    for (const auto& objective : quest.objectives) {
+        if (!objectiveMet(objective, state)) return false;
+    }
+    return true;
 }
 
 // Adapts a timeline::PresenceWindow into DialogueSpeech -- local
@@ -661,10 +725,10 @@ struct CombatSession {
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
-// conversation loop (see docs/CURRENT_WORK.md's scope writeup; the quest
-// chooser stays deferred, getting a single placeholder log line instead --
-// boat voyages and companion recruiting are both wired up, see BoatOffer/
-// RecruitOffer below). PickingCandidate mirrors GameLoop::pickAndTalk's
+// conversation loop (see docs/CURRENT_WORK.md's scope writeup). Quest
+// turn-in, boat voyages, and companion recruiting are all wired up -- see
+// the Quest*/Wayreth* values further below, and BoatOffer/RecruitOffer
+// here. PickingCandidate mirrors GameLoop::pickAndTalk's
 // "more than one candidate here" picker; Greeting/TopicText/TopicPicker
 // mirror talkTo's own greeting-then-topic-menu flow. BoatOffer mirrors
 // talkTo's own Board/Not yet picker (GameLoop.cpp:1061-1115), reached from
@@ -680,7 +744,14 @@ struct CombatSession {
 // AskInput/AskResponse are the free-text "ask about something else..."
 // flow -- AskInput is the typing box, AskResponse shows the resulting
 // response (and, when today's ask limit is reached or extended, a queued
-// 2nd message).
+// 2nd message). The Quest*/Wayreth* values mirror GameLoop::
+// offerOrTurnInQuest (GameLoop.cpp:1308-1528), reached from Greeting's
+// dismissal ahead of BoatOffer (see questBegin/dialogueAfterGreeting) --
+// QuestOfferText/QuestAcceptDecline are the not-yet-started path,
+// QuestProgressText the Active-but-unfinished path, QuestCompleteText the
+// ReadyToTurnIn path (reward flags applied once it's dismissed), and
+// WayrethIntro/WayrethChoice the Test of High Sorcery scene that
+// rewardWayrethRobe stages on top of QuestCompleteText.
 enum class DialogueUiState {
     PickingCandidate,
     Greeting,
@@ -689,7 +760,14 @@ enum class DialogueUiState {
     BoatOffer,
     RecruitOffer,
     AskInput,
-    AskResponse
+    AskResponse,
+    QuestOfferText,
+    QuestAcceptDecline,
+    QuestAcceptText,
+    QuestProgressText,
+    QuestCompleteText,
+    WayrethIntro,
+    WayrethChoice
 };
 
 // All state for one conversation, local to this file -- same "not part of
@@ -707,6 +785,8 @@ struct DialogueSession {
     int topicSelected = 0;
     int boatOfferSelected = 0;             // BoatOffer's Board(0)/Not yet(1) picker cursor
     int recruitOfferSelected = 0;          // RecruitOffer's Join me(0)/Not yet(1) picker cursor
+    int questOfferSelected = 0;            // QuestAcceptDecline's Accept(0)/Decline(1) picker cursor
+    int wayrethChoiceSelected = 0;         // WayrethChoice's 3-option ethical picker cursor
     int askAnythingIndex = -1;             // index into topicLabels, or -1 if not offered this visit
     std::string askInputBuffer;            // free-typed text, built up from TextEntered events
     std::vector<std::string> askInputHints;
@@ -749,6 +829,20 @@ struct InventorySession {
 struct LogSession {
     bool active = false;
     int scrollOffset = -1;
+};
+
+// State for the Look ('l') command -- mirrors GameLoop::pickAndLook's own
+// shape (GameLoop.cpp:937-969): a single candidate skips straight to
+// showingDetail (no picker step at all, matching the console's
+// candidates.size()==1 fast path); 2+ candidates start in the picker and
+// move to showingDetail once one is chosen via Enter. Either way,
+// showingDetail dismisses on any key and ends the whole session -- Look
+// never loops back to its own picker the way Talk's pickAndTalk does.
+struct LookSession {
+    bool active = false;
+    std::vector<LookCandidate> candidates;
+    int selected = 0;
+    bool showingDetail = false;
 };
 
 // One slot in Rest/Bed Rest's spell-loadout wizard -- one entry per slot
@@ -953,6 +1047,38 @@ int runPhase1(const std::string& savePath) {
     timeline::Timeline timeline;
     timeline::TimelineLoader::loadFromFile("data/timeline.txt", timeline);
     std::cout << "step 2d: timeline loaded" << std::endl;
+
+    // Static content too, loaded after zones so every zone's QUEST/
+    // SHOP_LOCKED ids can be cross-checked against it below -- mirrors
+    // src/main.cpp's own loading order (quest::QuestLoader itself can't see
+    // zones, see docs/QUEST_NOTES.md).
+    if (!drawLoadingScreen("Loading quests...")) return 0;
+    quest::QuestCatalog quests;
+    quest::QuestLoader::loadFromFile("data/quests.txt", quests);
+    std::cout << "step 2e: quests loaded, " << quests.size() << " entries" << std::endl;
+
+    // A zone's QUEST <char> <quest-id> / SHOP_LOCKED <char> <quest-id> line
+    // is validated by ZoneLoader only against its own POI/TALK/SHOP grammar
+    // (it can't see quest::QuestCatalog) -- so a bad quest id would
+    // otherwise fail silently at play time. Cross-checked here, the same
+    // place and same fail-fast shape src/main.cpp's own copy of this check
+    // uses.
+    for (const auto& [zoneId, zone] : zones.allZones()) {
+        for (const auto& [code, questId] : zone.quests()) {
+            if (quests.find(questId) == nullptr) {
+                std::cerr << "Zone '" << zoneId << "' offers quest '" << questId << "' at POI '" << code
+                          << "', but no such quest is defined in data/quests.txt.\n";
+                return 1;
+            }
+        }
+        for (const auto& [code, questId] : zone.shopLocks()) {
+            if (quests.find(questId) == nullptr) {
+                std::cerr << "Zone '" << zoneId << "' locks the shop at POI '" << code << "' behind quest '"
+                          << questId << "', but no such quest is defined in data/quests.txt.\n";
+                return 1;
+            }
+        }
+    }
 
     // ------------------------------------------------------------------
     // No save path given (argc < 2 in main() -- see its own comment) means
@@ -1803,25 +1929,23 @@ int runPhase1(const std::string& savePath) {
     if (currentZone) {
         pushLog("Resumed inside " + currentZone->name() + ".");
     }
-    pushLog("Ansalon: Age of Despair (SFML, WIP). Quest tracking and Look aren't wired up in this "
-            "build yet. Press / for the full command list.");
+    pushLog("Ansalon: Age of Despair. Press / for the full command list.");
 
     // --- Dialogue (core conversation): all state is DialogueSession above;
     // every lambda below is a non-blocking port of the matching piece of
     // GameLoop::handleTalk/talkTo (src/game/GameLoop.cpp:828-1306) -- see
     // this file's top-of-file comment and docs/CURRENT_WORK.md for the
-    // scope this phase ports (greeting/again/aftermath/anticipation/
-    // conditional-greeting resolution, the topic picker, GRANTS_ITEM, boat
-    // voyage accept/decline, companion recruit accept/decline) vs. defers
-    // (free-text ask -- shipped in a later session, see AskInput/AskResponse
-    // below -- quest turn-in still isn't: it gets a single placeholder log
-    // line via dialogueStartTalk's hasQuest check instead of silently doing
-    // nothing).
+    // scope this covers: greeting/again/aftermath/anticipation/conditional-
+    // greeting resolution, the topic picker, GRANTS_ITEM, boat voyage
+    // accept/decline, companion recruit accept/decline, free-text ask
+    // (AskInput/AskResponse below), and quest offer/turn-in (questBegin and
+    // the Quest*/Wayreth* DialogueUiState values below).
     DialogueSession dialogueSession;
     ShopSession shopSession;
     InventorySession inventorySession;
     LogSession logSession;
     RestSession restSession;
+    LookSession lookSession;
 
     // Mirrors GameLoop::handleTalk exactly -- see that function's own
     // comments for why the Overworld/Zone branches differ and what
@@ -1854,7 +1978,9 @@ int runPhase1(const std::string& savePath) {
                 candidate.speech = speechFromPoi(*poi, static_cast<int>(dayNow));
                 candidate.grantsItemId = poi->grantsItemId;
                 candidate.grantsItemName = poi->grantsItemName;
-                candidate.hasQuest = currentZone->questAt(state.zoneX, state.zoneY) != nullptr;
+                if (const std::string* questId = currentZone->questAt(state.zoneX, state.zoneY)) {
+                    candidate.questId = *questId;
+                }
                 if (const world::BoatVoyage* boat = currentZone->boatAt(state.zoneX, state.zoneY)) {
                     candidate.boatDestinationId = boat->destinationLocationId;
                     candidate.boatHours = boat->hours;
@@ -1885,6 +2011,83 @@ int runPhase1(const std::string& savePath) {
             }
         }
         return candidates;
+    };
+
+    // Mirrors GameLoop::lookOverworld/lookZone's own candidate gathering
+    // (GameLoop.cpp:753-826). Deliberately NOT filtered by
+    // presence.window->dialogue.empty() the way gatherTalkCandidates above
+    // is -- Look should reveal a presence window's flavor text even if that
+    // window has no SAY line authored yet, matching
+    // announceOverworldTile/announceZoneTile's own unfiltered iteration (see
+    // GameLoop.cpp's Milestone 43 comment on lookOverworld). The POI-itself
+    // candidate in the zone branch keeps the dialogue-emptiness filter,
+    // same as Talk -- only the presence-window loops (overworld, and the
+    // zone's TIMELINE_ANCHOR) drop it.
+    auto gatherLookCandidates = [&]() -> std::vector<LookCandidate> {
+        std::vector<LookCandidate> candidates;
+        const long long dayNow = state.hoursElapsed / 24;
+        if (state.mode == game::Mode::Overworld) {
+            const world::Location* here = world.locationAt(state.x, state.y);
+            if (here != nullptr) {
+                for (const timeline::Presence& presence : timeline.presentAt(here->id, static_cast<int>(dayNow))) {
+                    candidates.push_back({presence.character->name, presence.window->flavorText});
+                }
+            }
+        } else if (currentZone != nullptr) {
+            const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY);
+            if (poi != nullptr && !poi->dialogue.empty()) {
+                candidates.push_back({poi->name, poi->description});
+            }
+            if (poi != nullptr && poi->code == currentZone->timelineAnchorPoi()) {
+                const std::string& effectiveId = currentZone->timelineLocationId().empty()
+                                                      ? state.currentZoneId
+                                                      : currentZone->timelineLocationId();
+                for (const timeline::Presence& presence :
+                     timeline.presentAt(effectiveId, static_cast<int>(dayNow))) {
+                    candidates.push_back({presence.character->name, presence.window->flavorText});
+                }
+            }
+        }
+        return candidates;
+    };
+
+    // 'L' -- mirrors GameLoop::lookOverworld/lookZone's own dispatch
+    // (GameLoop.cpp:753-826): no lookable candidates falls back to a
+    // one-line pushLog (nearest-other-location + compass direction on the
+    // overworld, a fixed "nothing else" line in a zone, since a zone is
+    // always rendered in full already); one or more candidates opens
+    // lookSession, skipping straight to showingDetail for the single-
+    // candidate case exactly like pickAndLook's own fast path.
+    auto lookBegin = [&]() {
+        lookSession.candidates = gatherLookCandidates();
+        if (lookSession.candidates.empty()) {
+            if (state.mode == game::Mode::Overworld) {
+                const world::Location* nearest = nullptr;
+                long long nearestDistSq = -1;
+                for (const world::Location& loc : world.allLocations()) {
+                    if (loc.x == state.x && loc.y == state.y) continue; // already described by the status line
+                    const long long ddx = loc.x - state.x;
+                    const long long ddy = loc.y - state.y;
+                    const long long distSq = ddx * ddx + ddy * ddy;
+                    if (nearest == nullptr || distSq < nearestDistSq) {
+                        nearest = &loc;
+                        nearestDistSq = distSq;
+                    }
+                }
+                if (nearest == nullptr) {
+                    pushLog("Nothing notable stands out on the horizon.");
+                } else {
+                    const char* dir = compassDirection(nearest->x - state.x, nearest->y - state.y);
+                    pushLog("You reckon " + nearest->name + " lies to the " + dir + ".");
+                }
+            } else {
+                pushLog("Nothing else catches your eye here.");
+            }
+            return;
+        }
+        lookSession.selected = 0;
+        lookSession.showingDetail = lookSession.candidates.size() == 1;
+        lookSession.active = true;
     };
 
     // Ends the current conversation -- loops back to the "talk to whom?"
@@ -1946,12 +2149,30 @@ int runPhase1(const std::string& savePath) {
         dialogueSession.topicSelected = 0;
     };
 
+    // Copied verbatim from GameLoop::checkQuestReadiness (GameLoop.cpp:
+    // 1531-1540) -- promotes every Active quest whose objectives are now all
+    // met to ReadyToTurnIn, logging a "ready to turn in" notice for each.
+    // Called after every mutation that could satisfy an objective (Visit/
+    // Talk/Slay -- see this function's own callers) plus once more after
+    // accepting an already-satisfied quest, the same four-call-site shape
+    // GameLoop.cpp uses.
+    auto checkQuestReadiness = [&]() {
+        for (auto& [questId, status] : state.quests) {
+            if (status != game::QuestStatus::Active) continue;
+            const quest::Quest* q = quests.find(questId);
+            if (q == nullptr) continue; // defensive -- startup already cross-validated every zone QUEST id
+            if (!allObjectivesMet(*q, state)) continue;
+            status = game::QuestStatus::ReadyToTurnIn;
+            pushLog(q->name + " is ready to turn in -- return to " + q->giver + " to collect your reward.");
+        }
+    };
+
     // Mirrors GameLoop::talkTo's greeting-resolution precedence exactly
-    // (GameLoop.cpp:1002-1046), including the askLimitLocked override, minus
-    // quest's real handling (a single placeholder log line instead). Boat
-    // and recruit's real handling happens later, in dialogueContinue/
+    // (GameLoop.cpp:1002-1046), including the askLimitLocked override.
+    // Quest's real handling (checkQuestReadiness + questBegin), boat, and
+    // recruit all happen later, in dialogueContinue/
     // dialogueOfferRecruitOrTopics -- not here, since talkTo itself doesn't
-    // resolve either until after the greeting is shown.
+    // resolve any of the three until after the greeting is shown.
     auto dialogueStartTalk = [&](const DialogueCandidate& candidate) {
         dialogueSession.current = candidate;
         dialogueSession.displaySpeaker = candidate.name;
@@ -1984,6 +2205,7 @@ int runPhase1(const std::string& savePath) {
         }
         dialogueSession.bodyText = text;
         state.metCharacters.insert(candidate.id);
+        checkQuestReadiness(); // a TALK objective may have just been satisfied
 
         if (!candidate.grantsItemId.empty() &&
             character::findQuestItemIndex(state.character, candidate.grantsItemId) < 0) {
@@ -1992,7 +2214,6 @@ int runPhase1(const std::string& savePath) {
                 candidate.grantsItemName});
             pushLog("You've picked up " + candidate.grantsItemName + ".");
         }
-        if (candidate.hasQuest) pushLog("(Quest content at this NPC isn't wired up in this build yet.)");
 
         rebuildTopicLabels(candidate);
         dialogueSession.uiState = DialogueUiState::Greeting;
@@ -2015,13 +2236,12 @@ int runPhase1(const std::string& savePath) {
     };
 
     // 'P' -- mirrors GameLoop::handleShop's opening checks
-    // (GameLoop.cpp:1570-1596) verbatim, including its two pushLog
-    // messages. shopLockAt (SHOP_LOCKED, docs/ZONE_NOTES.md) can't be
-    // resolved here -- this build tracks no quest state at all yet, same
-    // gap dialogueStartTalk's hasQuest check already flags -- so a locked
-    // shop gets its own honest placeholder instead of
-    // silently always-locking (reads as "no shop here") or silently
-    // unlocking (lets the player buy before earning it).
+    // (GameLoop.cpp:1570-1596) verbatim, including its pushLog messages and
+    // its SHOP_LOCKED gate (a shop can require a quest to be Complete
+    // before it opens at all, e.g. Flint's Smithy waiting on
+    // ore_for_the_forge -- checked here rather than baked into isShop
+    // itself so the POI's own TALK/TOPIC content stays fully reachable
+    // regardless of lock state).
     auto shopBegin = [&]() {
         if (state.mode != game::Mode::Zone || currentZone == nullptr) {
             pushLog("There's nothing to buy here.");
@@ -2032,9 +2252,12 @@ int runPhase1(const std::string& savePath) {
             pushLog("There's nothing to buy here.");
             return;
         }
-        if (currentZone->shopLockAt(state.zoneX, state.zoneY) != nullptr) {
-            pushLog("(This shop is quest-locked -- that isn't tracked in this build yet.)");
-            return;
+        if (const std::string* requiredQuestId = currentZone->shopLockAt(state.zoneX, state.zoneY)) {
+            auto it = state.quests.find(*requiredQuestId);
+            if (it == state.quests.end() || it->second != game::QuestStatus::Complete) {
+                pushLog("There's nothing to buy here yet.");
+                return;
+            }
         }
         shopSession.active = true;
         shopSession.shopName = poi->name;
@@ -2387,28 +2610,269 @@ int runPhase1(const std::string& savePath) {
         dialogueDeclineRecruit();
     };
 
+    // Shared tail reached once quest and boat have both had their chance to
+    // intercept a Greeting dismissal (see questBegin/dialogueContinue
+    // below) -- offers BoatOffer if this candidate carries a
+    // boatDestinationId, else falls to dialogueOfferRecruitOrTopics.
+    // Extracted so every quest-resolution endpoint below (declining,
+    // dismissing progress/accept text, finishing a turn-in with no Wayreth
+    // reward, resolving the Wayreth choice) can resume the exact same
+    // chain a plain Greeting dismissal would have gone to -- mirrors how
+    // GameLoop::talkTo always falls through to its own boat block right
+    // after offerOrTurnInQuest returns, no matter which path inside it was
+    // taken (GameLoop.cpp:1047-1061).
+    auto dialogueAfterGreeting = [&]() {
+        if (!dialogueSession.current.boatDestinationId.empty()) {
+            // Offered on every talk (including after boarding once -- see
+            // boatDestinationId's own comment), ahead of the topic menu --
+            // mirrors talkTo's own precedence exactly (GameLoop.cpp:
+            // 1061-1115), independent of which greeting text was actually
+            // shown and of whether a quest screen ran first.
+            dialogueSession.boatOfferSelected = 0;
+            dialogueSession.uiState = DialogueUiState::BoatOffer;
+        } else {
+            dialogueOfferRecruitOrTopics();
+        }
+    };
+
+    // Mirrors GameLoop::offerOrTurnInQuest's own not-yet-started branch
+    // (GameLoop.cpp:1308-1319) -- called from dialogueContinue right after
+    // a Greeting is dismissed, the same point talkTo calls
+    // offerOrTurnInQuest at (checkQuestReadiness already ran inside
+    // dialogueStartTalk, matching GameLoop.cpp:1039 vs :1048's ordering).
+    // Active/ReadyToTurnIn are resolved here too, one dialogue frame each;
+    // Complete is silently skipped, same as offerOrTurnInQuest's own early
+    // return. Returns true if a quest screen now owns uiState (caller must
+    // stop, not fall through to dialogueAfterGreeting yet); false means
+    // there's nothing to show (no quest here, an unmet REQUIRE, or already
+    // Complete) and the caller should call dialogueAfterGreeting itself.
+    auto questBegin = [&]() -> bool {
+        const DialogueCandidate& candidate = dialogueSession.current;
+        if (candidate.questId.empty()) return false;
+        const quest::Quest* q = quests.find(candidate.questId);
+        if (q == nullptr) return false; // defensive -- startup already cross-validated every zone QUEST id
+
+        auto it = state.quests.find(candidate.questId);
+        if (it == state.quests.end()) {
+            if (!q->requirement.empty() && !conditionMatches(q->requirement, state.character)) return false;
+            dialogueSession.bodyText = q->offerText;
+            dialogueSession.uiState = DialogueUiState::QuestOfferText;
+            return true;
+        }
+        if (it->second == game::QuestStatus::Complete) return false;
+        if (it->second == game::QuestStatus::Active) {
+            dialogueSession.bodyText = q->progressText;
+            dialogueSession.uiState = DialogueUiState::QuestProgressText;
+            return true;
+        }
+        // ReadyToTurnIn.
+        dialogueSession.bodyText = q->completeText;
+        dialogueSession.uiState = DialogueUiState::QuestCompleteText;
+        return true;
+    };
+
+    // Enter/dismiss on the QuestOfferText frame -- opens the Accept/Decline
+    // picker, mirroring offerOrTurnInQuest's own dialogue-then-picker shape
+    // (GameLoop.cpp:1321-1327).
+    auto questShowAcceptDecline = [&]() {
+        dialogueSession.questOfferSelected = 0;
+        dialogueSession.uiState = DialogueUiState::QuestAcceptDecline;
+    };
+
+    // "Accept" on the QuestAcceptDecline picker -- mirrors
+    // offerOrTurnInQuest's own accept branch (GameLoop.cpp:1332-1342).
+    // "Decline"/Quit on that same picker records nothing and just calls
+    // dialogueAfterGreeting directly (see the key-dispatch wiring below),
+    // matching offerOrTurnInQuest's bare `return;` on decline.
+    auto questAccept = [&]() {
+        const quest::Quest* q = quests.find(dialogueSession.current.questId);
+        if (q == nullptr) return; // defensive, same as questBegin
+        state.quests[dialogueSession.current.questId] = game::QuestStatus::Active;
+        dialogueSession.bodyText = q->acceptText;
+        dialogueSession.uiState = DialogueUiState::QuestAcceptText;
+        pushLog("Quest accepted: " + q->name + ".");
+        // Catches "already did it before being asked" -- without this, a
+        // quest accepted in a state that already satisfies every objective
+        // would sit at Active forever (GameLoop.cpp:1337-1342).
+        checkQuestReadiness();
+    };
+
+    // Enter on the QuestCompleteText frame -- mirrors offerOrTurnInQuest's
+    // own ReadyToTurnIn/turn-in branch (GameLoop.cpp:1363-1528): hands over
+    // delivered items, awards steel/XP (with a mid-conversation level-up
+    // check), marks Complete, logs the reward summary, then applies every
+    // simple reward flag. rewardWayrethRobe is the one flag that can't
+    // finish here -- it stages its own WayrethIntro/WayrethChoice scene
+    // instead of calling dialogueAfterGreeting itself.
+    auto questFinishTurnIn = [&]() {
+        const DialogueCandidate& candidate = dialogueSession.current;
+        const quest::Quest* q = quests.find(candidate.questId);
+        if (q == nullptr) {
+            dialogueAfterGreeting(); // defensive, same as questBegin
+            return;
+        }
+        for (const auto& objective : q->objectives) {
+            if (objective.kind != quest::ObjectiveKind::Deliver) continue;
+            for (int i = 0; i < objective.count; ++i) {
+                int index = character::findQuestItemIndex(state.character, objective.targetId);
+                if (index >= 0) state.character.inventory.erase(state.character.inventory.begin() + index);
+            }
+        }
+        state.character.steelPieces += q->rewardSteel;
+        if (q->rewardXp > 0) {
+            state.character.experience += q->rewardXp;
+            // First call site of applyPendingLevelUps outside combat -- a
+            // level-up can now happen mid-conversation, same as
+            // GameLoop.cpp:1380-1383. Its messages go to the persistent
+            // log, not the dialogue frame that just closed.
+            std::vector<std::string> levelUpMessages;
+            character::applyPendingLevelUps(state.character, levelUpMessages);
+            for (const std::string& msg : levelUpMessages) pushLog(msg);
+        }
+        state.quests[candidate.questId] = game::QuestStatus::Complete;
+        std::ostringstream rewardMsg;
+        rewardMsg << "Quest complete: " << q->name << ".";
+        if (q->rewardSteel > 0) rewardMsg << " +" << q->rewardSteel << " steel.";
+        if (q->rewardXp > 0) rewardMsg << " +" << q->rewardXp << " XP.";
+        pushLog(rewardMsg.str());
+        if (q->rewardKnightSword) {
+            state.character.knightOrder = character::KnightOrder::Sword;
+            pushLog("You are named a Knight of the Sword.");
+        }
+        if (q->rewardSolamnicArmor) {
+            // See character::ArmorId::SolamnicArmor and docs/CHARACTER_NOTES.md's
+            // "Magic items" -- an ordinary Shield accompanies it, a deliberate
+            // simplification of the book's separate "shield +1".
+            state.character.inventory.push_back(
+                character::InventoryItem{character::ItemKind::Armor, character::ArmorId::SolamnicArmor, "", 0, 0});
+            state.character.inventory.push_back(
+                character::InventoryItem{character::ItemKind::Shield, character::ArmorId::None, "", 0, 0});
+            pushLog("You are granted Solamnic Armor and a Knight's shield. Press 'i' to equip them.");
+        }
+        if (q->rewardKnightRose) {
+            state.character.knightOrder = character::KnightOrder::Rose;
+            pushLog("You are named a Knight of the Rose.");
+        }
+        if (q->rewardStaffOfStrikingCuring) {
+            state.character.inventory.push_back(character::InventoryItem{
+                character::ItemKind::Weapon, character::ArmorId::None, character::kStaffOfStrikingCuringName,
+                character::kStaffDamageSides, 0, character::kStaffMagicBonus});
+            pushLog("You are granted the Staff of Striking/Curing. Press 'i' to equip it.");
+        }
+        if (q->rewardFrostreaver) {
+            // weaponMagicBonus is 0 here on purpose -- the Frostreaver's +4
+            // only applies while standing on glacier terrain, a this-fight-
+            // only local bonus (see combat's own Frostreaver handling), not
+            // baked into the item itself.
+            state.character.inventory.push_back(character::InventoryItem{
+                character::ItemKind::Weapon, character::ArmorId::None, character::kFrostreaverName,
+                character::kFrostreaverDamageSides, 0, 0});
+            pushLog("You are granted a Frostreaver. Press 'i' to equip it.");
+        }
+        if (q->rewardWayrethRobe) {
+            // The actual Test of High Sorcery -- see GameLoop.cpp:1429-1528
+            // for the full sourcing/design rationale (Dragonlance
+            // Adventures pp.34-35, Players Guide pp.79-80: the Test grades
+            // conduct during the Test, not a preset alignment).
+            dialogueSession.bodyText =
+                "The grave-cold thing you put down a moment ago doesn't dissipate the way a beaten "
+                "illusion should. It holds, one heartbeat too long, and reshapes -- not into the "
+                "stranger, not into anything Wayreth would claim as its own, but into a face you'd "
+                "trust with your back turned. It doesn't attack. It doesn't need to. It just stands "
+                "between you and the rest of your life, waiting to see what you do about that.";
+            dialogueSession.uiState = DialogueUiState::WayrethIntro;
+            return;
+        }
+        dialogueAfterGreeting();
+    };
+
+    // Enter on the WayrethIntro frame -- opens the 3-option ethical-choice
+    // picker, mirroring offerOrTurnInQuest's own dialogue-then-picker shape
+    // (GameLoop.cpp:1459-1469).
+    auto questShowWayrethChoice = [&]() {
+        dialogueSession.wayrethChoiceSelected = 0;
+        dialogueSession.uiState = DialogueUiState::WayrethChoice;
+    };
+
+    // Enter on the WayrethChoice picker -- mirrors offerOrTurnInQuest's own
+    // Test-of-High-Sorcery resolution (GameLoop.cpp:1485-1527): applies
+    // withEthic, assigns robeColor by the resulting alignment, and logs one
+    // of three outcome passages. Always ends the quest detour via
+    // dialogueAfterGreeting -- there is no further quest state after this.
+    // ethicLabels' authored order (see drawDialogueOverlay's WayrethChoice
+    // case) matches EthicChoice's own declaration order (Good, Neutral,
+    // Evil), same as GameLoop.cpp's own picker.
+    auto questResolveWayreth = [&]() {
+        const EthicChoice choice = static_cast<EthicChoice>(dialogueSession.wayrethChoiceSelected);
+        character::Alignment newAlignment = withEthic(state.character.alignment, choice);
+        if (newAlignment != state.character.alignment) {
+            state.character.alignment = newAlignment;
+            pushLog(
+                "Your alignment shifts: the Test measured what you did, not what you meant to be. You "
+                "are now considered " +
+                std::string(character::alignmentName(newAlignment)) + ".");
+        }
+        state.character.robeColor = character::robeForAlignment(state.character.alignment);
+        switch (state.character.robeColor) {
+            case character::RobeColor::White:
+                pushLog(
+                    "You could spend this -- the shape, the moment, whatever's left of the working "
+                    "underneath it -- for real power, and some clean part of you wants to. You don't. "
+                    "The illusion falls apart at your feet, the way it should have from the start, and "
+                    "every reflex you fought down to refuse that trade turns out to matter more than "
+                    "the spells you cast to get here. You emerge a " +
+                    std::string(character::robeColorName(state.character.robeColor)) + ", sworn to " +
+                    character::robeMoonName(state.character.robeColor) +
+                    ", having learned exactly what the good in you is worth when no one but the "
+                    "Conclave is watching. The Conclave sees you home.");
+                break;
+            case character::RobeColor::Red:
+                pushLog(
+                    "Every trial the Conclave set you tonight resolved into the same shape underneath "
+                    "-- a mercy that would cost you the working, a cruelty that would buy it outright "
+                    "-- and this one is no different. You take neither. You emerge a " +
+                    std::string(character::robeColorName(state.character.robeColor)) + ", sworn to " +
+                    character::robeMoonName(state.character.robeColor) +
+                    ", already fluent in a kind of balance most people spend a lifetime failing to "
+                    "learn. The Conclave sees you home.");
+                break;
+            case character::RobeColor::Black:
+                pushLog(
+                    "The illusion puts someone you'd call a friend between you and the only way "
+                    "through, and you don't hesitate nearly as long as you expected to. You emerge a " +
+                    std::string(character::robeColorName(state.character.robeColor)) + ", sworn to " +
+                    character::robeMoonName(state.character.robeColor) +
+                    ", carrying home a certainty about yourself you didn't have when you left. The "
+                    "Conclave sees you home.");
+                break;
+            case character::RobeColor::None:
+                break; // unreachable -- robeForAlignment never returns None
+        }
+        dialogueAfterGreeting();
+    };
+
     // Enter (or any key, per the console's "press any key to continue") on
-    // a plain dialogue box. Greeting goes to BoatOffer if there's a boat to
-    // offer, else to RecruitOffer/the topic menu/ends the conversation via
-    // dialogueOfferRecruitOrTopics; TopicText always returns to the topic
-    // menu (mirroring talkTo's own topic loop); AskResponse advances to the
-    // next queued message if there is one, else ends the conversation or
-    // returns to a freshly-rebuilt topic menu, per dialogueSubmitAsk's
-    // bookkeeping.
+    // a plain dialogue box. Greeting checks quest first (questBegin), then
+    // goes to BoatOffer if there's a boat to offer, else to RecruitOffer/
+    // the topic menu/ends the conversation, via dialogueAfterGreeting;
+    // TopicText always returns to the topic menu (mirroring talkTo's own
+    // topic loop); AskResponse advances to the next queued message if
+    // there is one, else ends the conversation or returns to a freshly-
+    // rebuilt topic menu, per dialogueSubmitAsk's bookkeeping. The Quest*/
+    // Wayreth* text frames all continue the same quest detour they're
+    // already in (see each's own dedicated handler above).
     auto dialogueContinue = [&]() {
         if (dialogueSession.uiState == DialogueUiState::Greeting) {
-            if (!dialogueSession.current.boatDestinationId.empty()) {
-                // Offered on every talk (including after boarding once --
-                // see boatDestinationId's own comment), ahead of the topic
-                // menu -- mirrors talkTo's own precedence exactly
-                // (GameLoop.cpp:1061-1115), independent of which greeting
-                // text was actually shown above (plain/again/before/after/
-                // askLimitLocked all fall through to this the same way).
-                dialogueSession.boatOfferSelected = 0;
-                dialogueSession.uiState = DialogueUiState::BoatOffer;
-            } else {
-                dialogueOfferRecruitOrTopics();
-            }
+            if (!questBegin()) dialogueAfterGreeting();
+        } else if (dialogueSession.uiState == DialogueUiState::QuestOfferText) {
+            questShowAcceptDecline();
+        } else if (dialogueSession.uiState == DialogueUiState::QuestAcceptText ||
+                   dialogueSession.uiState == DialogueUiState::QuestProgressText) {
+            dialogueAfterGreeting();
+        } else if (dialogueSession.uiState == DialogueUiState::QuestCompleteText) {
+            questFinishTurnIn();
+        } else if (dialogueSession.uiState == DialogueUiState::WayrethIntro) {
+            questShowWayrethChoice();
         } else if (dialogueSession.uiState == DialogueUiState::TopicText) {
             dialogueSession.uiState = DialogueUiState::TopicPicker;
         } else if (dialogueSession.uiState == DialogueUiState::AskResponse) {
@@ -2459,6 +2923,7 @@ int runPhase1(const std::string& savePath) {
         state.y = destination->y;
         state.hoursElapsed += candidate.boatHours;
         state.visitedLocations.insert(destination->id);
+        checkQuestReadiness(); // a VISIT objective may have just been satisfied
         // Two phrasings, split at a day -- matches GameLoop.cpp:1100-1107's
         // own split between the four original 48-96 hour open-water legs and
         // the Crossing/Port O'Call strait hop's much shorter one.
@@ -2506,14 +2971,8 @@ int runPhase1(const std::string& savePath) {
 
     // Help ('/', the pixel-space bind for the console's '?'), World Map
     // ('o'), and Journal ('g') -- same transient-full-window-overlay
-    // reasoning as sheetOpen above, dismissed by any key. Journal is real
-    // (not a stub): it ports GameLoop::showJournal's own logic, but this
-    // build never populates game::GameState::quests yet (quest offer/
-    // accept dialogue is still deferred, see DialogueSession's own
-    // hasQuest handling above), so its body says so explicitly rather than
-    // silently rendering the console's "(no quests yet)" empty state,
-    // which would misleadingly imply a working-but-empty quest log instead
-    // of a not-yet-wired-up one.
+    // reasoning as sheetOpen above, dismissed by any key. Journal ports
+    // GameLoop::showJournal's own logic (see drawJournalOverlay).
     bool helpOpen = false;
     bool worldMapOpen = false;
     bool journalOpen = false;
@@ -2601,6 +3060,7 @@ int runPhase1(const std::string& savePath) {
     // mirrors GameLoop::handleInstanceDeath exactly.
     auto combatHandleInstanceDeath = [&](int idx) -> bool {
         state.monsterKills[combatSession.monster.id] += 1;
+        checkQuestReadiness(); // a SLAY objective may have just been satisfied
         int steel = std::max(0, character::roll(combatSession.monster.steelDiceCount,
                                                   combatSession.monster.steelDiceSides) +
                                      combatSession.monster.steelFlatBonus);
@@ -3846,18 +4306,37 @@ int runPhase1(const std::string& savePath) {
         drawPickerOverlay("Help", kHelpLines, -1, "(press any key to continue)");
     };
 
-    // Journal ('g') -- a real overlay, not a silent stub, but see
-    // journalOpen's own top comment: this build never populates
-    // game::GameState::quests yet, so its body says so explicitly instead
-    // of rendering render::MapRenderer::drawJournalFrame's own empty-state
-    // "(no quests yet)" line (MapRenderer.cpp:1441), which would
-    // misleadingly read as "you truly have no quests" rather than "this
-    // build doesn't track quests yet."
+    // Journal ('g') -- pixel-space equivalent of GameLoop::showJournal
+    // (GameLoop.cpp:1542-1568), flattened into drawPickerOverlay's single
+    // "items" list (one quest title line, optionally a "ready to turn in"
+    // line, then one [x]/[ ] line per objective, then a blank separator)
+    // rather than render::MapRenderer::JournalEntry's grouped structure,
+    // which doesn't exist on this side.
     auto drawJournalOverlay = [&]() {
-        static const std::vector<std::string> kJournalLines = {
-            "Quest tracking isn't wired up in this build yet.",
-        };
-        drawPickerOverlay("Journal", kJournalLines, -1, "(press any key to continue)");
+        std::vector<std::string> lines;
+        for (const auto& [questId, status] : state.quests) {
+            const quest::Quest* q = quests.find(questId);
+            if (q == nullptr) continue; // defensive -- startup already cross-validated every zone QUEST id
+            const bool complete = status == game::QuestStatus::Complete;
+            lines.push_back(q->name + (complete ? " (complete)" : ""));
+            if (status == game::QuestStatus::ReadyToTurnIn) {
+                lines.push_back("  Ready to turn in! Return to " + q->giver + ".");
+            }
+            for (const auto& objective : q->objectives) {
+                const bool met =
+                    complete || status == game::QuestStatus::ReadyToTurnIn || objectiveMet(objective, state);
+                std::ostringstream line;
+                line << "  " << (met ? "[x] " : "[ ] ") << objective.label;
+                if (objective.kind == quest::ObjectiveKind::Slay && !met) {
+                    line << " (" << objectiveProgress(objective, state) << "/" << objective.count << ")";
+                }
+                lines.push_back(line.str());
+            }
+            lines.push_back("");
+        }
+        if (!lines.empty() && lines.back().empty()) lines.pop_back(); // no trailing blank separator
+        if (lines.empty()) lines.push_back("No quests yet.");
+        drawPickerOverlay("Journal", lines, -1, "(press any key to continue)");
     };
 
     // Quit confirmation -- reuses drawPickerOverlay the same way Help/
@@ -3957,6 +4436,24 @@ int runPhase1(const std::string& savePath) {
                              std::to_string(std::min(total, offset + kLogVisibleRows)) + " of " +
                              std::to_string(total);
         drawPickerOverlay("Event Log", rows, -1, "up/down=scroll   v/q=return", status);
+    };
+
+    // Look ('l') -- pixel-space equivalent of GameLoop::pickAndLook
+    // (GameLoop.cpp:937-969), delegating to drawPickerOverlay same as every
+    // other picker-shaped screen here. showingDetail reuses the info-screen
+    // idiom (selectedIndex -1, a single-item list) to show one candidate's
+    // name/description, matching pickAndLook's drawDialogueFrame call; the
+    // picker step (2+ candidates, not yet chosen) lists every candidate's
+    // name instead.
+    auto drawLookOverlay = [&]() {
+        if (lookSession.showingDetail) {
+            const LookCandidate& c = lookSession.candidates[static_cast<size_t>(lookSession.selected)];
+            drawPickerOverlay(c.name, {c.description}, -1, "(press any key to continue)");
+            return;
+        }
+        std::vector<std::string> names;
+        for (const LookCandidate& c : lookSession.candidates) names.push_back(c.name);
+        drawPickerOverlay("Look at whom?", names, lookSession.selected, "up/down=select   Enter=look   q=cancel");
     };
 
     // World Map ('o') -- unlike the console's render::MapRenderer::
@@ -4168,7 +4665,12 @@ int runPhase1(const std::string& savePath) {
         switch (dialogueSession.uiState) {
             case DialogueUiState::Greeting:
             case DialogueUiState::TopicText:
-            case DialogueUiState::AskResponse: {
+            case DialogueUiState::AskResponse:
+            case DialogueUiState::QuestOfferText:
+            case DialogueUiState::QuestAcceptText:
+            case DialogueUiState::QuestProgressText:
+            case DialogueUiState::QuestCompleteText:
+            case DialogueUiState::WayrethIntro: {
                 // Only Greeting can differ from the NPC's own name (the
                 // askLimitLocked override, see dialogueStartTalk) --
                 // TopicText/AskResponse always speak as the NPC itself,
@@ -4211,6 +4713,29 @@ int runPhase1(const std::string& savePath) {
                 const std::string title = "Ask " + dialogueSession.current.name + " to join your journey?";
                 drawPickerOverlay(title, {"Join me", "Not yet"}, dialogueSession.recruitOfferSelected,
                                    "(up/down = select, Enter = choose, q = cancel)");
+                break;
+            }
+            case DialogueUiState::QuestAcceptDecline: {
+                const quest::Quest* q = quests.find(dialogueSession.current.questId);
+                const std::string title = q != nullptr ? q->name : "Accept this quest?";
+                drawPickerOverlay(title, {"Accept", "Decline"}, dialogueSession.questOfferSelected,
+                                   "(up/down = select, Enter = choose, q = cancel)");
+                break;
+            }
+            case DialogueUiState::WayrethChoice: {
+                // No "q=cancel" in the footer -- mirrors offerOrTurnInQuest's
+                // own picker (GameLoop.cpp:1469): Quit is deliberately
+                // ignored here, there's no meaningful cancel once the
+                // Conclave is asking (see the key-dispatch wiring below).
+                static const std::vector<std::string> kEthicLabels = {
+                    "Let it stand, and find another way.",
+                    "Take only the narrowest path through.",
+                    "Cut it down, and take what's yours.",
+                };
+                const quest::Quest* q = quests.find(dialogueSession.current.questId);
+                const std::string title = q != nullptr ? q->name : "Choose.";
+                drawPickerOverlay(title, kEthicLabels, dialogueSession.wayrethChoiceSelected,
+                                   "(up/down = select, Enter = choose)");
                 break;
             }
             case DialogueUiState::AskInput:
@@ -4335,6 +4860,7 @@ int runPhase1(const std::string& savePath) {
                     bool wantsShop = false;
                     bool wantsQuit = false;
                     bool wantsBackspace = false;
+                    bool wantsLook = false;
                     bool wantsLog = false;
                     bool wantsJournal = false;
                     bool wantsWorldMap = false;
@@ -4357,7 +4883,7 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::Q:
                         case sf::Keyboard::Key::Escape: wantsQuit = true; break;
                         case sf::Keyboard::Key::Backspace: wantsBackspace = true; break;
-                        case sf::Keyboard::Key::L: placeholder = "Look: not yet implemented in this build."; break;
+                        case sf::Keyboard::Key::L: wantsLook = true; break;
                         case sf::Keyboard::Key::T: wantsTalk = true; break;
                         case sf::Keyboard::Key::Enter: handleEnter = true; break;
                         case sf::Keyboard::Key::C: break; // handled explicitly below via sheetOpen
@@ -4438,9 +4964,26 @@ int runPhase1(const std::string& savePath) {
                             case DialogueUiState::RecruitOffer:
                                 dialogueDeclineRecruit(); // q=cancel, same as GameLoop.cpp:1140-1142
                                 break;
+                            case DialogueUiState::QuestAcceptDecline:
+                                // q=cancel -- "declined, re-offerable next
+                                // time, nothing recorded", same as
+                                // GameLoop.cpp:1345-1346.
+                                dialogueAfterGreeting();
+                                break;
+                            case DialogueUiState::WayrethChoice:
+                                // Quit deliberately ignored here, matching
+                                // GameLoop.cpp:1481-1482 -- there's no
+                                // meaningful "cancel" once the Conclave is
+                                // asking.
+                                break;
                             case DialogueUiState::Greeting:
                             case DialogueUiState::TopicText:
                             case DialogueUiState::AskResponse:
+                            case DialogueUiState::QuestOfferText:
+                            case DialogueUiState::QuestAcceptText:
+                            case DialogueUiState::QuestProgressText:
+                            case DialogueUiState::QuestCompleteText:
+                            case DialogueUiState::WayrethIntro:
                                 dialogueContinue();
                                 break;
                             case DialogueUiState::AskInput:
@@ -4524,6 +5067,27 @@ int runPhase1(const std::string& savePath) {
                             logSession.scrollOffset += kLogScrollStep; // clamped for real next draw
                         } else if (wantsQuit || key == sf::Keyboard::Key::V) {
                             logSession.active = false;
+                        }
+                    } else if (lookSession.active) {
+                        // Look ('l') -- mirrors GameLoop::pickAndLook: a
+                        // single candidate's showingDetail dismisses on any
+                        // key (Look never loops back to its own picker,
+                        // unlike Talk's pickAndTalk); 2+ candidates get a
+                        // North/South/Enter/Quit picker first, same shape as
+                        // the Talk candidate picker above.
+                        if (lookSession.showingDetail) {
+                            lookSession.active = false;
+                        } else if (dy < 0) {
+                            lookSession.selected =
+                                (lookSession.selected - 1 + static_cast<int>(lookSession.candidates.size())) %
+                                static_cast<int>(lookSession.candidates.size());
+                        } else if (dy > 0) {
+                            lookSession.selected =
+                                (lookSession.selected + 1) % static_cast<int>(lookSession.candidates.size());
+                        } else if (handleEnter) {
+                            lookSession.showingDetail = true;
+                        } else if (wantsQuit) {
+                            lookSession.active = false;
                         }
                     } else if (restSession.active) {
                         // Rest/Bed Rest's own spell-loadout wizard -- see
@@ -4670,6 +5234,11 @@ int runPhase1(const std::string& savePath) {
                             case DialogueUiState::Greeting:
                             case DialogueUiState::TopicText:
                             case DialogueUiState::AskResponse:
+                            case DialogueUiState::QuestOfferText:
+                            case DialogueUiState::QuestAcceptText:
+                            case DialogueUiState::QuestProgressText:
+                            case DialogueUiState::QuestCompleteText:
+                            case DialogueUiState::WayrethIntro:
                                 if (handleEnter) dialogueContinue();
                                 break;
                             case DialogueUiState::TopicPicker: {
@@ -4715,6 +5284,37 @@ int runPhase1(const std::string& savePath) {
                                     } else {
                                         dialogueDeclineRecruit();
                                     }
+                                }
+                                break;
+                            case DialogueUiState::QuestAcceptDecline:
+                                // Same either-direction-toggles shape as
+                                // BoatOffer/RecruitOffer above -- mirrors
+                                // offerOrTurnInQuest's own Accept/Decline
+                                // picker loop (GameLoop.cpp:1329-1330).
+                                if (dy != 0) {
+                                    dialogueSession.questOfferSelected =
+                                        dialogueSession.questOfferSelected == 0 ? 1 : 0;
+                                } else if (handleEnter) {
+                                    if (dialogueSession.questOfferSelected == 0) {
+                                        questAccept();
+                                    } else {
+                                        dialogueAfterGreeting(); // declined, nothing recorded
+                                    }
+                                }
+                                break;
+                            case DialogueUiState::WayrethChoice:
+                                // Wraparound cycle through all 3 options
+                                // (not a 2-way toggle) -- mirrors
+                                // offerOrTurnInQuest's own ethic picker loop
+                                // exactly (GameLoop.cpp:1471-1474).
+                                if (dy < 0) {
+                                    dialogueSession.wayrethChoiceSelected =
+                                        (dialogueSession.wayrethChoiceSelected - 1 + 3) % 3;
+                                } else if (dy > 0) {
+                                    dialogueSession.wayrethChoiceSelected =
+                                        (dialogueSession.wayrethChoiceSelected + 1) % 3;
+                                } else if (handleEnter) {
+                                    questResolveWayreth();
                                 }
                                 break;
                             case DialogueUiState::AskInput:
@@ -4855,6 +5455,8 @@ int runPhase1(const std::string& savePath) {
                     } else if (wantsLog) {
                         logSession.active = true;
                         logSession.scrollOffset = -1; // start at the bottom (most recent) every time it's opened
+                    } else if (wantsLook) {
+                        lookBegin();
                     } else if (wantsJournal) {
                         journalOpen = true;
                     } else if (wantsWorldMap) {
@@ -4881,6 +5483,16 @@ int runPhase1(const std::string& savePath) {
                                 const world::Location* here = world.locationAt(state.x, state.y);
                                 if (here != nullptr) {
                                     pushLog("Arrived at " + here->name + ".");
+                                    // Mirrors GameLoop::tryMoveOverworld
+                                    // (GameLoop.cpp:690-691) -- was missing
+                                    // here entirely before the quest system
+                                    // port, silently breaking every Visit
+                                    // objective for ordinary overworld
+                                    // walking (only the character-creation
+                                    // starting tile and boat arrival tracked
+                                    // visitedLocations until now).
+                                    state.visitedLocations.insert(here->id);
+                                    checkQuestReadiness();
                                 }
                                 // Random encounters (see GameLoop::
                                 // tryMoveOverworld): towns/named places stay
@@ -5289,6 +5901,9 @@ int runPhase1(const std::string& savePath) {
             } else if (logSession.active) {
                 window.setView(uiView);
                 drawLogOverlay();
+            } else if (lookSession.active) {
+                window.setView(uiView);
+                drawLookOverlay();
             }
 
             if (restSession.active) {

@@ -1,22 +1,29 @@
 # Current work
 
-**Nothing in-flight code-wise.** The full SFML migration --
-`ansalon_sfml_phase1` promoted to the primary/main build -- is complete
-and merged to `master`. See `docs/MILESTONES.md` entries 157-181 for the
-full shipped history (Phase 1 through native character creation and
-today's text-clipping/stale-banner fixes); this file no longer repeats
-that narrative. `ansalon_rpg` stays in the tree as a legacy/reference
-build, unchanged; whether to retire it outright remains a separate,
-later call, not currently scheduled.
+**Nothing in-flight code-wise.** `ansalon_sfml_phase1` (the primary/main
+build) now has real quest/mechanic parity with `ansalon_rpg`. Previous
+wording here claimed the SFML migration was "complete" -- that was
+**wrong**: a three-way Haiku-agent audit (run 2026-09-11 after the user
+asked to reach real parity before a final release) found the quest
+system and the Look command missing entirely, not just unconfirmed. Both
+are now ported -- see `docs/MILESTONES.md` entries 182-183. Every other
+subsystem the audit checked (character creation, save/load, companion
+recruitment, overworld/timeline encounters, TALK/SHOP/PORTAL zone
+grammar, dialogue, combat, inventory, leveling) came back genuinely
+complete. See `docs/MILESTONES.md` entries 157-183 for the full shipped
+history; this file no longer repeats that narrative. `ansalon_rpg` stays
+in the tree as a legacy/reference build, unchanged; whether to retire it
+outright remains a separate, later call, not currently scheduled.
 
 **Right now: mid live playtest session of `ansalon_sfml_phase1`, paused,
 resume here.** Most of the migration is confirmed working live at the
-user's own keyboard (2026-09-09 through today, 2026-09-11) -- see each
+user's own keyboard (2026-09-09 through 2026-09-11) -- see each
 milestone entry above for its own confirmation status. What's left is
-the Playtest backlog below: primarily continuing today's native-
-character-creation test (Milestone 180), plus a handful of narrower
-unconfirmed sub-items on already-shipped features, plus older
-sourced-content backlog items unrelated to the SFML work.
+the Playtest backlog below: continuing today's native-character-creation
+test (Milestone 180), confirming the newly-ported Look/quest system
+(Milestones 182-183), a handful of narrower unconfirmed sub-items on
+already-shipped features, plus older sourced-content backlog items
+unrelated to the SFML work.
 
 ## Playtest backlog
 
@@ -24,6 +31,19 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
+- **Look command** (Milestone 182) -- not yet interactively confirmed at
+  all: `'l'` on the overworld (with an NPC present, and the nearest-
+  location/compass-direction fallback with none present) and inside a
+  zone (a POI's own description, and a TIMELINE_ANCHOR tile with a canon
+  character present).
+- **Quest system** (Milestone 183) -- not yet interactively confirmed at
+  all: offering/accepting/declining a quest, the progress-text revisit,
+  turning one in, all six reward flags (especially the Wayreth Test of
+  High Sorcery's ethical-choice scene and its three outcome passages),
+  the journal (`'g'`) rendering real quest state, and a `SHOP_LOCKED`
+  shop (e.g. Flint's Smithy) actually gating on quest completion. Easiest
+  real quest to walk end-to-end first: `road_wolves` (Solace's Notice
+  Board, a single `SLAY wolf 3` objective, no `REQUIRE`).
 - **Native character creation** (Milestone 180) -- partially confirmed
   2026-09-11: reached the Knight-of-Crown offer screen on a fresh slot.
   Still open: the Knight Offer screen itself, the final summary screen
@@ -88,7 +108,8 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   forest (Stirge).
 - **143** -- `a_widows_due` DELIVER quest at Kalaman. Talk to the
   Curiosities Cart, find the Furtive Trader POI, deliver the wedding
-  band.
+  band. Actually testable for the first time as of Milestone 183 -- it
+  depended on the quest system existing at all.
 - **145** -- 3 Astinus SUBJECT topics (Fizban, Silvara, Berem/the
   Everman), each day-gated. Ask before/after day 192/69/193
   respectively.

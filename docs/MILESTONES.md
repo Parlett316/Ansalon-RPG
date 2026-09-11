@@ -6855,6 +6855,94 @@ now fully verified, nothing further outstanding.
      stale-banner fix (v5) is **not yet interactively confirmed** -- no
      desktop/GUI access this session to watch the corrected banner render.
 
+182. **Look command ported to `ansalon_sfml_phase1`.** Found missing
+     entirely (not just unconfirmed) by a three-way Haiku-agent audit
+     comparing `GameLoop.cpp` against `main.cpp` path-by-path, run after
+     the user asked to reach real quest/mechanic parity before a final
+     release -- `docs/CURRENT_WORK.md`'s "full SFML migration... complete"
+     claim had been wrong on this front. Ports `GameLoop::lookOverworld`/
+     `lookZone`/`pickAndLook` (`GameLoop.cpp:753-969`) as a new `'l'`
+     handler: a `LookSession` (single candidate skips straight to a
+     dismiss-on-any-key detail view, matching the console's
+     `candidates.size()==1` fast path; 2+ candidates get a picker first),
+     `gatherLookCandidates` (deliberately unfiltered by dialogue-
+     emptiness on presence-window candidates, unlike Talk's own
+     `gatherTalkCandidates` -- see `GameLoop.cpp`'s own Milestone 43
+     comment on why), and a nothing-here fallback reusing the already-
+     ported `compassDirection` helper. No new rendering primitive needed
+     -- reuses `drawPickerOverlay` throughout.
+
+     Verified: clean rebuild of all three targets (zero new `/W4`
+     warnings), a launch smoke test. **Not yet interactively confirmed**
+     -- no desktop/GUI access this session; added to the Playtest
+     backlog.
+
+183. **Quest system ported to `ansalon_sfml_phase1`**, same audit/session
+     as Milestone 182 above -- the bigger of the two real gaps the audit
+     found. `main.cpp` had only ever shown a placeholder line where
+     `GameLoop.cpp` has full `QUEST` grammar handling, objective
+     tracking, and turn-in with six reward types; `src/quest/Quest.cpp`/
+     `QuestLoader.cpp` were never even in `ansalon_sfml_phase1`'s
+     `CMakeLists.txt` source list, so no `quest::QuestCatalog` was ever
+     constructed on this side at all. Fixed:
+
+     - `CMakeLists.txt`: added the two missing quest sources; a
+       `quest::QuestCatalog` now loads `data/quests.txt` at startup,
+       cross-validated against every zone's `QUEST`/`SHOP_LOCKED` ids
+       (mirroring `src/main.cpp`'s own check) -- a bad id now fails fast
+       at launch instead of silently misbehaving at play time.
+     - Copied verbatim from `GameLoop.h`/`.cpp` (pure functions, not
+       linkable here, same convention as `matchSubject`/`compassDirection`
+       already established by earlier milestones): `objectiveProgress`/
+       `objectiveMet`/`allObjectivesMet`, `EthicChoice`/`withEthic`.
+     - Quest offer/accept/decline/progress/turn-in ported as six new
+       `DialogueUiState` values (`QuestOfferText`, `QuestAcceptDecline`,
+       `QuestAcceptText`, `QuestProgressText`, `QuestCompleteText`,
+       `WayrethIntro`, `WayrethChoice`) reached from a Greeting dismissal
+       via a new `questBegin`, ahead of `BoatOffer` -- same precedence
+       `GameLoop::talkTo` itself uses. All six reward flags ported 1:1,
+       including the Wayreth Test of High Sorcery's own 3-option ethical-
+       choice scene and its three White/Red/Black outcome passages.
+     - `checkQuestReadiness` ported and wired into all five mutation
+       sites `GameLoop.cpp` calls it from: overworld arrival, boat
+       arrival, talk, combat kill, and accepting an already-satisfied
+       quest. **Found and fixed a real pre-existing bug while wiring the
+       first of these**: ordinary tile-by-tile overworld walking never
+       populated `GameState::visitedLocations` at all in this build (only
+       the character-creation starting tile and boat arrival did) --
+       every `VISIT` objective was silently unreachable by ordinary
+       walking until this fix.
+     - Journal (`'g'`) now renders real quest state (title, `[x]`/`[ ]`
+       objective lines, Slay progress counts, a "ready to turn in"
+       banner) instead of its old placeholder, flattened into
+       `drawPickerOverlay`'s single-list shape.
+     - `SHOP_LOCKED` (a shop gated behind a quest's completion, e.g.
+       Flint's Smithy) also fixed as a direct consequence -- `shopBegin`
+       had its own honest "not tracked in this build yet" placeholder for
+       the identical reason, now resolved the same way `GameLoop::
+       handleShop` resolves it.
+
+     `GameState::quests`/`monsterKills` already round-tripped correctly
+     through `SaveGame.cpp` (already linked into this target) before this
+     milestone -- this was purely UI/logic wiring, not a save-format
+     change.
+
+     Verified: a throwaway `QuestSelfTest.cpp` (26 checks against the
+     real `data/quests.txt` via the real `quest::QuestLoader` -- catalog
+     size, Visit/Talk/Slay/Deliver objective progress including the
+     Deliver kind's inventory-counting path, a mixed-objective quest, two
+     reward-flag/`REQUIRE` spot checks, and the Active->ReadyToTurnIn
+     promotion) all passed, then deleted along with its temporary CMake
+     target per the usual convention; clean rebuild of all three targets
+     (zero new `/W4` warnings); a launch smoke test confirming
+     `quest::QuestCatalog` loads `data/quests.txt` (19 entries) and every
+     zone's `QUEST`/`SHOP_LOCKED` id cross-validates cleanly, against a
+     real save. **Not yet interactively confirmed** -- no desktop/GUI
+     access this session; added to the Playtest backlog. This also
+     finally makes backlog item 143 (the Kalaman `a_widows_due` DELIVER
+     quest) actually testable for the first time -- it depended on this
+     system existing at all.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
