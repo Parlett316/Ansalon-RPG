@@ -1475,7 +1475,19 @@ nothing else in range) still reads as a clean single-target hit.
     companion, same family as the "no square-cursor for AoE" gap below);
     Sivak's death-burst still only damages the player regardless of who
     lands the kill; companion movement never provokes/takes opportunity
-    attacks; there's no "finish off a downed ally" mechanic. See
+    attacks; there's no "finish off a downed ally" mechanic; and every cure
+    spell (`character::SpellEffect::HealCaster` -- Cure Light Wounds and
+    the rest of that family, `Spellcasting.cpp:385/406/410/426`) can only
+    ever target whoever cast it, with no target picker at all, so a Cleric
+    standing next to an injured companion has no way to heal them --
+    surfaced by live playtesting 2026-09-10 (`GameLoop.cpp:2664`,
+    `sfml_phase1/main.cpp:2286`, same self-only behavior in both builds, so
+    not something the SFML port introduced). A real fix would need
+    `HealCaster` to become a real targeted heal (reusing the existing
+    `PickingTarget`/target-picker machinery both builds already have for
+    attacks/offensive spells, not adjacency-restricted, same as other
+    non-melee spell targeting) offered whenever an ally is actually
+    injured, auto-resolving to self when no companion is hurt. See
     `docs/ARCHITECTURE.md`'s "Party companions" section for the full design.
   - **Phase 3a (Milestone 118) shipped a real multi-companion roster.**
     `GameState::companions` grew from a single `hasCompanion`/`companion`

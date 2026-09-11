@@ -5,15 +5,22 @@
 for the full item-by-item status; most items are now confirmed (save
 persistence, launch-maximized, Rest/Bed Rest, character sheet/spellbook,
 help/log/world map/journal, dialogue's core NPC/Hero/picker paths, shop,
-boat-voyage accept/decline, companion recruit accept/decline). That last
-one's live test surfaced a real bug -- a recruited companion's own POI kept
-rendering its icon/label in town forever, in both builds -- now fixed and
-also confirmed working 2026-09-10 (see its own writeup below). Still open
-otherwise: Astinus's free-text ask-input, the quest placeholder line,
-Inventory's equip/drink paths (blocked on steel for a potion), and most of
-combat (spellcasting edge cases, item use, Flee, group target picker, the
-same-cell collision fix, sweep/backstab -- save1 now actually carries a
-recruited companion (Bren Alder), so these are ready to test directly).
+boat-voyage accept/decline, companion recruit accept/decline, Phase 3
+combat including Flee/group target picker/companion fighting, most of
+combat spellcasting including Cure Light Wounds, most of inventory).
+Companion recruit's live test surfaced a real bug -- a recruited
+companion's own POI kept rendering its icon/label in town forever, in both
+builds -- now fixed and also confirmed working 2026-09-10 (see its own
+writeup below). The Cure Light Wounds test also surfaced a real gap, not
+a bug -- it can never target an injured companion, only the caster -- now
+logged in `docs/COMBAT_NOTES.md`'s "Extending this later" as a future
+candidate, not scheduled. Still open otherwise: Astinus's free-text
+ask-input, the quest placeholder line, Inventory's equip path and a
+couple of item-use no-op messages, combat item use's picker/Staff of
+Curing/Brooch gate, Prayer and the monsters-act-first-knockout-prevents-
+cast case, the same-cell collision fix re-check, and sweep/backstab
+(save1 carries a recruited companion, Bren Alder, so these are ready to
+test directly).
 
 **Real bug fixed this session, live-playtest-discovered:** the SFML port's
 overworld movement never advanced `state.hoursElapsed` (see this file's
@@ -1409,12 +1416,19 @@ piling on more unverified content. Full sourcing/detail for each is in its
   **confirmed 2026-09-09**: cast at a multi-instance group's middle
   target, three instances within radius all took damage together;
   ~~Cure Light Wounds on yourself (no target picker at all, HP
-  increases)~~ -- **partially confirmed 2026-09-09** (new Cleric
-  Melissa): cast at full HP (9/9) correctly logged "heal 0 hit points"
-  and left HP unchanged -- `main.cpp:1874` clamps healing to
+  increases)~~ -- **confirmed 2026-09-09/2026-09-10** (Cleric Melissa,
+  then Mike): cast at full HP correctly logged "heal 0 hit points" and
+  left HP unchanged both times -- `main.cpp:1874` clamps healing to
   `maxHp - currentHp`, so a heal spell at full health always wastes the
-  roll, matching real 2e's no-overhealing rule; still want to see it
-  actually raise HP after taking damage. ~~a buff (Bless/Prayer-
+  roll, matching real 2e's no-overhealing rule; a follow-up cast while
+  damaged, mid-battle, correctly restored some hit points. **Real gap
+  surfaced by this same 2026-09-10 test, not a bug**: cast
+  with a recruited companion (Bren Alder) standing adjacent and
+  injured, Cure Light Wounds always resolves on the caster with no way
+  to target the companion -- `character::SpellEffect::HealCaster` is
+  self-only in both builds (see `docs/COMBAT_NOTES.md`'s "Extending
+  this later" section for the fix shape). Logged there as a future
+  candidate, not scheduled. ~~a buff (Bless/Prayer-
   equivalent, if memorized) and confirm subsequent attack rolls actually
   reflect it~~ -- **confirmed 2026-09-09**: Bless cast correctly, log
   line matches the console's wording, and it runs through the same
@@ -1432,16 +1446,17 @@ piling on more unverified content. Full sourcing/detail for each is in its
   `character/Spellcasting.cpp:257-266`): the charmed kobold correctly
   stood down rather than joining the player's side -- this project
   deliberately doesn't model "monster switches sides," only "monster
-  taken out of the fight," so that's expected behavior, not a bug. Also
-  confirm: memorizing 2+ *different* spells opens
-  "Cast which spell?" (a real overlay, not the roster-embedded picker);
-  Escape/Q on that picker cancels back to Idle with no round consumed
-  (HP/round number unchanged); pressing `M` with nothing memorized (or
-  everything already cast since the last Rest) logs the right message and
-  doesn't consume a round either. Hardest to force but worth a real attempt: get the
-  monsters to act first (retry until initiative favors them) on a round
-  where you press `M`, and confirm a knockout that round means the spell
-  was never actually cast (still shows as memorized afterward). See
+  taken out of the fight," so that's expected behavior, not a bug.
+  ~~Also confirm: memorizing 2+ *different* spells opens "Cast which
+  spell?" (a real overlay, not the roster-embedded picker); Escape/Q on
+  that picker cancels back to Idle with no round consumed (HP/round
+  number unchanged); pressing `M` with nothing memorized (or everything
+  already cast since the last Rest) logs the right message and doesn't
+  consume a round either.~~ -- **confirmed 2026-09-10**: both work as
+  expected. Still open, hardest to force but worth a real attempt: get
+  the monsters to act first (retry until initiative favors them) on a
+  round where you press `M`, and confirm a knockout that round means the
+  spell was never actually cast (still shows as memorized afterward). See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - ~~**SFML combat item use**~~ -- **confirmed working 2026-09-09** via the
@@ -1462,16 +1477,14 @@ piling on more unverified content. Full sourcing/detail for each is in its
   being consumed. See `sfml_phase1/main.cpp` and this file's writeup
   above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
   merged to `master` yet.
-- **SFML Phase 3 (combat)** -- win and knockout are confirmed; still
-  untested: Flee (`f` during an idle combat round), a multi-instance group
-  encounter's in-frame target picker (up/down to cycle, Enter to confirm --
-  needs a monster with a `GROUP` line in `data/monsters.txt` to roll more
-  than one instance), and a recruited companion fighting alongside the
-  player -- **save1 (Mike) now actually carries one, Bren Alder**, recruited
-  live 2026-09-10 (see the companion recruit entry below), so this is ready
-  to test directly. See `sfml_phase1/main.cpp` and this file's Phase 3
-  writeup above, not a numbered `docs/MILESTONES.md` entry -- this branch
-  isn't merged to `master` yet.
+- ~~**SFML Phase 3 (combat)**~~ -- **confirmed working 2026-09-10** via the
+  user's own keyboard: win and knockout (confirmed earlier), Flee (`f`
+  during an idle combat round), a multi-instance group encounter's
+  in-frame target picker (up/down to cycle, Enter to confirm), and a
+  recruited companion (Bren Alder, save1) fighting alongside the player
+  all work. See `sfml_phase1/main.cpp` and this file's Phase 3 writeup
+  above, not a numbered `docs/MILESTONES.md` entry -- this branch isn't
+  merged to `master` yet.
 - **SFML thief backstab and Fighter sweep** -- **save1 (Mike) now carries a
   recruited companion, Bren Alder**, so this no longer needs a detour
   through a console-build (`ansalon_rpg`) playthrough first -- Dessa Corrin
@@ -1539,31 +1552,44 @@ piling on more unverified content. Full sourcing/detail for each is in its
   at Astinus in Palanthas's Great Library (zone `palanthas`, POI `L`) --
   he's the only POI with `ASK_LIMIT` configured (5, extendable to 10) plus
   `ASK_LIMIT_LOCKED`/`ASK_ANYTHING`, so a single NPC exercises the whole
-  feature. Confirm: the "Ask about something else..." option appears in his
-  topic picker (note `ASK_ANYTHING` means no hint list is shown -- expected,
-  not a bug); typing a real keyword (or an unrelated word, to hit
-  `SUBJECT_UNKNOWN`) gets a real response; Backspace edits the buffer and
-  empty-Enter cancels back to the topic picker; asking 5 questions in one
-  day shows the Int+Wis extension roll (`ASK_LIMIT_EXTENDED` text on a pass)
-  or the reached-limit message (`ASK_LIMIT` text on a fail) and, on a fail,
-  ends the conversation; talking to him again the same day after the limit
-  is reached shows the Aesthetic's `ASK_LIMIT_LOCKED` line instead of
-  Astinus's own greeting. Also worth a quick check against any ordinary
-  zone-native NPC or canon Hero with a plain (unlimited) `SUBJECT` pool, to
-  confirm the common case works without any of Astinus's limit machinery.
-  See `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
+  feature. **Confirmed 2026-09-10** (save2, Regan) via a full 10-question
+  run of nonsense input ("boop"): the "Ask about something else..." option
+  appeared and worked, each unmatched "boop" correctly triggered
+  `SUBJECT_UNKNOWN`'s flavor response (confirming that path too), asking 5
+  questions hit the Int+Wis extension roll and passed
+  (`ASK_LIMIT_EXTENDED`, granting 5 more -- the trickiest branch of this
+  feature), and the 10th question correctly hit the hard cap with no
+  second extension attempt, showing the `ASK_LIMIT` reached-limit text and
+  ending the conversation. Separately confirmed the Great Library has no
+  walkable interior (POI `L` carries no `PORTAL` line, so Enter there
+  correctly logs "There's nothing to enter here.") -- expected, not a bug:
+  Astinus's own dialogue ("very few are let past this room") and his
+  Aesthetics keeping the library "sealed" are the whole point, the
+  vestibule is as far as this project ever models. **Not yet confirmed**:
+  typing a real keyword and getting its actual matched response (only
+  gibberish was tried), Backspace editing the buffer and empty-Enter
+  cancelling back to the topic picker, talking to him again the same day
+  after the limit is reached showing the Aesthetic's `ASK_LIMIT_LOCKED`
+  line instead of Astinus's own greeting, and the extension-roll *fail*
+  path (a bad Int or Wis roll at question 5, ending the conversation
+  early instead of extending) -- pure chance which branch fires live,
+  not reliably forceable. Also worth a quick check against any ordinary
+  zone-native NPC or canon Hero with a plain (unlimited) `SUBJECT` pool,
+  to confirm the common case works without any of Astinus's limit
+  machinery. See `sfml_phase1/main.cpp` and this file's writeup above,
+  not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - ~~**SFML shop**~~ -- **confirmed working 2026-09-09** via the user's own
   keyboard. See `sfml_phase1/main.cpp` and this file's writeup above, not a
   numbered `docs/MILESTONES.md` entry -- this branch isn't merged to
   `master` yet.
-- **SFML inventory** -- **partially confirmed 2026-09-09**: the empty-state
-  path (`I` renders the header lines and "(nothing carried)" with no
-  cursor) and drinking a potion (healed, as expected) both work. **Not yet
-  confirmed**: equipping a weapon/armor/shield (header line updating to
-  match), the Webnet/Brooch of Imog/quest-item no-op message, `Q` returning
+- **SFML inventory** -- **partially confirmed 2026-09-09/2026-09-10**: the
+  empty-state path (`I` renders the header lines and "(nothing carried)"
+  with no cursor), drinking a potion (healed, as expected), `Q` returning
   to the map (not the whole window), and `I` still toggling buy/sell
-  instead of opening this screen while a shop is open. See
+  instead of opening this screen while a shop is open all work. **Not yet
+  confirmed**: equipping a weapon/armor/shield (header line updating to
+  match) and the Webnet/Brooch of Imog/quest-item no-op message. See
   `sfml_phase1/main.cpp` and this file's writeup above, not a numbered
   `docs/MILESTONES.md` entry -- this branch isn't merged to `master` yet.
 - ~~**SFML help/full log/world map/journal**~~ -- **confirmed working
