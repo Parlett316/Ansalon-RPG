@@ -1,37 +1,30 @@
 # Current work
 
-**Nothing in-flight code-wise.** Playable v7 status: **P2 (save
-hardening) is done** — see Milestone 184 (atomic write-then-rename,
-rotated backups, a `VERSION` header, all in the `game::SaveGame` both
-targets share). Console-retirement trigger is **decided but not
-met**: Option A from `docs/CONSOLE_RETIREMENT_PROPOSAL.md` (parity-based,
-gating Stage 1/Deprecate), recorded in `docs/ARCHITECTURE.md` — Stage 0
-(both targets fully live) still applies today.
+**Nothing in-flight code-wise.** Playable v7 is done: P1 (quest system +
+Look command ported to SFML, Milestones 182-183), P2 (save hardening,
+Milestone 184), and P3 (`docs/PARITY_MATRIX.md`) all closed 2026-09-11 —
+`docs/NEXT_STEPS_v7.md` and `docs/PARITY_MATRIX.md` have both been
+reconciled against Milestones 182-184 (no more stale rows/priorities;
+this replaces an earlier version of this note that flagged them as
+drafts needing reconciliation). `tools/playable_release_version.txt`
+bumped 5→6 (uncommitted) for the next packaged release, matching the
+major-increment rule (new player-visible systems: quests, Look, plus a
+save-format-relevant hardening pass). `ansalon_sfml_phase1` (the
+primary/main build) now has real quest/mechanic parity with
+`ansalon_rpg`. Every subsystem a three-way Haiku-agent audit checked
+2026-09-11 (character creation, save/load, companion recruitment,
+overworld/timeline encounters, TALK/SHOP/PORTAL zone grammar, dialogue,
+combat, inventory, leveling, and now quests/Look) is genuinely complete
+in code — see `docs/MILESTONES.md` entries 157-184 for the full shipped
+history; this file no longer repeats that narrative.
 
-**Stop-and-flag for the next session (or the user) before touching P1**:
-`docs/NEXT_STEPS_v7.md`'s P1 ("port quest tracking to the SFML build")
-and most of `docs/PARITY_MATRIX.md`'s Quests/Look rows describe a gap
-that **Milestones 182-183 already closed**, in the commit immediately
-before this session started (`f8d20a9`, "SFML: port the quest system and
-Look command"). Both docs are untracked/uncommitted and read as drafts
-from before that port happened, never revised afterward — `PARITY_MATRIX.md`
-still says "Quests: Placeholder" and "Look: Not yet," which is now wrong.
-Don't treat `NEXT_STEPS_v7.md`'s P1 as a real to-do without first
-reconciling it against Milestones 182-183; P3 (the parity matrix itself)
-is also largely already done, just needs its stale rows refreshed. `ansalon_sfml_phase1` (the primary/main
-build) now has real quest/mechanic parity with `ansalon_rpg`. Previous
-wording here claimed the SFML migration was "complete" -- that was
-**wrong**: a three-way Haiku-agent audit (run 2026-09-11 after the user
-asked to reach real parity before a final release) found the quest
-system and the Look command missing entirely, not just unconfirmed. Both
-are now ported -- see `docs/MILESTONES.md` entries 182-183. Every other
-subsystem the audit checked (character creation, save/load, companion
-recruitment, overworld/timeline encounters, TALK/SHOP/PORTAL zone
-grammar, dialogue, combat, inventory, leveling) came back genuinely
-complete. See `docs/MILESTONES.md` entries 157-183 for the full shipped
-history; this file no longer repeats that narrative. `ansalon_rpg` stays
-in the tree as a legacy/reference build, unchanged; whether to retire it
-outright remains a separate, later call, not currently scheduled.
+Console-retirement trigger is **decided but not met**: Option A from
+`docs/CONSOLE_RETIREMENT_PROPOSAL.md` (parity-based, gating
+Stage 1/Deprecate), recorded in `docs/ARCHITECTURE.md` — Stage 0 (both
+targets fully live) still applies today. `ansalon_rpg` stays in the tree
+as a legacy/reference build, unchanged. `docs/CONSOLE_RETIREMENT_PROPOSAL.md`
+itself is also still untracked/uncommitted, same as the other two docs
+above.
 
 **Right now: mid live playtest session of `ansalon_sfml_phase1`, paused,
 resume here.** Most of the migration is confirmed working live at the
