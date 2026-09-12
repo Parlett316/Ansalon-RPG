@@ -495,10 +495,10 @@ and a Mage feels, faintly, that something has taken notice of them). See
 
 ### Quests
 
-*(The SFML build doesn't track quest state at all yet — its `G` journal
-says so plainly, quest-giver dialogue logs a placeholder line instead of
-offering one, and one quest-locked shop shows its own placeholder rather
-than resolving the lock. Quests work fully in the console build.)*
+*(Quest tracking now works in the SFML build too — offer, accept/decline,
+progress, and turn-in, plus quest-locked shops unlocking on completion,
+ported at feature parity with the console build. Not yet confirmed with a
+live playthrough at the keyboard, so treat it as newly landed.)*
 
 Press `g` at any time to check your quest journal, and talk to a
 quest-giver to be offered one, track its progress, and turn it in for a
@@ -690,8 +690,8 @@ Movement is immediate — no Enter key needed:
   who first if more than one is present). Covers greetings, repeat-visit
   lines, aftermath/anticipation text, the topic picker, free-text "Ask
   about something else...", boat-voyage accept/decline (Board/Not yet),
-  and companion recruit accept/decline (Join me/Not yet); quest offers
-  still log a placeholder line instead of actually opening.
+  and companion recruit accept/decline (Join me/Not yet); quest offers,
+  progress, and turn-in are wired up too.
 - `P` — browse/buy at a shop POI; `I` while inside toggles to selling.
   Purchases land in your carried inventory, not straight onto your body.
 - `I` (outside a shop) — view carried items; Enter equips a weapon/
@@ -700,8 +700,8 @@ Movement is immediate — no Enter key needed:
 - `C` — character sheet (any key dismisses it); a Mage or Cleric gets an
   `S`/Down option there for the full spellbook.
 - `V` — full scrollable event log, up/down to scroll, `V`/`Q` to return.
-- `G` — quest journal. This build doesn't track quest state yet, so it
-  says so plainly rather than showing anything.
+- `G` — quest journal: title, an objective checklist, Slay progress
+  counts, and a "ready to turn in" banner once everything's done.
 - `O` — read-only World Map: the real reference map scaled down, a
   marker at every location plus your own position, and a side legend.
 - `/` — help screen (command reference).
@@ -712,7 +712,10 @@ Movement is immediate — no Enter key needed:
   otherwise the same as Rest.
 - `Q` or Escape — asks "Are you sure you want to end your adventure?"
   rather than quitting immediately.
-- Look (`L`) isn't implemented in this build yet.
+- `L` — look around: a detail view of an NPC standing with you if one's
+  present, otherwise the nearest location and its compass direction on
+  the overworld; inside a zone, a POI's own description or (on a
+  Timeline Anchor tile) whichever canon character is there today.
 
 In combat: **Enter** attacks whoever's under the grid cursor, `W A S D`
 moves on the grid, **`M`** casts a memorized spell (asks which, if more

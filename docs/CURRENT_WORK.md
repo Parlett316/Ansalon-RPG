@@ -7,9 +7,14 @@ Milestone 184), and P3 (`docs/PARITY_MATRIX.md`) all closed 2026-09-11 —
 reconciled against Milestones 182-184 (no more stale rows/priorities;
 this replaces an earlier version of this note that flagged them as
 drafts needing reconciliation). `tools/playable_release_version.txt`
-bumped 5→6 (uncommitted) for the next packaged release, matching the
-major-increment rule (new player-visible systems: quests, Look, plus a
-save-format-relevant hardening pass). `ansalon_sfml_phase1` (the
+bumped 5→6 as a placeholder ahead of actually packaging (confirmed with
+the user 2026-09-11: this work is "Playable v7" — the file's own
+auto-increment will land there once `package_playable_release.ps1
+-Major` actually runs, since `-Major` always adds one to whatever's
+currently stored; don't read the "6" sitting in the file right now as
+the final number for this milestone), matching the major-increment rule
+(new player-visible systems: quests, Look, plus a save-format-relevant
+hardening pass). `ansalon_sfml_phase1` (the
 primary/main build) now has real quest/mechanic parity with
 `ansalon_rpg`. Every subsystem a three-way Haiku-agent audit checked
 2026-09-11 (character creation, save/load, companion recruitment,
@@ -22,9 +27,7 @@ Console-retirement trigger is **decided but not met**: Option A from
 `docs/CONSOLE_RETIREMENT_PROPOSAL.md` (parity-based, gating
 Stage 1/Deprecate), recorded in `docs/ARCHITECTURE.md` — Stage 0 (both
 targets fully live) still applies today. `ansalon_rpg` stays in the tree
-as a legacy/reference build, unchanged. `docs/CONSOLE_RETIREMENT_PROPOSAL.md`
-itself is also still untracked/uncommitted, same as the other two docs
-above.
+as a legacy/reference build, unchanged.
 
 **Right now: mid live playtest session of `ansalon_sfml_phase1`, paused,
 resume here.** Most of the migration is confirmed working live at the
