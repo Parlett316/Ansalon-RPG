@@ -3232,8 +3232,15 @@ int runPhase1(const std::string& savePath) {
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
             if (combatSession.instances[i].hp <= 0) continue;
             const combat::GridPos pos = combatSession.instancePositions[i];
-            const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
-            const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+            // Milestone 190: same footprint-centered/scaled marker as the
+            // main combat draw branch below -- see its own comment.
+            const float footprintRadius =
+                kCombatTilePx * 0.32f *
+                static_cast<float>(std::max(combatSession.monster.footprintWidth, combatSession.monster.footprintHeight));
+            const float cx = (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
+            const float cy = (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
+            combatMonsterMarker.setRadius(footprintRadius);
+            combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
             combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
             window.draw(combatMonsterMarker);
             sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kAnimGlyphCharSize);
@@ -3358,8 +3365,13 @@ int runPhase1(const std::string& savePath) {
     auto combatTriggerOpportunityAttacks = [&](combat::GridPos destination) {
         for (size_t i = 0; i < combatSession.instances.size() && state.character.currentHp > 0; ++i) {
             if (combatSession.instances[i].hp <= 0) continue;
-            bool leavingReach = combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i]) &&
-                                 !combat::isAdjacent(destination, combatSession.instancePositions[i]);
+            bool leavingReach =
+                combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
+                                               combatSession.monster.footprintWidth,
+                                               combatSession.monster.footprintHeight) &&
+                !combat::isAdjacentToFootprint(destination, combatSession.instancePositions[i],
+                                                combatSession.monster.footprintWidth,
+                                                combatSession.monster.footprintHeight);
             if (!leavingReach) continue;
             // A Web/Hold-style blocked or incapacitated instance can't
             // swing at all, opportunity attack included; an active Brooch
@@ -3456,6 +3468,12 @@ int runPhase1(const std::string& savePath) {
     // have 2+ entries before treating this as a sweep (a single adjacent
     // weak enemy is just an ordinary attack). Direct port of
     // GameLoop.cpp:2076-2085.
+    // Not footprint-aware (bare isAdjacent, not isAdjacentToFootprint): a
+    // sweep-eligible monster (isSweepEligible: hpDiceCount <= 1, this
+    // roster's "weak" line troops -- Goblin/Kobold/Hobgoblin/Skeleton) is
+    // never one of Milestone 190's SIZE-carrying monsters (Ogre/Troll/
+    // Griffon/Dragon, all HD4+), so this path never runs against a
+    // multi-cell footprint in practice.
     auto combatAdjacentWeakInstances = [&](combat::GridPos pos) -> std::vector<int> {
         std::vector<int> result;
         if (!combat::isSweepEligible(combatSession.monster)) return result;
@@ -3485,7 +3503,9 @@ int runPhase1(const std::string& savePath) {
             int targetIndex = -1;
             for (size_t i = 0; i < combatSession.instances.size(); ++i) {
                 if (combatSession.instances[i].hp > 0 &&
-                    combat::isAdjacent(companionPos, combatSession.instancePositions[i])) {
+                    combat::isAdjacentToFootprint(companionPos, combatSession.instancePositions[i],
+                                                   combatSession.monster.footprintWidth,
+                                                   combatSession.monster.footprintHeight)) {
                     targetIndex = static_cast<int>(i);
                     break;
                 }
@@ -3495,16 +3515,28 @@ int runPhase1(const std::string& savePath) {
                 int nearestDist = -1;
                 for (size_t i = 0; i < combatSession.instances.size(); ++i) {
                     if (combatSession.instances[i].hp <= 0) continue;
-                    int dist = combat::chebyshevDistance(companionPos, combatSession.instancePositions[i]);
+                    combat::GridPos nearestCell = combat::nearestFootprintCell(
+                        companionPos, combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                        combatSession.monster.footprintHeight);
+                    int dist = combat::chebyshevDistance(companionPos, nearestCell);
                     if (nearestDist < 0 || dist < nearestDist) {
                         nearestDist = dist;
-                        nearest = combatSession.instancePositions[i];
+                        nearest = nearestCell;
                     }
                 }
                 if (nearestDist < 0) continue;
                 std::vector<combat::GridPos> blocked{combatSession.playerPos};
                 for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-                    if (combatSession.instances[i].hp > 0) blocked.push_back(combatSession.instancePositions[i]);
+                    if (combatSession.instances[i].hp > 0) {
+                        // Milestone 190: every cell of a footprint>1x1
+                        // instance blocks companion pathing, not just its
+                        // anchor -- degenerates to the single existing cell
+                        // for every ordinary 1x1 monster.
+                        std::vector<combat::GridPos> cells = combat::footprintCells(
+                            combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                            combatSession.monster.footprintHeight);
+                        blocked.insert(blocked.end(), cells.begin(), cells.end());
+                    }
                 }
                 for (size_t oi = 0; oi < state.companions.size(); ++oi) {
                     if (oi != ci && combatCompanionAlive(oi)) blocked.push_back(combatSession.companionPositions[oi]);
@@ -3648,20 +3680,29 @@ int runPhase1(const std::string& savePath) {
                                              std::to_string(missileDamage) + " -- no saving throw.");
                 continue;
             }
+            // Generalized at Milestone 190 (previously Aurak-only
+            // hardcoded) -- see GameLoop.cpp's identical breath weapon
+            // block and docs/COMBAT_NOTES.md.
             if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
                 if (combatSession.globeActive) {
                     combatSession.log.push_back("The globe of invulnerability absorbs the " + name +
                                                  "'s breath weapon!");
                     continue;
                 }
+                int fullDamage = character::roll(monster.breathDamageDiceCount, monster.breathDamageDiceSides) +
+                                 monster.breathDamageFlatBonus;
                 if (combat::rollSavingThrow(state.character, character::SaveCategory::BreathWeapon)) {
-                    state.character.currentHp -= 10;
-                    combatSession.log.push_back("The " + name + " breathes a noxious cloud! You resist -- 10 damage.");
+                    int halfDamage = fullDamage / 2;
+                    state.character.currentHp -= halfDamage;
+                    combatSession.log.push_back("The " + name + " breathes a " + monster.breathWeaponName +
+                                                 "! You resist -- " + std::to_string(halfDamage) + " damage.");
                 } else {
-                    state.character.currentHp -= 20;
-                    combatSession.playerThac0Bonus -= 4;
-                    combatSession.log.push_back("The " + name +
-                                                 " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
+                    state.character.currentHp -= fullDamage;
+                    if (monster.breathWeaponBlindsOnFail) combatSession.playerThac0Bonus -= 4;
+                    combatSession.log.push_back(
+                        "The " + name + " breathes a " + monster.breathWeaponName + "! It burns you for " +
+                        std::to_string(fullDamage) + " damage" +
+                        (monster.breathWeaponBlindsOnFail ? " and blinds you" : "") + ".");
                 }
                 continue;
             }
@@ -3673,13 +3714,19 @@ int runPhase1(const std::string& savePath) {
             }
             std::vector<size_t> adjacentTargets;
             for (size_t pi = 0; pi < party.size(); ++pi) {
-                if (combat::isAdjacent(combatSession.instancePositions[i], party[pi].pos)) adjacentTargets.push_back(pi);
+                if (combat::isAdjacentToFootprint(party[pi].pos, combatSession.instancePositions[i],
+                                                   monster.footprintWidth, monster.footprintHeight)) {
+                    adjacentTargets.push_back(pi);
+                }
             }
             if (adjacentTargets.empty()) {
                 size_t nearest = 0;
                 int nearestDist = -1;
                 for (size_t pi = 0; pi < party.size(); ++pi) {
-                    int dist = combat::chebyshevDistance(combatSession.instancePositions[i], party[pi].pos);
+                    combat::GridPos nearestCell = combat::nearestFootprintCell(
+                        party[pi].pos, combatSession.instancePositions[i], monster.footprintWidth,
+                        monster.footprintHeight);
+                    int dist = combat::chebyshevDistance(nearestCell, party[pi].pos);
                     if (nearestDist < 0 || dist < nearestDist) {
                         nearestDist = dist;
                         nearest = pi;
@@ -3701,17 +3748,33 @@ int runPhase1(const std::string& savePath) {
                 // move during the monsters' turn).
                 // Milestone 188: combat::stepTowardBfs -- see
                 // combatCompanionActs' identical swap above for why.
+                // Milestone 190: a multi-cell footprint (footprintWidth *
+                // footprintHeight > 1 -- Ogre/Troll/Griffon/Dragon) instead
+                // uses stepFootprintToward, the simpler greedy-with-fallback
+                // heuristic stepToward/stepTowardBfs itself replaced at
+                // Milestone 188, validated against the WHOLE footprint --
+                // see that function's own doc comment for why no multi-cell
+                // BFS was attempted. Every ordinary 1x1 monster's path is
+                // completely unchanged.
+                bool multiCell = monster.footprintWidth * monster.footprintHeight > 1;
                 bool moved = false;
                 for (int step = 0; step < monster.moveSquares; ++step) {
-                    combat::GridPos next = combat::stepTowardBfs(combatSession.instancePositions[i], party[nearest].pos,
-                                                                kCombatGridWidth, kCombatGridHeight, blocked);
+                    combat::GridPos next =
+                        multiCell ? combat::stepFootprintToward(combatSession.instancePositions[i], party[nearest].pos,
+                                                                  monster.footprintWidth, monster.footprintHeight,
+                                                                  kCombatGridWidth, kCombatGridHeight, blocked)
+                                  : combat::stepTowardBfs(combatSession.instancePositions[i], party[nearest].pos,
+                                                           kCombatGridWidth, kCombatGridHeight, blocked);
                     if (next.x == combatSession.instancePositions[i].x && next.y == combatSession.instancePositions[i].y) {
                         break; // fully blocked
                     }
                     combatSession.instancePositions[i] = next;
                     moved = true;
                     combatAnimateAiStep(combatSession.instancePositions[i]); // walk one square at a time, camera follows
-                    if (combat::isAdjacent(combatSession.instancePositions[i], party[nearest].pos)) break;
+                    if (combat::isAdjacentToFootprint(party[nearest].pos, combatSession.instancePositions[i],
+                                                       monster.footprintWidth, monster.footprintHeight)) {
+                        break;
+                    }
                 }
                 if (moved) combatSession.log.push_back("The " + name + " closes in.");
                 continue;
@@ -3977,10 +4040,37 @@ int runPhase1(const std::string& savePath) {
         }
         // Spell targeting is never adjacency-restricted (PHB spell ranges
         // aren't modeled on the grid) -- every alive instance is eligible,
-        // matching GameLoop.cpp:1935's own anyAlive filter for casting.
+        // matching GameLoop.cpp:1935's own anyAlive filter for casting --
+        // except Milestone 189's real sightline check, now that battlemap
+        // walls exist (DamageArea's "target" is Fireball/Delayed Blast
+        // Fireball's epicenter cell -- everyone within its radius still
+        // takes the blast once the epicenter itself is confirmed visible,
+        // matching this project's existing restraint against modeling 2e's
+        // own burst-vs-wall diagramming rules).
         std::vector<int> candidates;
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp > 0) candidates.push_back(static_cast<int>(i));
+            if (combatSession.instances[i].hp <= 0) continue;
+            // Milestone 190: LOS targets the nearest cell of a footprint>1x1
+            // instance (degenerates to the bare anchor for every ordinary
+            // 1x1 monster) -- a shooter/caster peeking around a corner can
+            // see the near edge of a big creature even if its far edge is
+            // behind a wall.
+            combat::GridPos losTarget = combat::nearestFootprintCell(
+                combatSession.playerPos, combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                combatSession.monster.footprintHeight);
+            if (!combat::hasLineOfSight(combatSession.playerPos, losTarget, combatSession.wallPositions)) continue;
+            candidates.push_back(static_cast<int>(i));
+        }
+        // A genuinely new state once line of sight is real: every alive
+        // instance used to be unconditionally eligible, so this couldn't
+        // happen before. The spell is already cast (character::castSpell
+        // ran above) and the round is spent either way -- same "a wasted
+        // action still costs the round" precedent combatBeginPlayerAttack
+        // already applies to 0 eligible attack targets.
+        if (candidates.empty()) {
+            combatSession.log.push_back("Your " + result.spellName + " finds no target in sight.");
+            combatFinishPlayerAction(combatSession.pendingGoFirst);
+            return;
         }
         if (candidates.size() == 1) {
             combatApplySpellEffect(result, candidates.front());
@@ -4145,7 +4235,9 @@ int runPhase1(const std::string& savePath) {
         bool adjacentToAny = false;
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
             if (combatSession.instances[i].hp > 0 &&
-                combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i])) {
+                combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
+                                               combatSession.monster.footprintWidth,
+                                               combatSession.monster.footprintHeight)) {
                 adjacentToAny = true;
                 break;
             }
@@ -4193,14 +4285,38 @@ int runPhase1(const std::string& savePath) {
                 return;
             }
         }
+        // Milestone 189: a ranged shot also needs a real sightline to the
+        // target now that battlemap walls exist -- tracked separately from
+        // "nothing alive/adjacent" so the refusal message names the actual
+        // reason (adjacentToAny is already false here whenever
+        // hasRangedWeapon is true, so every alive instance failing this
+        // loop for a ranged weapon failed on line of sight specifically).
         std::vector<int> candidates;
+        bool anyAliveOutOfSight = false;
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
             if (combatSession.instances[i].hp <= 0) continue;
-            if (!hasRangedWeapon && !combat::isAdjacent(combatSession.playerPos, combatSession.instancePositions[i])) continue;
+            if (!hasRangedWeapon &&
+                !combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
+                                                combatSession.monster.footprintWidth,
+                                                combatSession.monster.footprintHeight)) {
+                continue;
+            }
+            if (hasRangedWeapon) {
+                // Milestone 190: same nearest-footprint-cell LOS endpoint as
+                // spell targeting above.
+                combat::GridPos losTarget = combat::nearestFootprintCell(
+                    combatSession.playerPos, combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                    combatSession.monster.footprintHeight);
+                if (!combat::hasLineOfSight(combatSession.playerPos, losTarget, combatSession.wallPositions)) {
+                    anyAliveOutOfSight = true;
+                    continue;
+                }
+            }
             candidates.push_back(static_cast<int>(i));
         }
         if (candidates.empty()) {
-            combatSession.log.push_back("You're too far away to attack.");
+            combatSession.log.push_back(anyAliveOutOfSight ? "Nothing in your line of sight."
+                                                             : "You're too far away to attack.");
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
@@ -4225,9 +4341,14 @@ int runPhase1(const std::string& savePath) {
     // masks as both being permanently "too far away" to attack each other.
     auto combatCellOccupied = [&](combat::GridPos cell) {
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp > 0 && combatSession.instancePositions[i].x == cell.x &&
-                combatSession.instancePositions[i].y == cell.y) {
-                return true;
+            if (combatSession.instances[i].hp <= 0) continue;
+            // Milestone 190: `cell` must miss every cell of a footprint>1x1
+            // instance, not just its anchor -- degenerates to the exact
+            // bare equality check above for every ordinary 1x1 monster.
+            for (const combat::GridPos& occupied : combat::footprintCells(
+                     combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                     combatSession.monster.footprintHeight)) {
+                if (occupied.x == cell.x && occupied.y == cell.y) return true;
             }
         }
         for (size_t ci = 0; ci < state.companions.size(); ++ci) {
@@ -6231,10 +6352,16 @@ int runPhase1(const std::string& savePath) {
                 if (combatSession.uiState == CombatUiState::PickingTarget && !combatSession.pickCandidates.empty()) {
                     const int pickedIdx = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
                     const combat::GridPos pos = combatSession.instancePositions[static_cast<size_t>(pickedIdx)];
-                    const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
-                    const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+                    // Milestone 190: the highlight spans the whole footprint
+                    // (degenerates to the exact single-cell box above for
+                    // every ordinary 1x1 monster).
+                    const float fw = static_cast<float>(combatSession.monster.footprintWidth);
+                    const float fh = static_cast<float>(combatSession.monster.footprintHeight);
+                    const float cx = (static_cast<float>(pos.x) + fw / 2.f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(pos.y) + fh / 2.f) * kCombatTilePx;
+                    combatPickHighlight.setSize(sf::Vector2f(kCombatTilePx * fw - 6.f, kCombatTilePx * fh - 6.f));
                     combatPickHighlight.setPosition(
-                        sf::Vector2f(cx - (kCombatTilePx - 6.f) / 2.f, cy - (kCombatTilePx - 6.f) / 2.f));
+                        sf::Vector2f(cx - (kCombatTilePx * fw - 6.f) / 2.f, cy - (kCombatTilePx * fh - 6.f) / 2.f));
                     window.draw(combatPickHighlight);
                 }
 
@@ -6242,8 +6369,19 @@ int runPhase1(const std::string& savePath) {
                 for (size_t i = 0; i < combatSession.instances.size(); ++i) {
                     if (combatSession.instances[i].hp <= 0) continue;
                     const combat::GridPos pos = combatSession.instancePositions[i];
-                    const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
-                    const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
+                    // Milestone 190: centered on the whole footprint, radius
+                    // scaled by its larger dimension -- degenerates to the
+                    // exact single-cell circle above for every ordinary 1x1
+                    // monster (footprintWidth == footprintHeight == 1).
+                    const float footprintRadius =
+                        kCombatTilePx * 0.32f *
+                        static_cast<float>(std::max(combatSession.monster.footprintWidth, combatSession.monster.footprintHeight));
+                    const float cx =
+                        (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
+                    const float cy =
+                        (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
+                    combatMonsterMarker.setRadius(footprintRadius);
+                    combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
                     combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
                     window.draw(combatMonsterMarker);
                     sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kCombatGlyphCharSize);
@@ -6430,9 +6568,15 @@ int runPhase1(const std::string& savePath) {
                         // at once, so an off-screen instance's distance is
                         // the cheap compensation for losing the whole-map
                         // view every round used to give for free.
+                        // Milestone 190: nearest footprint cell, not the
+                        // bare anchor (degenerates to the exact same value
+                        // for every ordinary 1x1 monster).
                         line += "  dist " +
-                                std::to_string(combat::chebyshevDistance(combatSession.playerPos,
-                                                                          combatSession.instancePositions[i]));
+                                std::to_string(combat::chebyshevDistance(
+                                    combatSession.playerPos,
+                                    combat::nearestFootprintCell(combatSession.playerPos, combatSession.instancePositions[i],
+                                                                  combatSession.monster.footprintWidth,
+                                                                  combatSession.monster.footprintHeight)));
                         // Milestone 186: same status tags the VIEW card
                         // shows for this instance (see
                         // combatMonsterStatusTags), surfaced passively too.

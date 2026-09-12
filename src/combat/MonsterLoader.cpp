@@ -113,6 +113,28 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
             current.hasBreathWeapon = true;
             std::istringstream iss(rest);
             if (!(iss >> current.breathWeaponChancePercent)) fail(path, lineNumber, "malformed BREATH_WEAPON");
+        } else if (keyword == "BREATH_DAMAGE") {
+            std::istringstream iss(rest);
+            int blinds = 0;
+            if (!(iss >> current.breathDamageDiceCount >> current.breathDamageDiceSides >>
+                  current.breathDamageFlatBonus >> blinds) ||
+                (blinds != 0 && blinds != 1)) {
+                fail(path, lineNumber,
+                     "malformed BREATH_DAMAGE (expected: BREATH_DAMAGE <count> <sides> <flat> <blinds 0|1> <name...>)");
+            }
+            current.breathWeaponBlindsOnFail = (blinds == 1);
+            std::string name;
+            std::getline(iss, name);
+            current.breathWeaponName = trim(name);
+            if (current.breathWeaponName.empty()) {
+                fail(path, lineNumber, "malformed BREATH_DAMAGE (missing trailing breath weapon name)");
+            }
+        } else if (keyword == "SIZE") {
+            std::istringstream iss(rest);
+            if (!(iss >> current.footprintWidth >> current.footprintHeight) || current.footprintWidth <= 0 ||
+                current.footprintHeight <= 0) {
+                fail(path, lineNumber, "malformed SIZE (expected: SIZE <width> <height>, both positive)");
+            }
         } else if (keyword == "BURSTS_INTO_FLAME") {
             current.burstsIntoFlameOnDeath = true;
         } else if (keyword == "EXCLUDE_TERRAIN") {
@@ -146,6 +168,15 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
         } else if (keyword == "DESC") {
             current.description = rest;
         } else if (keyword == "END") {
+            if (current.footprintWidth * current.footprintHeight > 1 && current.groupMax > 1) {
+                fail(path, lineNumber,
+                     "a multi-cell SIZE monster must stay solo (GROUP max 1) -- no multi-cell BFS pathing or "
+                     "overlap resolution exists for more than one big creature at once");
+            }
+            if (current.hasBreathWeapon && current.breathDamageDiceCount == 0 && current.breathDamageDiceSides == 0 &&
+                current.breathDamageFlatBonus == 0 && current.breathWeaponName.empty()) {
+                fail(path, lineNumber, "BREATH_WEAPON requires a BREATH_DAMAGE line in the same block");
+            }
             outCatalog.addMonster(std::move(current));
             inMonster = false;
         } else {

@@ -370,7 +370,15 @@ recruited, fights alongside you in SFML combat, sweep/backstab included.)*
     tree-stand cover, a road fight is nearly open ground) — you and
     monsters/companions alike have to route around them, and cutting a
     diagonal step across a wall's corner is blocked, same rule as walking
-    around the overworld. See `docs/COMBAT_NOTES.md`.)*
+    around the overworld. Firing your crossbow or aiming a spell at
+    something walls now actually block your view of is refused with a
+    real line-of-sight check, instead of hitting anywhere on the board
+    regardless of what's in between. Some creatures now take up more than
+    one square — an Ogre or Troll stands two squares tall, a Griffon two
+    squares wide, and a Blue Dragon a full 2×2, matching the Gold Box
+    games' own convention — and everything (targeting, movement,
+    rendering) accounts for their whole footprint, not just one corner of
+    it. See `docs/COMBAT_NOTES.md`.)*
 - Three of the draconians fight back with real, book-sourced abilities
   beyond a plain weapon swing: Bozaks sometimes cast Magic Missile instead
   of attacking, Auraks sometimes breathe a noxious cloud (save for half

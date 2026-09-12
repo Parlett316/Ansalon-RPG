@@ -2470,27 +2470,34 @@ void GameLoop::runCombat(const combat::Monster& monster) {
                                std::to_string(missileDamage) + " -- no saving throw.");
                 continue;
             }
-            // Aurak Draconian: noxious-cloud breath weapon (Dragonlance
-            // Adventures p.73) instead of its weapon attack some rounds --
-            // save vs. breath weapon for half of 20 damage, or full damage
-            // and blinded (a -4 this-fight to-hit penalty; the book names
-            // the condition but not a number, so this value is invented).
-            // The book's real "three times per day" is compressed to
-            // "available this whole fight" -- see docs/COMBAT_NOTES.md.
-            // Player-only, same reasoning as Magic Missile above.
+            // Breath weapon instead of its weapon attack some rounds --
+            // originally Aurak-only (noxious cloud, Dragonlance Adventures
+            // p.73), generalized at Milestone 190 so the data-driven
+            // Monster::breathDamageDice*/breathWeaponName/
+            // breathWeaponBlindsOnFail fields can also express the Blue
+            // Dragon's differently-flavored lightning bolt (Monster Manual
+            // p.66) -- see docs/COMBAT_NOTES.md. Half-on-save rounds down
+            // (the real 2e rule), reproducing Aurak's original literal
+            // 20-full/10-half exactly. Player-only, same reasoning as Magic
+            // Missile above.
             if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
                 if (globeActive) {
                     log.push_back("The globe of invulnerability absorbs the " + name + "'s breath weapon!");
                     continue;
                 }
+                int fullDamage = character::roll(monster.breathDamageDiceCount, monster.breathDamageDiceSides) +
+                                 monster.breathDamageFlatBonus;
                 if (combat::rollSavingThrow(state_.character, character::SaveCategory::BreathWeapon)) {
-                    state_.character.currentHp -= 10;
-                    log.push_back("The " + name + " breathes a noxious cloud! You resist -- 10 damage.");
+                    int halfDamage = fullDamage / 2;
+                    state_.character.currentHp -= halfDamage;
+                    log.push_back("The " + name + " breathes a " + monster.breathWeaponName + "! You resist -- " +
+                                   std::to_string(halfDamage) + " damage.");
                 } else {
-                    state_.character.currentHp -= 20;
-                    playerThac0Bonus -= 4;
-                    log.push_back("The " + name +
-                                   " breathes a noxious cloud! It burns you for 20 damage and blinds you.");
+                    state_.character.currentHp -= fullDamage;
+                    if (monster.breathWeaponBlindsOnFail) playerThac0Bonus -= 4;
+                    log.push_back("The " + name + " breathes a " + monster.breathWeaponName + "! It burns you for " +
+                                   std::to_string(fullDamage) + " damage" +
+                                   (monster.breathWeaponBlindsOnFail ? " and blinds you" : "") + ".");
                 }
                 continue;
             }

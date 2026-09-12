@@ -55,6 +55,22 @@ GridPos stepTowardBfs(GridPos from, GridPos to, int width, int height, const std
 // unit-testability reasoning as stepToward above.
 int chebyshevDistance(GridPos a, GridPos b);
 
+// True if a straight line from `a` to `b` isn't blocked by any wall cell in
+// `walls` -- Milestone 189's gate for ranged-weapon and spell targeting now
+// that real battlemap walls exist (see docs/COMBAT_NOTES.md's "Line of
+// sight" section). A standard integer Bresenham line walk; the two
+// endpoints themselves are never checked against `walls` -- `a`/`b` are
+// always the shooter's/caster's own occupied cell and a live target's own
+// occupied cell, neither of which can be a wall. `walls` takes the same
+// flattened-list shape stepToward/stepTowardBfs's own `blocked` parameter
+// already does, so a fight's existing CombatSession::wallPositions plugs
+// straight in with no new per-call cost. Deliberately a plain sightline
+// check -- it does NOT apply the movement-only corner-cutting nuance
+// stepToward/stepTowardBfs's callers layer on separately for diagonal
+// steps; a line that grazes between two diagonal wall cells is not treated
+// specially here.
+bool hasLineOfSight(GridPos a, GridPos b, const std::vector<GridPos>& walls);
+
 // Mirrors `from` through `target`: the cell exactly opposite `from` on the
 // far side of `target` (target + (target - from)). Milestone 119's thief
 // backstab uses this -- DQoK.pdf's own manual: "A thief 'back stabs' if he
@@ -64,5 +80,52 @@ int chebyshevDistance(GridPos a, GridPos b);
 // is just negated. Doesn't itself check adjacency -- callers compare the
 // result against the backstabbing character's actual position.
 GridPos oppositeSide(GridPos target, GridPos from);
+
+// Milestone 190: multi-square creatures (Ogre/Troll 1x2, Griffon 2x1, the
+// Blue Dragon 2x2 -- see combat::Monster::footprintWidth/Height and
+// docs/COMBAT_NOTES.md). `anchor` is the footprint's top-left cell; a
+// footprint occupies [anchor.x, anchor.x+width) x [anchor.y, anchor.y+height).
+// A 1x1 footprint (every monster before this milestone) degenerates to
+// exactly the single-cell behavior every other function above already has.
+// SFML-only callers -- ansalon_rpg's console combat has no footprint
+// concept and never calls these.
+
+// Every cell the footprint anchored at `anchor` occupies.
+std::vector<GridPos> footprintCells(GridPos anchor, int width, int height);
+
+// True if `point` is Chebyshev-adjacent (isAdjacent) to ANY cell of the
+// footprint anchored at `anchor` -- the footprint-aware generalization of
+// isAdjacent for melee/ranged eligibility, opportunity attacks, and a
+// multi-cell monster's own "am I next to my target" check.
+bool isAdjacentToFootprint(GridPos point, GridPos anchor, int width, int height);
+
+// True if every cell of the footprint anchored at `anchor` is in bounds
+// ([0,gridWidth) x [0,gridHeight)) and absent from `blocked` (walls and/or
+// occupied cells, merged by the caller same as stepToward/stepTowardBfs's
+// own `blocked`) -- the core primitive spawn placement and multi-cell
+// movement validation both build on.
+bool footprintFits(GridPos anchor, int width, int height, int gridWidth, int gridHeight,
+                    const std::vector<GridPos>& blocked);
+
+// Whichever cell of the footprint anchored at `anchor` is closest (Chebyshev)
+// to `from` -- Milestone 189's hasLineOfSight needs a single endpoint, and
+// the nearest footprint cell (not the bare anchor) is the correct one: a
+// shooter peeking around a corner can see the near edge of a big creature
+// even if its far edge is behind a wall.
+GridPos nearestFootprintCell(GridPos from, GridPos anchor, int width, int height);
+
+// One greedy step for the footprint anchored at `anchor` toward `to`, same
+// "prefer the larger remaining gap, fall back to the other axis, stand
+// still if both are blocked" heuristic as stepToward -- but a candidate
+// step is only taken if footprintFits holds for the WHOLE footprint at the
+// destination, not just its anchor cell. Deliberately not a footprint-aware
+// stepTowardBfs: a real multi-cell BFS (a distance field over footprint
+// *placements*, not single cells) is a non-trivial generalization this
+// milestone doesn't attempt -- every multi-cell creature in this roster is
+// solo (MonsterLoader enforces this), so getting stuck on a wall corner a
+// smarter path would avoid is an accepted, documented restraint, not an
+// oversight. See docs/COMBAT_NOTES.md.
+GridPos stepFootprintToward(GridPos anchor, GridPos to, int width, int height, int gridWidth, int gridHeight,
+                             const std::vector<GridPos>& blocked);
 
 } // namespace combat

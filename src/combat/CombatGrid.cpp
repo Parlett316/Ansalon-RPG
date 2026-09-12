@@ -110,8 +110,98 @@ int chebyshevDistance(GridPos a, GridPos b) {
     return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
 }
 
+bool hasLineOfSight(GridPos a, GridPos b, const std::vector<GridPos>& walls) {
+    auto isWall = [&](GridPos p) {
+        for (const GridPos& w : walls) {
+            if (w.x == p.x && w.y == p.y) return true;
+        }
+        return false;
+    };
+
+    int x0 = a.x, y0 = a.y;
+    const int x1 = b.x, y1 = b.y;
+    const int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    const int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+
+    while (true) {
+        bool isEndpoint = (x0 == a.x && y0 == a.y) || (x0 == x1 && y0 == y1);
+        if (!isEndpoint && isWall({x0, y0})) return false;
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+    return true;
+}
+
 GridPos oppositeSide(GridPos target, GridPos from) {
     return {2 * target.x - from.x, 2 * target.y - from.y};
+}
+
+std::vector<GridPos> footprintCells(GridPos anchor, int width, int height) {
+    std::vector<GridPos> cells;
+    cells.reserve(static_cast<size_t>(width) * static_cast<size_t>(height));
+    for (int dy = 0; dy < height; ++dy) {
+        for (int dx = 0; dx < width; ++dx) {
+            cells.push_back({anchor.x + dx, anchor.y + dy});
+        }
+    }
+    return cells;
+}
+
+bool isAdjacentToFootprint(GridPos point, GridPos anchor, int width, int height) {
+    for (const GridPos& cell : footprintCells(anchor, width, height)) {
+        if (isAdjacent(point, cell)) return true;
+    }
+    return false;
+}
+
+bool footprintFits(GridPos anchor, int width, int height, int gridWidth, int gridHeight,
+                    const std::vector<GridPos>& blocked) {
+    for (const GridPos& cell : footprintCells(anchor, width, height)) {
+        if (cell.x < 0 || cell.x >= gridWidth || cell.y < 0 || cell.y >= gridHeight) return false;
+        for (const GridPos& b : blocked) {
+            if (b.x == cell.x && b.y == cell.y) return false;
+        }
+    }
+    return true;
+}
+
+GridPos nearestFootprintCell(GridPos from, GridPos anchor, int width, int height) {
+    GridPos best = anchor;
+    int bestDist = -1;
+    for (const GridPos& cell : footprintCells(anchor, width, height)) {
+        int d = chebyshevDistance(from, cell);
+        if (bestDist == -1 || d < bestDist) {
+            bestDist = d;
+            best = cell;
+        }
+    }
+    return best;
+}
+
+GridPos stepFootprintToward(GridPos anchor, GridPos to, int width, int height, int gridWidth, int gridHeight,
+                             const std::vector<GridPos>& blocked) {
+    auto tryStep = [&](int dx, int dy) -> bool {
+        GridPos candidate{anchor.x + dx, anchor.y + dy};
+        return footprintFits(candidate, width, height, gridWidth, gridHeight, blocked);
+    };
+
+    int dx = to.x - anchor.x;
+    int dy = to.y - anchor.y;
+    int stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+    int stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+
+    bool xFirst = std::abs(dx) >= std::abs(dy);
+    if (xFirst) {
+        if (stepX != 0 && tryStep(stepX, 0)) return {anchor.x + stepX, anchor.y};
+        if (stepY != 0 && tryStep(0, stepY)) return {anchor.x, anchor.y + stepY};
+    } else {
+        if (stepY != 0 && tryStep(0, stepY)) return {anchor.x, anchor.y + stepY};
+        if (stepX != 0 && tryStep(stepX, 0)) return {anchor.x + stepX, anchor.y};
+    }
+    return anchor; // fully blocked, or already at the target's own cell
 }
 
 } // namespace combat

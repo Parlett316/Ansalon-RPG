@@ -103,6 +103,22 @@
 #                          baseline, same as an unarmored human/DQoK's own
 #                          "None" armor row) -- see docs/COMBAT_NOTES.md for
 #                          the full sourced/invented breakdown.
+# SIZE <width> <height>   optional; grid footprint in cells (default 1x1).
+#                          Milestone 190 -- not a 2e stat (the real
+#                          Monstrous Manual's own SIZE field never ties to a
+#                          grid footprint, that's a Gold Box rendering
+#                          choice), consumed only by ansalon_sfml_phase1's
+#                          combat grid. A footprint area > 1 must stay solo
+#                          (GROUP max 1) -- see docs/COMBAT_NOTES.md.
+# BREATH_DAMAGE <count> <sides> <flat> <blinds 0|1> <name...>
+#                          required alongside BREATH_WEAPON above (a chance-
+#                          per-round breath instead of a weapon attack) --
+#                          the damage dice, whether a failed save also
+#                          blinds (Aurak-only real effect), and the flavor
+#                          name used in the combat log (e.g. "noxious
+#                          cloud", "bolt of lightning"). Generalized at
+#                          Milestone 190 from an Aurak-only hardcoded case
+#                          -- see docs/COMBAT_NOTES.md.
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 #
@@ -374,6 +390,10 @@ MIN_TOWN_DISTANCE 20
 # MOVE sourced from Champions of Krynn's own bestiary (References/
 # "Champions of Krynn - Monster Manual.html"), Base Movement 9.
 MOVE 9
+# Milestone 190: 1 wide x 2 tall, the user's own stated Gold Box footprint
+# convention for tall bipedal creatures (Ogre/Troll) -- not a 2e stat, see
+# docs/COMBAT_NOTES.md.
+SIZE 1 2
 DESC A nine-foot brute in stinking, ill-cured hides shoulders a crude, knotted club and roars a challenge.
 END
 
@@ -612,9 +632,16 @@ XP 2160
 # this whole fight," gated only by this per-round roll -- see
 # docs/COMBAT_NOTES.md.
 BREATH_WEAPON 30
-# HD8, the most powerful thing in the roster -- kept the farthest from
-# towns of any monster. Invented gameplay tuning, user-requested, not
-# sourced.
+# BREATH_DAMAGE generalized at Milestone 190 (previously hardcoded in
+# GameLoop.cpp/main.cpp): 0 0 20 is a dice-triple's honest expression of a
+# flat, non-rolled 20 damage (character::roll's existing "count<=0 returns
+# 0" contract, already relied on by every STEEL 0 0 0 monster) -- byte-
+# identical to this ability's original numbers, just data-driven now.
+BREATH_DAMAGE 0 0 20 1 noxious cloud
+# HD8, the most powerful draconian in the roster -- kept the farthest from
+# towns of any monster before Milestone 190's Blue Dragon, which now sits
+# even farther out (MIN_TOWN_DISTANCE 60). Invented gameplay tuning,
+# user-requested, not sourced.
 MIN_TOWN_DISTANCE 45
 # MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
 # "The Dark Queen of Krynn - Monster Manual.html", "AURAK DRACONIAN"),
@@ -747,6 +774,8 @@ MIN_TOWN_DISTANCE 35
 # "The Dark Queen of Krynn - Monster Manual.html") -- both its "2 Headed
 # Troll" and "Giant Troll" variants give Base Movement 12.
 MOVE 12
+# Milestone 190: same tall-bipedal footprint convention as the Ogre above.
+SIZE 1 2
 DESC A gaunt, green-hided horror unfolds to its full height, claws flexing, wounds already knitting shut before your eyes.
 END
 
@@ -992,6 +1021,10 @@ MIN_TOWN_DISTANCE 35
 # baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
 # not a sourced number -- see docs/COMBAT_NOTES.md.
 MOVE 12
+# Milestone 190: 2 wide x 1 tall, the user's own stated Gold Box footprint
+# convention for wide creatures (Griffon/Pegasus) -- not a 2e stat, see
+# docs/COMBAT_NOTES.md.
+SIZE 2 1
 DESC A lion-bodied, eagle-headed shape screams down out of the sky, wings booming, talons already reaching for a killing grip.
 END
 
@@ -1465,4 +1498,72 @@ MIN_TOWN_DISTANCE 55
 # "SHAMBLING MOUND"), Base Movement 6.
 MOVE 6
 DESC A tangle of rotten vegetation heaves upright at the bog's edge, roots peeling free of the muck like a nightmare shrugging off sleep.
+END
+
+MONSTER dragon_blue
+NAME Blue Dragon
+# Real "Young" age-category numbers would still tower over this roster's
+# existing HD11 ceiling, so core combat stats (HP/AC/THAC0/MOVE/XP) are
+# instead sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html", "BLUE DRAGON") -- the same
+# SSI Gold Box game already this project's precedent source for MOVE
+# elsewhere in this roster, here supplying the whole physical stat line
+# since the real book's own adult-tier numbers (AC 0/THAC0 7/HD 14) would
+# be wildly disproportionate. HP 10 8 5 (avg 50) matches the game's own
+# flat HP 50.
+HP 10 8 5
+AC 2
+THAC0 10
+# Real bite damage (Monster Manual (2nd ed).pdf p.66, rendered page image
+# read directly this session -- a dragon's age-category table is exactly
+# the "table-heavy" content this project reads as an image rather than
+# trusting OCR for): "3-24" = 3d8. Champions of Krynn's own "Attacks/round
+# #2: 1, Damage #2: 3d8" agrees exactly -- both sources converge on the
+# bite as this dragon's single most damaging hit, same "one representative
+# die" simplification as every other multi-attack monster in this roster
+# (the claws, 2x1d6 per the game, are left unmodeled).
+DAMAGE 3 8 0
+# Above this roster's existing STEEL ceiling (Ettin/Shambling Mound, 5 10
+# 0) -- dragons hoard treasure but no simple formula exists to source
+# instead (the real TREASURE field just prints "Special"), so this is
+# invented, picked as the new top given this monster's own role as the
+# roster's single most dangerous encounter.
+STEEL 6 10 20
+# Champions of Krynn's own XP Award (3650) -- below Shambling Mound's real
+# book XP (6000, honored as-is per that entry's own comment despite its
+# modest modeled hit) but still well above every other roster member.
+# This project doesn't force XP to track danger/rarity 1:1; each number is
+# whatever its own source actually prints.
+XP 3650
+# Real Climate/Terrain is "Arid deserts" (Monster Manual p.66) -- salt
+# flat is this project's own established desert analog, same reasoning
+# already on record for the Gnoll's EXCLUDE_TERRAIN _.
+ONLY_TERRAIN _
+# 30% chance per round to breathe a 5' bolt of lightning instead of its
+# bite (Monster Manual p.66: "a 5' wide bolt of lightning that streaks
+# 100' in a straight line... save vs. breath weapon for half damage").
+# Same invented 30%-per-round pacing already established for the Aurak's
+# own breath weapon below it in this file -- the book gives no real
+# frequency for either.
+BREATH_WEAPON 30
+# 6d8+3 is the real per-age breath-damage table's "Young" row (age
+# category 3 of 12) -- picked to match the physical stat line above,
+# itself sourced from the game rather than the book's much higher
+# adult-tier numbers. No blind or other secondary effect -- unlike the
+# Aurak's noxious cloud, the book gives lightning breath none.
+BREATH_DAMAGE 6 8 3 0 bolt of lightning
+# The single most dangerous encounter in this roster -- gated the
+# farthest from any town of anything here. Invented gameplay tuning, not
+# sourced.
+MIN_TOWN_DISTANCE 60
+# MOVE sourced from Champions of Krynn's own bestiary (same source as the
+# rest of this stat line), Base Movement 24.
+MOVE 24
+# Milestone 190: 2 wide x 2 tall, the user's own stated Gold Box footprint
+# convention -- the original DQoK screenshot that started this whole
+# six-part battlefield chain showed exactly this, 2x2 dragons. Solo only
+# (no GROUP line) -- MonsterLoader fail-fasts if a multi-cell-footprint
+# monster isn't.
+SIZE 2 2
+DESC The sand ripples and parts as a vast, azure-scaled shape uncoils into the light, wings unfurling, and the air itself begins to crackle.
 END

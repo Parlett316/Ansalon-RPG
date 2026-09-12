@@ -1,32 +1,69 @@
 # Current work
 
-**Milestone 188 shipped 2026-09-12** (fourth of the six-part Gold
+**Milestone 190 shipped 2026-09-12** (sixth and final part of the Gold
 Box-style battlefield chain): `ansalon_sfml_phase1`'s combat grid gained
-real wall geometry -- nine new hand-authored `data/battlemaps/
-<terrain-name>.txt` files (one per encounter-capable overworld terrain),
-a new `world::BattleMap`/`BattleMapLoader`/`BattleMapCatalog`, and a new
-wall-aware `combat::stepTowardBfs` replacing `stepToward`'s greedy
-pathing for monster/companion AI movement only (`stepToward` itself is
-unchanged, still used by the console build). Player movement gained a
-wall check and the corner-cutting check Milestone 187's own doc comment
-flagged as needing revisiting once real walls existed. `ansalon_rpg`
-stays completely untouched -- see `docs/COMBAT_NOTES.md`'s "Battlemap
-walls and wall-aware pathing" section and `docs/MILESTONES.md` entry 188
-for the full writeup. Verified via a throwaway self-test (53 checks,
-deleted after), a clean `/W4` rebuild of all three targets, an
-`ansalon_sfml_phase1` launch smoke test, and a piped `ansalon_rpg`
-character-creation run -- **not yet interactively confirmed** (no
-desktop/GUI access this session): walking into a wall, a blocked
-diagonal corner-cut, monster/companion AI actually detouring around a
-wall cluster, and the wall tiles rendering as visually distinct from
-open floor -- see the Playtest backlog below. **Next up in the same
-chain, not started: 189 (line of sight, a Bresenham
-`combat::hasLineOfSight`, gating ranged weapons/spells and unblocking
-the already-documented Lightning Bolt wall-bounce -- now unblocked by
-188's real wall geometry), 190 (multi-square creatures via a sourced
-`SIZE` monster keyword -- note the roster has no dragons at all, a
-separate content decision to raise before adding any).** Don't start 189
-unprompted.
+real multi-square creatures. The chain's own motivating case (the DQoK
+screenshot's 2x2 dragons) had no roster monster to exercise it, so this
+milestone both built the mechanic and added a real monster for it, per
+the user's own explicit direction: a new `Monster::footprintWidth/Height`
+(`SIZE <w> <h>` grammar line) applied to Ogre/Troll (1x2, tall), Griffon
+(2x1, wide), and a new sourced **Blue Dragon** (`dragon_blue`, 2x2) --
+the user's own stated Gold Box footprint convention, not a 2e stat. Five
+new `combat::` helpers (`footprintCells`/`isAdjacentToFootprint`/
+`footprintFits`/`nearestFootprintCell`/`stepFootprintToward`) back every
+footprint-aware call site (melee/ranged eligibility, opportunity attacks,
+companion/monster adjacency, occupancy, Milestone 189's `hasLineOfSight`
+endpoint, rendering), each degenerating to the exact pre-existing 1x1
+behavior for every ordinary monster. The Aurak's previously-hardcoded
+breath weapon was generalized to data-driven fields (byte-identical
+behavior, verified) so the Dragon's lightning breath could share the same
+skeleton. See `docs/COMBAT_NOTES.md`'s "Multi-square creatures + a real
+Dragon" section and `docs/MILESTONES.md` entry 190 for the full writeup,
+including sourcing (Monster Manual p.66's rendered page image + Champions
+of Krynn's own bestiary) and what's deliberately out of scope (no
+multi-cell BFS pathing, no Pegasus, Ettin left at 1x1). `ansalon_rpg`
+stays completely untouched. Verified via a throwaway self-test (19
+checks, deleted after), a clean `/W4` rebuild of all three targets, an
+`ansalon_sfml_phase1` launch smoke test (44 monsters load, up from 43),
+and a piped `ansalon_rpg` character-creation run. **Still not
+interactively confirmed as of 2026-09-12** (see the live-testing session
+note just below): specifically an Ogre/Troll/Griffon/Dragon's 1x2/2x1/2x2
+footprint actually rendering/behaving right -- despite ~50 real random
+encounters fought/fled this same session hunting for one, none of the
+four came up (the roster's other ~40 monsters kept winning the roll).
+See the Playtest backlog below.
+
+**This closes the six-part Gold Box battlefield chain (185-190) in
+full.** Nothing further in this chain is queued -- the next session
+should offer a fresh menu of backlog options rather than assume a
+follow-on.
+
+**Live-testing session, 2026-09-12 (this session gained real keyboard/
+screenshot control of `ansalon_sfml_phase1` mid-conversation -- a
+capability prior sessions didn't have, see the user's own
+`.claude/settings.local.json` `PowerShell(*SendKeys*)`-family permission
+rules that unlocked it).** Confirmed live this session (folded into
+their own Playtest backlog entries below, not repeated here): the
+`Movement: N/Max` readout counting down correctly (Milestone 185), real
+wall-blocking + visually distinct wall tiles across 4 of 9 terrains
+(Milestone 188), and the Look command's overworld compass-direction
+fallback (Milestone 182). **Character is currently far from any town**
+(wandering combat-testing pushed `save1.txt`'s live character from
+Solace all the way to the Tarsis/Kharolis Mountains region, day 5 ->
+day 14 in-game) with the companion Bren Alder knocked out (0 HP, not
+dead -- a real consequence of extended combat exposure this session, not
+a bug) -- expect this state on resume, don't treat it as data corruption.
+Still open from this session's own attempt list: reaching any zone/town
+at all (blocked by the ~50-encounter detour above), so quest system/
+dialogue/ask-input/inventory-equip/native-character-creation backlog
+items below remain exactly as untested as before this session. Also
+learned the hard way and worth recording: the overworld camera's pixel
+scale is small enough (~17px/tile at `world pixel size 8192x5461` over a
+480x320 grid) that a handful of steps produces no visible movement on a
+screenshot -- don't judge "did that step work" by eyeballing a screenshot
+crop; either send a large batch (15-20+ presses) toward a `Look`-reported
+compass direction and re-check, or don't try to pixel-navigate to a
+precise tile at all.
 
 **Milestones 185-187 shipped 2026-09-11** (the first three of a now-six-part
 Gold Box-style battlefield chain, requested by the user against a real Dark
@@ -109,15 +146,19 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   live 2026-09-11**: the scrolling camera following whichever token is
   actually moving, monster/companion AI walking one square at a time
   (animated, not teleporting) with no trail artifacts, and the sidebar's
-  `dist N` readout displaying correctly (not clipped). **Still not
-  confirmed**: taking several `wasd` steps in one round before attacking;
-  Space genuinely holding/ending a turn with no attack; movement actually
-  running out mid-round (refusing a further step with "You have no
-  movement left this round"); the `Movement: N/Max` readout counting down
-  correctly; and monster/companion AI closing distance at their own
-  differing rates specifically (a fast Wraith/Spectre vs. a slow Zombie/
-  Mummy/Boring Beetle, easiest to force by fighting each with a fresh
-  character on open terrain).
+  `dist N` readout displaying correctly (not clipped). **Also confirmed
+  live 2026-09-12** (this session, input-driven -- see that day's
+  session note above): taking several `wasd` steps in one round before
+  attacking, and the `Movement: N/Max` readout counting down correctly
+  (`12/12` -> `9/12` after 3 steps, unchanged by further blocked
+  attempts). **Still not confirmed**: Space genuinely holding/ending a
+  turn with no attack (attempted this session but inconclusive -- the
+  sidebar didn't visibly update across 3 presses, worth a cleaner retry);
+  movement actually running out mid-round (refusing a further step with
+  "You have no movement left this round"); and monster/companion AI
+  closing distance at their own differing rates specifically (a fast
+  Wraith/Spectre vs. a slow Zombie/Mummy/Boring Beetle, easiest to force
+  by fighting each with a fresh character on open terrain).
 - **VIEW command + status tags** (Milestone 186) -- **confirmed live
   2026-09-11**: `v` while Idle opens the "View who?" picker and shows a
   stat card correctly. **Still not separately confirmed**: a Status line
@@ -128,22 +169,59 @@ each is in its `docs/MILESTONES.md` entry (linked below).
 - **Keypad diagonal movement** (Milestone 187) -- **confirmed live
   2026-09-11**: numpad and Home/PageUp/End/PageDown diagonals work, and
   corner-cutting is blocked as expected, across overworld/zone/combat.
-- **Battlemap walls + wall-aware pathing** (Milestone 188) -- not yet
+- **Battlemap walls + wall-aware pathing** (Milestone 188) -- **partially
+  confirmed live 2026-09-12** (this session, input-driven): walking into
+  a wall logs "Blocked: cannot walk onto a wall." exactly as documented,
+  and wall tiles render in a visibly distinct darker color from open
+  floor -- seen across real fights on forest, hills, mountains, and
+  grassland battlemaps (4 of the 9 terrains). **Still not confirmed**: a
+  diagonal corner-cut against a wall specifically logging "Blocked: can't
+  cut across the wall." (no corner-shaped opportunity happened to come up
+  -- the wall clusters encountered were all solid rectangles);
+  monster/companion AI visibly detouring around a wall cluster (attempted
+  via holding several rounds in place, but the monsters' distance didn't
+  visibly change -- inconclusive, worth a cleaner retry with a monster
+  that has to route around, not just toward, a wall); and the remaining
+  5 of 9 terrains (bog, salt flat, savannah, glacier, road).
+- **Line of sight** (Milestone 189) -- not yet interactively confirmed
+  at all (no desktop/GUI access the session it shipped in): firing the
+  Light Crossbow at a monster instance with a wall between it and the
+  player logs "Nothing in your line of sight." and is refused; the same
+  shot with a clear sightline still works as before; casting a targeted
+  spell (e.g. Magic Missile) at a walled-off instance logs "Your
+  `<spellName>` finds no target in sight." and still consumes the round/
+  spell slot; and Fireball's epicenter picker still only offers
+  in-sight instances while splash damage still reaches everyone within
+  radius of a confirmed-visible epicenter regardless of walls between
+  them and it. Easiest to force on a densely-walled terrain (forest/
+  hills/mountains) with the crossbow equipped or a damage spell
+  memorized.
+- **Multi-square creatures + Blue Dragon** (Milestone 190) -- not yet
   interactively confirmed at all (no desktop/GUI access the session it
-  shipped in): walking into a wall logs "Blocked: cannot walk onto a
-  wall."; a diagonal corner-cut against a wall logs "Blocked: can't cut
-  across the wall." and is refused; monster/companion AI visibly
-  detours around a wall cluster instead of getting stuck against it
-  (easiest to force on forest/hills/mountains, the densest-walled
-  terrains); and wall tiles render in a visually distinct color from
-  open floor. Fight on each of the 9 terrains at least once eventually,
-  to confirm every hand-authored battlemap actually loads and looks
-  reasonable in play, not just that `BattleMapCatalog` parsed it.
-- **Look command** (Milestone 182) -- not yet interactively confirmed at
-  all: `'l'` on the overworld (with an NPC present, and the nearest-
-  location/compass-direction fallback with none present) and inside a
-  zone (a POI's own description, and a TIMELINE_ANCHOR tile with a canon
-  character present).
+  shipped in): an Ogre/Troll renders as a 1-wide/2-tall marker, a Griffon
+  as 2-wide/1-tall, and the new Blue Dragon (salt flat terrain, or use a
+  debug/dev save near one) as a full 2x2 marker -- not just a single cell;
+  the player/companions can walk around a big creature's full footprint
+  (not just its anchor cell) without overlapping it; melee/ranged
+  targeting and opportunity attacks trigger correctly from any side of the
+  footprint, not just its anchor; a wall-blocked shot/spell at a big
+  creature still refuses via the nearest visible edge of its footprint,
+  not just its anchor cell; the Dragon's 30%-chance lightning breath logs
+  "The Blue Dragon breathes a bolt of lightning!" with real damage, and
+  its ordinary bite still lands the rest of the time; and an Ogre/Troll/
+  Griffon/Dragon's own AI still closes distance and routes around a wall
+  cluster reasonably (no wall-aware BFS for these, just the simpler
+  greedy heuristic -- an occasional dead-end against a wall corner is
+  accepted, see `docs/COMBAT_NOTES.md`).
+- **Look command** (Milestone 182) -- **partially confirmed live
+  2026-09-12** (this session, input-driven): `'l'` on the open overworld
+  with no NPC present correctly falls back to the nearest-location
+  compass direction ("You reckon Tarsis lies to the east."). **Still not
+  confirmed**: `'l'` with an overworld NPC/canon Hero actually present,
+  and inside a zone (a POI's own description, and a TIMELINE_ANCHOR tile
+  with a canon character present) -- no zone was reached this session
+  (see the Milestone 190 hunt above; the character never made it back to
+  a town/zone entrance).
 - **Quest system** (Milestone 183) -- not yet interactively confirmed at
   all: offering/accepting/declining a quest, the progress-text revisit,
   turning one in, all six reward flags (especially the Wayreth Test of

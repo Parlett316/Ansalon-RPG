@@ -40,11 +40,23 @@ struct Monster {
     bool castsMagicMissile = false;
     int magicMissileChancePercent = 0; // invented pacing, book gives no frequency
 
-    // True only for the Aurak Draconian -- a noxious-cloud breath weapon
-    // (Dragonlance Adventures p.73) instead of its normal weapon attack some
-    // rounds. See docs/COMBAT_NOTES.md.
+    // A breath weapon instead of its normal weapon attack some rounds --
+    // originally Aurak-only (a noxious cloud, Dragonlance Adventures p.73),
+    // generalized at Milestone 190 so the Blue Dragon's differently-flavored
+    // lightning bolt (Monster Manual p.66) can share the same chance-per-
+    // round skeleton with its own real damage/name/effect. See
+    // docs/COMBAT_NOTES.md.
     bool hasBreathWeapon = false;
     int breathWeaponChancePercent = 0; // invented pacing -- see docs/COMBAT_NOTES.md
+    int breathDamageDiceCount = 0;
+    int breathDamageDiceSides = 0;
+    int breathDamageFlatBonus = 0;
+    // True only for the Aurak -- the book names the condition but not a
+    // number, so the THAC0 penalty applied alongside this is still invented
+    // (see docs/COMBAT_NOTES.md). The Dragon's lightning breath has no such
+    // secondary effect.
+    bool breathWeaponBlindsOnFail = false;
+    std::string breathWeaponName; // e.g. "noxious cloud", "bolt of lightning"
 
     // True only for the Sivak Draconian -- bursts into flame on death,
     // dealing real damage (Dragonlance Adventures p.75) instead of a
@@ -91,6 +103,21 @@ struct Monster {
     // simplified to a flat value near its average roll -- see
     // docs/COMBAT_NOTES.md.
     int xpValue = 0;
+
+    // Grid footprint in cells, Milestone 190 -- default 1x1 (every monster
+    // before this milestone). Not a 2e stat: the real Monstrous Manual's own
+    // SIZE field (S/M/L/H/G + a printed dimension) never ties to a grid
+    // footprint, that's a Gold Box rendering choice, not a book rule -- see
+    // docs/COMBAT_NOTES.md. Consumed only by ansalon_sfml_phase1's combat
+    // grid (occupancy/adjacency/pathing/rendering), same "shared field,
+    // SFML-only consumer" precedent moveSquares below already set;
+    // ansalon_rpg's console combat treats every monster as a single cell,
+    // Dragon included, unaffected. A monster with a footprint area > 1 must
+    // stay solo (groupMax == 1, MonsterLoader enforces this) -- this
+    // project has no multi-cell BFS pathing or overlap resolution for two
+    // big creatures at once.
+    int footprintWidth = 1;
+    int footprintHeight = 1;
 
     // How many grid squares this monster can move in one combat round
     // (Milestone 185's bigger battlefield + real per-round movement).

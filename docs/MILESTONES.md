@@ -7203,6 +7203,139 @@ now fully verified, nothing further outstanding.
        **Interactive confirmation still needed** (no desktop/GUI access
        this session) -- see `docs/CURRENT_WORK.md`'s Playtest backlog.
 
+189. **Line of sight (`ansalon_sfml_phase1` only).** Fifth of the
+     six-part Gold Box battlefield chain -- Milestone 188's real wall
+     geometry existed, but nothing checked it yet for ranged weapon or
+     spell targeting. Full detail in `docs/COMBAT_NOTES.md`'s own "Line
+     of sight" section -- summarized here:
+     - New `combat::hasLineOfSight(GridPos a, GridPos b, const
+       std::vector<GridPos>& walls)` (`src/combat/CombatGrid.{h,cpp}`) --
+       a standard integer Bresenham line walk, false the moment an
+       intermediate cell (never either endpoint) is a wall. Takes the
+       same flattened-list shape `stepToward`/`stepTowardBfs`'s own
+       `blocked` parameter already does, so a fight's existing
+       `CombatSession::wallPositions` plugs straight in. Deliberately a
+       plain sightline check -- does not apply the movement-only
+       corner-cutting nuance Milestones 187/188 added for diagonal
+       steps.
+     - The Light Crossbow's ranged-attack candidate list
+       (`combatBeginPlayerAttack`) and every targeted spell effect's
+       candidate list (`combatCommitSpellChoice`, including Fireball/
+       Delayed Blast Fireball's epicenter pick) now both require
+       `hasLineOfSight` in addition to their existing checks. A blocked
+       shot logs "Nothing in your line of sight." (distinct from the
+       pre-existing "You're too far away to attack." for genuinely
+       nothing eligible); a blocked spell logs "Your `<spellName>` finds
+       no target in sight." and still spends the round and the already-
+       cast spell slot -- a genuinely new state (0 eligible spell
+       targets), impossible before this milestone since every alive
+       instance was unconditionally eligible.
+     - AoE splash beyond a confirmed-visible epicenter is deliberately
+       NOT re-filtered by line of sight (2e's own burst-vs-wall
+       diagramming rules are a system this project has already declined
+       to model elsewhere); Lightning Bolt's real directional line/
+       wall-bounce shape is still not attempted (a separate, larger
+       follow-up needing direction-based targeting, already documented
+       as such before this milestone) -- it resolves as an ordinary
+       single-target damage spell, gated the same as any other.
+     - Companions and monster AI are untouched: neither casts spells nor
+       uses a ranged weapon in this engine.
+     - No new rendering -- a blocked candidate is simply absent from the
+       target list, same as adjacency filtering already is.
+     - Verified: a throwaway self-test (`LineOfSightSelfTest.cpp`,
+       deleted after -- 12 checks: open-board LOS on all three axes, a
+       wall directly on a line blocking it, a wall off the line not
+       blocking it, blocking at the nearer of two walls, and the
+       documented endpoints-never-checked contract). Clean `/W4` rebuild
+       of all three targets (zero new warnings). An `ansalon_sfml_phase1`
+       launch smoke test against a copy of real `save1.txt` confirmed
+       every catalog still loads cleanly; a piped `ansalon_rpg`
+       character-creation run (empty slot 3) confirmed the console build
+       is unaffected. **Interactive confirmation still needed** (no
+       desktop/GUI access this session) -- see `docs/CURRENT_WORK.md`'s
+       Playtest backlog.
+
+190. **Multi-square creatures + a real Dragon (`ansalon_sfml_phase1`
+     only).** Sixth and final part of the Gold Box battlefield chain --
+     the chain's own motivating case (the DQoK screenshot's 2x2 dragons)
+     had no roster monster to exercise it (this project had zero
+     dragons); asked the user how to handle that, and they chose to both
+     build the mechanic and add a real dragon, giving the exact footprint
+     convention the Gold Box games use. Full detail in
+     `docs/COMBAT_NOTES.md`'s own "Multi-square creatures + a real
+     Dragon" section -- summarized here:
+     - New `Monster::footprintWidth/Height` (`src/combat/Monster.h`, new
+       `SIZE <width> <height>` grammar line, default 1x1) -- **not a 2e
+       stat** (the real Monstrous Manual's own SIZE field never ties to a
+       grid footprint, that's a Gold Box rendering choice). Applied per
+       the user's own stated convention: tall bipedal creatures 1 wide x
+       2 tall (Ogre, Troll), wide creatures 2 wide x 1 tall (Griffon), a
+       dragon 2x2 (both). Nothing else in the roster changed -- Ettin
+       (also a tall giant) deliberately left at 1x1 since the user's own
+       examples named only Ogre/Troll; no Pegasus added (named only as a
+       second "wide" example, not a roster request).
+     - Solo-only, enforced: every SIZE-carrying monster has no `GROUP`
+       line, and `MonsterLoader` fail-fasts if a future edit gives a
+       multi-cell footprint to a monster whose `GROUP` allows more than
+       one instance -- this milestone never solves two overlapping big
+       footprints at once.
+     - Five new `combat::` helpers (`CombatGrid.{h,cpp}`):
+       `footprintCells`, `isAdjacentToFootprint`, `footprintFits`,
+       `nearestFootprintCell`, `stepFootprintToward` (the same
+       greedy-with-fallback heuristic `stepToward` used before Milestone
+       188's BFS, but validated against a whole rectangle -- deliberately
+       no multi-cell BFS, an accepted restraint given every multi-cell
+       creature here is solo). Every footprint-aware call site (melee/
+       ranged eligibility, opportunity attacks, companion/monster
+       adjacency, `combatCellOccupied`, Milestone 189's `hasLineOfSight`
+       endpoint, the sidebar `dist N`, rendering) degenerates to the
+       exact pre-existing 1x1 behavior for every ordinary monster.
+     - Breath weapon generalized from an Aurak-only hardcoded case
+       ("noxious cloud, 20/10 damage, blinds") to data-driven fields
+       (`breathDamageDiceCount/Sides/FlatBonus`, `breathWeaponBlindsOnFail`,
+       `breathWeaponName`, new `BREATH_DAMAGE` grammar line) so the new
+       Dragon's lightning breath (no blind) can share the same
+       chance-per-round skeleton. Aurak's own translation (`BREATH_DAMAGE
+       0 0 20 1 noxious cloud`) reproduces its original 20-full/10-half
+       numbers byte-for-byte (a dice-triple's honest expression of a
+       flat, non-rolled 20, via `character::roll`'s existing "count<=0
+       returns 0" contract).
+     - New **Blue Dragon** (`MONSTER dragon_blue`, `data/monsters.txt`) --
+       the War of the Lance's iconic evil chromatic dragon color. Real
+       Monster Manual (2nd ed).pdf p.66 (rendered page image, read
+       directly this session per this project's own OCR-unreliable-table
+       rule) gives an adult-tier reference (HD14) far above this
+       roster's existing HD11 ceiling, so core stats are instead sourced
+       from Champions of Krynn's own bestiary (one of the three SSI Gold
+       Box games already this project's `MOVE` precedent): AC 2, HP 50,
+       THAC0 10, MOVE 24, XP 3650. Bite damage (3d8) and breath dice
+       (6d8+3, the book's own "Young" age-category row) are sourced from
+       both the book and the game agreeing. `ONLY_TERRAIN _` (salt flat,
+       matching the real "Arid deserts" Climate/Terrain, this project's
+       established desert analog). `STEEL 6 10 20` and
+       `MIN_TOWN_DISTANCE 60` are both new roster ceilings, invented (no
+       book formula for dragon hoards); its XP (3650) is reported as-is
+       even though Shambling Mound's real book XP (6000) is still
+       higher -- this project doesn't force XP to track danger 1:1.
+       `SIZE 2 2`, solo.
+     - Rendering: the existing placeholder circle marker resized/
+       recentered per-instance to span the whole footprint in both of
+       this screen's two duplicate draw loops, plus the target-picker
+       highlight -- no new shape, same flat-placeholder philosophy.
+     - Verified: a throwaway self-test (`MultiSquareSelfTest.cpp`,
+       deleted after -- 19 checks covering every new helper plus the
+       regeneralized breath weapon reproducing Aurak's exact old
+       numbers). Clean `/W4` rebuild of all three targets (zero new
+       warnings). An `ansalon_sfml_phase1` launch smoke test confirmed
+       all 44 monsters (43 before) load without throwing; a piped
+       `ansalon_rpg` character-creation run (empty slot 3) confirmed the
+       console build is unaffected. **Interactive confirmation still
+       needed** (no desktop/GUI access this session) -- see
+       `docs/CURRENT_WORK.md`'s Playtest backlog.
+
+     **This closes the six-part Gold Box battlefield chain (185-190) in
+     full.**
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
