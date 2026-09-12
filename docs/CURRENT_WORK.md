@@ -1,5 +1,115 @@
 # Current work
 
+**Right now: character wounded (HP 1/26), rest before wandering off
+again -- but read the correction below before treating this as an
+emergency.** `save1.txt`'s Mike is at `MODE OVERWORLD`, `POS 197 249`
+(open ground a few tiles north of Tarsis, near Tower of Tears), Day 16,
+02:00 -- the result of fleeing a 4-Giant-Toad encounter this session by
+quitting the app rather than risking another attack roll (see
+"Live-testing session, 2026-09-12 (part 2)" below for the blow-by-blow).
+
+**Correction, caught only after quitting**: `docs/COMBAT_NOTES.md`'s own
+"Death: knocked out, not killed" section (a deliberate, pre-existing
+design decision, not something from this session) means the player
+*cannot actually die* -- hitting 0 HP fully heals to max and teleports to
+the nearest refuge (`isTown`/`seaLocked`), no run-ending, no save
+deletion. Tarsis itself is one of the five refuge towns and was only
+~25 tiles away. So the in-the-moment framing below ("one more hit kills
+him") **overstated the actual risk** -- worst case really was a free
+full heal plus a free trip to the exact town this session was trying to
+reach anyway. Quitting to preserve HP 1 was still a reasonable
+conservative call *given what was known at the time* (this section
+hadn't been checked yet), and it did avoid burning the still-untested
+"attack-picker has no cancel" bug's worst case for real, but a future
+session hitting the same spot should feel free to just keep fighting --
+0 HP is an inconvenience (teleport + lost position), not a threat. Resting
+next session is still good practice before wandering back out, just not
+urgent in the way this was first written up.
+
+**Live-testing session, 2026-09-12 (part 2 -- this session, via the
+VSCode extension host, not the earlier terminal session below).**
+Confirmed this session has real desktop/GUI access (`SendKeys` +
+`GetClientRect`/`CopyFromScreen` via a DPI-aware PowerShell helper --
+see updated memory `feedback_no_desktop_gui_access`: this is
+session-launch-dependent, not a universal restriction, so retest cheaply
+each session rather than assuming either way). Used it to finally reach
+a zone this marathon-session's character had never entered (see part 1's
+own note below) and clear a good slice of the Playtest backlog:
+
+- **Reached Tarsis** (first zone entry all session) and confirmed zone
+  walls block movement the same as overworld walls ("Blocked: cannot
+  walk onto a wall.").
+- **Look command inside a zone** (Milestone 182) -- confirmed both
+  halves: a POI *with* dialogue (`R`, A Knight's Runner) shows its full
+  description via `l`; a POI *without* dialogue (`D`, The Old Dock, also
+  the zone's `TIMELINE_ANCHOR`) correctly falls back to "Nothing else
+  catches your eye here." with no Hero scheduled there today -- this is
+  by design (`gatherLookCandidates` only surfaces dialogue-bearing POIs
+  plus anchor-tile Hero presence; a plain POI's description is already
+  shown once via the "Here: X." arrival line), not a bug. An actual
+  Hero-present-at-a-`TIMELINE_ANCHOR` Look still couldn't be forced --
+  every canon Hero was 50+ tiles away at Pax Tharkas today, an
+  overworld-travel-time away no single session can close.
+- **Ask-input** (Milestone 162) -- confirmed real keyword matching
+  (typed "dragons" at A Knight's Runner, an unlimited-`SUBJECT` NPC,
+  got the correct `SUBJECT` text), Backspace editing the buffer, and
+  empty-Enter cancelling back to the topic picker. Only the
+  Astinus-specific pieces (`ASK_LIMIT_LOCKED` greeting override,
+  extension-roll fail path) remain open, needing Astinus specifically.
+- **Inventory equip** (Milestone 165) -- confirmed: bought Leather Armor
+  and a Shield at Tarsis's forge, equipped both via `i`, watched the
+  header line go "Armor: none" -> "Armor: Leather Armor" -> "Armor:
+  Leather Armor + Shield", and confirmed the character sheet's AC
+  updated to match. Quest-item no-op message still unconfirmed (no quest
+  item carried).
+- **Movement: Space genuinely holding/ending a turn** (Milestone 185,
+  last open piece) -- confirmed: holding against 4 Skeletons logged "You
+  hold your action." + each monster "closes in.", sidebar distances
+  updated. Also reconfirmed Fighter Sweep (explicit "You sweep through
+  the Skeletons!" line, one roll per adjacent 1-HD target) and the
+  manual "Attack which enemy?" picker for tougher multi-HD monsters
+  (Giant Toads, which don't qualify for Sweep).
+- **Two new findings, not yet triaged or fixed:**
+  1. **The "Attack which enemy?" target picker has no working cancel.**
+     Neither `q` nor Escape backs out to Idle -- both fall through to the
+     top-level quit-confirmation dialog instead (itself safe to back out
+     of via "No, keep playing", but that returns to the *same* picker,
+     not Idle). `i` (use item), `f` (flee), and Backspace are all
+     silently swallowed with no effect from inside it. Net effect: once
+     this picker is open, the only ways forward are "commit to an
+     attack" or "quit the app" -- there's no way to change your mind and
+     drink a potion or flee instead. Found live, the hard way, at 1 HP
+     against 4 Giant Toads (see below) -- this isn't hypothetical.
+  2. **The combat sidebar's `dist N` readout lags one action behind the
+     actual battlefield state.** After a Hold or an Attack, the very
+     next screenshot/frame still shows the *previous* distances even
+     when monsters are visibly adjacent on the grid; a second Hold/
+     Attack catches the sidebar up. Didn't affect the actual combat math
+     (attacks resolved correctly regardless of what the sidebar said),
+     just the displayed number -- worth a look since it could mislead a
+     real player into misjudging whether an enemy is in range.
+- **Confirmed, via `data/overworld.grid`, why the Milestone 190 Blue
+  Dragon / salt-flat wall backlog items can never be forced through
+  ordinary play**: salt flat's glyph (`_`) has zero occurrences anywhere
+  in the actual 480x320 grid -- already documented as an honest,
+  deliberate gap in `docs/MAP_NOTES.md` ("`salt_flat` still doesn't
+  appear anywhere"), not something this session broke. The Dragon and
+  that specific wall-terrain confirmation stay permanently backlogged
+  behind either a hand-edited grid tile or a debug save, not "walk
+  around enough and it'll come up."
+- **The HP 1 sequence itself** (see the correction above for why this
+  wasn't actually life-threatening): a 4x Giant Toad encounter (hills terrain)
+  chipped Mike from full to 1 HP over two rounds (8+2, then 5+4 damage
+  against AC 5) faster than expected. With the target-picker cancel bug
+  above blocking a mid-picker retreat to the potion, and `save1.txt`
+  already having HP 1 written to disk (autosave is continuous, even
+  mid-combat), the only safe option left was quitting the app outright --
+  combat state itself isn't part of the save format (only
+  `MODE`/`POS`/character stats are), so quitting mid-fight is equivalent
+  to fleeing it entirely. Confirmed this actually works: the reload
+  target is `MODE OVERWORLD POS 197 249`, no toads, HP 1/26 intact. User
+  explicitly chose this over gambling on another attack roll.
+
 **Milestone 190 shipped 2026-09-12** (sixth and final part of the Gold
 Box-style battlefield chain): `ansalon_sfml_phase1`'s combat grid gained
 real multi-square creatures. The chain's own motivating case (the DQoK
@@ -38,7 +148,8 @@ full.** Nothing further in this chain is queued -- the next session
 should offer a fresh menu of backlog options rather than assume a
 follow-on.
 
-**Live-testing session, 2026-09-12 (this session gained real keyboard/
+**Live-testing session, 2026-09-12 (part 1 -- an earlier session that day
+gained real keyboard/
 screenshot control of `ansalon_sfml_phase1` mid-conversation -- a
 capability prior sessions didn't have, see the user's own
 `.claude/settings.local.json` `PowerShell(*SendKeys*)`-family permission
@@ -151,10 +262,11 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   session note above): taking several `wasd` steps in one round before
   attacking, and the `Movement: N/Max` readout counting down correctly
   (`12/12` -> `9/12` after 3 steps, unchanged by further blocked
-  attempts). **Still not confirmed**: Space genuinely holding/ending a
-  turn with no attack (attempted this session but inconclusive -- the
-  sidebar didn't visibly update across 3 presses, worth a cleaner retry);
-  movement actually running out mid-round (refusing a further step with
+  attempts). **Also confirmed live 2026-09-12 (part 2)**: Space
+  genuinely holds/ends a turn with no attack -- "You hold your action."
+  plus each monster "closes in.", sidebar distances update (with a
+  one-action display lag, see this file's own top section). **Still not
+  confirmed**: movement actually running out mid-round (refusing a further step with
   "You have no movement left this round"); and monster/companion AI
   closing distance at their own differing rates specifically (a fast
   Wraith/Spectre vs. a slow Zombie/Mummy/Boring Beetle, easiest to force
@@ -216,12 +328,12 @@ each is in its `docs/MILESTONES.md` entry (linked below).
 - **Look command** (Milestone 182) -- **partially confirmed live
   2026-09-12** (this session, input-driven): `'l'` on the open overworld
   with no NPC present correctly falls back to the nearest-location
-  compass direction ("You reckon Tarsis lies to the east."). **Still not
-  confirmed**: `'l'` with an overworld NPC/canon Hero actually present,
-  and inside a zone (a POI's own description, and a TIMELINE_ANCHOR tile
-  with a canon character present) -- no zone was reached this session
-  (see the Milestone 190 hunt above; the character never made it back to
-  a town/zone entrance).
+  compass direction ("You reckon Tarsis lies to the east."). **Also
+  confirmed live 2026-09-12 (part 2)**, both halves of the inside-a-zone
+  case -- see this file's own top section. **Still not confirmed**:
+  `'l'` with an overworld NPC/canon Hero actually present, or a
+  `TIMELINE_ANCHOR` tile with one -- every canon Hero was at Pax Tharkas
+  today, 50+ overworld tiles from anywhere reachable this session.
 - **Quest system** (Milestone 183) -- not yet interactively confirmed at
   all: offering/accepting/declining a quest, the progress-text revisit,
   turning one in, all six reward flags (especially the Wayreth Test of
@@ -266,16 +378,17 @@ each is in its `docs/MILESTONES.md` entry (linked below).
 - **Dialogue** (Milestone 161) -- the quest placeholder log line at a POI
   marked `QUEST` (e.g. Kalaman's Curiosities Cart) not yet separately
   confirmed.
-- **Ask-input** (Milestone 162) -- not yet confirmed: matching a real
-  keyword (only gibberish tried so far), Backspace editing the buffer
-  and empty-Enter cancelling back to the topic picker,
+- **Ask-input** (Milestone 162) -- **confirmed live 2026-09-12 (part
+  2)**: real keyword matching, Backspace editing, and empty-Enter cancel
+  -- see this file's own top section. **Still not confirmed**:
   `ASK_LIMIT_LOCKED`'s greeting override on a same-day return visit to
-  Astinus, the extension-roll *fail* path (pure chance which branch
-  fires live), and a plain unlimited-`SUBJECT` NPC/Hero (only Astinus's
-  limited pool has been tried).
-- **Inventory** (Milestone 165) -- not yet confirmed: equipping a
-  weapon/armor/shield (header line updating to match) and the
-  Webnet/Brooch of Imog/quest-item no-op message.
+  Astinus, and the extension-roll *fail* path (pure chance which branch
+  fires live) -- both need Astinus specifically.
+- **Inventory** (Milestone 165) -- **confirmed live 2026-09-12 (part
+  2)**: equipping armor and a shield both updated the header line
+  correctly (see this file's own top section). **Still not confirmed**:
+  the Webnet/Brooch of Imog/quest-item no-op message (no quest item
+  carried).
 - ~~**152**~~ -- Fireball/Delayed Blast Fireball's multi-target and
   solo/isolated-target cases are confirmed 2026-09-09 via the SFML
   build. Still open: walking this through the *console* (`ansalon_rpg`)
