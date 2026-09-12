@@ -7008,6 +7008,147 @@ now fully verified, nothing further outstanding.
      hardening pass, so no `README.md` feature-list change, only the
      "keep an eye on your save" caveat softened now that it's hardened.
 
+185. **Bigger battlefield + real per-round movement (`ansalon_sfml_phase1`
+     only), Milestone 1 of 4.** The user supplied a real Dark Queen of Krynn
+     battle screenshot and asked for "something like this" -- a roughly
+     50x25 tactical map, impassable walls forming rooms/cover, and
+     multi-square creatures (the screenshot's dragons span 2x2). Scoped into
+     four sequential milestones after a planning pass; this one covers just
+     the grid size and real movement. Full detail in
+     `docs/COMBAT_NOTES.md`'s "Bigger battlefield and real per-round
+     movement" section -- summarized here:
+     - `sfml_phase1/main.cpp`'s `kCombatGridWidth`/`kCombatGridHeight` grew
+       15x9 -> 50x25, a deliberate, permanent divergence from
+       `render::MapRenderer`'s own 15x9 (the console's ASCII grid physically
+       cannot render a 50-wide row -- see `docs/PARITY_MATRIX.md`'s Combat
+       row). `ansalon_rpg` is untouched.
+     - The combat draw branch now scrolls (the overworld's own clamped-
+       follow-the-player camera math, reused verbatim) instead of centering
+       the whole fixed grid, since 50x25 no longer fits the viewport at a
+       readable tile size. Follows the player while idle/moving, the
+       highlighted candidate while target-picking.
+     - New `character::movementSquares(const Character&)` (`Equipment.h`/
+       `.cpp`, a new `ArmorInfo::maxMovementSquares` column) and
+       `combat::Monster::moveSquares` (new field + `MOVE <n>` grammar line
+       in `data/monsters.txt`) replace "one step ends the round" with a real
+       per-round budget, sourced from DQoK.pdf's own Armor Table (p.51,
+       rendered page image -- `dqok.txt`'s OCR mangles this table) and,
+       for 26 of the roster's 43 monsters, three SSI Gold Box Dragonlance
+       games' own bestiary exports already in `References/` (the other 17
+       default to 12, flagged per-entry as unsourced).
+     - `CombatSession` gained `movementRemaining` and
+       `initiativeRolledThisRound`; `combatRollGoFirstAndMaybeActMonsters`
+       is now idempotent per round; a new **Space** key holds/ends a turn
+       without attacking; monster/companion AI now loop their own
+       `combat::stepToward` call up to their own movement budget instead of
+       exactly one step. Sidebar gained `Movement: N/Max` and a per-instance
+       `dist N`.
+     - Verified: a throwaway `MovementSelfTest.cpp` (22 checks) all passed,
+       then deleted along with its temporary CMake target; clean rebuild of
+       all three targets (zero new `/W4` warnings); an `ansalon_sfml_phase1`
+       launch smoke test against a copy of real `save1.txt` confirmed every
+       catalog (including the enlarged monster roster) loads; a piped
+       `ansalon_rpg` character-creation run (empty slot 3) confirmed the
+       same shared, now-larger `data/monsters.txt` still parses cleanly.
+       **Not yet interactively confirmed** -- see `docs/CURRENT_WORK.md`'s
+       Playtest backlog.
+     - **Deliberately not attempted this milestone**: walls/obstacles, line
+       of sight, and multi-square creatures -- see `docs/CURRENT_WORK.md`
+       for the planned sequence (renumbered 187/188/189 once Milestone 186
+       below landed first).
+
+186. **VIEW command + status-effect visibility (`ansalon_sfml_phase1`
+     only).** The user shared `References/BattleFrames.zip` -- 225 PNG
+     frames sampled from their own gameplay recording of an SSI Gold Box
+     Dragonlance game (the same trilogy `DQoK.pdf` already sources this
+     project's combat grid/Hoopak/spell census from). Reviewing the
+     sequence surfaced real UI depth this project didn't have: a `VIEW`
+     command showing any unit's full stat card, with active status
+     effects printed on it. (The same frames also confirmed this
+     project's spellbook picker already shows remaining-charge counts per
+     spell, e.g. "Fireball (x2)" -- nothing to build there.) Full detail
+     in `docs/COMBAT_NOTES.md`'s "VIEW command and status-effect
+     visibility" section -- summarized here:
+     - **Pure presentation over state already tracked, no new mechanic**:
+       every buff/debuff/block this surfaces was already a real, sourced
+       spell effect (`combatApplySpellEffect`) with nowhere for the player
+       to actually see it in force.
+     - `v` while Idle opens a "View who?" picker (`combatBeginView`,
+       `sfml_phase1/main.cpp`) listing the player, every alive companion,
+       and every alive monster instance -- **costs no round**, same
+       treatment as Help/Journal/the character sheet. Confirming a
+       candidate (`combatConfirmView`) builds a read-only stat card
+       (HP/AC/THAC0/Weapon, or HP/AC/THAC0/Damage-dice for a monster
+       instance) via the existing `drawPickerOverlay` primitive.
+     - New `combatPlayerStatusTags()`/`combatMonsterStatusTags(idx)`
+       derive human labels (Hasted, a THAC0/damage/AC bonus or penalty,
+       Held, N-more-attacks-blocked, Globe of Invulnerability active) from
+       `CombatSession`'s existing fields -- no new tracking added. Getting
+       `monsterThac0Penalty`/`monsterAcPenalty`'s sign right mattered (both
+       are stored as "positive = worse for the monster," per
+       `combat::resolveMonsterAttack`/`resolvePlayerAttack`'s own
+       convention), so the tags print the stored sign directly rather than
+       negating it, with a clarifying parenthetical. Companions have no
+       equivalent (no per-companion buff/debuff tracking exists anywhere
+       in this engine) -- their card simply has no Status line.
+     - The same tags also appear passively in the sidebar roster (player's
+       own line, each monster instance's line), both already going
+       through (or switched to) `drawWrappedLine` rather than raw
+       `drawLine` so the added text wraps instead of clipping.
+     - **Deliberately not built**: `AIM`/`QUICK` commands from the
+       reference (already covered by the existing attack picker and
+       Enter/Space respectively); no new sprite animation/real art
+       (unrelated to this UI-depth pass).
+     - Verified: clean `/W4` rebuild of all three targets (zero new
+       warnings), an `ansalon_sfml_phase1` launch smoke test against a copy
+       of real `save1.txt`, then confirmed working live by the user
+       (2026-09-11) -- the picker and stat card both render correctly.
+       **Still not separately confirmed**: a Status line actually
+       appearing on a card, and Escape/Q cancelling the picker -- see
+       `docs/CURRENT_WORK.md`'s Playtest backlog.
+
+187. **Keypad diagonal movement (`ansalon_sfml_phase1` only).** The user
+     asked for numpad-driven diagonal movement after testing Milestone
+     186. Worth cross-referencing: entry 63 above records that diagonal
+     movement (a `yubn` roguelike scheme) was deliberately removed at a
+     prior user request, specifically to de-clutter the *console* build's
+     overlapping letter-key schemes -- that was about letter-key scarcity
+     in `ansalon_rpg`, not a standing objection to diagonals, so
+     reintroducing them to the *SFML* build via a physically different
+     device doesn't reverse it; `ansalon_rpg` itself is untouched, still
+     `wasd`-only. Full detail in `docs/MAP_NOTES.md`/`docs/ZONE_NOTES.md`/
+     `docs/COMBAT_NOTES.md`'s own "Keypad diagonal movement" sections --
+     summarized here:
+     - Applies everywhere in `ansalon_sfml_phase1` (overworld, zone
+       interiors, and combat), confirmed with the user rather than
+       assumed.
+     - Key bindings: `Numpad7`/`Home` (NW), `Numpad9`/`PageUp` (NE),
+       `Numpad1`/`End` (SW), `Numpad3`/`PageDown` (SE), plus `Numpad8`/`2`/
+       `4`/`6` as cardinal aliases matching `w`/`s`/`a`/`d`. Two bindings
+       per diagonal because Windows only reports the `Numpad*` codes when
+       NumLock is ON -- with it off the same physical keys report as
+       Home/PageUp/End/PageDown instead.
+     - No change needed to the actual move-resolution code in any of the
+       three contexts -- each already computed `destination = position +
+       (dx, dy)` and checked only the one resulting cell, never assuming
+       `dx`/`dy` were mutually exclusive. Only the key bindings needed to
+       change.
+     - Corner-cutting is blocked for overworld/zone movement (the user's
+       explicit choice) -- a diagonal step also requires both flanking
+       cardinal tiles passable, not just the destination. **Deliberately
+       not applied to combat**, which has no wall concept yet (flagged for
+       Milestone 188, the walls milestone next in this chain, to revisit).
+     - Movement cost stays 1 square per step, diagonal or not -- no
+       invented diagonal penalty.
+     - Fixed a cosmetic bug this surfaced: combat's own "You move
+       north/south/east/west" log line was a 4-way ternary that silently
+       mislabeled every diagonal move as just north or south; replaced
+       with a proper 8-way lookup.
+     - Verified: clean `/W4` rebuild of all three targets (zero new
+       warnings), an `ansalon_sfml_phase1` launch smoke test, then
+       confirmed working live by the user (2026-09-11) across all three
+       movement contexts, including corner-cutting blocking as expected.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

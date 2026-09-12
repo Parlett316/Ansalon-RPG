@@ -359,6 +359,14 @@ recruited, fights alongside you in SFML combat, sweep/backstab included.)*
     cursor is bracketed (`[A]`) and marked in the HP list.
   - Combat shows a real command row of what's legal that round (`ATTACK`,
     `MOVE`, `CAST`, `USE`, `FLEE`) instead of bare hotkey hints.
+  - *(SFML build only: the battlefield is a much bigger 50×25 grid with a
+    scrolling camera, and movement is a real per-round budget — several
+    steps before you act, not one step per round — sourced from the same
+    DQoK manual's own armor/monster movement stats. The console build's
+    grid stays 15×9, one step per round, unchanged. Press `v` to VIEW any
+    unit's full stat card (HP/AC/THAC0/weapon, plus any active status like
+    Held or Hasted), at no cost to your round. See
+    `docs/COMBAT_NOTES.md`.)*
 - Three of the draconians fight back with real, book-sourced abilities
   beyond a plain weapon swing: Bozaks sometimes cast Magic Missile instead
   of attacking, Auraks sometimes breathe a noxious cloud (save for half
@@ -682,7 +690,9 @@ the slot menu entirely.
 
 Movement is immediate — no Enter key needed:
 
-- **Move**: `W A S D` or arrow keys, 4 cardinal directions (no diagonals)
+- **Move**: `W A S D` or arrow keys (4 cardinal directions), or the numpad
+  for full 8-directional movement including diagonals (works with NumLock
+  on or off)
 - **Enter** — step into/out of a location's walkable interior, or attack
   in combat
 - `T` — talk to whoever's here (a canon character the timeline places at
@@ -717,11 +727,13 @@ Movement is immediate — no Enter key needed:
   the overworld; inside a zone, a POI's own description or (on a
   Timeline Anchor tile) whichever canon character is there today.
 
-In combat: **Enter** attacks whoever's under the grid cursor, `W A S D`
-moves on the grid, **`M`** casts a memorized spell (asks which, if more
-than one memorized), **`I`** uses an item — Potion/Webnet/Brooch of
-Imog/Staff of Curing (asks which, if more than one usable), **`F`**
-flees. A Fighter adjacent to 2+ weak enemies sweeps automatically; a
+In combat: **Enter** attacks whoever's under the grid cursor, `W A S D` or
+the numpad moves on the grid (numpad diagonals included), **`M`** casts a
+memorized spell (asks which, if more than one memorized), **`I`** uses an
+item — Potion/Webnet/Brooch of Imog/Staff of Curing (asks which, if more
+than one usable), **`V`** views any unit's stats (name/HP/AC/THAC0/weapon,
+plus any active status), **`Space`** holds your action/ends the turn
+without attacking, **`F`** flees. A Fighter adjacent to 2+ weak enemies sweeps automatically; a
 correctly-positioned Thief backstabs automatically — no key needed for
 either. Losing a fight knocks you out and sends you back to the nearest
 refuge rather than ending the run.

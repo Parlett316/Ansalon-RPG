@@ -53,9 +53,28 @@ struct ArmorInfo {
     const char* name;
     int armorClass; // Table 46 (p.99): armor alone, before Dexterity/shield
     int costStl;     // Table 47 (p.92), in Steel Pieces
+
+    // How many grid squares a character wearing this armor can move in one
+    // combat round (Milestone 185's bigger battlefield + real per-round
+    // movement -- see docs/COMBAT_NOTES.md). Sourced from DQoK.pdf's own
+    // Armor Table (p.51, visually confirmed via a rendered page image),
+    // matched by armor name where one exists (None/Leather/Studded/Chain
+    // Mail/Splint Mail/Plate all appear there verbatim); HideArmor/
+    // FieldPlate/SolamnicArmor have no DQoK counterpart at all (both are
+    // this project's own PHB-table additions -- see this enum's own doc
+    // comment) and use an invented, flagged value instead -- see
+    // Equipment.cpp's kArmorTable and docs/COMBAT_NOTES.md.
+    int maxMovementSquares;
 };
 
 const ArmorInfo& armorInfo(ArmorId id);
+
+// Resolves character.equippedArmor into its maxMovementSquares (see
+// ArmorInfo above) -- a Shield does NOT reduce this (DQoK.pdf p.51's own
+// footnote: "A Shield subtracts 1 AC from any armor it is used with,"
+// nothing about movement, and its own Shield row has no movement entry at
+// all), so hasShield is deliberately not consulted here.
+int movementSquares(const Character& character);
 
 // Real AC order (independent of the enum's own ordinal -- see ArmorId
 // above): Hide Armor slots in at AC6, a real gap between Studded Leather

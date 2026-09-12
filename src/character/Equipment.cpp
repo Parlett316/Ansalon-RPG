@@ -24,16 +24,34 @@ namespace {
 // the real Table 46 value, but its 1200stl is a deliberate, flagged
 // deviation from the real Table 47 price (2,000gp) -- see
 // docs/CHARACTER_NOTES.md's "Equipment" section for why.
+//
+// The final column (maxMovementSquares, Milestone 185) is sourced from
+// DQoK.pdf's own Armor Table (p.51, visually confirmed via a rendered page
+// image this session): None/Leather/Studded Leather/Chain Mail/Splint
+// Mail/Plate all appear there by name and are transcribed verbatim (9
+// squares for Studded Leather and Chain Mail, 6 for Splint Mail and
+// Plate -- DQoK's own table is genuinely non-monotonic with AC, e.g. its
+// Leather is faster than its heavier-but-same-AC Padded, so these are
+// exact name matches, not an AC-derived formula). HideArmor/FieldPlate/
+// SolamnicArmor have no DQoK counterpart (see ArmorId's own doc comment --
+// both are this project's PHB-table additions, and SolamnicArmor is a
+// unique quest reward) -- each is given DQoK's own established floor of 6
+// squares (the slowest value DQoK's table ever assigns any armor type),
+// a deliberate, flagged invented choice rather than a sourced one. DQoK's
+// table also carries a footnote ("A character carrying many objects...
+// can be limited to a minimum of 3 squares per turn") that this project
+// does NOT model -- there is no carried-weight/encumbrance system to hang
+// it on (see docs/COMBAT_NOTES.md).
 constexpr std::array<ArmorInfo, 9> kArmorTable = {{
-    {ArmorId::None, "No Armor", 10, 0},
-    {ArmorId::Leather, "Leather Armor", 8, 5},
-    {ArmorId::StuddedLeather, "Studded Leather", 7, 20},
-    {ArmorId::ChainMail, "Chain Mail", 5, 75},
-    {ArmorId::SplintMail, "Splint Mail", 4, 80},
-    {ArmorId::PlateMail, "Plate Mail", 3, 600},
-    {ArmorId::SolamnicArmor, "Solamnic Armor", 0, 0},
-    {ArmorId::HideArmor, "Hide Armor", 6, 15},
-    {ArmorId::FieldPlate, "Field Plate", 2, 1200},
+    {ArmorId::None, "No Armor", 10, 0, 12},
+    {ArmorId::Leather, "Leather Armor", 8, 5, 12},
+    {ArmorId::StuddedLeather, "Studded Leather", 7, 20, 9},
+    {ArmorId::ChainMail, "Chain Mail", 5, 75, 9},
+    {ArmorId::SplintMail, "Splint Mail", 4, 80, 6},
+    {ArmorId::PlateMail, "Plate Mail", 3, 600, 6},
+    {ArmorId::SolamnicArmor, "Solamnic Armor", 0, 0, 6},
+    {ArmorId::HideArmor, "Hide Armor", 6, 15, 6},
+    {ArmorId::FieldPlate, "Field Plate", 2, 1200, 6},
 }};
 
 // Table 44 (Weapons, p.94), visually confirmed: Two-Handed Sword 1d10/50stl
@@ -130,6 +148,8 @@ const ArmorInfo& armorInfo(ArmorId id) {
     }
     return kArmorTable[0]; // unreachable given ArmorId only has the values above
 }
+
+int movementSquares(const Character& character) { return armorInfo(character.equippedArmor).maxMovementSquares; }
 
 std::string inventoryItemLabel(const InventoryItem& item) {
     switch (item.kind) {

@@ -1430,6 +1430,275 @@ while a second is within 2 cells, and confirm both take the same damage
 with both named in the log; separately confirm a solo target (or one with
 nothing else in range) still reads as a clean single-target hit.
 
+## Bigger battlefield and real per-round movement (Milestone 185, SFML only)
+
+The user supplied a real Dark Queen of Krynn battle screenshot and asked for
+"something like this" -- a roughly 50x25 tactical map, impassable walls
+forming rooms/cover, and multi-square creatures (the screenshot's dragons
+span 2x2). This milestone is the first of a four-part chain covering just
+the grid size and real per-round movement; walls, line of sight, and
+multi-square creatures are separate, later milestones (186-188), not
+attempted here.
+
+- **`ansalon_sfml_phase1` only, deliberately diverging from `ansalon_rpg`.**
+  `sfml_phase1/main.cpp`'s own `kCombatGridWidth`/`kCombatGridHeight` grew
+  from 15x9 to 50x25; `render::MapRenderer::kCombatGridWidth`/`Height` (the
+  console build) stay at 15x9, unchanged. The console's ASCII grid
+  physically cannot follow -- 15 was chosen there specifically so a row (3
+  columns/cell + a 2-column border) stays under `kProseWrapWidth`'s floor
+  (see "Positional combat grid" above); a 50-wide row would blow past that
+  on any supported terminal width. Recorded as a deliberate, permanent
+  divergence in `docs/PARITY_MATRIX.md`, not a gap to close later. Width no
+  longer needs to stay odd the way the console's own symmetric monster
+  spawn required -- the SFML spawn just centers on `kCombatGridWidth / 2`,
+  well-defined for an even width too (see the constant's own comment).
+- **Scrolling camera.** The whole 50x25 field no longer fits the viewport at
+  a readable tile size (kept at 56px, unchanged), so the combat draw branch
+  now reuses the exact clamped-follow-the-player math the Overworld branch
+  already had (`std::clamp(focusPx, halfViewport, max(halfViewport, mapPx -
+  halfViewport))`), rather than the old fixed centered draw. The camera
+  follows the player while Idle/moving, and the currently-highlighted
+  candidate while `PickingTarget`, so an off-screen target is never picked
+  blind. The sidebar roster gained a `dist N` figure per living instance
+  (Chebyshev distance from the player) as the cheap compensation for losing
+  the old whole-map-always-visible view.
+- **Real per-round movement, sourced from DQoK.pdf's own Armor Table
+  (p.51, visually confirmed via a rendered page image this session --
+  `References/dqok.txt`'s OCR extraction badly mangles this specific table,
+  columns bleeding together, so the PDF page image was read directly
+  instead, per CLAUDE.md's rule for table-heavy/OCR-unreliable content).**
+  DQoK's manual: "the character's movement range is displayed... during the
+  character's segment in combat" -- previously meaningless here, since one
+  step always ended the whole round.
+  - **`character::movementSquares(const Character&)`** (`Equipment.h`/
+    `.cpp`) resolves `equippedArmor` into a squares-per-round figure via a
+    new `ArmorInfo::maxMovementSquares` column. None/Leather/Studded
+    Leather/Chain Mail/Splint Mail/Plate Mail all appear in DQoK's table by
+    name and are transcribed verbatim (12/12/9/9/6/6) -- notably **not** a
+    simple function of AC: DQoK's own table is non-monotonic (its Leather,
+    AC8, is faster than its heavier Padded, also AC8; its Elfin Chain, AC5,
+    is faster than its own Chain Mail, also AC5), so these are exact name
+    matches, not a derived formula. HideArmor/FieldPlate/SolamnicArmor have
+    no DQoK counterpart at all (both are this project's own PHB-table
+    additions -- see `ArmorId`'s doc comment -- and SolamnicArmor is a
+    unique quest reward), so each gets DQoK's own established floor of 6
+    squares, a flagged, invented choice, not a sourced one. A Shield does
+    NOT reduce movement (DQoK's own Shield row has no movement entry, and
+    its footnote only ever describes the AC effect) -- confirmed via the
+    throwaway self-test's own shield-doesn't-change-it checks. **Not
+    modeled**: DQoK's own carried-weight footnote ("a character carrying
+    many objects... can be limited to a minimum of 3 squares per turn") --
+    this project has no encumbrance/carried-weight system to hang it on,
+    and Milestone 185 doesn't add one (see CLAUDE.md's "no premature
+    abstraction").
+  - **`combat::Monster::moveSquares`** (new field, default 12) and a
+    matching `MOVE <n>` keyword in `data/monsters.txt`'s grammar. Sourced
+    for 26 of the roster's 43 entries from the "Base Movement" stat in
+    three SSI Gold Box Dragonlance games' own bestiary exports already
+    sitting in `References/` (`Champions of Krynn - Monster Manual.html`,
+    `Death Knights of Krynn - Monster Manual.html`, `The Dark Queen of
+    Krynn - Monster Manual.html` -- fan-wiki exports of each game's actual
+    in-engine stat blocks, the same tier of source this project already
+    treats `dqok.txt` as for the grid/squares system itself), matched by
+    creature name; a couple of cross-checks against the real Monstrous
+    Manual increase confidence in the source's fidelity (Wraith's DQoK
+    Base Movement 24 matches the real book's own Fl 24 flying rate;
+    Spectre's Base Movement 30 is corroborated by two of the three games
+    independently). The remaining 17 entries (Kobold, Timber Wolf,
+    Bugbear, Gnoll, Thanoi, Owlbear, Black Bear, Worg, Ice Bear, Lizard
+    Man, Giant Toad, Harpy, Griffon, Stirge, White Pudding, Brown Pudding)
+    have no matching entry in any of the three games and use the
+    documented default of 12 instead -- each block's own inline comment in
+    `data/monsters.txt` says which case it is. See that file's own `MOVE`
+    grammar comment for the full citation.
+  - **Round restructure** (`sfml_phase1/main.cpp`): a move now spends one
+    square from a new `CombatSession::movementRemaining` (refreshed every
+    round in `combatWrapUpRound`) instead of ending the round outright.
+    Only an attack, a cast, an item, or the new **Space** "hold action/end
+    turn" key (previously unbound) still end the round, via the existing
+    `combatFinishPlayerAction`. `combatRollGoFirstAndMaybeActMonsters` (the
+    initiative roll + the monsters' whole turn if they win it) is now
+    idempotent per round, gated on a new `CombatSession::
+    initiativeRolledThisRound` flag reset alongside the movement budget --
+    so whichever action comes first in a round (a move, or a direct
+    attack) is the one that actually rolls, and every later action that
+    same round is a no-op call. Monster AI (`combatMonstersAct`) and
+    companion AI (`combatCompanionActs`) each now loop their own existing
+    single `combat::stepToward` call up to their own movement budget
+    (`monster.moveSquares` / `character::movementSquares(companion)`),
+    stopping early once adjacent to their target -- still move-*or*-attack
+    per turn, never both, same simplification the pre-185 single-step
+    version already had. One small, deliberate behavior change: a move that
+    gets cancelled because something moved into the destination cell mid-
+    resolution (the "the way is blocked now" case) used to end the round;
+    now it just cancels that one step, since the player may still have
+    movement and their action left to spend differently.
+  - Sidebar gained a `Movement: N/Max` readout (DQoK's own line, quoted
+    above) and the Help overlay's combat section documents Space.
+
+**Verified**: a throwaway `MovementSelfTest.cpp` (22 checks -- every armor
+tier's `movementSquares` value with and without a Shield, `MonsterLoader`'s
+new `MOVE` keyword including its default-when-absent and its two
+malformed-line failure cases, and `combat::stepToward` looped the same way
+the new AI movement loops use it -- converges to adjacency within budget on
+an open board, spends a too-small budget without overspending, and stops
+immediately rather than spinning when fully boxed in) all passed, then
+deleted along with its temporary CMake target; clean rebuild of all three
+targets (zero new `/W4` warnings); an `ansalon_sfml_phase1` launch smoke
+test against a copy of real `save1.txt` confirmed every catalog -- including
+the enlarged monster roster's new `MOVE` lines -- loads correctly; a piped
+`ansalon_rpg` character-creation run (empty slot 3) confirmed the same
+shared, now-larger `data/monsters.txt` still parses cleanly for the console
+build too. **Not yet interactively confirmed** (no desktop/GUI access this
+session): the scrolling camera actually following the player/target, taking
+several move steps before acting, Space actually holding/ending a turn,
+movement genuinely running out mid-round, and monster/companion AI closing
+distance at their own differing rates -- all added to
+`docs/CURRENT_WORK.md`'s Playtest backlog.
+
+**Live playtest follow-ups (same session, 2026-09-11)** -- the user then
+actually played the build, surfacing three real issues the smoke test
+couldn't catch:
+
+- **Monster/companion multi-step moves teleported.** A whole turn's worth
+  of steps resolved silently before the next real frame, so a fast
+  creature's token visibly jumped straight to its final cell instead of
+  appearing to walk there. Fixed with a new `combatAnimateAiStep(GridPos
+  focus)` lambda, called once per single step from
+  `combatMonstersAct`/`combatCompanionActs`' own movement loops: redraws
+  just the combat map/tokens (not the sidebar) and pauses briefly
+  (`kAiStepAnimationMs`, an invented pacing number -- tuned from an initial
+  70ms up to 130ms per the user's own "slow them down a tick" feedback).
+  The camera argument centers on whichever cell is actually moving that
+  step (a companion or monster walking far from the player used to animate
+  off-screen when the camera stayed fixed on the player).
+- **Stray line-fragment artifacts trailing a moving token.**
+  `combatAnimateAiStep` deliberately skips `window.clear()` (which would
+  also blank the sidebar's separate viewport for that one frame) and
+  instead relies on the tile loop's full board repaint every call -- but
+  the tiles' own 1px inter-tile gaps didn't fully overwrite a marker/glyph
+  pixel left there by the previous step, showing up as small stray colored
+  line fragments. Fixed by painting an opaque rectangle over exactly the
+  currently-visible map region (computed from the current camera bounds)
+  before the tile loop runs, rather than clearing the whole window.
+- **The new `dist N` sidebar text could run past the sidebar's own edge**
+  for a longer monster name (e.g. "Giant Centipede A"), clipped off the
+  window with the number invisible -- the exact same class of bug this
+  file already fixed once for the command-row prompt lines (see this
+  section's own code comment citing that prior fix). Fixed by switching
+  the monster roster line from plain `drawLine` to the existing
+  `drawWrappedLine` helper.
+
+Verified the same way as the rest of this milestone: clean `/W4` rebuild
+after each change, a launch smoke test, then the user's own live keyboard
+retest confirming each fix before moving to the next.
+
+## VIEW command and status-effect visibility (Milestone 186, SFML only)
+
+The user also shared `References/BattleFrames.zip` -- 225 PNG frames
+sampled from their own gameplay recording of an SSI Gold Box Dragonlance
+game (the same trilogy `DQoK.pdf` already sources this project's combat
+grid, Hoopak stats, and spell census from). Reviewing a sample across the
+sequence surfaced real UI depth this project didn't have: selecting any
+unit shows a full stat card (name/HP/AC/weapon) with any active status
+printed on it, reached through a dedicated `VIEW` command separate from
+attacking. (The sampled frames also confirmed this project's spellbook
+picker already shows a remaining-charge count per spell, e.g. "Fireball
+(x2)" -- `combatBeginCast`'s existing `spellPickLabels` -- so nothing
+needed building there.)
+
+This milestone is pure **presentation over state already tracked** -- no
+new game mechanic, every buff/debuff/block it surfaces was already a real,
+sourced spell effect (`combatApplySpellEffect`) with nowhere for the player
+to actually see it in force.
+
+- **`v` while Idle opens a "View who?" picker** (`combatBeginView`,
+  `sfml_phase1/main.cpp`) listing the player, every alive companion, and
+  every alive monster instance. **Costs no round** -- no call to
+  `combatRollGoFirstAndMaybeActMonsters` -- same "pure info window"
+  treatment as Help/Journal/the character sheet. Confirming a candidate
+  (`combatConfirmView`) builds a read-only stat card (HP/AC/THAC0/Weapon
+  for the player or a companion; HP/AC/THAC0/Damage-dice for a monster
+  instance, which has no individually-named weapon) drawn via the existing
+  `drawPickerOverlay` primitive, same reused-not-rebuilt shape every other
+  picker-style screen in this file already has.
+- **Status tags, derived from state, not tracked separately.**
+  `combatPlayerStatusTags()`/`combatMonsterStatusTags(idx)` read
+  `CombatSession`'s existing this-fight buff/debuff/block fields (Hasted,
+  a THAC0/damage/AC bonus or penalty, Held, N-more-attacks-blocked, Globe
+  of Invulnerability active) and turn them into short human-readable
+  labels. Getting the sign right mattered: `monsterThac0Penalty`/
+  `monsterAcPenalty` are stored as a positive number meaning *worse for the
+  monster* (`combat::resolveMonsterAttack`/`resolvePlayerAttack`'s own
+  documented convention -- a positive `thac0Penalty` raises the monster's
+  effective THAC0, a positive `monsterAcPenalty` inflates its AC), so the
+  tags print the stored sign directly with a clarifying parenthetical
+  ("+2 THAC0 (harder for it to hit you)") rather than negating it.
+  **Companions have no equivalent** -- no per-companion buff/debuff
+  tracking exists anywhere in this engine -- so a companion's card simply
+  carries no Status line, an honest reflection of what's real rather than
+  a gap papered over.
+- **The same tags also appear passively in the sidebar roster**, on the
+  player's own line and each monster instance's line (companions
+  unchanged, since they have nothing to show) -- so an active effect is
+  visible every round without opening VIEW. Both lines already go through
+  (or, for the player line, were switched to) `drawWrappedLine` rather
+  than raw `drawLine`, so the added tag text wraps instead of risking the
+  exact clipped-edge bug the `dist N` follow-up above just fixed.
+- **Deliberately not built**: `AIM`/`QUICK` commands from the reference --
+  ranged targeting already works through the existing attack picker, and
+  `QUICK`/`DONE` already map to this engine's existing Enter/Space. No new
+  sprite animation or real art either, unrelated to this UI-depth pass and
+  out of scope per this project's established placeholder-shapes-now/
+  art-later posture.
+
+Verified: clean `/W4` rebuild of all three targets (zero new warnings), an
+`ansalon_sfml_phase1` launch smoke test against a copy of real `save1.txt`.
+No throwaway self-test -- the whole feature lives in `sfml_phase1/main.cpp`
+local lambdas, same situation as the round-restructure work above.
+**Interactive confirmation pending** -- see `docs/CURRENT_WORK.md`'s
+Playtest backlog.
+
+## Keypad diagonal movement (Milestone 187, SFML only)
+
+Combat movement gained real 8-directional movement via the numpad,
+alongside the identical addition to overworld/zone movement -- see
+`docs/MAP_NOTES.md`'s own "Keypad diagonal movement" section for the key
+bindings and the Milestone 63 diagonal-removal history this doesn't
+reverse.
+
+- **No change needed to `combatBeginPlayerMove` itself** to make diagonal
+  steps work: it already computed `destination = playerPos + (dx, dy)`
+  and only ever checked the one resulting cell -- bounds, occupancy, and
+  `combat::isAdjacent`'s own Chebyshev-distance adjacency rule are all
+  already diagonal-aware (the DQoK.pdf-sourced 8-surrounding-cells
+  definition "Positional combat grid" already established). Only the key
+  bindings needed to change.
+- **Deliberately NO corner-cutting check here**, unlike overworld/zone.
+  Combat has no wall/obstacle concept yet -- the only thing a diagonal
+  step could conceivably "cut around" today is another combatant's
+  occupied cell (`combatCellOccupied`), and squeezing diagonally past an
+  occupied cell isn't the same kind of problem corner-cutting solves for
+  solid terrain geometry, so it's left alone rather than inventing a rule
+  for it. **Milestone 188 (walls) will need to revisit this** once real
+  wall geometry exists on the combat grid -- flagged here so that
+  milestone doesn't have to rediscover the gap.
+- **Movement cost stays 1 square per diagonal step**, same as a cardinal
+  step -- no invented diagonal penalty, same reasoning as the overworld/
+  zone note.
+- **Fixed a cosmetic bug this surfaced**: `combatBeginPlayerMove`'s
+  `dirLabel` computation was a 4-way ternary chain (`y<old ? "north" :
+  y>old ? "south" : x<old ? "west" : "east"`) that silently mislabeled
+  every diagonal move as just "north" or "south" (dy took priority over
+  dx by construction, so a northeast step logged as "You move north.").
+  Replaced with a proper 8-way lookup (adding northeast/northwest/
+  southeast/southwest) now that a diagonal `destination` is actually
+  reachable.
+
+Verified: clean `/W4` rebuild of all three targets (zero new warnings), an
+`ansalon_sfml_phase1` launch smoke test, then confirmed working live by
+the user (2026-09-11).
+
 ## Extending this later
 
 - **A party of up to six characters.** The single biggest remaining gap

@@ -19,7 +19,7 @@ newly added/lightly tested · **Placeholder** = stubbed, logs/shows a
 | Chance encounters (Heroes) | Done | Done | Timeline-driven encounters on the overworld and inside zones. |
 | Sea travel | Done | Done | Now works in both builds; SFML Talk offers the same Board/Not yet choice as console. |
 | Companions | Done | Done | SFML recruitment confirmed at the keyboard; companions fight in SFML combat, sweep/backstab included. |
-| Combat (tactical grid) | Done | Done | Real 2e attack/damage math, opportunity attacks, backstab/sweep, draconian abilities, area Fireball. |
+| Combat (tactical grid) | Done | Partial | Real 2e attack/damage math, opportunity attacks, backstab/sweep, draconian abilities, area Fireball apply to both. **Deliberate, permanent divergence (Milestone 185):** SFML's own grid grew to 50x25 with real per-round movement (`character::movementSquares`/`Monster::moveSquares`, DQoK.pdf p.51), a genuine Gold Box-style battlefield; console stays at its original 15x9, one-step-per-round grid — its ASCII rendering physically cannot follow a 50-wide row (see `docs/COMBAT_NOTES.md`'s "Bigger battlefield and real per-round movement"). Not a gap to close; SFML's own scrolling camera/multi-step movement/Space-to-hold-turn are **not yet interactively confirmed** — see `docs/CURRENT_WORK.md`'s Playtest backlog. |
 | Magic: spells & items | Done | Done | Presentation migration only — the same 50-spell book and item logic apply to both. |
 | Shops & equipment | Done | Done | 13 shop POIs across 9 towns; buy/sell, carried inventory, equip changes AC/damage. |
 | Leveling | Done | Done | PHB level-by-level tables; Knight/Mage milestone nods. |

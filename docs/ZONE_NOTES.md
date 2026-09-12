@@ -2292,3 +2292,17 @@ same no-`SHOP`/`BED`/`QUEST` restraint as above.
    `TALK_AFTER <char> <dialogue...>` line (see "Aftermath dialogue" above).
 6. Build and check the load succeeds (a malformed zone file fails fast with
    a clear error at startup, not partway through play).
+
+## Keypad diagonal movement inside zones (Milestone 187, `ansalon_sfml_phase1` only)
+
+Zone-interior movement gained the same 8-directional numpad movement as
+the overworld -- see `docs/MAP_NOTES.md`'s own "Keypad diagonal movement"
+section for the full writeup (key bindings, the Milestone 63 diagonal-
+removal history this doesn't reverse, why corner-cutting is blocked).
+The zone-specific detail: the existing `isPoi || tile.passable` rule a
+straight move already used is reused identically for the two flanking
+cardinal tiles a diagonal step also checks, so a POI tile counts as a
+valid corner just as it already counts as a valid destination. Combat's
+own movement (a separate code path, `sfml_phase1/main.cpp`'s
+`combatBeginPlayerMove`) also gained diagonals but deliberately has no
+corner-cutting check at all yet -- see `docs/COMBAT_NOTES.md`.

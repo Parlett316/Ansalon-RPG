@@ -136,6 +136,13 @@ void MonsterLoader::loadFromFile(const std::string& path, MonsterCatalog& outCat
             }
             current.groupMin = groupMin;
             current.groupMax = groupMax;
+        } else if (keyword == "MOVE") {
+            std::istringstream iss(rest);
+            int moveSquares = 0;
+            if (!(iss >> moveSquares) || moveSquares <= 0) {
+                fail(path, lineNumber, "malformed MOVE (expected a positive integer number of squares)");
+            }
+            current.moveSquares = moveSquares;
         } else if (keyword == "DESC") {
             current.description = rest;
         } else if (keyword == "END") {

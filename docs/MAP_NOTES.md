@@ -1713,3 +1713,51 @@ every direction that should be forest. Re-cropped the same index-
 highlight overlays for Qualinesti and Silvanesti afterward: both read as
 clean solid forest now (mountain's red speckle still visible, as
 intended -- out of scope this pass).
+
+## Keypad diagonal movement (Milestone 187, `ansalon_sfml_phase1` only)
+
+Overworld movement gained real 8-directional movement via the numpad, at
+the user's request. Worth cross-referencing: `docs/MILESTONES.md` entry 63
+records that diagonal movement (a `yubn` roguelike scheme) was
+**deliberately removed** at a prior user request, specifically to
+de-clutter the *console* build's overlapping letter-key schemes (arrows/
+`hjkl`/`wasd`/`yubn` all doing the same thing) -- see `docs/GOTCHAS.md`.
+That was about letter-key scarcity in `ansalon_rpg` specifically, not a
+standing objection to diagonals; reintroducing them to the *SFML* build
+via a physically different device doesn't reverse it, and `ansalon_rpg`
+itself is untouched by this milestone, still `wasd`-only.
+
+- **Key bindings**: `Numpad7`/`Home` (NW), `Numpad9`/`PageUp` (NE),
+  `Numpad1`/`End` (SW), `Numpad3`/`PageDown` (SE), plus `Numpad8`/`2`/`4`/
+  `6` as cardinal aliases matching `w`/`s`/`a`/`d`. Two bindings per
+  diagonal because Windows only reports `Numpad7`/`9`/`1`/`3` when
+  NumLock is ON -- with it off, the same physical keys report as Home/
+  PageUp/End/PageDown instead, so binding both means it works regardless
+  of the user's NumLock state.
+- **No code change needed in the move logic itself**: the overworld
+  movement handler already computed `nx = state.x + dx; ny = state.y +
+  dy` and only ever checked the one resulting tile -- it never assumed
+  `dx`/`dy` were mutually exclusive. The only reason diagonal movement
+  didn't already work is that no key previously set both at once.
+- **Corner-cutting is blocked** (the user's explicit choice over allowing
+  it): a diagonal step (`dx != 0 && dy != 0`) additionally checks both
+  flanking cardinal tiles (`terrainFor(grid.terrainCodeAt(nx, state.y))`
+  and `terrainFor(grid.terrainCodeAt(state.x, ny))`) and refuses the move
+  if either is impassable, even though the diagonal destination itself is
+  clear -- "Blocked: can't cut across <terrain>." distinguishes this from
+  the ordinary "Blocked: cannot walk onto <terrain>." destination-blocked
+  message. A straight (single-axis) move never runs this check at all.
+- **Movement cost stays 1 square per step**, diagonal or not -- no 1.5x
+  diagonal penalty. Neither this project's own invented grid scale nor
+  any of its sourced rulebooks establishes a different diagonal cost, so
+  inventing one wasn't warranted (see "Positional combat grid" in
+  `docs/COMBAT_NOTES.md` for the same "grid scale is invented, don't
+  over-derive from it" precedent).
+- See `docs/ZONE_NOTES.md`'s own note for the identical treatment applied
+  to zone-interior movement, and `docs/COMBAT_NOTES.md` for combat's
+  (corner-cutting-free, since combat has no wall concept yet).
+
+Verified: clean `/W4` rebuild of all three targets (zero new warnings), an
+`ansalon_sfml_phase1` launch smoke test, then confirmed working live by
+the user (2026-09-11) -- numpad and Home/PageUp/End/PageDown diagonals,
+and corner-cutting blocking as expected.

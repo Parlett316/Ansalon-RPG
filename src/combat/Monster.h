@@ -91,6 +91,18 @@ struct Monster {
     // simplified to a flat value near its average roll -- see
     // docs/COMBAT_NOTES.md.
     int xpValue = 0;
+
+    // How many grid squares this monster can move in one combat round
+    // (Milestone 185's bigger battlefield + real per-round movement).
+    // Sourced from the "Base Movement" stat in the three SSI Gold Box
+    // Dragonlance games' own bestiaries where a matching entry exists
+    // (References/*.html -- Champions/Death Knights/The Dark Queen of
+    // Krynn), same "squares" unit already established for the combat grid
+    // (DQoK.pdf's own Armor Table, p.51); 12 (this project's own invented
+    // baseline, same as an unarmored human) for every monster none of the
+    // three games list -- see docs/COMBAT_NOTES.md and data/monsters.txt's
+    // own MOVE grammar comment for the full breakdown.
+    int moveSquares = 12;
 };
 
 // True if `monster` counts as "weak" for a Fighter-type's sweep attack

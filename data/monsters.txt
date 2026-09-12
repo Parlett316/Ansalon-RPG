@@ -87,6 +87,22 @@
 #                          figure only for a lair (Owlbear) or a rare,
 #                          explicitly-exceptional gathered band (Ettin). See
 #                          COMBAT_NOTES.md for the full findings.
+# MOVE <n>                 how many grid squares this monster can move in one
+#                          combat round (Milestone 185's bigger battlefield +
+#                          real per-round movement -- see
+#                          docs/COMBAT_NOTES.md). Sourced where possible from
+#                          the "Base Movement" stat in the three SSI Gold Box
+#                          Dragonlance games' own bestiaries (References/
+#                          "Champions of Krynn - Monster Manual.html",
+#                          "Death Knights of Krynn - Monster Manual.html",
+#                          "The Dark Queen of Krynn - Monster Manual.html" --
+#                          already this project's precedent source for the
+#                          combat grid itself, see DQoK.pdf's own Armor Table,
+#                          p.51); any creature with no entry in any of the
+#                          three defaults to 12 (this project's own invented
+#                          baseline, same as an unarmored human/DQoK's own
+#                          "None" armor row) -- see docs/COMBAT_NOTES.md for
+#                          the full sourced/invented breakdown.
 # DESC <text>              shown when the encounter starts
 # END                      closes the block
 #
@@ -204,6 +220,11 @@ XP 15
 # project's playability cap, so goblins always turn up in a full band of 4.
 GROUP 4 4
 TERRAIN_BIAS ^ %
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 6 --
+# same "squares" unit this project's combat grid already uses (see
+# the Armor Table note above DQoK.pdf p.51).
+MOVE 6
 DESC A skulking, yellow-eyed goblin lunges from the brush, crude spear already leveled.
 END
 
@@ -219,6 +240,13 @@ XP 7
 # project's playability cap, so kobolds always turn up in a full band of 4.
 GROUP 4 4
 TERRAIN_BIAS ^ %
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A scaly, dog-faced kobold darts out from behind a rock, yipping for reinforcements that may or may not come.
 END
 
@@ -233,6 +261,9 @@ XP 35
 # Real No. Appearing is 2-20 (2d10, Monster Manual p.191) -- clamped to this
 # project's playability cap.
 GROUP 2 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 9.
+MOVE 9
 DESC A burly hobgoblin in scavenged armor squares up, sizing you the way a butcher sizes a carcass.
 END
 
@@ -248,6 +279,13 @@ XP 120
 # Manual p.362) -- clamped to this project's playability cap.
 GROUP 2 4
 TERRAIN_BIAS % .
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A lean gray wolf circles once, hackles raised, before it charges.
 END
 
@@ -268,6 +306,10 @@ POISON
 # anyway at Milestone 125, at the user's explicit direction.
 GROUP 1 4
 TERRAIN_BIAS % *
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html", "GIANT SPIDER"), Base
+# Movement 12.
+MOVE 12
 DESC A spider the size of a hound drops from the canopy on a line of silk, mandibles clicking.
 END
 
@@ -288,6 +330,9 @@ XP 90
 # Sivak/Aurak below, Baaz carry no MIN_TOWN_DISTANCE gate, so grouping stays
 # in line with its existing low-danger-tier treatment.
 GROUP 2 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 15.
+MOVE 15
 DESC A scaled, armored figure blocks the path -- a draconian, blade drawn, wings half-spread. Killing it will turn its body to stone.
 END
 
@@ -303,6 +348,13 @@ XP 120
 # project's playability cap.
 GROUP 2 4
 TERRAIN_BIAS ^ A
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A hulking, hairy shape unfolds from the shadows of the treeline, grinning with a bear-trap mouth.
 END
 
@@ -319,6 +371,9 @@ XP 270
 # restriction (the book's own "found anywhere, from deep caverns to
 # mountaintops" is why no TERRAIN_BIAS/EXCLUDE_TERRAIN is used instead).
 MIN_TOWN_DISTANCE 20
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 9.
+MOVE 9
 DESC A nine-foot brute in stinking, ill-cured hides shoulders a crude, knotted club and roars a challenge.
 END
 
@@ -338,6 +393,9 @@ XP 145
 # punishing for a low-level character, so it's kept away from starting
 # towns too. Invented gameplay tuning, user-requested, not sourced.
 MIN_TOWN_DISTANCE 20
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 15.
+MOVE 15
 DESC A wiry, hunched draconian licks its blade before it strikes, venom glistening along the edge.
 END
 
@@ -354,6 +412,13 @@ XP 35
 GROUP 2 4
 TERRAIN_BIAS % ^ *
 EXCLUDE_TERRAIN _
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A hyena-headed gnoll shoulders through the brush, jaws slack with a wet, laughing snarl.
 END
 
@@ -373,6 +438,12 @@ XP 175
 # Real No. Appearing is 2-24 (2d12, Monster Manual p.131) -- clamped to this
 # project's playability cap.
 GROUP 2 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 9 --
+# Death Knights of Krynn's own Ghoul entry instead gives 12; Champions'
+# value is kept since it's the lower-level game this roster's tier
+# otherwise tracks closest.
+MOVE 9
 DESC A ghoul rises from a shallow grave, corpse-pale and grinning, hands hooked into claws.
 END
 
@@ -391,6 +462,9 @@ XP 65
 # Real No. Appearing (base Skeleton column) is 3-30 (3d10, Monster Manual
 # p.315) -- clamped to this project's playability cap.
 GROUP 3 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC Loose bones knit together with a dry rattle, and a skeleton hauls itself upright, blade already raised.
 END
 
@@ -407,6 +481,10 @@ XP 65
 # Real No. Appearing (Common column) is 3-24 (Monster Manual p.373) --
 # clamped to this project's playability cap.
 GROUP 3 4
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html", "ZOMBIE"), Base
+# Movement 6.
+MOVE 6
 DESC A bloated corpse shambles forward, arms outstretched, its jerky steps and low moan the only warning you get.
 END
 
@@ -447,6 +525,10 @@ CASTS_MAGIC_MISSILE 40
 # sourced (Dragonlance Adventures gives draconians no Climate/Terrain field
 # to hang a real restriction on -- see docs/COMBAT_NOTES.md).
 MIN_TOWN_DISTANCE 25
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html", "BOZAK DRACONIAN"),
+# Base Movement 15.
+MOVE 15
 DESC A crested draconian levels a clawed hand crackling with raw magic, sizing you up like a problem to be solved.
 END
 
@@ -484,6 +566,10 @@ BURSTS_INTO_FLAME
 # HD6, deeper into elite-tier than the Bozak above -- kept farther from
 # towns accordingly. Invented gameplay tuning, user-requested, not sourced.
 MIN_TOWN_DISTANCE 35
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html", "SIVAK DRACONIAN" --
+# not the far faster "ENCHANTED SIVAK" variant), Base Movement 15.
+MOVE 15
 DESC A heavily armored draconian unslings a pair of wicked blades, its long tail lashing behind it like a whip.
 END
 
@@ -530,6 +616,10 @@ BREATH_WEAPON 30
 # towns of any monster. Invented gameplay tuning, user-requested, not
 # sourced.
 MIN_TOWN_DISTANCE 45
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html", "AURAK DRACONIAN"),
+# Base Movement 15.
+MOVE 15
 DESC A tall, wingless draconian regards you with unsettling stillness, a voice that isn't yours already forming inside your skull.
 END
 
@@ -572,6 +662,13 @@ ONLY_TERRAIN :
 # freezing -- none of it modeled (no damage-type or elemental-exposure
 # system exists for anyone yet), same flavor-only restraint as the
 # Skeleton's/Zombie's immunities above.
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A tusked, blubbery brute hauls itself up onto the ice, gripping a spear in fingers built for both weapon and walrus alike.
 END
 
@@ -594,6 +691,13 @@ TERRAIN_BIAS %
 # HD5+2 apex forest predator -- kept away from a starting town's doorstep,
 # same invented-tuning reasoning as the Ogre above.
 MIN_TOWN_DISTANCE 20
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A feathered, bear-bodied shape crashes out of the underbrush, its great owl's beak already snapping for your throat.
 END
 
@@ -614,6 +718,9 @@ XP 1400
 # yet, same restraint as the Ghoul's paralyzing touch and the Draconians'
 # unmodeled magic resistance.
 MIN_TOWN_DISTANCE 25
+# MOVE sourced from Death Knights of Krynn's own bestiary (References/
+# "Death Knights of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A grave-cold shape rises from the barrow-earth, burning eyes fixed on you with a hunger older than its own death.
 END
 
@@ -636,6 +743,10 @@ XP 1400
 # per-round monster HP recovery exists in runCombat, same restraint as
 # every other special defense in this roster.
 MIN_TOWN_DISTANCE 35
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html") -- both its "2 Headed
+# Troll" and "Giant Troll" variants give Base Movement 12.
+MOVE 12
 DESC A gaunt, green-hided horror unfolds to its full height, claws flexing, wounds already knitting shut before your eyes.
 END
 
@@ -657,6 +768,13 @@ XP 175
 # within this project's playability cap, so used as-is, unclamped.
 GROUP 1 3
 TERRAIN_BIAS % ^
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A black bear rears up with a rumbling growl, claws already raised, in no mood to be crowded off the trail.
 END
 
@@ -675,6 +793,13 @@ XP 120
 # project's playability cap.
 GROUP 3 4
 TERRAIN_BIAS %
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A big, wolfish shape breaks from the treeline with an unnervingly calculating gleam -- too clever, too cruel, to be any common wolf.
 END
 
@@ -715,6 +840,13 @@ GROUP 1 4
 # between the two. Immune to cold is real (Dragonlance Adventures p.76)
 # but left flavor-only, same restraint as the Thanoi's own cold immunity.
 ONLY_TERRAIN :
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A great white bear hauls itself up from the snow, small dark eyes fixed on you with the patient hunger of a hunter that has never gone hungry for long.
 END
 
@@ -736,6 +868,13 @@ XP 65
 # lizard men always turn up in a full band of 4.
 GROUP 4 4
 TERRAIN_BIAS *
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A green-scaled lizard man rises hissing from the reeds, spear notched with old kills, ready to add one more.
 END
 
@@ -756,6 +895,13 @@ XP 120
 # clamped to this project's playability cap.
 GROUP 1 4
 TERRAIN_BIAS *
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A toad the size of a hound squats in the muck, throat pulsing, before it lunges with a wet snap of its jaws.
 END
 
@@ -779,6 +925,9 @@ TERRAIN_BIAS ^ A
 # farther from town than Sivak, just short of Aurak. Invented gameplay
 # tuning, user-precedent-matched, not sourced.
 MIN_TOWN_DISTANCE 40
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A hulking, two-headed brute lurches from the rocks, one head snarling while the other watches your back trail, twin clubs already rising.
 END
 
@@ -808,6 +957,13 @@ TERRAIN_BIAS . ^
 # distance as an elite draconian without one of their own spellcasting/
 # breath-weapon complications. Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 35
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A ragged, vulture-winged shape drops from the rocks above, a wordless, eerie song already rising as its talons flash for your eyes.
 END
 
@@ -829,6 +985,13 @@ XP 650
 ONLY_TERRAIN ^ A
 # HD7, same bracket as the Harpy above -- see that entry's comment.
 MIN_TOWN_DISTANCE 35
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A lion-bodied, eagle-headed shape screams down out of the sky, wings booming, talons already reaching for a killing grip.
 END
 
@@ -857,6 +1020,13 @@ ONLY_TERRAIN %
 # project's playability cap, so stirges always turn up in a full band of
 # 4, same treatment as the Goblin/Kobold/Lizard Man above.
 GROUP 4 4
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A rusty-red, bat-winged shape darts in on clicking pincer legs, its long proboscis already questing for a vein.
 END
 
@@ -884,6 +1054,9 @@ XP 15
 # a real gap: no low-tier dungeon/scavenger vermin exists in this roster
 # below Goblin/Kobold.
 GROUP 4 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A rat the size of a small dog bares yellowed teeth, driven bold by hunger and the smell of blood.
 END
 
@@ -913,6 +1086,10 @@ STEEL 0 0 0
 XP 35
 # Real No. Appearing is 2-24 -- clamped to this project's playability cap.
 GROUP 4 4
+# MOVE sourced from Champions of Krynn's own bestiary (References/
+# "Champions of Krynn - Monster Manual.html", "GIANT CENTIPEDE"), Base
+# Movement 15.
+MOVE 15
 DESC A centipede as long as a forearm skitters out from beneath a stone, mandibles glistening with venom.
 END
 
@@ -939,6 +1116,9 @@ XP 650
 # Real No. Appearing is "1-4, with Ghoul packs" -- not an independent roll
 # of its own, so left solo (no GROUP line) rather than invent a standalone
 # band size the real text doesn't support.
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A ghast crouches over a half-eaten corpse, uglier and larger than any ghoul, a stench of rot rolling off it in waves.
 END
 
@@ -964,6 +1144,9 @@ TERRAIN_BIAS %
 # Same HD5+2 bracket as the Owlbear above -- gated the same distance.
 # Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 20
+# MOVE sourced from Death Knights of Krynn's own bestiary (References/
+# "Death Knights of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A hunched, tusked shape rises on two legs at the treeline, bristled hide catching the light, a boar's scream twisting into something worse.
 END
 
@@ -990,6 +1173,9 @@ TERRAIN_BIAS % ^
 # Same HD6-ish bracket as the Sivak/Troll pair above -- gated the same
 # distance. Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 35
+# MOVE sourced from Death Knights of Krynn's own bestiary (References/
+# "Death Knights of Krynn - Monster Manual.html"), Base Movement 15.
+MOVE 15
 DESC A lean, striped shape uncoils from a crouch, human enough to have been mistaken for one a moment ago, tiger enough that the mistake is now fatal.
 END
 
@@ -1016,6 +1202,9 @@ TERRAIN_BIAS % ^
 # No MIN_TOWN_DISTANCE gate, matching the Black Bear/Worg's own
 # ungated mid-tier treatment (comparable XP, no special defenses).
 GROUP 4 4
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 6.
+MOVE 6
 DESC A beetle the size of a hound grinds its mandibles together with a sound like a millstone, ready to bore through anything in reach.
 END
 
@@ -1046,6 +1235,9 @@ TERRAIN_BIAS ^ A
 # distance as the similarly "big HD, single hit, no spellcasting" Ettin.
 # Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 40
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 12.
+MOVE 12
 DESC A monstrous, iron-scaled bull paws the ground, twin plumes of venting vapor curling from its nostrils.
 END
 
@@ -1076,6 +1268,9 @@ ONLY_TERRAIN *
 # reputation without pretending the modeled encounter is as dangerous as
 # its real stat block. Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 30
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 9.
+MOVE 9
 DESC A five-necked reptilian shape rises out of the reeds, each head hissing a challenge of its own.
 END
 
@@ -1099,6 +1294,11 @@ XP 2000
 # One HD bracket and roughly one danger-step above the Wight -- gated
 # accordingly. Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 30
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 24 --
+# matches the real Monstrous Manual's own Fl 24 ("A") flying rate for
+# a Wraith, a good cross-check of this source's fidelity.
+MOVE 24
 DESC A man-shaped shadow rises off the ground with no feet to stand on, twin points of cold red light fixed on you like a hunger given eyes.
 END
 
@@ -1125,6 +1325,13 @@ ONLY_TERRAIN :
 # single big hit" bracket as the Gorgon above. Invented gameplay tuning,
 # not sourced.
 MIN_TOWN_DISTANCE 40
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A heap of glistening white ooze humps forward across the ice, indistinguishable from a snowbank until it moves.
 END
 
@@ -1147,6 +1354,13 @@ ONLY_TERRAIN *
 # existing ceiling alongside the Aurak. Invented gameplay tuning, not
 # sourced.
 MIN_TOWN_DISTANCE 45
+# MOVE: no entry for this creature was found in any of the three
+# SSI Gold Box Dragonlance games' own bestiary exports checked this
+# session (References/*.html -- Champions/Death Knights/The Dark Queen
+# of Krynn), so this is this project's own invented default (the same
+# baseline as an unarmored human/DQoK.pdf p.51's "None" armor row),
+# not a sourced number -- see docs/COMBAT_NOTES.md.
+MOVE 12
 DESC A sluggish brown mass oozes out from beneath the muck, dissolving the reeds it passes with a faint, acrid hiss.
 END
 
@@ -1176,6 +1390,9 @@ ONLY_TERRAIN _
 # unmodeled" bracket as the Gorgon/Puddings above. Invented gameplay
 # tuning, not sourced.
 MIN_TOWN_DISTANCE 40
+# MOVE sourced from The Dark Queen of Krynn's own bestiary (References/
+# "The Dark Queen of Krynn - Monster Manual.html"), Base Movement 6.
+MOVE 6
 DESC Rotted linen wrappings shift as a corpse hauls itself upright, dry and ancient, its tomb's rest broken by trespassers at last.
 END
 
@@ -1204,6 +1421,10 @@ XP 3000
 # theirs -- gated one step farther out. Invented gameplay tuning, not
 # sourced.
 MIN_TOWN_DISTANCE 40
+# MOVE sourced from Death Knights of Krynn's and The Dark Queen of
+# Krynn's own bestiaries (References/*.html), both agreeing on Base
+# Movement 30.
+MOVE 30
 DESC A translucent, robed figure drifts a hand's breadth off the ground, its ancient finery undisturbed by any wind.
 END
 
@@ -1239,5 +1460,9 @@ ONLY_TERRAIN *
 # Aurak/Ettin/Brown Pudding tier to honor that real XP gap rather than
 # understating it. Invented gameplay tuning, not sourced.
 MIN_TOWN_DISTANCE 55
+# MOVE sourced from The Dark Queen of Krynn's own bestiary
+# (References/"The Dark Queen of Krynn - Monster Manual.html",
+# "SHAMBLING MOUND"), Base Movement 6.
+MOVE 6
 DESC A tangle of rotten vegetation heaves upright at the bog's edge, roots peeling free of the muck like a nightmare shrugging off sleep.
 END

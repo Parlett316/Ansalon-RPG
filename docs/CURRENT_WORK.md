@@ -1,6 +1,48 @@
 # Current work
 
-**Nothing in-flight code-wise.** Playable v7 is done: P1 (quest system +
+**Milestones 185-187 shipped 2026-09-11** (the first three of a now-six-part
+Gold Box-style battlefield chain, requested by the user against a real Dark
+Queen of Krynn screenshot): `ansalon_sfml_phase1`'s combat grid grew from
+15x9 to 50x25 with a scrolling camera, and movement is now a real
+per-round budget (`character::movementSquares`/`Monster::moveSquares`,
+sourced from DQoK.pdf p.51 and three SSI Gold Box games' own bestiaries)
+instead of one step ending the round outright. `ansalon_rpg` deliberately
+keeps its own 15x9 grid unchanged — see `docs/COMBAT_NOTES.md`'s "Bigger
+battlefield and real per-round movement" and `docs/PARITY_MATRIX.md`'s
+Combat row for the full writeup. Live playtesting the same day surfaced
+and fixed three follow-on issues (monster/companion moves teleporting
+instead of animating step-by-step, stray trail-line artifacts during that
+animation, and the new `dist N` sidebar text clipping off-screen for a
+long monster name) — see COMBAT_NOTES.md's "Live playtest follow-ups"
+subsection. Milestone 186 then added a `v` = VIEW command (a read-only
+stat card for any unit, no round cost) and status-effect tags surfaced
+both on that card and passively in the sidebar roster, prompted by the
+user sharing `References/BattleFrames.zip` (gameplay frames from the same
+SSI trilogy) — see COMBAT_NOTES.md's "VIEW command and status-effect
+visibility" section. Milestone 187 then added keypad diagonal movement
+(numpad, or Home/PageUp/End/PageDown with NumLock off) across the
+overworld, zone interiors, and combat, with corner-cutting blocked for
+overworld/zone (not combat, which has no walls yet) — see
+`docs/MAP_NOTES.md`/`docs/ZONE_NOTES.md`/`docs/COMBAT_NOTES.md`'s own
+"Keypad diagonal movement" sections; this deliberately does NOT reverse
+`docs/MILESTONES.md` entry 63's earlier removal of diagonal movement,
+which was about the console build's letter-key scheme overlap
+specifically, not diagonals themselves — `ansalon_rpg` is untouched, still
+`wasd`-only. **Next up in the same chain, not started: 188 (walls from
+hand-authored `data/battlemaps/*.txt`, terrain-keyed, in the
+`data/zones/*.txt` GRID idiom, plus replacing `combat::stepToward`'s
+greedy single-axis pathing with a wall-aware BFS step for the SFML side
+only — `stepToward` itself stays untouched for the console — and revisiting
+combat's own corner-cutting exemption above once walls actually exist
+there), 189 (line of sight, a Bresenham `combat::hasLineOfSight`, gating
+ranged weapons/spells and unblocking the already-documented Lightning Bolt
+wall-bounce), 190 (multi-square creatures via a sourced `SIZE` monster
+keyword — note the roster has no dragons at all, a separate content
+decision to raise before adding any).** Each is its own milestone,
+SFML-only, sequenced this way at the user's own request. Don't start 188
+unprompted.
+
+Otherwise nothing else in-flight code-wise. Playable v7 is done: P1 (quest system +
 Look command ported to SFML, Milestones 182-183), P2 (save hardening,
 Milestone 184), and P3 (`docs/PARITY_MATRIX.md`) all closed 2026-09-11 —
 `docs/NEXT_STEPS_v7.md` and `docs/PARITY_MATRIX.md` have both been
@@ -45,6 +87,29 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
+- **Bigger battlefield + real movement** (Milestone 185) -- **confirmed
+  live 2026-09-11**: the scrolling camera following whichever token is
+  actually moving, monster/companion AI walking one square at a time
+  (animated, not teleporting) with no trail artifacts, and the sidebar's
+  `dist N` readout displaying correctly (not clipped). **Still not
+  confirmed**: taking several `wasd` steps in one round before attacking;
+  Space genuinely holding/ending a turn with no attack; movement actually
+  running out mid-round (refusing a further step with "You have no
+  movement left this round"); the `Movement: N/Max` readout counting down
+  correctly; and monster/companion AI closing distance at their own
+  differing rates specifically (a fast Wraith/Spectre vs. a slow Zombie/
+  Mummy/Boring Beetle, easiest to force by fighting each with a fresh
+  character on open terrain).
+- **VIEW command + status tags** (Milestone 186) -- **confirmed live
+  2026-09-11**: `v` while Idle opens the "View who?" picker and shows a
+  stat card correctly. **Still not separately confirmed**: a Status line
+  actually appearing on the card (needs a debuff/buff active -- easiest to
+  force by memorizing/casting Slow or Hold Monster and checking both the
+  card and the sidebar roster line for the same tag), and Escape/Q
+  cancelling the picker itself without consuming a round.
+- **Keypad diagonal movement** (Milestone 187) -- **confirmed live
+  2026-09-11**: numpad and Home/PageUp/End/PageDown diagonals work, and
+  corner-cutting is blocked as expected, across overworld/zone/combat.
 - **Look command** (Milestone 182) -- not yet interactively confirmed at
   all: `'l'` on the overworld (with an NPC present, and the nearest-
   location/compass-direction fallback with none present) and inside a
@@ -137,6 +202,49 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   generally through Qualinesti near Bianost/Dark Tower, to confirm no
   more spurious "Blocked: cannot walk onto the ocean." Data-only change
   -- applies to `ansalon_rpg` too, not just the SFML build.
+
+## Parked: Dragonlance Adventure modules as full quests
+
+**Raised 2026-09-11, backburnered before any planning/code.** The user
+asked about incorporating the classic DL adventure modules (`References/`
+already has DL1 *Dragons of Despair*, DL2 *Dragons of Flame*, DL3
+*Dragons of Hope*) as full in-game adventures/quests, not just sourcing
+flavor text.
+
+Research done before parking, so a future session doesn't have to
+re-derive it:
+
+- **Real design tension**: `docs/QUEST_NOTES.md` records that canon
+  Heroes are deliberately never quest-givers -- they're "weather," and
+  the player character isn't one of them. The DL modules' text is
+  written to literally *be* played as the Heroes' own party (built-in
+  pregens, Goldmoon/Riverwind joining mid-module) -- a faithful port
+  would mean either breaking that rule or having the player reenact
+  Tanis's party's own documented plot beats. Not resolved -- the user
+  didn't pick a framing (echo/parallel content vs. literal Heroes' path)
+  before backburnering.
+- **The existing `data/zones/xak_tsaroth.txt` already does the "echo"
+  approach well**, unprompted by this discussion: a small 10-POI
+  overlook/plaza slice, explicitly commented as "not the full sunken
+  dungeon," set *after* the Heroes passed through (a scavenger NPC
+  recalls "eight strangers... one coughed something awful... a kender
+  went down a stairwell"), with an original `staff_of_striking_curing`
+  quest inspired by (not transcribed from) Goldmoon's blue crystal staff
+  / the Disks of Mishakal. Good precedent to build from if this resumes.
+- **DL1's actual dungeon is much bigger than that stub** -- "Lost City of
+  the Ancients" / "Descent into Darkness" / "Lair of the Dragon" run to
+  60+ numbered areas (draconian patrols, Fewmaster Toede, the dragon
+  Onyx/Khisanth's lair), plus a full wilderness-travel chapter before
+  even reaching Xak Tsaroth. A faithful full port of just DL1 is a
+  multi-session undertaking on its own; DL2/DL3 would each be similar in
+  size. Proposed (not agreed) scope if this resumes: one location at a
+  time, starting with deepening Xak Tsaroth's existing stub into a real
+  multi-room descent (a dozen-plus new POIs, 2-3 sourced monster
+  encounters, one substantial original quest chain) as its own
+  milestone, rather than attempting the whole 60-area dungeon at once.
+
+Don't resume this unprompted -- ask which framing (echo vs. literal) and
+which location to start with, same as any other new milestone.
 
 ## Parked: SFML rendering + variant tile art (round 2, `sfml-trial-2`)
 
