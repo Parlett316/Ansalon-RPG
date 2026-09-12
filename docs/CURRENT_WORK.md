@@ -1,5 +1,33 @@
 # Current work
 
+**Milestone 188 shipped 2026-09-12** (fourth of the six-part Gold
+Box-style battlefield chain): `ansalon_sfml_phase1`'s combat grid gained
+real wall geometry -- nine new hand-authored `data/battlemaps/
+<terrain-name>.txt` files (one per encounter-capable overworld terrain),
+a new `world::BattleMap`/`BattleMapLoader`/`BattleMapCatalog`, and a new
+wall-aware `combat::stepTowardBfs` replacing `stepToward`'s greedy
+pathing for monster/companion AI movement only (`stepToward` itself is
+unchanged, still used by the console build). Player movement gained a
+wall check and the corner-cutting check Milestone 187's own doc comment
+flagged as needing revisiting once real walls existed. `ansalon_rpg`
+stays completely untouched -- see `docs/COMBAT_NOTES.md`'s "Battlemap
+walls and wall-aware pathing" section and `docs/MILESTONES.md` entry 188
+for the full writeup. Verified via a throwaway self-test (53 checks,
+deleted after), a clean `/W4` rebuild of all three targets, an
+`ansalon_sfml_phase1` launch smoke test, and a piped `ansalon_rpg`
+character-creation run -- **not yet interactively confirmed** (no
+desktop/GUI access this session): walking into a wall, a blocked
+diagonal corner-cut, monster/companion AI actually detouring around a
+wall cluster, and the wall tiles rendering as visually distinct from
+open floor -- see the Playtest backlog below. **Next up in the same
+chain, not started: 189 (line of sight, a Bresenham
+`combat::hasLineOfSight`, gating ranged weapons/spells and unblocking
+the already-documented Lightning Bolt wall-bounce -- now unblocked by
+188's real wall geometry), 190 (multi-square creatures via a sourced
+`SIZE` monster keyword -- note the roster has no dragons at all, a
+separate content decision to raise before adding any).** Don't start 189
+unprompted.
+
 **Milestones 185-187 shipped 2026-09-11** (the first three of a now-six-part
 Gold Box-style battlefield chain, requested by the user against a real Dark
 Queen of Krynn screenshot): `ansalon_sfml_phase1`'s combat grid grew from
@@ -28,19 +56,9 @@ overworld/zone (not combat, which has no walls yet) — see
 `docs/MILESTONES.md` entry 63's earlier removal of diagonal movement,
 which was about the console build's letter-key scheme overlap
 specifically, not diagonals themselves — `ansalon_rpg` is untouched, still
-`wasd`-only. **Next up in the same chain, not started: 188 (walls from
-hand-authored `data/battlemaps/*.txt`, terrain-keyed, in the
-`data/zones/*.txt` GRID idiom, plus replacing `combat::stepToward`'s
-greedy single-axis pathing with a wall-aware BFS step for the SFML side
-only — `stepToward` itself stays untouched for the console — and revisiting
-combat's own corner-cutting exemption above once walls actually exist
-there), 189 (line of sight, a Bresenham `combat::hasLineOfSight`, gating
-ranged weapons/spells and unblocking the already-documented Lightning Bolt
-wall-bounce), 190 (multi-square creatures via a sourced `SIZE` monster
-keyword — note the roster has no dragons at all, a separate content
-decision to raise before adding any).** Each is its own milestone,
-SFML-only, sequenced this way at the user's own request. Don't start 188
-unprompted.
+`wasd`-only. Walls (188) then shipped 2026-09-12 — see the note at the
+top of this file. Each remaining chain entry is its own milestone,
+SFML-only, sequenced this way at the user's own request.
 
 Otherwise nothing else in-flight code-wise. Playable v7 is done: P1 (quest system +
 Look command ported to SFML, Milestones 182-183), P2 (save hardening,
@@ -110,6 +128,17 @@ each is in its `docs/MILESTONES.md` entry (linked below).
 - **Keypad diagonal movement** (Milestone 187) -- **confirmed live
   2026-09-11**: numpad and Home/PageUp/End/PageDown diagonals work, and
   corner-cutting is blocked as expected, across overworld/zone/combat.
+- **Battlemap walls + wall-aware pathing** (Milestone 188) -- not yet
+  interactively confirmed at all (no desktop/GUI access the session it
+  shipped in): walking into a wall logs "Blocked: cannot walk onto a
+  wall."; a diagonal corner-cut against a wall logs "Blocked: can't cut
+  across the wall." and is refused; monster/companion AI visibly
+  detours around a wall cluster instead of getting stuck against it
+  (easiest to force on forest/hills/mountains, the densest-walled
+  terrains); and wall tiles render in a visually distinct color from
+  open floor. Fight on each of the 9 terrains at least once eventually,
+  to confirm every hand-authored battlemap actually loads and looks
+  reasonable in play, not just that `BattleMapCatalog` parsed it.
 - **Look command** (Milestone 182) -- not yet interactively confirmed at
   all: `'l'` on the overworld (with an NPC present, and the nearest-
   location/compass-direction fallback with none present) and inside a

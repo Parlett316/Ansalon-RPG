@@ -365,8 +365,12 @@ recruited, fights alongside you in SFML combat, sweep/backstab included.)*
     DQoK manual's own armor/monster movement stats. The console build's
     grid stays 15×9, one step per round, unchanged. Press `v` to VIEW any
     unit's full stat card (HP/AC/THAC0/weapon, plus any active status like
-    Held or Hasted), at no cost to your round. See
-    `docs/COMBAT_NOTES.md`.)*
+    Held or Hasted), at no cost to your round. Battles now have real
+    impassable walls too, hand-laid out per terrain (a forest fight has
+    tree-stand cover, a road fight is nearly open ground) — you and
+    monsters/companions alike have to route around them, and cutting a
+    diagonal step across a wall's corner is blocked, same rule as walking
+    around the overworld. See `docs/COMBAT_NOTES.md`.)*
 - Three of the draconians fight back with real, book-sourced abilities
   beyond a plain weapon swing: Bozaks sometimes cast Magic Missile instead
   of attacking, Auraks sometimes breathe a noxious cloud (save for half

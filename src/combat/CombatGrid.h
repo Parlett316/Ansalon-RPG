@@ -27,6 +27,26 @@ bool isAdjacent(GridPos a, GridPos b);
 // unit-testable, same reasoning as combat::rollGroupSize.
 GridPos stepToward(GridPos from, GridPos to, int width, int height, const std::vector<GridPos>& blocked);
 
+// A real shortest-path step toward `to`, avoiding every cell in `blocked`
+// (occupied cells and wall cells, merged by the caller into one list) --
+// Milestone 188's wall-aware replacement for stepToward's greedy approach,
+// needed once real wall geometry exists on the grid (data/battlemaps/*.txt,
+// see docs/COMBAT_NOTES.md): stepToward's single-axis heuristic can dead-end
+// against a wall corner that a real path would simply go around. Computes a
+// full BFS distance field outward from `to` (cardinal neighbors only,
+// matching stepToward's own existing cardinal-only movement -- this stays a
+// pathing-quality fix, not a new AI-diagonal-movement feature), then steps
+// `from` toward whichever of its own unblocked cardinal neighbors has the
+// smallest distance to `to` (ties broken by whichever is closer to `to` in
+// a straight line). Same "stands still" contract as stepToward: returns
+// `from` unchanged if no neighbor is both unblocked and able to reach `to`
+// at all. Doesn't require `to` itself to be unblocked -- like stepToward,
+// callers routinely include a live target's own occupied cell in `blocked`.
+// SFML-only caller (sfml_phase1/main.cpp's combatMonstersAct/
+// combatCompanionActs) -- stepToward itself is untouched and still used by
+// the console build, which has no walls to route around.
+GridPos stepTowardBfs(GridPos from, GridPos to, int width, int height, const std::vector<GridPos>& blocked);
+
 // max(|dx|, |dy|) -- the same "how many steps to close this gap" metric
 // isAdjacent already uses at range 1, generalized to any distance.
 // Milestone 117 uses this to let a monster AI pick whichever of two

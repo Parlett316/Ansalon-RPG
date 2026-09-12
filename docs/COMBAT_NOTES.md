@@ -1699,6 +1699,142 @@ Verified: clean `/W4` rebuild of all three targets (zero new warnings), an
 `ansalon_sfml_phase1` launch smoke test, then confirmed working live by
 the user (2026-09-11).
 
+## Battlemap walls and wall-aware pathing (Milestone 188, SFML only)
+
+Fourth of the six-part Gold Box-style battlefield chain (see Milestone
+185's own intro) -- the DQoK screenshot that started the chain also
+showed impassable walls forming rooms/cover, deferred until now. Purely
+invented content (nothing in `References/DQoK.pdf`'s own combat section
+specifies wall geometry) laid over the already-sourced grid/movement
+system.
+
+- **`data/battlemaps/<terrain-name>.txt`, one per encounter-capable
+  terrain.** Of `world::Terrain.cpp`'s 12 codes, only the 9 that are both
+  passable and have a nonzero `encounterChancePercent` get a file
+  (glacier, mountains, hills, forest, bog, salt flat, savannah,
+  grassland, road -- ocean/Blood Sea/shallow water are impassable and
+  never trigger combat, same guarantee `combat::MonsterCatalog::
+  randomMonster` already relies on). Each file is the smallest possible
+  version of the raw `GRID`/`ENDGRID` block `docs/ZONE_NOTES.md` already
+  documents for zones (literal, no trimming, fails fast on ragged rows)
+  -- no `NAME`/`ENTRY`/`POI` section, since a battlemap has no NPCs, no
+  entry point, and nothing to look at. Only two characters appear: `.`
+  (open) and `#` (wall) -- no separate tree/water/doorway vocabulary the
+  way `world::ZoneTile` has for hand-authored interiors; nothing in this
+  engine's combat presentation shows a per-cell name or description for
+  either, so a second vocabulary would be pure unused indirection (see
+  CLAUDE.md's "no premature abstraction").
+- **`world::BattleMap`/`BattleMapLoader`/`BattleMapCatalog`**
+  (`src/world/BattleMap*.{h,cpp}`, `ansalon_sfml_phase1`-only in
+  `CMakeLists.txt` -- `ansalon_rpg` and the parked `ansalon_sfml_trial`
+  spike don't get these files at all). `BattleMap` is a much smaller
+  sibling of `Zone`, not a reuse of it -- no POIs, no entry point, just
+  `isWall(x, y)` (true for any out-of-bounds coordinate too, mirroring
+  `Zone::tileCodeAt`'s "edges are a hard boundary" convention). No
+  dependency on `combat::` -- `world::` stays decoupled from
+  `combat::`/`character::`, same architecture boundary `docs/
+  ZONE_NOTES.md` already documents for `Zone`/`PointOfInterest`.
+  `BattleMapLoader` reuses `ZoneLoader.cpp`'s own `trim`/`stripCR`/
+  `fail(path, lineNumber, message)` idiom, and fails fast on: the file
+  not opening, a row width/count mismatch against the caller-supplied
+  expected size (`sfml_phase1/main.cpp`'s own `kCombatGridWidth`/
+  `kCombatGridHeight`, 50x25), any character other than `.`/`#`, and --
+  the one genuinely new validation rule this milestone adds -- **a
+  non-fully-open row 0 or last row.** Monster instances always spawn on
+  row 0 and the player/companions always spawn on the last row
+  (`combatStartEncounter`), so this guarantees a hand-authored map can
+  never accidentally trap a spawn; interior rows are where each
+  terrain's walls actually go. `BattleMapCatalog::loadAll` loads all 9
+  at startup (`sfml_phase1/main.cpp`, alongside the other catalogs) from
+  a small fixed terrain-code-to-filename table mirroring `Terrain.cpp`'s
+  own `kTable` style (flagged to stay in sync if a terrain type is ever
+  added/removed/renamed); a missing or malformed file throws, caught by
+  `main()`'s existing outer try/catch as a FATAL EXCEPTION, same as
+  every other startup catalog. `forTerrain(code)` returns `nullptr` for
+  an uncovered code (defensive only -- combat never actually starts on
+  one of the 3 excluded terrains).
+- **Wall density flavored per terrain, generated from an explicit,
+  hand-specified rectangle list** (a one-off scratchpad script, same
+  "generated from explicit intent" spirit as `tools/
+  generate_overworld.py` producing `data/overworld.grid` -- not a
+  runtime dependency, and not random placement): road sparsest (~1%,
+  the safest terrain), grassland/savannah/salt flat light (~2-3%),
+  bog/glacier moderate (~8-10%, water pools/ice formations), hills/
+  forest/mountains densest (~11-14%, rock outcrops/tree stands).
+- **`combat::stepTowardBfs`** (`src/combat/CombatGrid.{h,cpp}`) --
+  `combat::stepToward`'s own greedy single-axis heuristic (try the
+  bigger-gap axis, fall back to the other, else stand still) can
+  permanently dead-end against a wall: given a straight wall segment
+  directly between mover and target with no vertical component left to
+  fall back on, it tries the blocked axis, has nothing else to try, and
+  gets stuck one cell short forever. The new function instead computes a
+  real BFS distance field outward from the target (cardinal directions
+  only, matching `stepToward`'s own existing cardinal-only movement --
+  this is a pathing-*quality* fix around walls, not new AI diagonal
+  capability, a deliberately separate, unrequested scope expansion),
+  then steps to whichever of the mover's own unblocked cardinal
+  neighbors has the smallest distance to the target (ties broken by
+  straight-line closeness to the target). Same "stands still" contract
+  as `stepToward` when nothing reachable is unblocked. Doesn't require
+  the target's own cell to be unblocked -- callers already always
+  include a live target's own occupied cell in the `blocked` list they
+  pass, same as `stepToward` always required.
+  `combatMonstersAct`/`combatCompanionActs` (`sfml_phase1/main.cpp`) are
+  the only two callers, each now appending `CombatSession::
+  wallPositions` (this fight's whole wall layout, flattened once in
+  `combatStartEncounter` rather than re-querying `BattleMap::isWall` for
+  all 1250 cells on every single movement check) into the same
+  `blocked` vector they already built from occupied cells, then calling
+  `stepTowardBfs` instead of `stepToward`. `stepToward` itself is
+  completely untouched and still used by `ansalon_rpg`'s own console
+  combat AI, which has no walls to route around.
+- **Player movement** (`combatBeginPlayerMove`) gained a wall check
+  ("Blocked: cannot walk onto a wall.", same message shape as the
+  overworld's "Blocked: cannot walk onto X.") and, for a diagonal step,
+  the exact corner-cutting check Milestone 187's own doc comment flagged
+  as needing revisiting once real wall geometry existed: both flanking
+  cardinal cells must also be wall-free, not just the destination itself
+  ("Blocked: can't cut across the wall."), checking walls only, not
+  occupancy -- corner-cutting is about solid terrain geometry, not
+  another combatant's square, same reasoning the overworld/zone version
+  already established.
+- **Rendering**: a new `combatWallTileShape` (a darker, cooler flat
+  color than the existing uniform floor tile) drawn in place of the
+  ordinary floor tile wherever `BattleMap::isWall` is true, in both of
+  this screen's two documented, deliberate duplicate tile loops
+  (`combatAnimateAiStep`'s per-step animation draw, and the main
+  per-frame combat branch). Same "flat color, no sprite art yet"
+  placeholder philosophy already established for this whole screen --
+  no new visual vocabulary beyond one more color.
+
+**Deliberately not attempted**: line of sight (Milestone 189 needs this
+milestone's real wall geometry to exist first); multi-square creatures
+(Milestone 190); AI diagonal movement (stays cardinal-only, matching
+`stepToward`'s own pre-existing behavior); any per-terrain wall color,
+name, or description (no such concept exists anywhere in this engine's
+combat presentation, and DQoK's manual doesn't call for one either).
+
+Verified: a throwaway self-test (`BattleMapSelfTest.cpp`, deleted after
+-- 53 checks) covering `BattleMapLoader`'s valid-parse case and all five
+fail-fast cases (bad width, bad row count, invalid character, non-open
+top row, non-open bottom row, plus a missing file), and
+`combat::stepTowardBfs`: open-board convergence to adjacency, a
+constructed wall-corridor scenario proving `stepToward` really does
+dead-end there while `stepTowardBfs` correctly detours through a gap,
+and the fully-boxed-in "stands still" case. Clean `/W4` rebuild of all
+three targets (zero new warnings, confirming `ansalon_rpg` and
+`ansalon_sfml_trial` are both genuinely untouched by this milestone). An
+`ansalon_sfml_phase1` launch smoke test against a copy of a real save
+confirmed all 9 battlemaps load at startup alongside every other
+catalog; a piped `ansalon_rpg` character-creation run (empty slot 3)
+confirmed the console build and its shared data files are unaffected.
+**Interactive confirmation still needed** (no desktop/GUI access this
+session) -- see `docs/CURRENT_WORK.md`'s Playtest backlog: walking into
+a wall logs the right message, a diagonal corner-cut against a wall is
+blocked, monster/companion AI visibly detours around a wall cluster
+instead of getting stuck, and wall tiles render as visually distinct
+from open floor.
+
 ## Extending this later
 
 - **A party of up to six characters.** The single biggest remaining gap

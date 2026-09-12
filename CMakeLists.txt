@@ -147,6 +147,9 @@ add_executable(ansalon_sfml_phase1
     src/world/Zone.cpp
     src/world/ZoneLoader.cpp
     src/world/ZoneCatalog.cpp
+    src/world/BattleMap.cpp
+    src/world/BattleMapLoader.cpp
+    src/world/BattleMapCatalog.cpp
     src/timeline/Timeline.cpp
     src/timeline/TimelineLoader.cpp
     src/quest/Quest.cpp

@@ -40,6 +40,8 @@
 #include "quest/QuestLoader.h"
 #include "timeline/Timeline.h"
 #include "timeline/TimelineLoader.h"
+#include "world/BattleMap.h"
+#include "world/BattleMapCatalog.h"
 #include "world/OverworldGrid.h"
 #include "world/Terrain.h"
 #include "world/World.h"
@@ -676,6 +678,17 @@ struct CombatSession {
     std::vector<combat::GridPos> companionPositions;
     combat::GridPos playerPos;
     char floorTerrainCode = '.';
+    // Milestone 188: this fight's wall layout (owned by the startup-loaded
+    // world::BattleMapCatalog, so a raw pointer is safe for the catalog's
+    // whole lifetime -- same "pointer into a catalog" precedent currentZone
+    // already establishes) and every wall cell inside it, flattened once in
+    // combatStartEncounter so movement/pathing/rendering don't rescan the
+    // whole 50x25 grid on every single check. nullptr/empty means "no
+    // battlemap for this terrain" (defensive only -- see
+    // BattleMapCatalog::forTerrain's own doc comment), which combat code
+    // below treats as an all-open floor, the pre-Milestone-188 behavior.
+    const world::BattleMap* battleMap = nullptr;
+    std::vector<combat::GridPos> wallPositions;
     std::vector<std::string> log;
     CombatUiState uiState = CombatUiState::AwaitContinue;
 
@@ -1110,6 +1123,16 @@ int runPhase1(const std::string& savePath) {
     combat::MonsterCatalog monsterCatalog;
     combat::MonsterLoader::loadFromFile("data/monsters.txt", monsterCatalog);
     std::cout << "step 2c: monsters loaded, " << monsterCatalog.size() << " entries" << std::endl;
+
+    // Milestone 188: one hand-authored wall layout per encounter-capable
+    // overworld terrain -- see docs/COMBAT_NOTES.md. ansalon_rpg has no
+    // equivalent load, and never will (its 15x9 console combat grid has no
+    // wall concept) -- this catalog and kCombatGridWidth/Height are both
+    // ansalon_sfml_phase1-only.
+    if (!drawLoadingScreen("Loading battlemaps...")) return 0;
+    world::BattleMapCatalog battleMaps =
+        world::BattleMapCatalog::loadAll("data/battlemaps", kCombatGridWidth, kCombatGridHeight);
+    std::cout << "step 2c2: battlemaps loaded" << std::endl;
 
     if (!drawLoadingScreen("Loading timeline...")) return 0;
     timeline::Timeline timeline;
@@ -1970,6 +1993,13 @@ int runPhase1(const std::string& savePath) {
     // color plus a letter label distinguishes each monster/companion.
     sf::RectangleShape combatTileShape(sf::Vector2f(kCombatTilePx - 2.f, kCombatTilePx - 2.f));
     combatTileShape.setFillColor(sf::Color(70, 65, 55));
+    // Milestone 188: the one other tile kind this screen now draws -- a
+    // wall, from data/battlemaps/*.txt (see CombatSession::battleMap).
+    // Same "flat color, no sprite art yet" placeholder philosophy as
+    // combatTileShape itself, just visually distinct (darker, cooler) so a
+    // wall reads clearly against open floor.
+    sf::RectangleShape combatWallTileShape(sf::Vector2f(kCombatTilePx - 2.f, kCombatTilePx - 2.f));
+    combatWallTileShape.setFillColor(sf::Color(35, 33, 38));
     sf::RectangleShape combatGridBorder;
     combatGridBorder.setFillColor(sf::Color::Transparent);
     combatGridBorder.setOutlineColor(sf::Color(150, 140, 110));
@@ -3185,9 +3215,13 @@ int runPhase1(const std::string& savePath) {
             for (int gx = 0; gx < kCombatGridWidth; ++gx) {
                 const float cx = (static_cast<float>(gx) + 0.5f) * kCombatTilePx;
                 const float cy = (static_cast<float>(gy) + 0.5f) * kCombatTilePx;
-                combatTileShape.setPosition(
-                    sf::Vector2f(cx - (kCombatTilePx - 2.f) / 2.f, cy - (kCombatTilePx - 2.f) / 2.f));
-                window.draw(combatTileShape);
+                // Milestone 188: a wall cell draws combatWallTileShape
+                // instead of the ordinary floor tile.
+                sf::RectangleShape& tileShape =
+                    (combatSession.battleMap != nullptr && combatSession.battleMap->isWall(gx, gy)) ? combatWallTileShape
+                                                                                                      : combatTileShape;
+                tileShape.setPosition(sf::Vector2f(cx - (kCombatTilePx - 2.f) / 2.f, cy - (kCombatTilePx - 2.f) / 2.f));
+                window.draw(tileShape);
             }
         }
         combatGridBorder.setSize(sf::Vector2f(combatPxW, combatPxH));
@@ -3475,16 +3509,26 @@ int runPhase1(const std::string& savePath) {
                 for (size_t oi = 0; oi < state.companions.size(); ++oi) {
                     if (oi != ci && combatCompanionAlive(oi)) blocked.push_back(combatSession.companionPositions[oi]);
                 }
+                // Milestone 188: walls block companion pathing same as any
+                // occupied cell -- appended to the same `blocked` list
+                // rather than threaded through as a separate parameter.
+                blocked.insert(blocked.end(), combatSession.wallPositions.begin(), combatSession.wallPositions.end());
                 // Milestone 185: closes the gap up to the companion's own
                 // movement budget in one turn (previously always exactly one
                 // step), stopping early once adjacent to its target -- the
                 // real target itself never moves during this loop (monster
                 // instances only act in their own separate combatMonstersAct
                 // turn), so `nearest` stays valid to re-check against.
+                // Milestone 188: combat::stepTowardBfs (a real shortest-path
+                // step, replacing stepToward's greedy single-axis heuristic)
+                // so a companion actually routes around a wall instead of
+                // getting stuck against it -- see that function's own doc
+                // comment. stepToward itself is unchanged and still used by
+                // the console build, which has no walls.
                 const int budget = character::movementSquares(companion);
                 for (int step = 0; step < budget; ++step) {
                     combat::GridPos next =
-                        combat::stepToward(companionPos, nearest, kCombatGridWidth, kCombatGridHeight, blocked);
+                        combat::stepTowardBfs(companionPos, nearest, kCombatGridWidth, kCombatGridHeight, blocked);
                     if (next.x == companionPos.x && next.y == companionPos.y) break; // fully blocked
                     companionPos = next;
                     combatAnimateAiStep(companionPos); // walk one square at a time, camera follows -- see its own doc comment
@@ -3646,14 +3690,20 @@ int runPhase1(const std::string& savePath) {
                 for (size_t j = 0; j < combatSession.instances.size(); ++j) {
                     if (j != i && combatSession.instances[j].hp > 0) blocked.push_back(combatSession.instancePositions[j]);
                 }
+                // Milestone 188: walls block monster pathing same as any
+                // occupied cell -- see combatCompanionActs' identical
+                // append above.
+                blocked.insert(blocked.end(), combatSession.wallPositions.begin(), combatSession.wallPositions.end());
                 // Milestone 185: closes the gap up to the monster's own
                 // MOVE (moveSquares) in one turn instead of always exactly
                 // one step, stopping early once adjacent -- party[nearest]'s
                 // own position stays fixed for this loop (the party doesn't
                 // move during the monsters' turn).
+                // Milestone 188: combat::stepTowardBfs -- see
+                // combatCompanionActs' identical swap above for why.
                 bool moved = false;
                 for (int step = 0; step < monster.moveSquares; ++step) {
-                    combat::GridPos next = combat::stepToward(combatSession.instancePositions[i], party[nearest].pos,
+                    combat::GridPos next = combat::stepTowardBfs(combatSession.instancePositions[i], party[nearest].pos,
                                                                 kCombatGridWidth, kCombatGridHeight, blocked);
                     if (next.x == combatSession.instancePositions[i].x && next.y == combatSession.instancePositions[i].y) {
                         break; // fully blocked
@@ -4189,6 +4239,14 @@ int runPhase1(const std::string& savePath) {
         return false;
     };
 
+    // Milestone 188: true if `cell` is a wall on this fight's battlemap
+    // (see CombatSession::battleMap/wallPositions above) -- nullptr/empty
+    // means no battlemap was found for this terrain, treated as an
+    // all-open floor, the pre-Milestone-188 behavior.
+    auto combatCellIsWall = [&](combat::GridPos cell) {
+        return combatSession.battleMap != nullptr && combatSession.battleMap->isWall(cell.x, cell.y);
+    };
+
     // A direction key pressed while Idle: takes one step out of this
     // round's movement budget (Milestone 185, character::movementSquares --
     // DQoK.pdf p.51) rather than ending the round outright, so the player
@@ -4210,6 +4268,25 @@ int runPhase1(const std::string& savePath) {
         if (destination.x < 0 || destination.x >= kCombatGridWidth || destination.y < 0 ||
             destination.y >= kCombatGridHeight) {
             combatSession.log.push_back("You can't move that way.");
+            return;
+        }
+        if (combatCellIsWall(destination)) {
+            combatSession.log.push_back("Blocked: cannot walk onto a wall.");
+            return;
+        }
+        // Milestone 188: same corner-cutting rule Milestone 187 already
+        // applies to overworld/zone diagonal movement (see this file's own
+        // Overworld-branch key handler) -- a diagonal step also needs both
+        // flanking cardinal cells wall-free, not just the destination
+        // itself, or the player could squeeze diagonally between two
+        // walls. Checks walls only, not occupancy: corner-cutting is about
+        // solid terrain geometry, not another combatant's square (the
+        // exact gap Milestone 187's own doc comment flagged as needing
+        // revisiting once real wall geometry existed).
+        if (dx != 0 && dy != 0 &&
+            (combatCellIsWall({combatSession.playerPos.x + dx, combatSession.playerPos.y}) ||
+             combatCellIsWall({combatSession.playerPos.x, combatSession.playerPos.y + dy}))) {
+            combatSession.log.push_back("Blocked: can't cut across the wall.");
             return;
         }
         if (combatCellOccupied(destination)) {
@@ -4414,6 +4491,19 @@ int runPhase1(const std::string& savePath) {
         combatSession.incapacitatedRestOfFight.assign(static_cast<size_t>(groupSize), false);
         combatSession.firstAttackerId.assign(static_cast<size_t>(groupSize), -1);
         combatSession.floorTerrainCode = grid.terrainCodeAt(state.x, state.y);
+        // Milestone 188: this terrain's wall layout, flattened into a plain
+        // list of blocked cells once per fight (rather than re-querying
+        // BattleMap::isWall for all 1250 cells on every movement/pathing
+        // check) -- see CombatSession::wallPositions's own doc comment.
+        combatSession.battleMap = battleMaps.forTerrain(combatSession.floorTerrainCode);
+        combatSession.wallPositions.clear();
+        if (combatSession.battleMap != nullptr) {
+            for (int wy = 0; wy < combatSession.battleMap->height(); ++wy) {
+                for (int wx = 0; wx < combatSession.battleMap->width(); ++wx) {
+                    if (combatSession.battleMap->isWall(wx, wy)) combatSession.wallPositions.push_back({wx, wy});
+                }
+            }
+        }
         // Milestone 185: round 1's own movement budget -- combatWrapUpRound
         // refreshes this for every round after.
         combatSession.movementRemaining = character::movementSquares(state.character);
@@ -6122,9 +6212,16 @@ int runPhase1(const std::string& savePath) {
                     for (int gx = 0; gx < kCombatGridWidth; ++gx) {
                         const float cx = (static_cast<float>(gx) + 0.5f) * kCombatTilePx;
                         const float cy = (static_cast<float>(gy) + 0.5f) * kCombatTilePx;
-                        combatTileShape.setPosition(
+                        // Milestone 188: a wall cell draws combatWallTileShape
+                        // instead of the ordinary floor tile -- same branch
+                        // as combatAnimateAiStep's identical tile loop above.
+                        sf::RectangleShape& tileShape = (combatSession.battleMap != nullptr &&
+                                                          combatSession.battleMap->isWall(gx, gy))
+                                                             ? combatWallTileShape
+                                                             : combatTileShape;
+                        tileShape.setPosition(
                             sf::Vector2f(cx - (kCombatTilePx - 2.f) / 2.f, cy - (kCombatTilePx - 2.f) / 2.f));
-                        window.draw(combatTileShape);
+                        window.draw(tileShape);
                     }
                 }
                 combatGridBorder.setSize(sf::Vector2f(combatPxW, combatPxH));

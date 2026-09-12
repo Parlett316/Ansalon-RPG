@@ -7149,6 +7149,60 @@ now fully verified, nothing further outstanding.
        confirmed working live by the user (2026-09-11) across all three
        movement contexts, including corner-cutting blocking as expected.
 
+188. **Battlemap walls + wall-aware AI pathing (`ansalon_sfml_phase1`
+     only).** Fourth of the six-part Gold Box battlefield chain -- the
+     DQoK screenshot that started it also showed impassable walls
+     forming rooms/cover, deferred until now. Full detail in
+     `docs/COMBAT_NOTES.md`'s own "Battlemap walls and wall-aware
+     pathing" section -- summarized here:
+     - Nine new `data/battlemaps/<terrain-name>.txt` files, one per
+       encounter-capable overworld terrain (glacier, mountains, hills,
+       forest, bog, salt flat, savannah, grassland, road), each a
+       minimal `GRID`/`ENDGRID` block (same raw-text idiom
+       `docs/ZONE_NOTES.md` documents for zones) using only `.` (open)
+       and `#` (wall). Row 0 and the last row must be entirely open --
+       a new, loader-enforced rule guaranteeing the fixed monster-spawn
+       row and player/companion-spawn row can never be trapped by a
+       hand-authored wall. Wall density is flavored per terrain (road
+       sparsest, hills/forest/mountains densest), generated from an
+       explicit, hand-specified rectangle list via a one-off scratchpad
+       script, not random placement.
+     - New `world::BattleMap`/`BattleMapLoader`/`BattleMapCatalog`
+       (`src/world/BattleMap*.{h,cpp}`), added to `ansalon_sfml_phase1`'s
+       `CMakeLists.txt` source list only -- `ansalon_rpg` and the parked
+       `ansalon_sfml_trial` spike don't get these files at all. A much
+       smaller sibling of `Zone`/`ZoneLoader`, not a reuse of them (no
+       POIs, no entry point); no dependency on `combat::`, preserving
+       `world::`'s existing decoupling from `combat::`/`character::`.
+     - New `combat::stepTowardBfs` (`src/combat/CombatGrid.{h,cpp}`) --
+       a real BFS-based shortest-path step, replacing `stepToward`'s
+       greedy single-axis heuristic (which can permanently dead-end
+       against a wall) for the two AI movement call sites
+       (`combatMonstersAct`/`combatCompanionActs`) only. Cardinal
+       directions only, matching `stepToward`'s own existing behavior --
+       a pathing-quality fix, not new AI diagonal capability.
+       `stepToward` itself is completely untouched, still used by
+       `ansalon_rpg`'s console combat AI.
+     - Player movement (`combatBeginPlayerMove`) gained a wall check and
+       -- closing the exact gap Milestone 187's own doc comment flagged
+       -- a corner-cutting check for diagonal steps against walls,
+       mirroring the overworld/zone Milestone 187 pattern.
+     - Rendering: a new, visually distinct wall tile color in both of
+       the combat screen's two duplicate tile-draw loops. Same
+       placeholder-shapes philosophy as the rest of this screen.
+     - Verified: a throwaway self-test (`BattleMapSelfTest.cpp`, deleted
+       after -- 53 checks: `BattleMapLoader`'s valid-parse and all five
+       fail-fast cases, plus `stepTowardBfs`'s open-board convergence, a
+       constructed wall-corridor detour proving `stepToward` really does
+       dead-end there while `stepTowardBfs` doesn't, and the
+       fully-boxed-in case). Clean `/W4` rebuild of all three targets
+       (zero new warnings). An `ansalon_sfml_phase1` launch smoke test
+       against a copy of real `save1.txt` confirmed all 9 battlemaps
+       load at startup; a piped `ansalon_rpg` character-creation run
+       (empty slot 3) confirmed the console build is unaffected.
+       **Interactive confirmation still needed** (no desktop/GUI access
+       this session) -- see `docs/CURRENT_WORK.md`'s Playtest backlog.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
