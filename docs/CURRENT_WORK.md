@@ -69,25 +69,56 @@ own note below) and clear a good slice of the Playtest backlog:
   the Skeletons!" line, one roll per adjacent 1-HD target) and the
   manual "Attack which enemy?" picker for tougher multi-HD monsters
   (Giant Toads, which don't qualify for Sweep).
-- **Two new findings, not yet triaged or fixed:**
-  1. **The "Attack which enemy?" target picker has no working cancel.**
-     Neither `q` nor Escape backs out to Idle -- both fall through to the
-     top-level quit-confirmation dialog instead (itself safe to back out
-     of via "No, keep playing", but that returns to the *same* picker,
-     not Idle). `i` (use item), `f` (flee), and Backspace are all
-     silently swallowed with no effect from inside it. Net effect: once
-     this picker is open, the only ways forward are "commit to an
-     attack" or "quit the app" -- there's no way to change your mind and
-     drink a potion or flee instead. Found live, the hard way, at 1 HP
-     against 4 Giant Toads (see below) -- this isn't hypothetical.
-  2. **The combat sidebar's `dist N` readout lags one action behind the
-     actual battlefield state.** After a Hold or an Attack, the very
-     next screenshot/frame still shows the *previous* distances even
-     when monsters are visibly adjacent on the grid; a second Hold/
-     Attack catches the sidebar up. Didn't affect the actual combat math
-     (attacks resolved correctly regardless of what the sidebar said),
-     just the displayed number -- worth a look since it could mislead a
-     real player into misjudging whether an enemy is in range.
+- **Two findings from that session, triaged 2026-09-12:**
+  1. **FIXED: the "Attack which enemy?" target picker had no working
+     cancel.** Root cause: the existing Escape/Q cancel guard (checked
+     ahead of the general quit-confirm branch, right where
+     `wantsQuit && !askInputActive` is handled) only listed
+     `PickingSpell`/`PickingItem`/`ViewPicking` -- `PickingTarget`
+     (the Attack/Spell/Webnet target picker) was simply missing from
+     that condition, so Escape/Q fell through to the top-level
+     quit-confirmation instead (itself safe to back out of via "No,
+     keep playing", but that returns to the *same* picker, not Idle).
+     Fix: added `CombatUiState::PickingTarget` to that same guard.
+     Escape/Q now returns straight to Idle, from where `i`/`f`/Space all
+     work normally -- this closes the actual gap ("no way to change
+     your mind and drink a potion or flee instead"); `i`/`f`/Backspace
+     were never meant to work *from inside* the picker itself (no other
+     sub-picker in this file supports that either), so nothing further
+     was needed there. One nuance documented inline at the fix site: for
+     `TargetPickReason::Attack` this is a genuinely free cancel (nothing
+     committed yet -- the swing only happens once a target is
+     confirmed), but for `Spell`/`Webnet` the spell/charge was already
+     consumed by `combatCommitSpellChoice`/`combatCommitItemChoice`
+     *before* the picker opened, so cancelling those doesn't refund it
+     -- it just leaves the round unfinished until the next action closes
+     it out, an accepted "you wasted it" consequence, not a bug. Found
+     live, the hard way, at 1 HP against 4 Giant Toads. Verified via a
+     clean `/W4` rebuild and a launch smoke test; **not yet
+     interactively confirmed** -- needs a real combat with 2+ eligible
+     attack targets, Escape/Q pressed mid-picker, confirming it lands on
+     Idle and that Flee/Item/Space all work immediately after. Added to
+     the Playtest backlog below.
+  2. **Investigated, no code bug found: the combat sidebar's `dist N`
+     readout appeared to lag one action behind.** Traced the full
+     render path: the main loop drains all queued key events (which
+     includes `combatMonstersAct`/`combatCompanionActs` mutating
+     `combatSession.instancePositions` synchronously), *then* calls
+     `window.clear()` and redraws the whole frame -- map, tokens, and
+     the sidebar's `dist N` text -- reading those same live positions,
+     all within the same loop iteration, before `window.display()`.
+     There's no cached/stale copy anywhere in that path the sidebar
+     could be reading instead. Best explanation given the code is clean:
+     a screenshot-capture timing artifact of that session's automation
+     (SendKeys + a separate `CopyFromScreen` grab, an external process
+     not synced to SFML's own `window.display()` calls) catching the
+     previous frame before the compositor shows the just-submitted one
+     -- consistent with "didn't affect the actual combat math, just the
+     displayed number" and a second action "catching up". No code
+     change made. If this comes up again on a future live session,
+     confirm by adding a short (~150-250ms) settle delay between sending
+     the keypress and capturing the screenshot before assuming it's a
+     real rendering bug.
 - **Confirmed, via `data/overworld.grid`, why the Milestone 190 Blue
   Dragon / salt-flat wall backlog items can never be forced through
   ordinary play**: salt flat's glyph (`_`) has zero occurrences anywhere
@@ -253,6 +284,12 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
+- **Attack/spell/webnet target-picker cancel fix** (fixed 2026-09-12,
+  triaged from the live-testing session's own finding, see this file's
+  top section) -- not yet interactively confirmed: open the "Attack
+  which enemy?" picker against 2+ eligible targets, press Escape or `q`,
+  confirm it lands on Idle (not the quit-confirmation dialog), and that
+  `f`/`i`/Space all work immediately afterward.
 - **Bigger battlefield + real movement** (Milestone 185) -- **confirmed
   live 2026-09-11**: the scrolling camera following whichever token is
   actually moving, monster/companion AI walking one square at a time

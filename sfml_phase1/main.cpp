@@ -5774,9 +5774,10 @@ int runPhase1(const std::string& savePath) {
                     } else if (combatSession.active &&
                                (combatSession.uiState == CombatUiState::PickingSpell ||
                                 combatSession.uiState == CombatUiState::PickingItem ||
-                                combatSession.uiState == CombatUiState::ViewPicking) &&
+                                combatSession.uiState == CombatUiState::ViewPicking ||
+                                combatSession.uiState == CombatUiState::PickingTarget) &&
                                wantsQuit) {
-                        // Escape/Q cancels the spell/item/view choice
+                        // Escape/Q cancels the spell/item/view/target choice
                         // itself, back to Idle, no round consumed -- mirrors
                         // GameLoop::runCombat's own blocking spell-choice and
                         // USE-menu loops, where Quit sets cancelled=true and
@@ -5790,6 +5791,36 @@ int runPhase1(const std::string& savePath) {
                         // costs no round), so cancelling it is even lower-
                         // stakes than the spell/item cases this guard
                         // already covered.
+                        //
+                        // PickingTarget (found live 2026-09-12: this state
+                        // had no cancel at all -- Escape/Q fell through to
+                        // the top-level quit-confirmation instead, and I/F/
+                        // Backspace were silently swallowed, see
+                        // docs/CURRENT_WORK.md) covers three pickReasons that
+                        // aren't equally cancel-safe: Attack (combatBegin-
+                        // PlayerAttack) has committed nothing yet at this
+                        // point -- the swing only happens in
+                        // combatResolveAttackAgainstTarget once a target is
+                        // confirmed -- so this is a genuinely free cancel,
+                        // same as PickingItem/PickingSpell's own WHICH-spell/
+                        // item choice, letting the player press F/I/Space
+                        // instead. Spell and Webnet are different: by the
+                        // time PickingTarget opens for them,
+                        // combatCommitSpellChoice/combatCommitItemChoice has
+                        // already run character::castSpell/useWebnet (slot/
+                        // charge already spent -- see the empty-candidates
+                        // branches just above each, which log a "finds no
+                        // target"/silent-no-op and still end the round for
+                        // the identical reason), so cancelling here can't
+                        // refund that; it just leaves the round not yet
+                        // finished (combatFinishPlayerAction not called),
+                        // same as never having pressed Attack at all this
+                        // round -- the very next action taken (Attack, Flee,
+                        // Space, ...) still closes the round out normally,
+                        // idempotent initiative roll included. A spell/
+                        // webnet wasted this way is an accepted, honest
+                        // consequence of picking a reason that had 2+ valid
+                        // targets and then changing your mind -- not a bug.
                         combatSession.uiState = CombatUiState::Idle;
                     } else if (wantsQuit && !askInputActive) {
                         // Opens the confirmation instead of closing outright
