@@ -1,5 +1,21 @@
 # Current work
 
+**Playable v7 packaged 2026-09-13** (`dist/AnsalonRPG-Playable-v7.zip`,
+`tools/playable_release_version.txt` bumped 6->7 via `package_playable_release.ps1
+-Major`): bundles everything shipped since v6 (Sep 11) -- Milestone 190
+(multi-square creatures + Blue Dragon), the target-picker cancel fix,
+Milestones 191/192 (combat sprite art for the player and Bren Alder), and
+this session's monster-sprite-art batch (loader wiring for `-wide`/
+`-tall`/`-four` art, the neighbor-aware overlap sizing fix, chroma-key
+transparency across all 32 sprite files, the divider-bar/border crop
+fixes, and 30 of 44 monsters now with real art). Classified as a major
+increment per CLAUDE.md's rule: real sprite art (replacing placeholder
+circle+letter combat markers) and multi-square creatures are new
+player-visible capability, not just a bug-fix/cleanup pass. Verified via
+a Release-config build (clean, via the packaging script itself) and a
+launch smoke test of the packaged exe against a disposable copy of
+`save1.txt` (4s, no crash). Committed and pushed to `origin/master`.
+
 **In flight, 2026-09-12: user downloading/generating monster sprite art,
 in progress across multiple passes.** First batch of 30 dropped into
 `assets/sprites/`; `loadCombatSprite` now wired to find them (see just
