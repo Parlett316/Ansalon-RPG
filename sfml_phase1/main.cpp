@@ -2055,23 +2055,24 @@ int runPhase1(const std::string& savePath) {
         if (!it->second.has_value()) return false;
         const sfml_phase1::CombatSpriteFrames& frames = *it->second;
         const sf::IntRect& rect = useAttackPose ? frames.attackRect : frames.idleRect;
-        sf::Sprite sprite(frames.texture);
-        sprite.setTextureRect(rect);
-        const float frameW = static_cast<float>(rect.size.x);
-        const float frameH = static_cast<float>(rect.size.y);
-        sprite.setOrigin(sf::Vector2f(frameW / 2.f, frameH / 2.f));
         // Effective render size in cells: the real gameplay footprint, or
         // the loaded art's own bigger -wide/-tall/-four size when the
         // neighbor cell(s) that extra size would spill into are actually
         // free this frame -- found live: two adjacent wolves' "-wide" art
         // fully overlapping when both were always drawn centered on their
         // own single cell regardless of what stood next to them
-        // (2026-09-12). A cell blocked on both sides falls back to the
-        // plain footprint size rather than overlapping either neighbor;
-        // one free side biases the sprite fully toward it (shiftX/shiftY)
-        // instead of the old always-centered split.
+        // (2026-09-12). One free side biases the sprite fully toward it
+        // (shiftX/shiftY) instead of the old always-centered split. A cell
+        // blocked on both sides can't expand at all -- widthBoxedIn/
+        // heightBoxedIn below crop the source art itself for that case,
+        // rather than squishing the whole oversized frame into a normal
+        // 1-cell box (found live: a "-wide" wolf boxed in between two
+        // packmates rendered as a visibly tiny wolf, since its native
+        // ~2:1 frame squeezed into a square box shrinks far more than a
+        // normal creature's roughly-square frame would).
         int effWidth = footprintWidth;
         float shiftX = 0.f;
+        bool widthBoxedIn = false;
         if (frames.renderWidth > footprintWidth) {
             const bool leftFree = neighborFree(-1, 0);
             const bool rightFree = neighborFree(1, 0);
@@ -2084,10 +2085,13 @@ int runPhase1(const std::string& savePath) {
             } else if (leftFree) {
                 effWidth = frames.renderWidth;
                 shiftX = -extra / 2.f;
+            } else {
+                widthBoxedIn = true;
             }
         }
         int effHeight = footprintHeight;
         float shiftY = 0.f;
+        bool heightBoxedIn = false;
         if (frames.renderHeight > footprintHeight) {
             const bool upFree = neighborFree(0, -1);
             const bool downFree = neighborFree(0, 1);
@@ -2100,8 +2104,32 @@ int runPhase1(const std::string& savePath) {
             } else if (upFree) {
                 effHeight = frames.renderHeight;
                 shiftY = -extra / 2.f;
+            } else {
+                heightBoxedIn = true;
             }
         }
+        // Crop a boxed-in axis down to a centered square-ish sub-region
+        // (matching a normal creature's roughly-square frame) instead of
+        // displaying the full oversized frame -- computed from the
+        // original frame's own dimensions on both axes at once so a
+        // "-four" sprite boxed in on both axes simultaneously crops
+        // correctly rather than compounding.
+        sf::IntRect displayRect = rect;
+        if (widthBoxedIn) {
+            const int squareWidth = std::min(rect.size.x, rect.size.y);
+            displayRect.position.x = rect.position.x + (rect.size.x - squareWidth) / 2;
+            displayRect.size.x = squareWidth;
+        }
+        if (heightBoxedIn) {
+            const int squareHeight = std::min(rect.size.x, rect.size.y);
+            displayRect.position.y = rect.position.y + (rect.size.y - squareHeight) / 2;
+            displayRect.size.y = squareHeight;
+        }
+        sf::Sprite sprite(frames.texture);
+        sprite.setTextureRect(displayRect);
+        const float frameW = static_cast<float>(displayRect.size.x);
+        const float frameH = static_cast<float>(displayRect.size.y);
+        sprite.setOrigin(sf::Vector2f(frameW / 2.f, frameH / 2.f));
         // Contain-fit within that bounding box (preserving aspect ratio,
         // 90% fill so it doesn't touch the tile edges) -- same
         // footprint-bounding-box generalization the Milestone 190 marker

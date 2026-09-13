@@ -17,11 +17,21 @@
 
 namespace sfml_phase1 {
 
-// Pure, unit-testable: splits a sheet's pixel width into two equal
-// side-by-side frames (idle | attack), same full height. A sheet with an
-// odd width can't be split evenly -- returns std::nullopt so the caller
-// falls back to the plain marker rather than mis-slicing a frame.
-std::optional<std::pair<sf::IntRect, sf::IntRect>> computeSpriteFrameRects(unsigned width, unsigned height);
+// Pure, unit-testable: splits a sheet image into two side-by-side frames
+// (idle | attack), same full height. This project's sprite sheets (found
+// live, 2026-09-12) draw a solid opaque-black 1px border around the whole
+// canvas plus a thicker solid-black divider between the two halves (an
+// 8px gutter in every file sampled so far) -- both are detected by
+// scanning for fully-opaque-black, full-height columns and trimmed out of
+// the returned rects, rather than just splitting at the raw pixel
+// midpoint, which would bake half the divider into each frame as a black
+// bar down one side (found live, screenshotted by the user). Falls back
+// to a plain even half-width split (trimming only a real border, if any)
+// when zero or more-than-one such interior divider run is found, so art
+// without this specific convention still works. Returns std::nullopt if
+// the image is empty or the resulting frames would be degenerate (zero
+// width, or an odd border-trimmed width with no divider to split at).
+std::optional<std::pair<sf::IntRect, sf::IntRect>> computeSpriteFrameRects(const sf::Image& image);
 
 // Pure, unit-testable: the cosmetic facing check -- true when `target` is
 // to the left of `self` on the grid. This never feeds backstab (which
