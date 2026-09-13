@@ -71,27 +71,45 @@ grow halfway into it (a smaller, softer overlap than before, not a full
 one). Good enough for a cosmetic nicety; revisit only if it actually looks
 bad in practice.
 
-**Separately flagged, not fixed this session**: the sprites' shared solid
-mint-green background (`RGB 103,247,159`, confirmed byte-identical across
-every sampled file including `player.png`) has no alpha channel, so
-overlapping or adjacent sprites show hard-edged color blocks instead of
-blending naturally -- worth a batch chroma-key pass (replace that exact
-RGB with transparency across all of `assets/sprites/`) whenever the user
-wants the art cleaned up; would likely make any *remaining* soft overlap
-(see above) look much less jarring too. Not done unprompted -- ask first,
-since it touches every existing sprite file at once.
+**Chroma-key transparency fix, done this session (asked first, approved)**:
+the sprites' shared solid mint-green background had no alpha channel, so
+overlapping/adjacent sprites showed hard-edged color blocks instead of
+blending naturally. Confirmed the exact fill (`RGB 103,247,159`, one file
+-- `spectre.png` -- off by a few units at `100,244,156`, likely
+generation-pipeline variance) is used as pure background across all 31
+sprite files that existed before this pass (`player.png`/`bren_alder.png`
+included, the same "known cosmetic issue" flagged back at Milestones
+191/192), confirmed via full per-file color histograms that no
+creature's own palette comes remotely close to that hue, and that every
+file has a separate, deliberate opaque-black canvas border/outline
+(unrelated -- pixel-art linework, left untouched). A one-off script
+(`dechroma.py`, not checked into the repo -- this was a data cleanup
+pass, not new tooling this project keeps around) set alpha=0 for every
+pixel within Euclidean distance 30 of the background RGB, across all 32
+files (the 31 plus `bren_alder.png`), leaving black linework and every
+creature's own colors untouched. Spot-verified pixel-level (background
+alpha goes to 0, black border pixel stays 255) and by compositing several
+results against the actual floor-tile color (`RGB 70,65,55`) -- clean
+blend, no green fringe, thin black outline remains (expected, matches the
+existing pixel-art style). This was flagged as a bulk irreversible-
+looking file rewrite by the session's own safety classifier even though
+every file is git-tracked (so fully revertible); the user approved
+running it after seeing the scratchpad-verified result.
 
 **Verified this session**: clean `/W4` rebuild of all three targets (zero
 new warnings) and an `ansalon_sfml_phase1` launch smoke test against a
-disposable copy of `save1.txt` (ran 4s, no crash) after each of the three
-changes (loader wiring, first render-size fix, neighbor-aware overlap
-fix). **Confirmed live 2026-09-12**: kobold's sprite rendered correctly
-in a real fight (plain 1x1 art, no suffix); a Black Bear's "-wide" sprite
-was seen overlapping a packmate and the player (the bug that prompted the
-neighbor-aware fix above). **Not yet interactively re-confirmed**: the
-neighbor-aware fix itself actually preventing that overlap live -- add to
-the Playtest backlog below once the blackpudding question above is
-resolved and this batch is considered closed.
+disposable copy of `save1.txt` (ran 4s, no crash) after each change this
+session (loader wiring, first render-size fix, neighbor-aware overlap
+fix, chroma-key). **Confirmed live 2026-09-12**: kobold's sprite rendered
+correctly in a real fight (plain 1x1 art, no suffix); a Black Bear's
+"-wide" sprite was seen overlapping a packmate and the player (the bug
+that prompted the neighbor-aware fix above, itself not yet re-confirmed
+live). **Not yet interactively confirmed at all**: the neighbor-aware
+overlap fix actually preventing that overlap live, and the chroma-key
+transparency fix actually rendering clean (no green background/fringe)
+in a real fight -- add both to the Playtest backlog below once the
+blackpudding question above is resolved and this batch is considered
+closed.
 
 **Milestone 192 shipped 2026-09-12** (same session as 191, immediately
 after): companion sprite art for Bren Alder. The user supplied
