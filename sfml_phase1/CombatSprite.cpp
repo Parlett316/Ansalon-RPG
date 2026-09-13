@@ -14,8 +14,26 @@ std::optional<std::pair<sf::IntRect, sf::IntRect>> computeSpriteFrameRects(unsig
 bool spriteShouldFaceLeft(combat::GridPos self, combat::GridPos target) { return target.x < self.x; }
 
 std::optional<CombatSpriteFrames> loadCombatSprite(const std::string& id) {
+    struct Variant {
+        const char* suffix;
+        int renderWidth;
+        int renderHeight;
+    };
+    static constexpr Variant kVariants[] = {
+        {"", 1, 1},
+        {"-wide", 2, 1},
+        {"-tall", 1, 2},
+        {"-four", 2, 2},
+    };
     sf::Texture texture;
-    if (!texture.loadFromFile("assets/sprites/" + id + ".png")) return std::nullopt;
+    const Variant* matched = nullptr;
+    for (const Variant& variant : kVariants) {
+        if (texture.loadFromFile("assets/sprites/" + id + variant.suffix + ".png")) {
+            matched = &variant;
+            break;
+        }
+    }
+    if (matched == nullptr) return std::nullopt;
     texture.setSmooth(false);  // keep pixel art crisp when scaled up, not blurred
     const auto rects = computeSpriteFrameRects(texture.getSize().x, texture.getSize().y);
     if (!rects.has_value()) return std::nullopt;
@@ -23,6 +41,8 @@ std::optional<CombatSpriteFrames> loadCombatSprite(const std::string& id) {
     frames.texture = std::move(texture);
     frames.idleRect = rects->first;
     frames.attackRect = rects->second;
+    frames.renderWidth = matched->renderWidth;
+    frames.renderHeight = matched->renderHeight;
     return frames;
 }
 

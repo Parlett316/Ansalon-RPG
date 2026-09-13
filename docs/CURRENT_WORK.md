@@ -1,5 +1,98 @@
 # Current work
 
+**In flight, 2026-09-12: user downloading/generating monster sprite art,
+in progress across multiple passes.** First batch of 30 dropped into
+`assets/sprites/`; `loadCombatSprite` now wired to find them (see just
+below). Still no art at all for 14 of 44 monsters: **spider, bugbear,
+ogre, bozak, thanoi, ettin, harpy, griffon, stirge, giantrat, wereboar,
+weretiger, brownpudding, shamblingmound** -- `brownpudding` confirmed
+still genuinely needing art: a `blackpudding-wide.png` turned up in this
+batch but matched no roster id and didn't visually resemble a pudding at
+all (a pointed blue/teal creature, not a blob like
+`whitepudding-wide.png`) -- flagged to the user, who confirmed it was a
+bad/mismatched download; deleted 2026-09-12, not renamed to brownpudding.
+
+**File-naming convention (user's own), now wired into
+`sfml_phase1/CombatSprite.cpp`'s `loadCombatSprite`**: plain `<id>.png`
+still works unchanged; `loadCombatSprite` also now tries `<id>-wide.png`
+(2x1) / `<id>-tall.png` (1x2) / `<id>-four.png` (2x2) in that order,
+recording which one matched as the new `CombatSpriteFrames::renderWidth/
+Height`. `dragon_blue-four.jpg` was also re-saved as a real
+`dragon_blue-four.png` this session (the loader only ever tries `.png`,
+and a `.jpg`-content file merely renamed wouldn't reliably round-trip) --
+old `.jpg` deleted.
+
+**Rendering size, corrected once live-played (two rounds so far)**:
+first pass (this same session) assumed the suffix was purely an
+art-canvas-proportion choice and left `drawCombatSpriteToken`'s bounding
+box keyed only to the monster's real gameplay footprint
+(`Monster::footprintWidth/Height`) -- reasoned that this kept `-wide` art
+on a still-1x1-footprint pack monster (wolf, gnoll, icebear, worg,
+giantoad, centipede, boringbeetle, blackbear all got suffixed art despite
+staying `GROUP` 2-4 pack monsters) safely scaled down to a normal
+single-cell box, untouched by `MonsterLoader`'s existing
+footprint-area-must-be-solo rule. **The user then actually fought a Black
+Bear live and found it rendered as one square** -- confirmed the intent
+is for the art itself to visibly occupy 2+ squares regardless of gameplay
+footprint. First fix: bound box became `max(real footprint,
+frames.renderWidth/Height)` per axis, always centered on the token's
+existing position.
+
+**That centered version then hit a second live problem**: two adjacent
+wolves in the same pack (each still 1x1 gameplay-footprint, standing in
+neighboring cells) each drew their own "-wide" box centered on their own
+cell, so the boxes overlapped in the shared middle cell -- screenshotted
+by the user, visibly two wolf sprites (and separately the player token)
+colliding with hard rectangular edges (compounded by the sprites' known
+non-transparent mint-green background, same cosmetic issue already on
+`player.png`/`bren_alder.png` -- see Milestone 191/192's own notes; NOT
+yet addressed, see below). **Fixed**: `drawCombatSpriteToken` now takes a
+`neighborFree(dx, dy)` checker; the two real call sites (monster tokens in
+both `combatAnimateAiStep` and the main render branch) build one from
+`combatCellOccupied` (moved earlier in the file, right after
+`combatCompanionAlive`, so both call sites can reach it -- pure relocation,
+same logic) plus a player-position check. A "-wide"/"-tall"/"-four"
+sprite now only expands into a neighbor cell confirmed empty *this
+frame*; if both sides on an axis are occupied it falls back to the plain
+footprint-sized box instead of overlapping either neighbor; if only one
+side is free it biases fully toward that side (`shiftX`/`shiftY`) instead
+of always centering. Companions/player pass an always-true checker since
+neither has suffixed art yet (dead code today, cheap to keep uniform).
+`troll-tall.png`/`dragon_blue-four.png` are unaffected either way since
+their art already matches their real multi-cell `SIZE` (Milestone 190) --
+extra is always 0 for them, so the neighbor check never even triggers.
+`ogre` and `griffon` have that same real `SIZE` but no art yet (see the
+missing-14 list above).
+
+**Known limitation, accepted rather than solved**: this is a per-token
+heuristic, not a layout solver -- two "-wide" pack members could still
+independently decide the *same* single gap between them is free and each
+grow halfway into it (a smaller, softer overlap than before, not a full
+one). Good enough for a cosmetic nicety; revisit only if it actually looks
+bad in practice.
+
+**Separately flagged, not fixed this session**: the sprites' shared solid
+mint-green background (`RGB 103,247,159`, confirmed byte-identical across
+every sampled file including `player.png`) has no alpha channel, so
+overlapping or adjacent sprites show hard-edged color blocks instead of
+blending naturally -- worth a batch chroma-key pass (replace that exact
+RGB with transparency across all of `assets/sprites/`) whenever the user
+wants the art cleaned up; would likely make any *remaining* soft overlap
+(see above) look much less jarring too. Not done unprompted -- ask first,
+since it touches every existing sprite file at once.
+
+**Verified this session**: clean `/W4` rebuild of all three targets (zero
+new warnings) and an `ansalon_sfml_phase1` launch smoke test against a
+disposable copy of `save1.txt` (ran 4s, no crash) after each of the three
+changes (loader wiring, first render-size fix, neighbor-aware overlap
+fix). **Confirmed live 2026-09-12**: kobold's sprite rendered correctly
+in a real fight (plain 1x1 art, no suffix); a Black Bear's "-wide" sprite
+was seen overlapping a packmate and the player (the bug that prompted the
+neighbor-aware fix above). **Not yet interactively re-confirmed**: the
+neighbor-aware fix itself actually preventing that overlap live -- add to
+the Playtest backlog below once the blackpudding question above is
+resolved and this batch is considered closed.
+
 **Milestone 192 shipped 2026-09-12** (same session as 191, immediately
 after): companion sprite art for Bren Alder. The user supplied
 `References/Sprites/BrenAlder.png`; moved to `assets/sprites/bren_alder.png`

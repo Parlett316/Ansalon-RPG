@@ -71,6 +71,7 @@
 #include <cctype>
 #include <cmath>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <sstream>
@@ -2036,9 +2037,17 @@ int runPhase1(const std::string& savePath) {
     // today). `facingTarget` is the grid cell the sprite should mirror
     // toward -- purely cosmetic (see CombatSprite.h's own doc comment):
     // it never feeds combat::oppositeSide's backstab check.
+    // neighborFree(dx, dy) tells this whether the adjacent cell one step in
+    // that cardinal direction from the token's own anchor is free of any
+    // other combatant *this frame* -- only ever queried with |dx|+|dy| == 1
+    // (never a diagonal). Companion/player calls below always pass a
+    // trivially-true checker since neither has -wide/-tall/-four art yet
+    // (so it's never actually consulted); the two monster call sites pass a
+    // real one built from combatCellOccupied + the player's own position.
     auto drawCombatSpriteToken = [&](const std::string& spriteId, int footprintWidth, int footprintHeight, float cx,
                                       float cy, combat::GridPos selfGridPos,
-                                      const std::optional<combat::GridPos>& facingTarget, bool useAttackPose) -> bool {
+                                      const std::optional<combat::GridPos>& facingTarget, bool useAttackPose,
+                                      const std::function<bool(int, int)>& neighborFree) -> bool {
         auto it = combatSpriteCache.find(spriteId);
         if (it == combatSpriteCache.end()) {
             it = combatSpriteCache.emplace(spriteId, sfml_phase1::loadCombatSprite(spriteId)).first;
@@ -2051,17 +2060,59 @@ int runPhase1(const std::string& savePath) {
         const float frameW = static_cast<float>(rect.size.x);
         const float frameH = static_cast<float>(rect.size.y);
         sprite.setOrigin(sf::Vector2f(frameW / 2.f, frameH / 2.f));
-        // Contain-fit within the tile/footprint bounding box (preserving
-        // aspect ratio, 90% fill so it doesn't touch the tile edges) --
-        // same footprint-bounding-box generalization the Milestone 190
-        // marker radius already uses below, just for a rectangular sprite
-        // instead of a circle.
-        const float boundW = kCombatTilePx * static_cast<float>(footprintWidth);
-        const float boundH = kCombatTilePx * static_cast<float>(footprintHeight);
+        // Effective render size in cells: the real gameplay footprint, or
+        // the loaded art's own bigger -wide/-tall/-four size when the
+        // neighbor cell(s) that extra size would spill into are actually
+        // free this frame -- found live: two adjacent wolves' "-wide" art
+        // fully overlapping when both were always drawn centered on their
+        // own single cell regardless of what stood next to them
+        // (2026-09-12). A cell blocked on both sides falls back to the
+        // plain footprint size rather than overlapping either neighbor;
+        // one free side biases the sprite fully toward it (shiftX/shiftY)
+        // instead of the old always-centered split.
+        int effWidth = footprintWidth;
+        float shiftX = 0.f;
+        if (frames.renderWidth > footprintWidth) {
+            const bool leftFree = neighborFree(-1, 0);
+            const bool rightFree = neighborFree(1, 0);
+            const float extra = kCombatTilePx * static_cast<float>(frames.renderWidth - footprintWidth);
+            if (leftFree && rightFree) {
+                effWidth = frames.renderWidth;  // centered, same as before this fix
+            } else if (rightFree) {
+                effWidth = frames.renderWidth;
+                shiftX = extra / 2.f;
+            } else if (leftFree) {
+                effWidth = frames.renderWidth;
+                shiftX = -extra / 2.f;
+            }
+        }
+        int effHeight = footprintHeight;
+        float shiftY = 0.f;
+        if (frames.renderHeight > footprintHeight) {
+            const bool upFree = neighborFree(0, -1);
+            const bool downFree = neighborFree(0, 1);
+            const float extra = kCombatTilePx * static_cast<float>(frames.renderHeight - footprintHeight);
+            if (upFree && downFree) {
+                effHeight = frames.renderHeight;
+            } else if (downFree) {
+                effHeight = frames.renderHeight;
+                shiftY = extra / 2.f;
+            } else if (upFree) {
+                effHeight = frames.renderHeight;
+                shiftY = -extra / 2.f;
+            }
+        }
+        // Contain-fit within that bounding box (preserving aspect ratio,
+        // 90% fill so it doesn't touch the tile edges) -- same
+        // footprint-bounding-box generalization the Milestone 190 marker
+        // radius already uses below, just for a rectangular sprite instead
+        // of a circle.
+        const float boundW = kCombatTilePx * static_cast<float>(effWidth);
+        const float boundH = kCombatTilePx * static_cast<float>(effHeight);
         const float scale = 0.9f * std::min(boundW / frameW, boundH / frameH);
         const bool faceLeft = facingTarget.has_value() && sfml_phase1::spriteShouldFaceLeft(selfGridPos, *facingTarget);
         sprite.setScale(sf::Vector2f(faceLeft ? -scale : scale, scale));
-        sprite.setPosition(sf::Vector2f(cx, cy));
+        sprite.setPosition(sf::Vector2f(cx + shiftX, cy + shiftY));
         window.draw(sprite);
         return true;
     };
@@ -3164,6 +3215,39 @@ int runPhase1(const std::string& savePath) {
 
     auto combatCompanionAlive = [&](size_t i) { return state.companions[i].character.currentHp > 0; };
 
+    // Shared by combatBeginPlayerMove below, called both before and after
+    // monsters get a chance to act -- a monster that wasn't yet adjacent
+    // when the move was declared can close in during its own turn and land
+    // exactly on the cell the player is mid-step into, since nothing else
+    // re-checks that cell once combatRollGoFirstAndMaybeActMonsters runs.
+    // Left uncaught, that produces two combatants sharing one GridPos,
+    // which combat::isAdjacent's own "never adjacent to itself" rule then
+    // masks as both being permanently "too far away" to attack each other.
+    // Moved up here (was originally right before its first use, much
+    // further down) so drawCombatSpriteToken's -wide/-tall/-four
+    // neighbor-occupancy check below can also call it -- doesn't reference
+    // anything declared between the two spots.
+    auto combatCellOccupied = [&](combat::GridPos cell) {
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            // Milestone 190: `cell` must miss every cell of a footprint>1x1
+            // instance, not just its anchor -- degenerates to the exact
+            // bare equality check above for every ordinary 1x1 monster.
+            for (const combat::GridPos& occupied : combat::footprintCells(
+                     combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                     combatSession.monster.footprintHeight)) {
+                if (occupied.x == cell.x && occupied.y == cell.y) return true;
+            }
+        }
+        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
+            if (combatCompanionAlive(ci) && combatSession.companionPositions[ci].x == cell.x &&
+                combatSession.companionPositions[ci].y == cell.y) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     auto combatNearestRefuge = [&]() -> const world::Location* {
         const world::Location* best = nullptr;
         long long bestDistSq = 0;
@@ -3326,8 +3410,17 @@ int runPhase1(const std::string& savePath) {
                 static_cast<float>(std::max(combatSession.monster.footprintWidth, combatSession.monster.footprintHeight));
             const float cx = (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
             const float cy = (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
+            // -wide/-tall/-four art only ever renders bigger than the real
+            // footprint into a neighbor cell confirmed empty this frame --
+            // see drawCombatSpriteToken's own comment.
+            auto monsterNeighborFree = [&](int dx, int dy) {
+                const combat::GridPos neighbor{pos.x + dx, pos.y + dy};
+                if (combatCellOccupied(neighbor)) return false;
+                return !(neighbor.x == combatSession.playerPos.x && neighbor.y == combatSession.playerPos.y);
+            };
             if (!drawCombatSpriteToken(combatSession.monster.id, combatSession.monster.footprintWidth,
-                                        combatSession.monster.footprintHeight, cx, cy, pos, std::nullopt, false)) {
+                                        combatSession.monster.footprintHeight, cx, cy, pos, std::nullopt, false,
+                                        monsterNeighborFree)) {
                 combatMonsterMarker.setRadius(footprintRadius);
                 combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
                 combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
@@ -3338,12 +3431,16 @@ int runPhase1(const std::string& savePath) {
                 window.draw(glyph);
             }
         }
+        // Companions/player have no -wide/-tall/-four art yet, so the
+        // neighbor check is never actually consulted for them.
+        auto noNeighborCheckNeeded = [](int, int) { return true; };
         for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
             if (!combatCompanionAlive(i)) continue;
             const combat::GridPos pos = combatSession.companionPositions[i];
             const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
             const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
-            if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false)) {
+            if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false,
+                                        noNeighborCheckNeeded)) {
                 combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
                 window.draw(combatCompanionMarker);
                 sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kAnimGlyphCharSize);
@@ -3356,7 +3453,7 @@ int runPhase1(const std::string& savePath) {
             const float cx = (static_cast<float>(combatSession.playerPos.x) + 0.5f) * kCombatTilePx;
             const float cy = (static_cast<float>(combatSession.playerPos.y) + 0.5f) * kCombatTilePx;
             if (!drawCombatSpriteToken("player", 1, 1, cx, cy, combatSession.playerPos, combatNearestLivingEnemyPos(),
-                                        playerAttackPose)) {
+                                        playerAttackPose, noNeighborCheckNeeded)) {
                 playerMarker.setPosition(sf::Vector2f(cx, cy));
                 window.draw(playerMarker);
             }
@@ -4438,34 +4535,8 @@ int runPhase1(const std::string& savePath) {
         combatSession.uiState = CombatUiState::PickingTarget;
     };
 
-    // Shared by combatBeginPlayerMove below, called both before and after
-    // monsters get a chance to act -- a monster that wasn't yet adjacent
-    // when the move was declared can close in during its own turn and land
-    // exactly on the cell the player is mid-step into, since nothing else
-    // re-checks that cell once combatRollGoFirstAndMaybeActMonsters runs.
-    // Left uncaught, that produces two combatants sharing one GridPos,
-    // which combat::isAdjacent's own "never adjacent to itself" rule then
-    // masks as both being permanently "too far away" to attack each other.
-    auto combatCellOccupied = [&](combat::GridPos cell) {
-        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp <= 0) continue;
-            // Milestone 190: `cell` must miss every cell of a footprint>1x1
-            // instance, not just its anchor -- degenerates to the exact
-            // bare equality check above for every ordinary 1x1 monster.
-            for (const combat::GridPos& occupied : combat::footprintCells(
-                     combatSession.instancePositions[i], combatSession.monster.footprintWidth,
-                     combatSession.monster.footprintHeight)) {
-                if (occupied.x == cell.x && occupied.y == cell.y) return true;
-            }
-        }
-        for (size_t ci = 0; ci < state.companions.size(); ++ci) {
-            if (combatCompanionAlive(ci) && combatSession.companionPositions[ci].x == cell.x &&
-                combatSession.companionPositions[ci].y == cell.y) {
-                return true;
-            }
-        }
-        return false;
-    };
+    // combatCellOccupied itself now lives up near combatCompanionAlive (see
+    // its own comment there for why it moved).
 
     // Milestone 188: true if `cell` is a wall on this fight's battlemap
     // (see CombatSession::battleMap/wallPositions above) -- nullptr/empty
@@ -6518,9 +6589,19 @@ int runPhase1(const std::string& savePath) {
                         (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
                     const float cy =
                         (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
+                    // -wide/-tall/-four art only ever renders bigger than
+                    // the real footprint into a neighbor cell confirmed
+                    // empty this frame -- see drawCombatSpriteToken's own
+                    // comment and combatAnimateAiStep's matching check
+                    // above.
+                    auto monsterNeighborFree = [&](int dx, int dy) {
+                        const combat::GridPos neighbor{pos.x + dx, pos.y + dy};
+                        if (combatCellOccupied(neighbor)) return false;
+                        return !(neighbor.x == combatSession.playerPos.x && neighbor.y == combatSession.playerPos.y);
+                    };
                     if (!drawCombatSpriteToken(combatSession.monster.id, combatSession.monster.footprintWidth,
                                                 combatSession.monster.footprintHeight, cx, cy, pos, std::nullopt,
-                                                false)) {
+                                                false, monsterNeighborFree)) {
                         combatMonsterMarker.setRadius(footprintRadius);
                         combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
                         combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
@@ -6531,12 +6612,16 @@ int runPhase1(const std::string& savePath) {
                         window.draw(glyph);
                     }
                 }
+                // Companions/player have no -wide/-tall/-four art yet, so
+                // the neighbor check is never actually consulted for them.
+                auto noNeighborCheckNeeded = [](int, int) { return true; };
                 for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
                     if (!combatCompanionAlive(i)) continue;
                     const combat::GridPos pos = combatSession.companionPositions[i];
                     const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
                     const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
-                    if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false)) {
+                    if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false,
+                                                noNeighborCheckNeeded)) {
                         combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
                         window.draw(combatCompanionMarker);
                         sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kCombatGlyphCharSize);
@@ -6549,7 +6634,7 @@ int runPhase1(const std::string& savePath) {
                     const float cx = (static_cast<float>(combatSession.playerPos.x) + 0.5f) * kCombatTilePx;
                     const float cy = (static_cast<float>(combatSession.playerPos.y) + 0.5f) * kCombatTilePx;
                     if (!drawCombatSpriteToken("player", 1, 1, cx, cy, combatSession.playerPos,
-                                                combatNearestLivingEnemyPos(), false)) {
+                                                combatNearestLivingEnemyPos(), false, noNeighborCheckNeeded)) {
                         playerMarker.setPosition(sf::Vector2f(cx, cy));
                         window.draw(playerMarker);
                     }
