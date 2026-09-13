@@ -104,27 +104,35 @@ neighbor-aware overlap fix worked (no more overlapping wolves) and the
 chroma-key worked (no green background), but surfaced two more real
 issues, both fixed this session and NOT yet the ones re-confirmed live:
 
-1. **A solid black bar down the right edge of every single sprite.**
-   Root cause: every sprite sheet (all 32, confirmed via a full pixel
-   scan) has a real 1px opaque-black border around the whole canvas plus
-   a much thicker 8px opaque-black divider between the idle|attack
-   halves -- `computeSpriteFrameRects`' original 50/50-midpoint split
-   baked half that divider into each cropped frame's edge. Fixed:
+1. **A solid black bar down the right edge of every single sprite --
+   then, after fixing that, a second live finding: a black line along the
+   top and bottom of every sprite too.** Root cause: every sprite sheet
+   (all 32, confirmed via a full pixel scan) has a real 1px opaque-black
+   border around the *entire* canvas (all four edges, not just left/
+   right) plus a much thicker 8px opaque-black divider between the
+   idle|attack halves -- `computeSpriteFrameRects`' original 50/50-
+   midpoint split baked half that divider into each cropped frame's
+   right/left edge, and the first fix (below) only trimmed the left/right
+   border, missing the identical top/bottom one. Fixed in two passes:
    `computeSpriteFrameRects` now takes an `sf::Image` (not just width/
-   height) and detects the border/divider by scanning for fully-opaque-
-   black, full-height columns, trimming both out; falls back to the old
-   plain half-split if zero or more than one interior divider run is
-   found (art without this convention keeps working). `loadCombatSprite`
+   height) and detects opaque-black, fully-covering border rows (top/
+   bottom, trimmed first, uniformly across both frames since there's no
+   idle|attack split on that axis) and border/divider columns (left/
+   right, searched only within the row-trimmed content height) by
+   scanning for fully-opaque-black runs; falls back to the old plain
+   half-width split if zero or more than one interior divider column run
+   is found (art without this convention keeps working). `loadCombatSprite`
    now loads an `sf::Image` first (to inspect pixels) before building the
    GPU texture from it, instead of loading straight to `sf::Texture`.
    Verified via a throwaway self-test (`CombatSpriteSelfTest.cpp` + a
    temporary CMake target, both deleted after, per this project's
-   self-test convention) -- 21 checks: synthetic border+divider,
-   synthetic no-divider fallback, ambiguous-divider fallback, odd-width/
-   empty-image rejection, and a real regression check loading the actual
-   `assets/sprites/goblin.png` and confirming its computed rects
-   (`(1,0)`-`24x26` idle, `(33,0)`-`24x26` attack) match the file's real,
-   by-hand-confirmed pixel layout.
+   self-test convention, run once after each of the two passes) -- 21
+   checks: synthetic full-border+divider, synthetic no-divider fallback,
+   ambiguous-divider fallback, odd-width/empty-image rejection, and a real
+   regression check loading the actual `assets/sprites/goblin.png` and
+   confirming its final computed rects (`(1,1)`-`24x24` idle,
+   `(33,1)`-`24x24` attack) match the file's real, by-hand-confirmed pixel
+   layout on all four edges.
 2. **A "-wide" wolf boxed in between two packmates rendered as a visibly
    tiny wolf** ("leaves a small image of itself lol" -- the user's own
    words) rather than falling back to a normal-looking single-cell
@@ -148,19 +156,24 @@ issues, both fixed this session and NOT yet the ones re-confirmed live:
 new warnings) and an `ansalon_sfml_phase1` launch smoke test against a
 disposable copy of `save1.txt` (ran 4s, no crash) after every change this
 session (loader wiring, first render-size fix, neighbor-aware overlap
-fix, chroma-key, divider-crop fix, boxed-in-crop fix). **Confirmed live
-2026-09-12**: kobold's sprite rendered correctly in a real fight (plain
-1x1 art, no suffix); the neighbor-aware overlap fix and chroma-key both
-confirmed live via the wolf-pack screenshot above. **Not yet
-interactively confirmed**: the divider-crop fix (no more black bar down
-one side of any sprite) and the boxed-in-crop fix (a fully-surrounded
+fix, chroma-key, divider-crop fix pass 1 [left/right only], boxed-in-crop
+fix, divider-crop fix pass 2 [top/bottom, after the second live finding]).
+**Confirmed live 2026-09-12**: kobold's sprite rendered correctly in a
+real fight (plain 1x1 art, no suffix); the neighbor-aware overlap fix and
+chroma-key both confirmed live via the wolf-pack screenshot; the
+left/right divider-bar fix was live-tested immediately (screenshotted by
+the user) and while it removed the *side* bar as intended, it surfaced
+the top/bottom border as a separate, previously-hidden issue -- now also
+fixed (pass 2 above). **Not yet interactively confirmed**: the top/bottom
+border trim (pass 2) and the boxed-in-crop fix (a fully-surrounded
 "-wide"/"-tall"/"-four" sprite rendering at a normal size, cropped,
-instead of tiny) -- both need a real fight with 3+ same-suffix pack
-members adjacent (a wolf/gnoll/icebear/worg/giantoad/centipede/
-boringbeetle/blackbear pack of 3-4 is the easiest way to force the boxed-
-in case specifically). Add to the Playtest backlog below once the
-blackpudding question above is resolved and this batch is considered
-closed.
+instead of tiny) -- the former just needs any real fight with sprite art
+(should be visible on every single token), the latter needs a real fight
+with 3+ same-suffix pack members adjacent (a wolf/gnoll/icebear/worg/
+giantoad/centipede/boringbeetle/blackbear pack of 3-4 is the easiest way
+to force the boxed-in case specifically). Add to the Playtest backlog
+below once the blackpudding question above is resolved and this batch is
+considered closed.
 
 **Milestone 192 shipped 2026-09-12** (same session as 191, immediately
 after): companion sprite art for Bren Alder. The user supplied
