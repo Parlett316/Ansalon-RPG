@@ -139,6 +139,7 @@ endif()
 # as ansalon_sfml_trial.
 add_executable(ansalon_sfml_phase1
     sfml_phase1/main.cpp
+    sfml_phase1/CombatSprite.cpp
     src/world/OverworldGrid.cpp
     src/world/World.cpp
     src/world/WorldLoader.cpp
@@ -192,9 +193,17 @@ endif()
 # tools/package_playable_release.ps1 already uses for external distribution.
 # Running from the repo root (this
 # target's original convention) still works too, unaffected.
+# assets/sprites/ (combat sprite art -- docs/ARCHITECTURE.md's SFML
+# section, "Combat sprite art") is copied wholesale, same as data/ above
+# and for the same reason: more sprites will land here over time with no
+# further CMakeLists.txt edits needed, unlike References/'s one-named-file-
+# at-a-time copy (that folder also holds 460MB+ of dev-only reference
+# material never read at runtime).
 add_custom_command(TARGET ansalon_sfml_phase1 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/data"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/assets"
     COMMAND ${CMAKE_COMMAND} -E make_directory
             "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/References"
     COMMAND ${CMAKE_COMMAND} -E copy

@@ -7336,6 +7336,101 @@ now fully verified, nothing further outstanding.
      **This closes the six-part Gold Box battlefield chain (185-190) in
      full.**
 
+191. **Combat sprite art: idle/attack pose swap (`ansalon_sfml_phase1`
+     only).** First real sprite art in the SFML target, replacing the
+     plain circle+letter marker for the player's own combat-grid token
+     wherever a sprite exists -- a general, id-keyed mechanism (any
+     future companion/monster art needs zero further code changes), even
+     though only "player" has art today. Full detail in
+     `docs/ARCHITECTURE.md`'s SFML section, "Combat sprite art" --
+     summarized here:
+     - New `assets/sprites/<id>.png` convention: exactly two equal-width
+       frames side by side (idle | attack, same height) -- new
+       `sfml_phase1/CombatSprite.h/.cpp` (`computeSpriteFrameRects`,
+       `spriteShouldFaceLeft`, `loadCombatSprite`), copied to the build
+       output and packaged release the same wholesale way `data/` already
+       is (not `References/`, which stays dev-only and never git-tracked).
+     - `drawCombatSpriteToken` (a new lambda in `sfml_phase1/main.cpp`,
+       backed by a small per-id `combatSpriteCache`) draws the real
+       sprite -- contain-fit scaled to the tile/footprint bounding box,
+       mirrored to face the nearest living enemy -- when one exists for a
+       given id, else falls back to the exact pre-existing marker+glyph,
+       byte-identical to before. Wired into both of the file's existing
+       duplicate combat-token draw loops (the real per-frame draw, and
+       `combatAnimateAiStep`'s own per-step animation redraw) for player,
+       monster, and companion tokens alike.
+     - The facing flip is purely cosmetic. Backstab eligibility is
+       untouched -- still `combat::oppositeSide`'s own pure position check
+       (Milestone 119); this milestone adds no new mechanic, only
+       presentation.
+     - The attack-pose frame flashes briefly (`combatFlashPlayerAttackPose`,
+       reusing `combatAnimateAiStep`'s own draw-then-`sf::sleep()` idiom, a
+       new `kAttackPoseFlashMs = 200` sibling to Milestone 185's
+       `kAiStepAnimationMs`) on every one of the player's own swings --
+       both `combatResolveAttackAgainstTarget` (single-target and
+       post-picker paths) and the player's own Fighter-sweep loop in
+       `combatBeginPlayerAttack`. Deliberately not wired to companion
+       attacks (which reuse the same `resolvePlayerAttack` function but
+       are a different attacker) or monster attacks.
+     - Only the player has real art (`assets/sprites/player.png`, moved
+       from the user-supplied `References/Knight.png`) -- companions and
+       monsters keep their existing markers until art exists for
+       `game::RecruitedCompanion::id`/`combat::Monster::id`, the natural
+       future keys.
+     - Verified: a throwaway self-test (`CombatSpriteSelfTest.cpp`,
+       deleted after -- 16 checks: `computeSpriteFrameRects` on the real
+       58x26 sheet and rejecting odd/zero dimensions, `spriteShouldFaceLeft`
+       across left/right/same-column, and a real load of
+       `assets/sprites/player.png` plus a missing-id miss). Clean `/W4`
+       rebuild of all three targets (zero new warnings). An
+       `ansalon_sfml_phase1` launch smoke test against real `save1.txt`
+       confirmed every catalog still loads cleanly (sprite loading itself
+       is lazy, first attempted only once combat starts). **Confirmed
+       live 2026-09-12** (same session, against a copy of `save1.txt`,
+       fighting a Boring Beetle group): the real sprite renders in place
+       of the circle for the player, the companion still correctly falls
+       back to the plain marker (no art for him yet), the sprite mirrors
+       to face the nearest enemy correctly when approached from either
+       side, and the attack-pose frame visibly flashes then reverts on a
+       swing. One known cosmetic issue found and left as-is per the user:
+       `Knight.png` has no alpha channel, so a solid mint-green
+       rectangle from the source art shows behind the character instead
+       of the floor tile -- an art-asset fix, not a rendering bug.
+
+192. **Companion sprite art: Bren Alder (`ansalon_sfml_phase1` only).**
+     The first payoff of Milestone 191's id-keyed sprite mechanism: the
+     user supplied `References/Sprites/BrenAlder.png` (58x26, same
+     idle|attack two-frame convention as the player sheet), moved to
+     `assets/sprites/bren_alder.png` (same precedent as Milestone 191's
+     `player.png`, not left duplicated in `References/`) -- `bren_alder`
+     being
+     `character::buildCompanionById`'s existing companion id, already
+     passed as `drawCombatSpriteToken`'s `spriteId` argument at every
+     companion draw call site since Milestone 191. **Zero code changes
+     needed** -- exactly the "needing no further code changes when that
+     art arrives" case Milestone 191's own writeup called out. Only the
+     stale "only player has art today" comments in
+     `sfml_phase1/CombatSprite.h`/`main.cpp` and `docs/ARCHITECTURE.md`
+     were updated to name both ids. Verified via a clean `/W4` rebuild of
+     all three targets (zero new warnings) and an `ansalon_sfml_phase1`
+     launch smoke test against a copy of `save1.txt` (every catalog
+     still loads; sprite loading is lazy, first attempted only once
+     combat starts). **Confirmed live 2026-09-12** (same session, against
+     a disposable copy of `save1.txt`, driven via `SendKeys` + screenshot):
+     fought a 4 Giant Centipede encounter out of Haven and saw Bren
+     Alder's real sprite (red shirt/green pants, sword raised) render on
+     the grid next to the player's Knight sprite, in place of his plain
+     marker+letter. Same known cosmetic issue as Milestone 191's
+     `player.png` confirmed present here too: no alpha channel, so a solid
+     mint-green background block shows behind the character instead of
+     the floor tile -- left as-is, same call as before. Also confirmed by
+     design, not a bug: his sprite doesn't mirror left/right
+     (`drawCombatSpriteToken`'s `facingTarget` is `std::nullopt` for every
+     companion token; only the player is passed
+     `combatNearestLivingEnemyPos()`), and it never shows an attack-pose
+     frame (Milestone 191 wired that flash to the player's own swings
+     only).
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

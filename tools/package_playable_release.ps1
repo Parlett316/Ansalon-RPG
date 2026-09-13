@@ -118,6 +118,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $sfmlExePath = Join-Path $releaseDir "ansalon_sfml_phase1.exe"
 $dataSrc = Join-Path $repoRoot "data"
+$assetsSrc = Join-Path $repoRoot "assets"
 $mapSrc = Join-Path $repoRoot "References\dragonlancemap2.png"
 if (-not (Test-Path $sfmlExePath)) { throw "Build succeeded but $sfmlExePath is missing" }
 if (-not (Test-Path $mapSrc)) { throw "$mapSrc is missing" }
@@ -134,6 +135,13 @@ Copy-Item $dataSrc -Destination $dataDst -Recurse
 # docs/MAP_NOTES.md. Never share it.
 $preview = Join-Path $dataDst "overworld_preview.png"
 if (Test-Path $preview) { Remove-Item -Force $preview }
+
+# Combat sprite art (docs/ARCHITECTURE.md's SFML section, "Combat sprite
+# art") -- same wholesale copy as data/ above, so a packaged release also
+# carries whatever's under assets/sprites/.
+if (Test-Path $assetsSrc) {
+    Copy-Item $assetsSrc -Destination (Join-Path $stageDir "assets") -Recurse
+}
 
 New-Item -ItemType Directory -Force -Path (Join-Path $stageDir "References") | Out-Null
 Copy-Item $mapSrc -Destination (Join-Path $stageDir "References\dragonlancemap2.png")

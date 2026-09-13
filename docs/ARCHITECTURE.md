@@ -189,6 +189,83 @@ same way `Console.cpp` already guards its own Windows-only code — not a
 reversal of "SFML abstracts windowing", just the one thing it doesn't
 cover.
 
+### Combat sprite art (idle/attack pose swap)
+
+Every combat participant had been a plain `sf::CircleShape` marker + a
+letter glyph since the Gold Box battlefield chain (Milestones 185-190) —
+this section's own earlier note flagged that as "placeholder shapes/text
+for now, ready for real sprite art later." Milestone 191 is the first
+real art: the user supplied a side-view idle/attack sprite pair for the
+player character, wanting the on-grid token itself replaced (not the
+overworld/zone avatar, which stays the plain marker) and the mechanism
+built as a general, id-keyed lookup rather than a player-only special
+case, so a companion or monster sprite can be dropped in later with zero
+further code changes.
+
+**Asset convention**: `assets/sprites/<id>.png` (a new top-level
+directory, sibling to `data/` — not inside `References/`, which is
+explicitly dev-only reference material never copied to a shipped build,
+per its own `.gitignore`/`CMakeLists.txt`/`tools/
+package_playable_release.ps1` comments). Each file is exactly two
+equal-width frames side by side, same height: idle, then attack.
+`combat::Monster::id` and `game::RecruitedCompanion::id` (both already
+stable strings, used elsewhere for exactly this kind of per-entity
+lookup) are the natural future keys — `"player"` and companion id
+`"bren_alder"` have art today (Milestone 192 added the latter, dropped in
+with zero further code changes, exactly as this mechanism was designed
+for).
+
+**`sfml_phase1/CombatSprite.h/.cpp`** is a new, small module (its own
+file rather than growing `main.cpp` further) holding the pieces worth
+keeping pure and unit-testable: `computeSpriteFrameRects(width, height)`
+splits a sheet into its two `sf::IntRect` halves, returning
+`std::nullopt` for an odd width rather than mis-slicing; `spriteShouldFaceLeft(self,
+target)` is the cosmetic left/right flip check; `loadCombatSprite(id)`
+tries `assets/sprites/<id>.png` (same plain-relative-literal convention
+`sfml_phase1/main.cpp` already uses for `data/`/`References/`) and
+returns `std::nullopt` on any failure — never throws, since this is
+optional presentation, unlike this project's fail-fast data loaders.
+
+**`main.cpp` keeps a small per-id cache** (`combatSpriteCache`,
+populated lazily so a missing file is only attempted once per run) and
+one shared lambda, `drawCombatSpriteToken`, called from both of the
+file's pre-existing duplicate combat-token draw sites (the real per-
+frame combat draw, and `combatAnimateAiStep`'s own per-step move-
+animation redraw — see Milestone 185) for the player, every monster
+instance, and every companion alike. It returns `false` when no sprite
+exists for that id — the caller's existing marker+glyph drawing is
+untouched in that case, so every combatant without art (everyone but the
+player and Bren Alder, today) renders byte-identically to before. When a sprite does
+exist, it's drawn contain-fit scaled to the tile/footprint bounding box
+(same generalization the Milestone 190 marker radius already uses,
+`kCombatTilePx * max(footprintWidth, footprintHeight)`, just for a
+rectangular sprite instead of a circle) and mirrored via a negative
+x-scale when facing left.
+
+**The facing flip is purely cosmetic.** The player's facing target is
+the nearest living enemy's nearest footprint cell
+(`combat::nearestFootprintCell`/`chebyshevDistance`, the same helpers the
+sidebar's own `dist N` readout already uses). Critically, **this never
+feeds backstab eligibility** — `combat::oppositeSide` (Milestone 119, see
+`docs/COMBAT_NOTES.md`) is a pure position check with no facing concept
+at all, and stays that way. A future contributor should not wire this
+sprite's facing into that check; they're deliberately independent.
+
+**The attack-pose flash reuses `combatAnimateAiStep` itself** rather than
+a third near-duplicate draw function: a new `playerAttackPose` parameter
+(default `false`) draws the player's attack frame instead of idle for
+that one animation frame, and sleeps a new `kAttackPoseFlashMs` (200,
+same invented-and-flagged-pacing precedent as Milestone 185's
+`kAiStepAnimationMs`) instead of the shorter move-step duration.
+`combatFlashPlayerAttackPose` is a one-line wrapper calling it with
+`true`, invoked right after every one of the player's own swings
+(`combatResolveAttackAgainstTarget`'s loop, covering both the single-
+eligible-target and post-picker-confirmation paths, and the player's own
+Fighter-sweep loop in `combatBeginPlayerAttack`) — deliberately **not**
+wired to the companion sweep/attack loops in `combatCompanionActs`, which
+call the same underlying `combat::resolvePlayerAttack` function but for a
+different attacker entirely.
+
 ## Why location data is a hand-rolled text format, not JSON
 
 Unchanged reasoning from Milestone 1: no external dependency to vendor for

@@ -1,5 +1,61 @@
 # Current work
 
+**Milestone 192 shipped 2026-09-12** (same session as 191, immediately
+after): companion sprite art for Bren Alder. The user supplied
+`References/Sprites/BrenAlder.png`; moved to `assets/sprites/bren_alder.png`
+(`bren_alder` is his existing companion id) -- Milestone 191's id-keyed
+mechanism meant **zero code changes were needed**, only two stale "only
+player has art" comments updated. Verified via clean `/W4` rebuild (zero
+new warnings) and a launch smoke test against a copy of `save1.txt`.
+**Confirmed live 2026-09-12** (same session, against a fresh disposable
+copy of `save1.txt`, driven via `SendKeys` + screenshot -- see this
+day's own desktop/GUI access note elsewhere in this file): walked out
+from Haven until a 4 Giant Centipede encounter fired, and both the
+player's Knight sprite and Bren Alder's real sprite (red shirt/green
+pants, sword raised) rendered side by side on the grid, in place of the
+plain circle+letter markers. Same known cosmetic issue as `player.png`
+(no alpha channel, solid mint-green background block shows behind the
+character) -- confirmed present on Bren Alder's sprite too, left as-is,
+same call as Milestone 191. Note: companions are never passed a facing
+target (`drawCombatSpriteToken`'s `facingTarget` argument is
+`std::nullopt` for companion tokens, only the player gets
+`combatNearestLivingEnemyPos()`), so Bren Alder's sprite doesn't mirror
+left/right -- by design, not a bug; only the player's facing was ever in
+scope for Milestone 191's cosmetic flip.
+
+**Milestone 191 shipped 2026-09-12** (a fresh session, after the
+character-wounded playtest below was already paused): combat sprite art
+for `ansalon_sfml_phase1` -- the first real art in the SFML target,
+replacing the plain circle+letter marker with a real idle/attack sprite
+for the player's own combat-grid token, prompted by the user sharing a
+side-view fighter sprite pair (`References/Knight.png`, moved to
+`assets/sprites/player.png`). Built as a general, id-keyed lookup
+(`combat::Monster::id`/`game::RecruitedCompanion::id` are the natural
+future keys) rather than a player-only special case, per the user's own
+explicit scoping choice -- companions and monsters keep their existing
+markers until art exists for them, with zero further code changes needed
+when it does. The sprite mirrors left/right to face the nearest living
+enemy (purely cosmetic -- confirmed via `docs/COMBAT_NOTES.md` that
+backstab eligibility is already a pure position check,
+`combat::oppositeSide`, with no facing concept, so this doesn't touch it)
+and briefly flashes an attack-pose frame on every one of the player's own
+swings before reverting to idle. See `docs/ARCHITECTURE.md`'s SFML
+section ("Combat sprite art") for the full design and
+`docs/MILESTONES.md` entry 191 for the shipped writeup. Verified via a
+throwaway self-test (16 checks, deleted after), a clean `/W4` rebuild of
+all three targets (zero new warnings), and an `ansalon_sfml_phase1`
+launch smoke test against real `save1.txt` (every catalog still loads;
+sprite loading is lazy, first attempted only once combat starts).
+**Confirmed live 2026-09-12** (same session, against a copy of
+`save1.txt`): the sprite renders in place of the marker, mirrors to face
+the nearest enemy correctly, and the attack-pose flash plays and reverts
+-- see this file's own Playtest backlog entry for the one known cosmetic
+follow-up (a non-transparent background in `Knight.png` itself, left as
+is for now per the user). Asked the user at hand-off whether to bump
+`tools/playable_release_version.txt` as a minor increment for this --
+**held off for now**, pending the cosmetic cleanup or bundling with
+other pending work before the next release is packaged.
+
 **Right now: character wounded (HP 1/26), rest before wandering off
 again -- but read the correction below before treating this as an
 emergency.** `save1.txt`'s Mike is at `MODE OVERWORLD`, `POS 197 249`
@@ -284,6 +340,26 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
+- ~~**Companion sprite art: Bren Alder**~~ (Milestone 192) -- **confirmed
+  live 2026-09-12**: his real sprite renders in place of the marker+letter
+  during a real fight (4 Giant Centipedes). Confirmed by design, not a
+  bug: no left/right mirroring for him (only the player gets the cosmetic
+  facing flip) and no attack-pose flash (Milestone 191 wired that to the
+  player's own swings only).
+- ~~**Combat sprite art: idle/attack pose swap**~~ (Milestone 191) --
+  **fully confirmed live 2026-09-12**: fought a Boring Beetle group
+  (forest terrain) against a copy of `save1.txt`. The player's token
+  renders the real idle sprite in place of the gold circle; companion
+  Bren Alder still correctly falls back to the plain marker+letter (no
+  art for him yet, no regression); moving to keep an enemy on the
+  player's right vs. left correctly mirrored the sprite to face that
+  side; and attacking visibly swapped to the attack-pose frame before
+  reverting to idle. **One known cosmetic issue, left as-is for now per
+  the user**: `Knight.png` has no alpha channel, so a solid mint-green
+  rectangle from the source art shows behind the character instead of
+  the floor tile underneath -- an art-asset fix (needs real
+  transparency), not a rendering bug. Revisit whenever the user wants
+  the look cleaned up.
 - **Attack/spell/webnet target-picker cancel fix** (fixed 2026-09-12,
   triaged from the live-testing session's own finding, see this file's
   top section) -- not yet interactively confirmed: open the "Attack

@@ -1268,9 +1268,14 @@ stacking with it -- DQoK's text doesn't describe an interaction, and "one
 swing per weak adjacent enemy" is the literal reading; flagged here as an
 invented scoping call, not sourced.
 
-**Backstab** (Thief-type only, `character::ClassGroup::Rogue`): DQoK.pdf's
-own manual gives its own **positional** version, distinct from the
-classic PHB surprise/unaware-target rule: "A thief 'back stabs' if he
+**Backstab** (Thief-type only, `character::ClassGroup::Rogue`) is a pure
+position check with no facing/direction concept involved at all — worth
+noting explicitly since Milestone 191 (`ansalon_sfml_phase1` only) later
+added a cosmetic sprite that visually mirrors left/right to face the
+nearest enemy (see `docs/ARCHITECTURE.md`'s SFML section, "Combat sprite
+art"). That facing is presentation only and never feeds this check.
+DQoK.pdf's own manual gives its own **positional** version, distinct from
+the classic PHB surprise/unaware-target rule: "A thief 'back stabs' if he
 attacks a target from exactly opposite the first character to attack the
 target. The thief may not 'back stab' if he has readied armor heavier
 than leather. A 'back stab' has a better chance of hitting the defender

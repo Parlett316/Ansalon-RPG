@@ -20,6 +20,8 @@
 // above the combat lambdas below), all shipped in later sessions, see
 // docs/CURRENT_WORK.md for their own scope writeups and the full picture.
 
+#include "CombatSprite.h"
+
 #include "character/Alignment.h"
 #include "character/CharClass.h"
 #include "character/Companion.h"
@@ -1988,9 +1990,12 @@ int runPhase1(const std::string& savePath) {
     sidebarBg.setFillColor(sf::Color(20, 20, 28));
 
     // Combat grid + marker shapes -- same "declare once, mutate per cell/
-    // entity" convention as zoneTileShape/locationMarker above. No sprite
-    // art for combat either (same reasoning as zone interiors) -- flat
-    // color plus a letter label distinguishes each monster/companion.
+    // entity" convention as zoneTileShape/locationMarker above. These stay
+    // the fallback presentation for any combatant with no sprite art (see
+    // drawCombatSpriteToken/combatSpriteCache below, and
+    // docs/ARCHITECTURE.md's SFML section, "Combat sprite art") -- flat
+    // color plus a letter label, still used for every companion/monster id
+    // besides "bren_alder" and every combatant besides "player".
     sf::RectangleShape combatTileShape(sf::Vector2f(kCombatTilePx - 2.f, kCombatTilePx - 2.f));
     combatTileShape.setFillColor(sf::Color(70, 65, 55));
     // Milestone 188: the one other tile kind this screen now draws -- a
@@ -2014,6 +2019,52 @@ int runPhase1(const std::string& savePath) {
     combatPickHighlight.setFillColor(sf::Color::Transparent);
     combatPickHighlight.setOutlineColor(sf::Color(255, 230, 120));
     combatPickHighlight.setOutlineThickness(3.f);
+
+    // Combat sprite art (see docs/ARCHITECTURE.md's SFML section, "Combat
+    // sprite art"): an id-keyed lookup, so a combatant with a real
+    // assets/sprites/<id>.png (idle | attack side by side) draws that
+    // instead of its plain marker+glyph. Cached per id (including a
+    // "no art for this id" miss) so a missing file is only ever attempted
+    // once per run. "player" and companion id "bren_alder" have art today --
+    // combat::Monster::id and the rest of game::RecruitedCompanion::id are
+    // the natural future keys, needing no further plumbing here when that
+    // art arrives.
+    std::unordered_map<std::string, std::optional<sfml_phase1::CombatSpriteFrames>> combatSpriteCache;
+    // Returns true if a real sprite was drawn -- false means "no art for
+    // this id," and the caller should fall back to its own existing
+    // marker+glyph drawing exactly as before (every monster/companion
+    // today). `facingTarget` is the grid cell the sprite should mirror
+    // toward -- purely cosmetic (see CombatSprite.h's own doc comment):
+    // it never feeds combat::oppositeSide's backstab check.
+    auto drawCombatSpriteToken = [&](const std::string& spriteId, int footprintWidth, int footprintHeight, float cx,
+                                      float cy, combat::GridPos selfGridPos,
+                                      const std::optional<combat::GridPos>& facingTarget, bool useAttackPose) -> bool {
+        auto it = combatSpriteCache.find(spriteId);
+        if (it == combatSpriteCache.end()) {
+            it = combatSpriteCache.emplace(spriteId, sfml_phase1::loadCombatSprite(spriteId)).first;
+        }
+        if (!it->second.has_value()) return false;
+        const sfml_phase1::CombatSpriteFrames& frames = *it->second;
+        const sf::IntRect& rect = useAttackPose ? frames.attackRect : frames.idleRect;
+        sf::Sprite sprite(frames.texture);
+        sprite.setTextureRect(rect);
+        const float frameW = static_cast<float>(rect.size.x);
+        const float frameH = static_cast<float>(rect.size.y);
+        sprite.setOrigin(sf::Vector2f(frameW / 2.f, frameH / 2.f));
+        // Contain-fit within the tile/footprint bounding box (preserving
+        // aspect ratio, 90% fill so it doesn't touch the tile edges) --
+        // same footprint-bounding-box generalization the Milestone 190
+        // marker radius already uses below, just for a rectangular sprite
+        // instead of a circle.
+        const float boundW = kCombatTilePx * static_cast<float>(footprintWidth);
+        const float boundH = kCombatTilePx * static_cast<float>(footprintHeight);
+        const float scale = 0.9f * std::min(boundW / frameW, boundH / frameH);
+        const bool faceLeft = facingTarget.has_value() && sfml_phase1::spriteShouldFaceLeft(selfGridPos, *facingTarget);
+        sprite.setScale(sf::Vector2f(faceLeft ? -scale : scale, scale));
+        sprite.setPosition(sf::Vector2f(cx, cy));
+        window.draw(sprite);
+        return true;
+    };
 
     std::deque<std::string> log;
     auto pushLog = [&log](const std::string& text) {
@@ -3045,6 +3096,30 @@ int runPhase1(const std::string& savePath) {
     // docs/ARCHITECTURE.md).
     CombatSession combatSession;
 
+    // The player's cosmetic facing target for combat sprite art (see
+    // drawCombatSpriteToken above): the nearest living monster instance's
+    // nearest footprint cell (same combat::nearestFootprintCell/
+    // chebyshevDistance helpers the sidebar's own "dist N" readout already
+    // uses further below). std::nullopt only if every instance is down --
+    // combat would already be over by then, but this is defensive rather
+    // than assumed.
+    auto combatNearestLivingEnemyPos = [&]() -> std::optional<combat::GridPos> {
+        std::optional<combat::GridPos> nearest;
+        int nearestDist = 0;
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            const combat::GridPos cell =
+                combat::nearestFootprintCell(combatSession.playerPos, combatSession.instancePositions[i],
+                                              combatSession.monster.footprintWidth, combatSession.monster.footprintHeight);
+            const int dist = combat::chebyshevDistance(combatSession.playerPos, cell);
+            if (!nearest.has_value() || dist < nearestDist) {
+                nearestDist = dist;
+                nearest = cell;
+            }
+        }
+        return nearest;
+    };
+
     // Character sheet ('C'): a transient full-window UI overlay, not world
     // state -- same reasoning CombatSession's own comment above gives for
     // staying local rather than becoming a third game::Mode value. Dismissed
@@ -3178,11 +3253,23 @@ int runPhase1(const std::string& savePath) {
     // still bounded enough that a full-budget Wraith/Spectre (MOVE 24/30)
     // doesn't stall the window for long.
     constexpr int kAiStepAnimationMs = 130;
+    // Same invented-pacing precedent as kAiStepAnimationMs above, just for
+    // the player's attack-pose flash (see combatFlashPlayerAttackPose
+    // below) -- longer than a move step since it's meant to read as a
+    // deliberate swing, not a walk cycle. Expect this needs the same kind
+    // of live-feedback tuning pass once seen at a real keyboard.
+    constexpr int kAttackPoseFlashMs = 200;
     // Centers the camera on whichever cell is actually moving this step
     // (the same live-feedback pass: the camera used to stay fixed on the
     // player, so a companion or monster walking far from the player was
     // animating off-screen) rather than always the player's own position.
-    auto combatAnimateAiStep = [&](combat::GridPos focus) {
+    // `playerAttackPose` (Combat sprite art, see docs/ARCHITECTURE.md's
+    // SFML section) draws the player's attack-pose frame for this one
+    // frame instead of idle, and sleeps the longer kAttackPoseFlashMs --
+    // combatFlashPlayerAttackPose below is the only caller that passes
+    // true, reusing this same draw-then-sleep animation frame rather than
+    // duplicating it a third time.
+    auto combatAnimateAiStep = [&](combat::GridPos focus, bool playerAttackPose = false) {
         const float combatPxW = static_cast<float>(kCombatGridWidth) * kCombatTilePx;
         const float combatPxH = static_cast<float>(kCombatGridHeight) * kCombatTilePx;
         const float focusPxX = (static_cast<float>(focus.x) + 0.5f) * kCombatTilePx;
@@ -3239,36 +3326,54 @@ int runPhase1(const std::string& savePath) {
                 static_cast<float>(std::max(combatSession.monster.footprintWidth, combatSession.monster.footprintHeight));
             const float cx = (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
             const float cy = (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
-            combatMonsterMarker.setRadius(footprintRadius);
-            combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
-            combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
-            window.draw(combatMonsterMarker);
-            sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kAnimGlyphCharSize);
-            glyph.setFillColor(sf::Color::White);
-            glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
-            window.draw(glyph);
+            if (!drawCombatSpriteToken(combatSession.monster.id, combatSession.monster.footprintWidth,
+                                        combatSession.monster.footprintHeight, cx, cy, pos, std::nullopt, false)) {
+                combatMonsterMarker.setRadius(footprintRadius);
+                combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
+                combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
+                window.draw(combatMonsterMarker);
+                sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kAnimGlyphCharSize);
+                glyph.setFillColor(sf::Color::White);
+                glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                window.draw(glyph);
+            }
         }
         for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
             if (!combatCompanionAlive(i)) continue;
             const combat::GridPos pos = combatSession.companionPositions[i];
             const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
             const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
-            combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
-            window.draw(combatCompanionMarker);
-            sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kAnimGlyphCharSize);
-            glyph.setFillColor(sf::Color::White);
-            glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
-            window.draw(glyph);
+            if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false)) {
+                combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
+                window.draw(combatCompanionMarker);
+                sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kAnimGlyphCharSize);
+                glyph.setFillColor(sf::Color::White);
+                glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                window.draw(glyph);
+            }
         }
         {
             const float cx = (static_cast<float>(combatSession.playerPos.x) + 0.5f) * kCombatTilePx;
             const float cy = (static_cast<float>(combatSession.playerPos.y) + 0.5f) * kCombatTilePx;
-            playerMarker.setPosition(sf::Vector2f(cx, cy));
-            window.draw(playerMarker);
+            if (!drawCombatSpriteToken("player", 1, 1, cx, cy, combatSession.playerPos, combatNearestLivingEnemyPos(),
+                                        playerAttackPose)) {
+                playerMarker.setPosition(sf::Vector2f(cx, cy));
+                window.draw(playerMarker);
+            }
         }
         window.display();
-        sf::sleep(sf::milliseconds(kAiStepAnimationMs));
+        sf::sleep(sf::milliseconds(playerAttackPose ? kAttackPoseFlashMs : kAiStepAnimationMs));
     };
+
+    // Combat sprite art (see docs/ARCHITECTURE.md's SFML section): flashes
+    // the player's attack-pose frame for one frame via combatAnimateAiStep
+    // above (reusing its exact draw-then-sleep animation, just centered on
+    // the player rather than a moving AI unit), then lets the caller's own
+    // next real draw revert to idle. A no-op in effect when no player
+    // sprite is loaded -- drawCombatSpriteToken's fallback path never
+    // distinguishes idle/attack for the plain marker, so nothing visibly
+    // changes until real art exists.
+    auto combatFlashPlayerAttackPose = [&]() { combatAnimateAiStep(combatSession.playerPos, true); };
 
     // Milestone 186 (the VIEW command, and the sidebar's passive status
     // readout): pure presentation over state this project already tracks
@@ -3882,6 +3987,7 @@ int runPhase1(const std::string& savePath) {
                 state.character, combatSession.monster, combatSession.playerThac0Bonus + backstabThac0,
                 combatSession.playerDamageBonus, backstabMultiplier,
                 combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)]);
+            combatFlashPlayerAttackPose(); // Combat sprite art: brief attack-pose frame, whether the swing hits or misses
             if (outcome.hit) {
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                 combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + "You hit the " +
@@ -4266,6 +4372,7 @@ int runPhase1(const std::string& savePath) {
                         state.character, combatSession.monster, combatSession.playerThac0Bonus + backstabThac0,
                         combatSession.playerDamageBonus, backstabMultiplier,
                         combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)]);
+                    combatFlashPlayerAttackPose(); // Combat sprite art: one flash per sweep swing, hit or miss
                     if (outcome.hit) {
                         combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
                         combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
@@ -6411,32 +6518,41 @@ int runPhase1(const std::string& savePath) {
                         (static_cast<float>(pos.x) + combatSession.monster.footprintWidth / 2.f) * kCombatTilePx;
                     const float cy =
                         (static_cast<float>(pos.y) + combatSession.monster.footprintHeight / 2.f) * kCombatTilePx;
-                    combatMonsterMarker.setRadius(footprintRadius);
-                    combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
-                    combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
-                    window.draw(combatMonsterMarker);
-                    sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kCombatGlyphCharSize);
-                    glyph.setFillColor(sf::Color::White);
-                    glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
-                    window.draw(glyph);
+                    if (!drawCombatSpriteToken(combatSession.monster.id, combatSession.monster.footprintWidth,
+                                                combatSession.monster.footprintHeight, cx, cy, pos, std::nullopt,
+                                                false)) {
+                        combatMonsterMarker.setRadius(footprintRadius);
+                        combatMonsterMarker.setOrigin(sf::Vector2f(footprintRadius, footprintRadius));
+                        combatMonsterMarker.setPosition(sf::Vector2f(cx, cy));
+                        window.draw(combatMonsterMarker);
+                        sf::Text glyph(font, std::string(1, static_cast<char>('A' + i)), kCombatGlyphCharSize);
+                        glyph.setFillColor(sf::Color::White);
+                        glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                        window.draw(glyph);
+                    }
                 }
                 for (size_t i = 0; i < combatSession.companionPositions.size(); ++i) {
                     if (!combatCompanionAlive(i)) continue;
                     const combat::GridPos pos = combatSession.companionPositions[i];
                     const float cx = (static_cast<float>(pos.x) + 0.5f) * kCombatTilePx;
                     const float cy = (static_cast<float>(pos.y) + 0.5f) * kCombatTilePx;
-                    combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
-                    window.draw(combatCompanionMarker);
-                    sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kCombatGlyphCharSize);
-                    glyph.setFillColor(sf::Color::White);
-                    glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
-                    window.draw(glyph);
+                    if (!drawCombatSpriteToken(state.companions[i].id, 1, 1, cx, cy, pos, std::nullopt, false)) {
+                        combatCompanionMarker.setPosition(sf::Vector2f(cx, cy));
+                        window.draw(combatCompanionMarker);
+                        sf::Text glyph(font, std::string(1, static_cast<char>('c' + i)), kCombatGlyphCharSize);
+                        glyph.setFillColor(sf::Color::White);
+                        glyph.setPosition(sf::Vector2f(cx - 5.f, cy - 10.f));
+                        window.draw(glyph);
+                    }
                 }
                 {
                     const float cx = (static_cast<float>(combatSession.playerPos.x) + 0.5f) * kCombatTilePx;
                     const float cy = (static_cast<float>(combatSession.playerPos.y) + 0.5f) * kCombatTilePx;
-                    playerMarker.setPosition(sf::Vector2f(cx, cy));
-                    window.draw(playerMarker);
+                    if (!drawCombatSpriteToken("player", 1, 1, cx, cy, combatSession.playerPos,
+                                                combatNearestLivingEnemyPos(), false)) {
+                        playerMarker.setPosition(sf::Vector2f(cx, cy));
+                        window.draw(playerMarker);
+                    }
                 }
             } else if (state.mode == game::Mode::Overworld) {
                 const float playerPxX = (static_cast<float>(state.x) + 0.5f) * pxPerTileX;
