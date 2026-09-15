@@ -1,5 +1,132 @@
 # Current work
 
+**2026-09-15: console-retirement question raised, deliberately not acted on
+yet — session redirected into closing the parity gap instead.** The user
+asked to "sunset the ascii build." `docs/CONSOLE_RETIREMENT_PROPOSAL.md`'s
+Option A (adopted 2026-09-11) gates even Stage 1 (Deprecate) on a parity
+checklist that wasn't met — quest system and native character creation were
+both still substantially unconfirmed live. Asked the user which stage they
+meant and how to handle the unmet checklist; **chose to hold off on any
+retirement action and spend the session live-testing instead**, via the
+same `SendKeys`+screenshot automation prior sessions used (confirmed working
+again this session — see the updated `feedback_no_desktop_gui_access`
+memory). Used a fresh character in the previously-empty save slot 3 (Human
+Fighter, Lawful Good, Knight of the Crown — chosen deliberately so the
+Knight-offer screen would also get exercised) rather than touching either of
+the user's real characters in slots 1/2, both confirmed untouched afterward
+(`save1.txt`/`save2.txt` positions unchanged). The app was closed at the end
+of the session; slot 3 still holds this disposable test character (Day 6,
+Haven area) — harmless to leave, or tell a future session to `d3` it from
+the native slot menu if the user wants the slot back to `(empty)`.
+
+**Newly confirmed live, closing real gaps in the Playtest backlog below**
+(full detail in each backlog entry; not repeated here): the save-slot
+menu's display; native character creation's ability-score assign flow, an
+ineligible race pick's inline error + re-prompt (tested against Kender),
+the Knight of the Crown offer screen, the Weapon Specialization prompt, and
+the final "Begin your journey?" summary screen landing correctly in Solace
+with the right stats; the quest system's offer/accept/decline picker, the
+journal rendering a live objective counter that actually increments on a
+real kill (a `SLAY` objective going 0/3 → 1/3, confirmed twice, and
+confirmed to survive a knockout); a `SHOP_LOCKED` shop (Flint's Smithy,
+gated on the separate `ore_for_the_forge` quest) correctly refusing to open
+("There's nothing to buy here yet."); the Flee command; and, as reconfirmed
+bonus coverage rather than new findings, the knocked-out/full-heal/
+teleport-to-nearest-town mechanic (now also confirmed for **poison**
+damage specifically — "The poison overwhelms you!" still routes through the
+same safe path, not a separate save-or-die), battlemap wall-blocking, and
+monster-acts-first initiative.
+
+**Genuinely new finding, not just a confirmation**: `sfml_phase1/main.cpp`'s
+native character-creation `CreationStep::Name` step accepts an empty name
+with no validation — `wantsEnter` on an empty `nameBuffer` just does
+`character.name = nameBuffer;` and advances (`sfml_phase1/main.cpp` around
+line 1467). Triggered by accident this session (an empty name reached the
+overworld HUD as a bare `", level 1 Human Fighter"` and a log line reading
+`"Loaded ."`), not by deliberately testing for it. Likely not a new
+SFML-only regression — the console's own `promptName()`
+(`src/character/CharacterCreator.cpp`) only checks `size() <= 20`, not
+non-empty, so this gap probably predates the SFML port. Not fixed this
+session (verification-only, not a code-change session); flagging for the
+user to decide whether it's worth a minimum-length check.
+
+**`road_wolves` reached 3/3 and `ReadyToTurnIn` before this session ended**
+(continued in a second pass after the "keep going" ask) — the objective
+itself is now fully proven, including the specific one-time log line
+`game::GameLoop::checkQuestReadiness` pushes: *"The Wolves on the Solace
+Road is ready to turn in -- return to the Notice Board to collect your
+reward."*, and the journal's `[x] Kill three timber wolves...` checked
+state. Confirmed in the save file too: `QUEST road_wolves 2` (=
+`QuestStatus::ReadyToTurnIn`) and `KILL wolf 3`. The path there was almost
+entirely encounter RNG, not a code problem — Timber Wolves are one
+random-encounter species among ~15+ on the relevant terrain codes
+(`world::Terrain.cpp`'s `encounterChancePercent`, 2-12% per step depending
+on terrain), so the two sessions combined logged well over 100 non-wolf
+encounters (rats, beetles, ghouls, gnolls, hobgoblins, kobolds, ghasts,
+goblins, bugbears, giant spiders, zombies, black bears, giant toads,
+wraiths, weretigers, gorgons, ettins, owlbears, a troll, draconians of all
+three types, worgs [a different monster id, doesn't count], lizard men)
+for every wolf pack encountered, and a knockout happened five separate
+times along the way before the third kill finally landed clean. **Not a
+bug**: the knocked-out-not-killed design (see `docs/COMBAT_NOTES.md`)
+means every one of those was a free retry, just an expensive one in real
+turns — and each knockout teleports to whichever refuge town is actually
+nearest in a straight line (confirmed genuinely computed, not hardcoded:
+landed in Haven, Solace, and Ice Wall Castle on different occasions).
+
+**Still not closed: the actual turn-in dialogue, `COMPLETE` text, and
+reward.** The third kill landed while the character was deep in the
+Balifor region chasing wolf encounters — a random-encounter knockout
+teleported it to **Port Balifor**, roughly 166 overworld tiles
+(Chebyshev) from Solace's Notice Board, confirmed via `POS 357 182` vs.
+Solace's `POS 191 203`. Walking that back was judged not worth the
+remaining session budget — the objective-complete mechanics this was
+actually meant to verify (live counter increment, knockout-survival,
+`ReadyToTurnIn` state, and its log line) are now all proven regardless of
+whether the steel/XP reward text itself has been seen fire. **For a
+future session finishing this off**: the disposable slot-3 character
+(Human Fighter, `ZONE port_balifor`) is sitting inside Port Balifor's
+interior zone, ready to turn in `road_wolves` the moment it reaches
+Solace again — a real, long overworld walk (or `ansalon_rpg`'s faster
+piped/no-render path could in principle reach the same state on a fresh
+character much more directly, if the goal is only to see the `COMPLETE`
+text/reward/journal-clear fire, rather than to reuse this specific
+character). Also still open from the quest checklist: any `DELIVER`-type
+quest (`ore_for_the_forge` was found and confirmed locked, but its own
+offer/accept/turn-in was never walked), and the six reward flags /
+Wayreth Test of High Sorcery scene.
+
+**Two more confirmations from this second pass**: the save-slot menu's
+**Continue** branch (selecting an occupied slot, confirming "Continue this
+character?", resuming at the exact saved position/HP/day) — including
+surviving an actual unexpected process exit, not just a graceful quit (see
+below); and `r` = Rest (heals a small amount, once per day — "You've
+already rested today" on a second attempt same day).
+
+**Minor operational note, not a confirmed game bug**: the app's window
+closed cleanly and unexpectedly twice during this session's extended
+automated `SendKeys` play (no crash dump/Application-Error event logged
+either time — a clean exit, not a crash). Both times the disposable
+character's autosave was fully intact on relaunch (continuous
+per-keypress autosave doing exactly its job). Reads as an automation
+artifact (a very high volume of synthetic input over a long session)
+rather than a game-logic bug; flagging only so a future session isn't
+surprised if it recurs, not as something to chase down.
+
+**Console-retirement trigger: still not met, and this session shouldn't be
+read as having met it** — quest parity is now very close (offer/accept/
+track/lock/ready-to-turn-in all live-confirmed with the `road_wolves`
+SLAY path fully proven end to end) but not done (the actual turn-in
+exchange for `road_wolves` was never seen fire — the character is 166
+tiles from Solace, see above — `DELIVER` quests untested, reward flags
+untested). Native character creation is also closer (Continue confirmed
+alongside pick-empty-slot) but still has open sub-items (the final
+summary's "No" restart path, Elf/Dwarf subrace step, Gnome-forced-Tinker
+path, and the save-slot menu's overwrite/delete branches). See `docs/
+CONSOLE_RETIREMENT_PROPOSAL.md`'s four-point checklist and the Playtest
+backlog below for exactly what's left. Don't resume the retirement
+conversation unprompted — wait for the user.
+
 **Playable v7 packaged 2026-09-13** (`dist/AnsalonRPG-Playable-v7.zip`,
 `tools/playable_release_version.txt` bumped 6->7 via `package_playable_release.ps1
 -Major`): bundles everything shipped since v6 (Sep 11) -- Milestone 190
@@ -553,7 +680,9 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   the look cleaned up.
 - **Attack/spell/webnet target-picker cancel fix** (fixed 2026-09-12,
   triaged from the live-testing session's own finding, see this file's
-  top section) -- not yet interactively confirmed: open the "Attack
+  top section) -- still not confirmed: attempted 2026-09-15 (approached
+  a Giant Spider pack specifically to test this) but got knocked out
+  before ever reaching the picker cancel itself, twice. Open the "Attack
   which enemy?" picker against 2+ eligible targets, press Escape or `q`,
   confirm it lands on Idle (not the quit-confirmation dialog), and that
   `f`/`i`/Space all work immediately afterward.
@@ -638,21 +767,49 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   `'l'` with an overworld NPC/canon Hero actually present, or a
   `TIMELINE_ANCHOR` tile with one -- every canon Hero was at Pax Tharkas
   today, 50+ overworld tiles from anywhere reachable this session.
-- **Quest system** (Milestone 183) -- not yet interactively confirmed at
-  all: offering/accepting/declining a quest, the progress-text revisit,
-  turning one in, all six reward flags (especially the Wayreth Test of
-  High Sorcery's ethical-choice scene and its three outcome passages),
-  the journal (`'g'`) rendering real quest state, and a `SHOP_LOCKED`
-  shop (e.g. Flint's Smithy) actually gating on quest completion. Easiest
-  real quest to walk end-to-end first: `road_wolves` (Solace's Notice
-  Board, a single `SLAY wolf 3` objective, no `REQUIRE`).
-- **Native character creation** (Milestone 180) -- partially confirmed
-  2026-09-11: reached the Knight-of-Crown offer screen on a fresh slot.
-  Still open: the Knight Offer screen itself, the final summary screen
-  (does "Yes" land you in Solace with correct stats, does "No" restart
-  from Name), an ineligible race/class/alignment pick's inline error and
-  re-prompt, the Elf/Dwarf subrace step, the Gnome-forced-Tinker path,
-  and the save-slot menu's own Continue/overwrite/delete branches.
+- **Quest system** (Milestone 183) -- **further confirmed live
+  2026-09-15**: `road_wolves` (Solace's Notice Board) end-to-end through
+  offer/accept (real dialogue text, `Accept`/`Decline` picker), the
+  journal (`'g'`) rendering real quest state including a live-incrementing
+  `SLAY` objective counter (`(0/3)` -> `(1/3)` -> `(2/3)` -> `(3/3)` on
+  real kills, persisting across three separate knockouts and one
+  unexpected app close), and the objective flipping to checked
+  (`[x] Kill three timber wolves...`) with the exact `ReadyToTurnIn`
+  one-time log line firing ("...is ready to turn in -- return to the
+  Notice Board..."). Also confirmed: `SHOP_LOCKED` actually gates a shop
+  (Flint's Smithy refused "There's nothing to buy here yet." while
+  `ore_for_the_forge` was unaccepted). **Still not confirmed**: the actual
+  turn-in exchange (`COMPLETE` text + reward + shop unlock afterward) --
+  see this file's own top section for why (the character ended up ~166
+  tiles from Solace when the third kill landed), the progress-text
+  revisit, any `DELIVER`-type quest (`ore_for_the_forge` itself, found and
+  confirmed locked but never offered/accepted/turned in), and all six
+  reward flags (especially the Wayreth Test of High Sorcery's
+  ethical-choice scene and its three outcome passages). The disposable
+  slot-3 character (Human Fighter, `road_wolves` ready to turn in, sitting
+  in Port Balifor) is a ready-made starting point for whoever picks up the
+  walk back to Solace.
+- **Native character creation** (Milestone 180) -- **further confirmed
+  live 2026-09-15**: the full ability-score flow (roll pool, keep/reroll,
+  per-ability assignment from the pool); an ineligible race pick's inline
+  error and re-prompt (tested against Kender with disqualifying scores --
+  greyed out with "(your ability scores don't qualify)" in the list,
+  selecting it anyway re-prompts with "Your rolled ability scores don't
+  meet Kender's requirements. Choose a different race." rather than
+  proceeding); the Knight of the Crown offer screen itself ("You meet the
+  qualifications... Swear the oath and join?"); the Weapon Specialization
+  prompt; and the final "Begin your journey as this character?" summary
+  screen -- confirmed "Yes" lands correctly in Solace with the exact
+  stats/HP/AC/THAC0 shown on the summary. **Also found** (not a
+  confirmation -- a real gap): the `CreationStep::Name` text-entry step
+  silently accepts an empty name with no validation, see this file's own
+  top section. **Also confirmed** (second pass, same day): the save-slot
+  menu's **Continue** branch on an occupied slot ("Continue this
+  character?" -> resumes at the exact saved position/HP/day, twice,
+  including once after an unexpected app close -- see this file's own top
+  section). **Still open**: the final summary's "No" restart path, the
+  Elf/Dwarf subrace step, the Gnome-forced-Tinker path, and the save-slot
+  menu's overwrite/delete branches.
 - **Stale startup banner fix** (Milestone 181) -- not yet interactively
   confirmed; no desktop/GUI access this session to watch the corrected
   banner render.

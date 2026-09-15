@@ -15,7 +15,7 @@ newly added/lightly tested · **Placeholder** = stubbed, logs/shows a
 | Saves / autosave | Done | Partial | Hardened (Milestone 184): atomic write-then-rename, rotated backups, `VERSION` header, shared verbatim by both targets. Not yet "Done" only because a full multi-session live playthrough without a save issue hasn't been logged yet. |
 | Overworld & movement | Done | Done | Same 480×320 grid; SFML renders the reference map in pixel space, console renders colored ASCII. |
 | Zone interiors (Enter) | Done | Done | Walkable interiors, POIs, secret places (Foghaven Vale, Qualimori, Mount Nevermind). |
-| Talk / dialogue | Done | Partial | SFML confirmed working for greetings, topics, free-text ask, boat accept/decline, companion recruit. Quest offers now open for real (see Quests row) but that path isn't separately confirmed live yet. |
+| Talk / dialogue | Done | Partial | SFML confirmed working for greetings, topics, free-text ask, boat accept/decline, companion recruit. Quest offers confirmed live 2026-09-15 (see Quests row). |
 | Chance encounters (Heroes) | Done | Done | Timeline-driven encounters on the overworld and inside zones. |
 | Sea travel | Done | Done | Now works in both builds; SFML Talk offers the same Board/Not yet choice as console. |
 | Companions | Done | Done | SFML recruitment confirmed at the keyboard; companions fight in SFML combat, sweep/backstab included. |
@@ -23,6 +23,6 @@ newly added/lightly tested · **Placeholder** = stubbed, logs/shows a
 | Magic: spells & items | Done | Done | Presentation migration only — the same 50-spell book and item logic apply to both. |
 | Shops & equipment | Done | Done | 13 shop POIs across 9 towns; buy/sell, carried inventory, equip changes AC/damage. |
 | Leveling | Done | Done | PHB level-by-level tables; Knight/Mage milestone nods. |
-| Quests | Done | Partial | Ported (Milestone 183): full offer/accept/decline/progress/turn-in, all six reward flags, `SHOP_LOCKED` unlock, journal rendering real state. **Not yet interactively confirmed** — see `docs/CURRENT_WORK.md`'s Playtest backlog. |
+| Quests | Done | Partial | Ported (Milestone 183): full offer/accept/decline/progress/turn-in, all six reward flags, `SHOP_LOCKED` unlock, journal rendering real state. **Confirmed live 2026-09-15**: `road_wolves`' offer/accept/decline picker, the journal's live objective counter (a SLAY objective advancing 0/3 → 1/3 → 2/3 → 3/3 across real kills, surviving multiple knockouts and an unexpected app close), the objective flipping to `[x]` with the `ReadyToTurnIn` one-time log line firing, and a `SHOP_LOCKED` shop (Flint's Smithy, gated on `ore_for_the_forge`) correctly refusing to open. **Still not confirmed**: the actual turn-in exchange (`COMPLETE` text + reward + shop unlock — the character ended up ~166 tiles from the giver when the third kill landed), any `DELIVER` quest, and the six reward flags/Wayreth Test — see `docs/CURRENT_WORK.md`'s Playtest backlog. |
 | World map (`O`) | Done | Done | Read-only downscaled reference map with legend and player marker. |
 | Look (`L` / `;`) | Done | Partial | Ported (Milestone 182): NPC-present detail view, nearest-location/compass fallback, POI/TIMELINE_ANCHOR descriptions inside a zone. **Not yet interactively confirmed** — see `docs/CURRENT_WORK.md`'s Playtest backlog. |
