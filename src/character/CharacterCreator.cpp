@@ -80,8 +80,13 @@ int promptChoice(const std::string& prompt, int minValue, int maxValue) {
 std::string promptName() {
     for (;;) {
         std::string name = promptLine("What is your name, traveler? ");
-        if (name.size() <= 20) return name;
-        std::cout << "Names can be at most 20 characters -- please try again.\n";
+        if (name.empty()) {
+            std::cout << "Please enter a name.\n";
+        } else if (name.size() <= 20) {
+            return name;
+        } else {
+            std::cout << "Names can be at most 20 characters -- please try again.\n";
+        }
     }
 }
 

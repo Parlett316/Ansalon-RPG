@@ -1,5 +1,31 @@
 # Current work
 
+**2026-09-15 (second session): empty-name bug fixed in both builds.**
+The finding from the session below (`CreationStep::Name` accepting an
+empty name with no validation) is fixed: `sfml_phase1/main.cpp`'s Name
+step now refuses to advance on `wantsEnter` while `nameBuffer` is empty,
+showing an inline "Please enter a name before continuing." line (reusing
+the existing `stepMessage` mechanism the race/class ineligibility errors
+already use) instead of silently accepting it; `promptName()` in
+`src/character/CharacterCreator.cpp` gained the same check ("Please enter
+a name." + reprompt, same shape as its existing 20-char-limit reprompt).
+Both builds rebuilt clean, zero new `/W4` warnings. Verified for
+`ansalon_rpg` via the piped path (all three real save slots were
+occupied, including slot 3 -- the actual disposable character carrying
+this exact bug's saved-blank name -- so the three real saves were moved
+aside to the scratchpad, piped `1\n\nTestname\n` confirmed "Please enter
+a name." fires on the blank line and a real name is then accepted and
+proceeds to ability scores, then the three real saves were moved back
+and re-confirmed unchanged). `ansalon_sfml_phase1` only got a launch
+smoke test (catalogs load, no crash) -- the interactive Name-step
+behavior itself (typing nothing, pressing Enter, seeing the message,
+then typing a name and it working) is **not yet interactively
+confirmed**, added to the Playtest backlog below. Note: this does not
+retroactively fix slot 3's own save, which still carries the blank name
+baked in from before the fix -- unaffected either way since that slot is
+disposable and headed for `d3` deletion whenever it's no longer needed
+(see the quest turn-in note below).
+
 **2026-09-15: console-retirement question raised, deliberately not acted on
 yet — session redirected into closing the parity gap instead.** The user
 asked to "sunset the ascii build." `docs/CONSOLE_RETIREMENT_PROPOSAL.md`'s
@@ -48,7 +74,8 @@ SFML-only regression — the console's own `promptName()`
 (`src/character/CharacterCreator.cpp`) only checks `size() <= 20`, not
 non-empty, so this gap probably predates the SFML port. Not fixed this
 session (verification-only, not a code-change session); flagging for the
-user to decide whether it's worth a minimum-length check.
+user to decide whether it's worth a minimum-length check. **Fixed in a
+follow-up session the same day** -- see the top of this file.
 
 **`road_wolves` reached 3/3 and `ReadyToTurnIn` before this session ended**
 (continued in a second pass after the "keep going" ask) — the objective
@@ -658,6 +685,14 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
+- **Empty-name validation fix** (fixed 2026-09-15, second session, see
+  this file's own top section) -- `ansalon_rpg` is already confirmed via
+  the piped path (blank Enter is rejected with a message, a real name is
+  then accepted). `ansalon_sfml_phase1` only got a launch smoke test:
+  still needs a live keyboard to confirm the Name step's inline "Please
+  enter a name before continuing." message actually renders and blocks
+  advancing on a blank Enter, and that typing a name afterward still
+  works normally.
 - ~~**Companion sprite art: Bren Alder**~~ (Milestone 192) -- **confirmed
   live 2026-09-12**: his real sprite renders in place of the marker+letter
   during a real fight (4 Giant Centipedes). Confirmed by design, not a

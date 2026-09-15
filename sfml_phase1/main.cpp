@@ -1465,11 +1465,16 @@ int runPhase1(const std::string& savePath) {
                                     if (key == sf::Keyboard::Key::Backspace && !nameBuffer.empty()) {
                                         nameBuffer.pop_back();
                                     } else if (wantsEnter) {
-                                        character.name = nameBuffer;
-                                        pool.clear();
-                                        for (int i = 0; i < 6; ++i) pool.push_back(character::roll4d6DropLowest());
-                                        confirmCursor2 = 0;
-                                        step = CreationStep::RollPool;
+                                        if (nameBuffer.empty()) {
+                                            stepMessage = "Please enter a name before continuing.";
+                                        } else {
+                                            stepMessage.clear();
+                                            character.name = nameBuffer;
+                                            pool.clear();
+                                            for (int i = 0; i < 6; ++i) pool.push_back(character::roll4d6DropLowest());
+                                            confirmCursor2 = 0;
+                                            step = CreationStep::RollPool;
+                                        }
                                     }
                                     break;
                                 case CreationStep::RollPool:
@@ -1687,6 +1692,9 @@ int runPhase1(const std::string& savePath) {
                         y += 10.f;
                         drawLine("What is your name, traveler?", kSheetBodyColor, kSheetBodyCharSize);
                         drawLine("> " + nameBuffer + "_", sf::Color::White, kSheetBodyCharSize);
+                        if (!stepMessage.empty()) {
+                            drawLine(stepMessage, sf::Color::White, kSheetBodyCharSize);
+                        }
                         y += 10.f;
                         drawLine("(Enter=confirm, Backspace=edit, up to 20 characters)",
                                  sf::Color(150, 150, 160), kSheetHeaderCharSize);
