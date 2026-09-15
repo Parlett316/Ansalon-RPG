@@ -1,5 +1,76 @@
 # Current work
 
+**2026-09-15 (third session): live playtest, via `SendKeys` + screenshot
+automation (real desktop/GUI access confirmed working again this
+session -- retested per `feedback_no_desktop_gui_access`).** Played the
+real `save1.txt` character (Mike) directly, not a disposable copy --
+this project's established convention for combat/overworld playtesting
+(autosave is continuous and saves are treated as disposable, no backup
+ceremony). Character ended the session at HP 7/26, Day 22 23:00, on the
+overworld (`POS 291 286`, hills/savannah region east of Plains of Dust)
+-- safe (no death mechanic), just wounded; no rest available again until
+Day 23. Window closed cleanly at session end.
+
+**Attack/spell/webnet target-picker cancel fix -- now fully confirmed
+live**, closing the last open piece of Milestone-adjacent testing from
+2026-09-12's finding. Forced the exact reproducing scenario (3 Bugbears,
+HD3+1 each -- not Fighter-Sweep-eligible, so the manual "Attack which
+enemy?" picker actually opens) and, at HP 1/26 against 2 adjacent
+Bugbears (matching the original bug's own "found live at 1 HP" framing),
+opened the picker and pressed Escape -- landed cleanly on Idle, not the
+quit-confirmation dialog, no HP/round cost. Repeated with `q` on a second
+picker open -- same clean result. Immediately after each cancel,
+confirmed `i` (drank a Potion of Healing, recovering 9 HP -- the exact
+"change your mind and drink a potion instead" scenario the original
+finding described) and `f` (Flee -- "You break off and retreat.", no
+damage) both work with no lingering state from the cancelled picker.
+Moved to the Playtest backlog below as fully confirmed.
+
+**Genuinely new confirmation: Harpy wilderness encounter** (backlog
+item, previously sourced but never triggered live) -- a solo Harpy (HP
+33/33) spawned on grassland terrain exactly matching the documented
+expected condition, fought to defeat with Mike and Bren Alder both
+landing hits/misses normally. Also fought (not separately backlog-
+tracked, but real regression-free confirmations): 4 Giant Rats and 3
+Skeletons both correctly triggering Fighter Sweep (one swing clearing
+multiple 1-HD-or-less adjacent enemies, per Milestone 171 -- already
+"confirmed" but reconfirmed twice more here) and 4 Giant Centipedes on
+hills terrain (same Sweep behavior). Skeleton and Giant Centipede combat
+sprite art both rendered correctly (part of the existing 30/44-monster
+art batch, not a new finding).
+
+**Bonus reconfirmation: same-cell combat-movement collision** (Milestone
+172) -- walking into Bren Alder's own occupied cell during the Harpy
+fight correctly refused with "Something's in the way." instead of
+overlapping him, from a fresh angle (walking into a companion, not the
+retreat-from-a-monster case the backlog item itself describes) but the
+same underlying mechanic. Not moved to fully-confirmed in the backlog
+below since the specific retreat-from-a-monster scenario still hasn't
+been deliberately forced.
+
+**Also reconfirmed** (not new, but real live data points): the sidebar's
+`dist N` display lagging a real action behind the actual grid state (the
+same investigated-no-bug finding from 2026-09-12 -- watched a Bugbear
+close from dist 2 to genuinely-adjacent while the sidebar still read
+"dist 2"); wall-blocking on forest AND hills terrain (both already
+confirmed, not new); monster AI actually closing distance round over
+round (Giant Rats appeared to sit still for one held round, then visibly
+closed to adjacent the very next round -- most likely explained by the
+same dist-lag/pathing-around-a-wall-cluster combination already on file,
+not a new stuck-AI bug, though the "AI detouring around a wall cluster"
+sub-item stays open since no clean unambiguous case was captured); the
+once-per-day Rest gate ("You've already rested today."); and retreating
+from an adjacent monster (moving away) correctly triggering a free
+opportunity-attack strike against the retreater, consistent with
+`docs/COMBAT_NOTES.md`.
+
+**Still not touched this session**: multi-square creatures (no Ogre/
+Troll/Griffon/Dragon encounter came up), line of sight (character has no
+ranged weapon or spell available), VIEW's Status line (no buff/debuff
+active), the movement-exhausted-mid-round refusal message specifically
+(walls kept interrupting before the budget was legitimately exhausted),
+and diagonal corner-cutting against a wall.
+
 **2026-09-15 (second session): empty-name bug fixed in both builds.**
 The finding from the session below (`CreationStep::Name` accepting an
 empty name with no validation) is fixed: `sfml_phase1/main.cpp`'s Name
@@ -713,14 +784,17 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   the floor tile underneath -- an art-asset fix (needs real
   transparency), not a rendering bug. Revisit whenever the user wants
   the look cleaned up.
-- **Attack/spell/webnet target-picker cancel fix** (fixed 2026-09-12,
-  triaged from the live-testing session's own finding, see this file's
-  top section) -- still not confirmed: attempted 2026-09-15 (approached
-  a Giant Spider pack specifically to test this) but got knocked out
-  before ever reaching the picker cancel itself, twice. Open the "Attack
-  which enemy?" picker against 2+ eligible targets, press Escape or `q`,
-  confirm it lands on Idle (not the quit-confirmation dialog), and that
-  `f`/`i`/Space all work immediately afterward.
+- ~~**Attack/spell/webnet target-picker cancel fix**~~ (fixed
+  2026-09-12) -- **fully confirmed live 2026-09-15** (third session):
+  forced against 3 Bugbears (HD3+1, not Sweep-eligible), opened the
+  "Attack which enemy?" picker with 2 eligible targets at HP 1/26,
+  cancelled with both Escape and `q` across two separate picker opens --
+  both landed cleanly on Idle, no quit-confirmation dialog, no cost.
+  Confirmed `i` (drank a potion) and `f` (Flee) both work immediately
+  after a cancel. Spell/Webnet's own "already consumed, no refund"
+  half was not separately re-exercised this session (Mike is a Fighter,
+  carries no spells) but that half of the fix is unrelated code-wise to
+  the Attack case just proven.
 - **Bigger battlefield + real movement** (Milestone 185) -- **confirmed
   live 2026-09-11**: the scrolling camera following whichever token is
   actually moving, monster/companion AI walking one square at a time
@@ -897,9 +971,10 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   confirm both halves read correctly.
 - **138/139** -- 6 Astinus SUBJECT topics (Kagonesti, gnomes, gully
   dwarves, minotaurs, ogres/Irda, Reorx). Ask Astinus about each.
-- **142** -- Harpy/Griffon/Stirge (Monster Manual). Trigger wilderness
-  encounters on hills/mountains (Griffon), grassland/hills (Harpy),
-  forest (Stirge).
+- **142** -- Harpy/Griffon/Stirge (Monster Manual). **Harpy confirmed
+  live 2026-09-15** (grassland, fought to defeat). Griffon
+  (hills/mountains) and Stirge (forest) still untriggered -- trigger
+  wilderness encounters there.
 - **143** -- `a_widows_due` DELIVER quest at Kalaman. Talk to the
   Curiosities Cart, find the Furtive Trader POI, deliver the wedding
   band. Actually testable for the first time as of Milestone 183 -- it
