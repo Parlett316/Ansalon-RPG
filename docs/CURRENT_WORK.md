@@ -23,6 +23,23 @@ and the Fireball epicenter's LOS-vs-splash behavior) were witnessed this
 session; see `docs/COMBAT_NOTES.md`'s Line of Sight section for exactly
 what was seen. Nothing left open for this milestone.
 
+**A second live-playtest sweep of the Playtest backlog ran 2026-09-16**
+(disposable Slot 3 character + disposable copies of `save1.txt`/
+`save2.txt`, driven via SendKeys/screenshot — Mike's and Regan's real
+saves were never touched, and the Slot 3 test character was deleted
+afterward). Confirmed and struck from the list below: the Gnome-forced-
+Tinker path (closing Milestone 180 entirely), the stale-banner fix
+(Milestone 181), the Kalaman "Curiosities Cart"-adjacent quest-offer
+dialogue (Milestone 161 — turned out to already be a real, fully working
+quest offer rather than a placeholder, so that concern is moot), hills-
+terrain battlemap walls (Milestone 188, reconfirmed), and the Brooch of
+Imog's "That can only be used in combat." no-op outside combat
+(Milestone 165, partial). Also incidentally exercised and found working,
+though not itemized backlog entries themselves: Flee, natural rest
+healing (1 hp/night, no healer), and the wilderness random-encounter
+distance/terrain gating. See each struck item below for exactly what was
+witnessed. Nothing new was found broken.
+
 Otherwise, see the Playtest backlog below for what's implemented and
 verified (clean rebuild + smoke test) but not yet walked with a real
 keyboard, and the two Parked sections for long-shelved decisions with
@@ -37,24 +54,29 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
-- **Bigger battlefield + real movement** (Milestone 185) — still open:
-  movement actually running out mid-round (refusing a further step with
-  "You have no movement left this round"); monster/companion AI closing
-  distance at their own differing rates (a fast Wraith/Spectre vs. a slow
-  Zombie/Mummy/Boring Beetle, easiest to force by fighting each with a
-  fresh character on open terrain).
+- **Bigger battlefield + real movement** (Milestone 185) — a real
+  wilderness encounter (3 Bugbears, hills terrain, spawned at dist 24)
+  was fought live 2026-09-16 and confirmed the bigger-battlefield spawn
+  distance and monsters closing in over several rounds, but not the two
+  specific open sub-items: movement actually running out mid-round
+  (refusing a further step with "You have no movement left this round");
+  monster/companion AI closing distance at their own differing rates (a
+  fast Wraith/Spectre vs. a slow Zombie/Mummy/Boring Beetle, easiest to
+  force by fighting each with a fresh character on open terrain).
 - **VIEW command + status tags** (Milestone 186) — still open: a Status
   line actually appearing on a viewed character's card (needs a
   debuff/buff active — memorize/cast Slow or Hold Monster and check both
   the card and the sidebar roster line for the same tag); Escape/Q
   cancelling the picker without consuming a round.
-- **Battlemap walls + wall-aware pathing** (Milestone 188) — still open:
-  a diagonal corner-cut against a wall specifically logging "Blocked:
-  can't cut across the wall." (needs a corner-shaped gap, not a solid
-  rectangle); monster/companion AI visibly detouring around a wall
-  cluster (a held-in-place retry was inconclusive — needs a monster that
-  has to route around, not just toward, a wall); the remaining 5 of 9
-  terrains (bog, salt flat, savannah, glacier, road).
+- **Battlemap walls + wall-aware pathing** (Milestone 188) — hills-terrain
+  walls reconfirmed live 2026-09-16 (a real wall-clustered hills
+  battlefield fought end-to-end). Still open: a diagonal corner-cut
+  against a wall specifically logging "Blocked: can't cut across the
+  wall." (needs a corner-shaped gap, not a solid rectangle);
+  monster/companion AI visibly detouring around a wall cluster (a
+  held-in-place retry was inconclusive — needs a monster that has to
+  route around, not just toward, a wall); the remaining 5 of 9 terrains
+  (bog, salt flat, savannah, glacier, road).
 - **Multi-square creatures + Blue Dragon** (Milestone 190) — not yet
   interactively confirmed at all. Needs an Ogre/Troll (1x2), Griffon
   (2x1), or the Blue Dragon (2x2, salt-flat terrain — which doesn't
@@ -81,17 +103,24 @@ tracks what's still open and how to force it.
   X?" -> No -> "Start a new character in Slot N? This will overwrite...”
   -> No safely backs out to the list with the slot untouched) all work
   correctly. Also incidentally confirmed the delete-confirmation branch
-  (used to clean up the disposable test slot afterward). Still open, by
-  the user's own request this session (skipped deliberately, not
-  forgotten): the Gnome-forced-Tinker path specifically. The same live
+  (used to clean up the disposable test slot afterward). The same live
   session also found and fixed a real text-clipping bug in this wizard
   and the slot menu — see Milestone 193 in `docs/MILESTONES.md`.
-- **Stale startup banner fix** (Milestone 181) — not yet interactively
-  confirmed (no desktop/GUI access the session it shipped in).
-- **Combat spellcasting** (Milestone 169) — still open, hardest to force:
-  get monsters to act first (retry until initiative favors them) on a
-  round where `M` is pressed, and confirm a knockout that round means the
-  spell was never actually cast (still shows as memorized afterward).
+  **The last open piece, the Gnome-forced-Tinker path, was confirmed live
+  2026-09-16**: rolling a Gnome showed "As a Gnome, you are a Tinker --
+  Krynn's gnomes know no other calling." with no class choice offered.
+  Milestone 180 now has nothing left open.
+- ~~**Stale startup banner fix** (Milestone 181)~~ — confirmed live
+  2026-09-16: the save-slot menu and banner render correctly at full
+  window size on launch, no stale/undersized view.
+- **Combat spellcasting** (Milestone 169) — general casting confirmed
+  live 2026-09-16 (Regan's copied save cast Hold Monster and another
+  spell mid-fight; also surfaced real LOS-vs-targeting interaction, "Your
+  Hold Monster finds no target in sight." when no enemy was in sight at
+  cast time). Still open, hardest to force: get monsters to act first
+  (retry until initiative favors them) on a round where `M` is pressed,
+  and confirm a knockout that round means the spell was never actually
+  cast (still shows as memorized afterward).
 - **Combat item use** (Milestone 170) — not separately confirmed: the
   2+-item picker and its Escape/Q cancel, Staff of Curing (no current
   save carries one), the Brooch's once-per-day gate and companion
@@ -107,14 +136,22 @@ tracks what's still open and how to force it.
   builds) — not yet re-confirmed live for the specific case: retreat from
   an adjacent monster on a round where it can close the distance,
   confirm no overlap.
-- **Dialogue** (Milestone 161) — the quest placeholder log line at a POI
-  marked `QUEST` (e.g. Kalaman's Curiosities Cart) not yet separately
-  confirmed.
+- ~~**Dialogue** (Milestone 161)~~ — confirmed live 2026-09-16, via a
+  `QUEST`-tagged POI in Kalaman (the City Watchman, `bazaar_road_raiders`,
+  the same pattern as the Curiosities Cart): talking to him produced a
+  real, fully working quest offer (Accept/Decline, logged "Quest
+  accepted: Raiders on the Bazaar Road."), not a placeholder — the
+  original placeholder-line concern turned out to be moot, superseded by
+  the quest system shipping in full since Milestone 161.
 - **Ask-input** (Milestone 162) — still open, needs Astinus specifically:
   `ASK_LIMIT_LOCKED`'s greeting override on a same-day return visit, and
   the extension-roll *fail* path (pure chance which branch fires live).
-- **Inventory** (Milestone 165) — still open: the Webnet/Brooch of
-  Imog/quest-item no-op message (no quest item currently carried).
+- **Inventory** (Milestone 165) — the Brooch of Imog's "That can only be
+  used in combat." no-op **confirmed live 2026-09-16** (Regan's copied
+  save carried one). Still open: the same no-op for a Webnet or an actual
+  quest item (no quest item currently carried in either real save), and
+  the Brooch's in-combat once-per-day gate/companion exclusion (Milestone
+  170 territory, below).
 - **152** — Fireball/Delayed Blast Fireball's area-damage math is proven
   on the SFML build. Still open, low priority: walking the *console*
   (`ansalon_rpg`) build's own `pickTarget` epicenter-picking UI, which
@@ -127,7 +164,11 @@ tracks what's still open and how to force it.
   Ariakas (day 193), Alhana Starbreeze (day 51), Porthios (day 70).
 - **Griffon/Stirge encounters** (Milestone 142) — Harpy is confirmed live
   (2026-09-15); Griffon (hills/mountains) and Stirge (forest) still
-  haven't come up — trigger wilderness encounters there.
+  haven't come up — a 2026-09-16 session walked hills terrain near
+  Kalaman hunting one (also multi-square-footprint bait, see Milestone
+  190 below) but triggered a Bugbear encounter instead. Griffon needs
+  `MIN_TOWN_DISTANCE 35`, genuinely far wilderness travel — try again
+  further from any town.
 - **False "ocean" pockets inside Qualinesti/Silvanesti forest** — fixed
   (see `docs/MAP_NOTES.md`'s "Fixing false 'ocean' pockets inside
   forest"), not yet walked live. Worth deliberately walking north and
