@@ -17,6 +17,12 @@ A real rendering bug found live 2026-09-16 while playtesting Milestone
 save-slot menu) was fixed the same session — see Milestone 193 in
 `docs/MILESTONES.md` for the root cause and fix; confirmed live.
 
+**Line of sight (Milestone 189) fully confirmed live 2026-09-16** — both
+halves left open after Milestone 193 (the blocked-shot refusal message
+and the Fireball epicenter's LOS-vs-splash behavior) were witnessed this
+session; see `docs/COMBAT_NOTES.md`'s Line of Sight section for exactly
+what was seen. Nothing left open for this milestone.
+
 Otherwise, see the Playtest backlog below for what's implemented and
 verified (clean rebuild + smoke test) but not yet walked with a real
 keyboard, and the two Parked sections for long-shelved decisions with
@@ -49,41 +55,6 @@ tracks what's still open and how to force it.
   cluster (a held-in-place retry was inconclusive — needs a monster that
   has to route around, not just toward, a wall); the remaining 5 of 9
   terrains (bog, salt flat, savannah, glacier, road).
-- **Line of sight** (Milestone 189) — **half-confirmed 2026-09-15**: the
-  "clear sightline still works" half is solid — a level-20 mage
-  (`save2.txt`'s Regan, via a disposable copy) targeted every alive wolf/
-  skeleton with Magic Missile/Sleep across two separate wilderness
-  encounters (forest, then a second `Battlefield: forest`-adjacent fight)
-  and every candidate stayed selectable whenever no wall actually sat
-  between caster and target — repeated after deliberately repositioning
-  next to wall clusters, never once saw a false exclusion. **Still not
-  witnessed**: the actual blocked-shot refusal ("Nothing in your line of
-  sight." / "Your `<spellName>` finds no target in sight.") and the
-  Fireball epicenter picker's in-sight-only filtering. Tried to
-  deliberately engineer a caster-wall-target line (successfully done once
-  already for wall *movement*-blocking in an earlier milestone's
-  playtest) but ran out of session budget fighting the environment
-  instead: mid-session the desktop resolution changed under the game
-  (1366x768 -> 2048x1152), which desyncs the sidebar's text-wrap width
-  from the actual font size and truncates every log/status line to ~6-10
-  characters (real rendering bug, reproducible on a fresh relaunch at
-  that resolution too — not just a stale-window artifact; low priority,
-  cosmetic, only seen at a non-default resolution). **Likely the same
-  root cause as Milestone 193's fix** (`window.getSize()` returning the
-  stale pre-maximize 1280x800 size rather than the real maximized one,
-  confirmed live 2026-09-16 in the character-creation wizard) rather
-  than something specific to a resolution *change* mid-session — worth
-  re-checking live in combat before assuming this is still open. Also
-  separately noted, not yet re-tested: the
-  player character appears to be unable to move at all once melee-engaged
-  (every directional key returned a "Something..." log line whose full
-  text couldn't be read because of the above), which blocked the
-  "reposition until a wall sits on the line" approach that worked cleanly
-  in the earlier movement-blocking test. Next session: retry on a fresh
-  desktop resolution (don't fight a mid-session change again — just
-  relaunch), and either use a non-engaged ranged attack from the start or
-  confirm what actually blocks post-engagement movement before relying on
-  it.
 - **Multi-square creatures + Blue Dragon** (Milestone 190) — not yet
   interactively confirmed at all. Needs an Ogre/Troll (1x2), Griffon
   (2x1), or the Blue Dragon (2x2, salt-flat terrain — which doesn't

@@ -1920,12 +1920,38 @@ degenerate case). Clean `/W4` rebuild of all three targets (zero new
 warnings). An `ansalon_sfml_phase1` launch smoke test against a copy of
 real `save1.txt` confirmed every catalog, including `BattleMapCatalog`,
 still loads cleanly; a piped `ansalon_rpg` character-creation run (empty
-slot 3) confirmed the console build is unaffected. **Interactive
-confirmation still needed** (no desktop/GUI access this session) -- see
-`docs/CURRENT_WORK.md`'s Playtest backlog: firing the crossbow or
-casting a targeted spell at something behind a wall refuses with the new
-message, and doing either with a clear sightline still works exactly as
-before.
+slot 3) confirmed the console build is unaffected.
+
+**Confirmed live 2026-09-16**, closing out the half left open at
+Milestone 193 -- both remaining halves witnessed, via a disposable copy
+of `save2.txt` (Regan, level-20 mage) relocated to an overworld forest
+tile deliberately picked (`data/overworld.grid` col 219-222, row 238; a
+plains-styled stretch in the reference map art but coded `%`/forest in
+the data grid, ~40 tiles from the nearest town) so that the forest
+battlemap's known column-22-25/row-9-12 wall block sits directly between
+the player's fixed combat spawn (grid center, row 24) and a monster's
+(row 0, always spawning at least one instance at the grid's center
+column): **the blocked-shot refusal** -- a solitary Troll (Milestone
+190's 1x2 footprint, spawned dead center) produced "Your Magic Missile
+finds no target in sight." on the very first round, before any movement
+could change the geometry; and **the epicenter LOS-vs-splash
+distinction** -- a 3 Giant Spiders group (spawn columns 23/25/27, only
+27 outside the wall band) resolved Fireball as "Your Fireball engulfs
+the Giant Spider B and Giant Spider C for 36 each," hitting the
+in-sight epicenter (Spider C, col 27) *and* the blocked Spider B (col
+25, caught by blast radius) while leaving the equally-blocked Spider A
+(col 23, outside blast radius) untouched -- exactly the documented
+"epicenter passes LOS, splash doesn't re-check it" design above, and
+confirmation that a blocked instance really is excluded from the
+epicenter candidate list itself (only the visible Spider C was even
+eligible to be picked). The actual multi-candidate `PickingTarget`
+picker widget (2+ simultaneously visible candidates, so a list literally
+renders on screen) was not separately caught this session -- both fights
+landed on exactly one visible candidate, which auto-selects without
+opening the picker -- but the underlying filtering it would display is
+now confirmed by behavior. Clear-sightline targeting was already
+confirmed 2026-09-15 (see `docs/CURRENT_WORK.md`'s prior playtest
+history). Milestone 189 is fully confirmed; nothing left open for it.
 
 ## Multi-square creatures + a real Dragon (Milestone 190, `ansalon_sfml_phase1` only)
 

@@ -600,6 +600,18 @@ its quirks don't have to be rediscovered each time:
   different session launches with no code change in between. Retest
   cheaply at the start of a session rather than assuming either way from
   a prior session's streak.
+- **Call `[Win32]::SetProcessDPIAware()` before the first `GetClientRect`/
+  `ClientToScreen`/`CopyFromScreen`, not after** — confirmed 2026-09-16.
+  Without it, `powershell.exe` itself is DPI-virtualized, so
+  `GetClientRect` on the (per-monitor-DPI-aware) game window silently
+  returns a scaled-down logical size (2048x1080 instead of the window's
+  real 2560x1351) with no error — the capture just quietly crops to the
+  window's top-left corner, cutting off the sidebar and everything below
+  the crop line. Symptom looks exactly like a real rendering bug (a
+  missing sidebar) rather than a capture-tooling one, so don't jump to
+  "the game isn't drawing the sidebar" — check DPI-awareness first. One
+  `SetProcessDPIAware()` call per script invocation is enough (it's
+  process-wide, and each `powershell -File ...` child process is fresh).
 - **For a long overworld walk between two known points, don't send blind
   directional `SendKeys`** — it's expensive and error-prone against real
   coastlines/wall clusters. Instead write a small throwaway Python BFS
