@@ -2067,6 +2067,97 @@ the Gold Box games actually use.
 
 This closes the six-part Gold Box battlefield chain (185-190) in full.
 
+## Live DQoK research session (2026-09-16)
+
+Distinct from `References/DQoK.pdf` (the manual) and `References/
+BattleFrames.zip` (225 static frames from the user's own recording,
+Milestone 186) — this time the user drove an actual multi-hour live-play
+session of *Dark Queen of Krynn* itself (DOSBox + screenshot/keystroke
+automation), fighting the same draconian-den encounter three times (two
+full party wipes, one narrow win) plus a separate random encounter.
+**Lower epistemic weight than the book or the manual**: this is one
+player's live, somewhat improvised session, not a sourced rule — treated
+here the same way `encounterChancePercent`/`kBiasWeight` are already
+flagged as "informed by, not transcribed from." No engine changes made
+this pass; this section exists purely so a future session doesn't have to
+re-derive what was already watched happen.
+
+**Direct, concrete confirmation of gaps already recorded above**:
+
+- **"Always keep magic-users and missile weapons safe behind the front
+  line"** (DQoK.pdf's own manual, already quoted in "A party of up to six
+  characters" below) played out exactly that punishingly in practice: the
+  same draconian den was lost twice with the party's casters and ranged
+  fighter caught by melee and by stacked area spells, then won once two
+  low-AC melee characters (Mike, AC -9; Captain Daenor, AC -4) simply
+  refused to go down while everyone else did.
+- **Unconscious-but-not-dead party members left on the field** (also
+  quoted below) is exactly what the win looked like: 5 of the party's 7
+  members reached 0 HP mid-fight and stayed on the field rather than being
+  removed, and the fight was still won once the last one or two capable
+  fighters landed the final hits. Real, lived confirmation this is the
+  right eventual model, not a guess.
+- **The self-only `HealCaster` gap, refined by a closer look at the
+  reference game.** The party's Cleric's Cure Light Wounds wasn't actually
+  self-only in that session — it required the target to be **adjacent to
+  the caster, the same range restriction as a melee attack**, not "any
+  real distance." No ally happened to be standing next to the Cleric when
+  it was tried, which is what made it look self-only at the time. This is
+  a meaningfully different (and easier) target than this project's current
+  `HealCaster`, which can't target anyone but the caster at all regardless
+  of position — see the Phase 2 companion note below for the fuller
+  writeup and why an adjacency-gated ally heal, not just an any-range one,
+  is probably the right shape to build if this is ever picked up.
+
+**New candidate observations, unconfirmed and unbuilt — flagged honestly,
+not proposed as a milestone**:
+
+- **Area spells with real battlefield persistence.** Stinking Cloud's
+  green cloud visibly occupied multiple grid squares across several
+  rounds, and characters standing in it accumulated a repeating
+  nausea-like effect (a log line reading "Mike starts to cough," another
+  character shown status-tagged `(HELPLESS)`) rather than one instant hit.
+  **Genuinely uncertain, flagged rather than asserted**: several large hits
+  attributed to "Ice Storm" across consecutive rounds could equally be
+  several different Aurak Draconian instances each independently casting
+  the same single-target version once (this fight had multiple Auraks) —
+  the multi-caster explanation is at least as plausible as a single
+  lingering zone, and this session's screenshots can't distinguish them.
+  If area spells are ever revisited, this is a live example of what the
+  PHB's real "sleet battlefield-effect" mode (already flagged as
+  deliberately unmodeled for Ice Storm above, in favor of DQoK's own flat
+  number) would actually feel like in play.
+- **A third fight-state, distinct from "still fighting" and "unconscious
+  at 0 HP."** A critically wounded character was "forced to flee" (removed
+  from the active fight without being reduced to 0 HP first) and later
+  reappeared fighting again in the same encounter. Not modeled anywhere in
+  this project today. Worth keeping in mind as a possible third state
+  alongside the existing knockout rule if the party system below is ever
+  built out — not proposed as its own change.
+- **Interrupting a spellcaster.** An enemy visibly tagged `(CASTING)`
+  could in principle be focused down before its spell resolves, and the
+  reference game explicitly rewards doing so by denying the spell. This
+  project's own status-tag system (Milestone 186 above) already has
+  everything needed to display a `(CASTING)` tag the same way it displays
+  Held/Hasted/etc. today — the missing piece would be giving Bozak's Magic
+  Missile / Aurak's breath weapon a one-round "casting" telegraph before
+  they fire, so a player has a real window to react instead of the attack
+  just resolving on the monster's turn as it does now. A possible future
+  hook, not requested.
+- **Ranged-weapon equip swapping** (freeing both hands mid-campaign to
+  switch from sword+shield to a bow, which then needs a separate carried
+  ammo item) doesn't map onto this project's current one-weapon-lineage-
+  per-class model at all (`docs/CHARACTER_NOTES.md`'s "Weapon
+  Specialization" section) — noted for completeness, not proposed as a
+  gap, since loosening that model is a much larger, unrelated design
+  change already understood to be out of scope.
+- **Post-battle loot distribution** (`TAKE` = manual amount entry per
+  character, cycling through the roster; `SHARE` = one keypress splitting
+  a coin stack evenly across the whole party) is a real, workable pattern
+  worth returning to if this project ever grows a real loot/treasure
+  system beyond its current flat steel-per-monster reward — see "Equipment
+  past the General Store's short list" below, already on record as a gap.
+
 ## Extending this later
 
 - **A party of up to six characters.** The single biggest remaining gap
@@ -2081,7 +2172,9 @@ This closes the six-part Gold Box battlefield chain (185-190) in full.
   weak opponents, and the QUIC/multi-target EXIT commands flagged above.
   Recorded here honestly as a real candidate, not proposed lightly --
   this would touch the save format, character creation, and every combat
-  (and probably several non-combat) screen.
+  (and probably several non-combat) screen. See "Live DQoK research
+  session (2026-09-16)" above for a real play example of exactly this
+  front-line/back-line stake and the unconscious-party-member model.
   - **Phase 1 (Milestone 116) shipped the smallest real slice**: one
     recruitable companion (`character::buildCompanion()`, a fixed Human
     Fighter), joined via a new `RECRUIT` zone-grammar line, shown on the
@@ -2119,7 +2212,11 @@ This closes the six-part Gold Box battlefield chain (185-190) in full.
     standing next to an injured companion has no way to heal them --
     surfaced by live playtesting 2026-09-10 (`GameLoop.cpp:2664`,
     `sfml_phase1/main.cpp:2286`, same self-only behavior in both builds, so
-    not something the SFML port introduced). A real fix would need
+    not something the SFML port introduced; the 2026-09-16 live DQoK session
+    above found the reference game's own Cure Light Wounds requires an
+    adjacent target -- the same range as a melee attack, not any-range and
+    not self-only either -- a useful concrete shape for what a real fix
+    here should probably look like). A real fix would need
     `HealCaster` to become a real targeted heal (reusing the existing
     `PickingTarget`/target-picker machinery both builds already have for
     attacks/offensive spells, not adjacency-restricted, same as other
