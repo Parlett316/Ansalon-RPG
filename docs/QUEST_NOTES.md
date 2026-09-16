@@ -247,6 +247,28 @@ quest still turned in cleanly on first contact — confirming the design
 intent that the grant and the quest wanting it are independent state,
 not a special-cased link (see "DELIVER" above).
 
+**Fully confirmed live on the SFML build, 2026-09-15** (the 2026-08-20
+verification above was on the console build): walked Mike's real
+`save1.txt` (level 3 Human Fighter) from ~183 tiles away, via
+`SendKeys`-automation, the same out-of-order sequence as the console
+verification — collected `raw_tharkadan_ore` from Pax Tharkas' Ore Cart
+first, then walked to Solace and accepted the quest for the first time.
+`questAccept`'s own `checkQuestReadiness()` call flipped the save
+straight from `Active` to `ReadyToTurnIn` (`QUEST ore_for_the_forge 2`)
+within the same conversation the Accept text was still showing, but the
+dialogue UI itself doesn't jump to the `COMPLETE` screen mid-conversation
+— dismissing Accept fell through to the ordinary topic picker, and only
+a *separate*, fresh `TALK` (showing the plain `TALK_AGAIN` greeting
+first) reached `questBegin`'s `ReadyToTurnIn` branch and rendered the
+real `COMPLETE` text. Confirmed the exact save-file match on turn-in
+(`STEEL` 35→70, `EXP` 6312→6392, `INVENTORY` back to 0, `QUEST
+ore_for_the_forge` 2→1/Complete) and the sidebar log's full arc,
+including the `ReadyToTurnIn` one-time log line ("Ore for the Forge is
+ready to turn in — return to the journeyman at Flint's Smithy to collect
+your reward.") and the reward line ("Quest complete: Ore for the Forge.
++35 steel. +80 XP."). See `docs/CURRENT_WORK.md`'s 2026-09-15 (sixth
+session) entry for the full walk/encounter writeup.
+
 **A second payoff added later (per-location shop wares milestone)**:
 completing `ore_for_the_forge` now also unlocks Flint's Smithy itself as
 a real shop (`SHOP S armory` + `SHOP_LOCKED S ore_for_the_forge` in
@@ -557,10 +579,29 @@ Verified with a clean `/W4` rebuild (zero new warnings, no source
 changed) and the piped character-creation smoke test (real `save1.txt`
 left alone — an empty slot was used instead) confirming `ZoneCatalog` and
 `QuestCatalog`'s fail-fast loaders parse the edited `kalaman.txt` and the
-new `QUEST a_widows_due` block cleanly end-to-end. **Not yet
-interactively walked** — same standing `_getch()` limitation as every
-quest milestone so far; see `docs/CURRENT_WORK.md` for the concrete next
-playtest step.
+new `QUEST a_widows_due` block cleanly end-to-end.
+
+**Fully confirmed live 2026-09-15** (`ansalon_sfml_phase1`, via
+`SendKeys`+screenshot automation against Regan's real `save2.txt`,
+~87-tile overworld walk from Palanthas — 8 wilderness encounters fled
+clean along the way, zero damage taken): this is this project's first
+live-walked `DELIVER` quest, proving the whole mechanism end to end, not
+just the data-loading path. Talked to the Curiosities Cart (`OFFER` text
+rendered correctly) → Accept/Decline picker (default "Accept") →
+`ACCEPT` text → walked to the Furtive Trader, whose plain `TALK` (no
+picker, no separate action) granted `soldiers_wedding_band` into
+inventory, confirmed via the save file's `QUESTITEM` line → walked back
+to the Curiosities Cart, whose very next `TALK` auto-flipped
+`QUEST a_widows_due` from `Active` (0) to `ReadyToTurnIn` (2) before the
+greeting even rendered (`checkQuestReadiness` runs at the start of every
+`dialogueStartTalk`, so simply re-approaching the giver with the item
+already in hand is enough — no extra step needed) → the real `COMPLETE`
+text rendered exactly as authored → confirming Enter erased the
+`QUESTITEM` line, awarded the reward, and logged
+"Quest complete: A Widow's Due. +35 steel. +80 XP.", matching the save
+file exactly (`STEEL` 9002→9037, `EXP` 3756112→3756192,
+`QUEST a_widows_due` 2→1/Complete). See `docs/CURRENT_WORK.md` for the
+full session writeup.
 
 ### `wayreth_summons`, in Solace — the Test of High Sorcery
 

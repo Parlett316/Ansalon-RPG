@@ -1,5 +1,125 @@
 # Current work
 
+**2026-09-15 (sixth session): `ore_for_the_forge` DELIVER quest confirmed
+live end-to-end, closing the quest-system checklist's last open quest.**
+Picked up the fifth session's own menu (user chose "ore_for_the_forge
+DELIVER quest" over the playtest backlog or an Astinus content pass).
+Used Mike's real `save1.txt` (Human Fighter, level 3, HP 7/26) rather
+than a disposable character or Regan's `save2.txt` -- Mike was closer to
+both Pax Tharkas and Solace than either alternative, and had already
+`VISITED` both locations earlier in his own playthrough, and flee always
+succeeds regardless of level/HP (`docs/COMBAT_NOTES.md`), so his low HP
+carried no real risk.
+
+- **This quest's giver and its item-grant POI are in two different
+  zones, unlike `a_widows_due`** -- `ore_for_the_forge` is offered/turned
+  in at Solace's Flint's Smithy, but `raw_tharkadan_ore` is granted by
+  the Ore Cart at Pax Tharkas, ~21 tiles away over open ground (a real
+  round trip, not a single-zone loop). Same cardinal-only BFS-over-
+  `overworld.grid` + batched `SendKeys` + save-file-poll technique the
+  fifth session established, reused as-is: Mike's `POS 291 286` -> Pax
+  Tharkas `194 221` (162 tiles) -> Solace `191 203` (21 tiles), 183
+  tiles total. **10 wilderness encounters fired along the route**
+  (2 Hobgoblins, 4 Goblin Raiders x2, a Ghast, an Owlbear, 4 Timber
+  Wolves x2, 2 Bugbears x2, 4 Giant Rats) -- all fled clean via the same
+  `{ENTER}f{ENTER}` combo, zero HP lost throughout (Mike arrived at
+  Solace still HP 7/26).
+- **Confirmed the "grab the item before ever accepting the quest" order
+  works exactly as `GameLoop.cpp`'s own code comment describes**: Mike
+  picked up the ore at Pax Tharkas first, then walked to Solace and
+  accepted the quest for the first time -- `questAccept`'s own
+  `checkQuestReadiness()` call flipped it straight from `Active` to
+  `ReadyToTurnIn` in the save file (`QUEST ore_for_the_forge 2`) within
+  the same conversation the Accept text was still showing, though the
+  UI itself doesn't show the `COMPLETE` screen until a *separate*,
+  fresh `TALK` -- confirmed by leaving the conversation and
+  re-approaching, which showed the ordinary `TALK_AGAIN` greeting first,
+  then the real `COMPLETE` text on dismissing that. This is the same
+  "already did it before being asked" case `docs/QUEST_NOTES.md`
+  documented as interactively verified on the **console** build back on
+  2026-08-20 -- today's session is its first confirmation on the SFML
+  build specifically.
+- **Full turn-in confirmed**: exact save-file match (`STEEL` 35->70,
+  `EXP` 6312->6392, `INVENTORY` back to 0 -- the `QUESTITEM` line
+  erased, `QUEST ore_for_the_forge` 2->1/Complete), and the sidebar log
+  showed the full arc verbatim: "You've picked up Raw Tharkadan Ore." ->
+  "Quest accepted: Ore for the Forge." -> "Ore for the Forge is ready to
+  turn in -- return to the journeyman at Flint's Smithy to collect your
+  reward." -> "Quest complete: Ore for the Forge. +35 steel. +80 XP."
+  See `docs/QUEST_NOTES.md`'s `ore_for_the_forge` section for the note.
+- **App closed cleanly via the in-game quit-confirmation dialog**
+  (Escape -> up to "Yes, end my adventure" -> Enter), autosaving on
+  `window.close()`. Mike's `save1.txt` ends this session indoors at
+  Solace's Flint's Smithy, HP 7/26 (unchanged), otherwise exactly as he
+  was before this session started.
+- **Quest-system checklist is now fully closed**: both `DELIVER`-type
+  quests (`a_widows_due`, `ore_for_the_forge`) are confirmed live
+  end-to-end on the SFML build. What's left is content/data work, not
+  engine confirmation: the progress-text revisit and the six reward
+  flags (especially the Wayreth Test of High Sorcery's ethical-choice
+  scene).
+
+**2026-09-15 (fifth session): `a_widows_due` DELIVER quest confirmed live
+end-to-end, closing this project's first-ever interactive confirmation of
+a `DELIVER`-type quest.** Picked up right where the fourth session's
+menu of backlog options left off (user chose "DELIVER quest close-out"
+over continuing the playtest backlog or an Astinus content pass). Used
+Regan's real `save2.txt` (Human Mage, level 20, HP 47/53) rather than a
+disposable character -- she was already only ~87 tiles from Kalaman
+(inside Palanthas, `ZONE palanthas`), far closer than either real save
+was to Pax Tharkas for the other open `DELIVER` quest
+(`ore_for_the_forge`), so `a_widows_due` was the practical choice, not
+just the one `docs/QUEST_NOTES.md`/this file's own backlog named first.
+
+- **Desktop/GUI access retested and confirmed working this session**
+  (`VirtualScreen`/`SendKeys`/`CopyFromScreen` all fine, no retry needed)
+  -- see `feedback_no_desktop_gui_access` memory, session-dependent, not
+  assumed from the prior session's streak.
+- **New throwaway-script technique, reusable for a future session**: a
+  small Python BFS script (cardinal-moves-only, not the full diagonal/
+  corner-cutting model) over `data/overworld.grid`'s real impassability
+  codes (`~!r?`) computed the exact walk from Palanthas's overworld
+  `POS` to Kalaman's -- 87 steps, unobstructed straight line (75 east,
+  10 north). Sent in `SendKeys` batches of ~10-15, polling `save2.txt`'s
+  `POS`/`MODE`/`HP` fields between batches (cheaper than a screenshot) to
+  detect stalls. **8 wilderness encounters fired along the route**
+  (Lizard Men, Bugbears, Boring Beetles, Harpy, Black Bears x2, Ghouls,
+  Gnolls) -- all fled clean via a single `{ENTER}f{ENTER}` `SendKeys`
+  combo (dismiss the "X appear!" intro, flee, dismiss the "You fled"
+  message) sent defensively whenever a batch's position didn't advance
+  as far as expected; zero damage taken, Regan arrived at Kalaman still
+  HP 47/53. This is a cheaper, more general version of the fourth
+  session's own single-use BFS script -- worth reaching for again on any
+  future long overworld walk between two known points.
+- **Also confirmed, not previously interactively exercised**: a `GRANTS_ITEM`
+  POI's plain `TALK` (no picker, no separate action) silently adds the
+  item to inventory the moment the conversation opens, before any key is
+  even pressed past the initial `t` -- confirmed via the save file's
+  `QUESTITEM` line appearing immediately. Also confirmed
+  `checkQuestReadiness`'s "runs at the start of every `dialogueStartTalk`,
+  not just the giver's own" behavior: re-approaching the Curiosities Cart
+  with the item already in hand flipped `Active` -> `ReadyToTurnIn`
+  before the greeting text even rendered, with no extra "return to the
+  giver" step beyond the ordinary `TALK`.
+- **Full turn-in confirmed**: the real `COMPLETE` text rendered correctly,
+  and confirming it erased the `QUESTITEM` line, logged "Quest complete:
+  A Widow's Due. +35 steel. +80 XP.", and matched the save file exactly
+  (`STEEL` 9002->9037, `EXP` 3756112->3756192, `QUEST a_widows_due`
+  2->1/Complete). See `docs/QUEST_NOTES.md`'s `a_widows_due` section for
+  the full blow-by-blow.
+- **App closed cleanly via the in-game quit-confirmation dialog** (default
+  selection still safely "No, keep playing", as documented) rather than
+  killing the process. Regan's `save2.txt` ends this session indoors at
+  Kalaman's Curiosities Cart, HP 47/53, otherwise exactly as she was
+  before this session started (no unintended side effects from the long
+  walk or the 8 fled encounters).
+- **Still open from the quest checklist**: `ore_for_the_forge` (the other
+  `DELIVER` quest, at Pax Tharkas -- confirmed locked but never offered/
+  accepted/turned in) was closed the very next session, 2026-09-15
+  (sixth session) -- see this file's own top section. The progress-text
+  revisit and all six reward flags (especially the Wayreth Test of High
+  Sorcery's ethical-choice scene) remain open.
+
 **2026-09-15 (fourth session): `road_wolves` turn-in finally closed, plus
 two smaller backlog items, all via `SendKeys` + screenshot automation
 (desktop/GUI access retested and working again this session).** Picked up
@@ -969,14 +1089,28 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   `QuestStatus::Complete` -- see this file's own top section for the full
   writeup. Also confirmed: `SHOP_LOCKED` actually gates a shop (Flint's
   Smithy refused "There's nothing to buy here yet." while
-  `ore_for_the_forge` was unaccepted). **Still not confirmed**: the
-  progress-text revisit, any `DELIVER`-type quest (`ore_for_the_forge`
-  itself, found and confirmed locked but never offered/accepted/turned
-  in), and all six reward flags (especially the Wayreth Test of High
-  Sorcery's ethical-choice scene and its three outcome passages) -- none
-  of these are `road_wolves`-specific, so a fresh quest needs picking up
-  to close them (the disposable slot-3 character was deleted this session
-  once its own arc finished).
+  `ore_for_the_forge` was unaccepted). **`a_widows_due` (a `DELIVER`-type
+  quest) now also fully confirmed end-to-end, 2026-09-15 (fifth
+  session)** -- offer/accept, a `GRANTS_ITEM` POI's plain `TALK` silently
+  adding the item to inventory, `checkQuestReadiness` auto-flipping
+  `Active` -> `ReadyToTurnIn` on the very next `TALK` to the giver with no
+  extra step, the real `COMPLETE` text, and the reward/save-file match --
+  see this file's own top section and `docs/QUEST_NOTES.md`'s
+  `a_widows_due` section for the full writeup. **`ore_for_the_forge` (the
+  other `DELIVER` quest, at Pax Tharkas) now also fully confirmed
+  end-to-end, 2026-09-15 (sixth session)** -- including the
+  giver-and-item-grant-in-different-zones round trip, and the "picked up
+  the item before ever accepting" ordering (`questAccept`'s
+  `checkQuestReadiness()` flips straight to `ReadyToTurnIn` within the
+  Accept conversation itself, though the `COMPLETE` screen still needs a
+  separate fresh `TALK` to actually render) -- see this file's own top
+  section and `docs/QUEST_NOTES.md`'s `ore_for_the_forge` section.
+  **Quest-system checklist now fully closed** on the engine-confirmation
+  side -- both `DELIVER` quests are live-confirmed. **Still not
+  confirmed**: the progress-text revisit and all six reward flags
+  (especially the Wayreth Test of High Sorcery's ethical-choice scene
+  and its three outcome passages) -- content/data work, not engine
+  confirmation, so a fresh session can pick either up directly.
 - **Native character creation** (Milestone 180) -- **further confirmed
   live 2026-09-15**: the full ability-score flow (roll pool, keep/reroll,
   per-ability assignment from the pool); an ineligible race pick's inline
@@ -1057,10 +1191,9 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   live 2026-09-15** (grassland, fought to defeat). Griffon
   (hills/mountains) and Stirge (forest) still untriggered -- trigger
   wilderness encounters there.
-- **143** -- `a_widows_due` DELIVER quest at Kalaman. Talk to the
-  Curiosities Cart, find the Furtive Trader POI, deliver the wedding
-  band. Actually testable for the first time as of Milestone 183 -- it
-  depended on the quest system existing at all.
+- ~~**143**~~ -- `a_widows_due` DELIVER quest at Kalaman. **Fully
+  confirmed live 2026-09-15 (fifth session)** -- see this file's own top
+  section and `docs/QUEST_NOTES.md`'s `a_widows_due` section.
 - **145** -- 3 Astinus SUBJECT topics (Fizban, Silvara, Berem/the
   Everman), each day-gated. Ask before/after day 192/69/193
   respectively.
