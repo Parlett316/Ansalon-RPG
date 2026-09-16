@@ -44,14 +44,35 @@ tracks what's still open and how to force it.
   cluster (a held-in-place retry was inconclusive — needs a monster that
   has to route around, not just toward, a wall); the remaining 5 of 9
   terrains (bog, salt flat, savannah, glacier, road).
-- **Line of sight** (Milestone 189) — not yet interactively confirmed at
-  all. Easiest to force on a densely-walled terrain (forest/hills/
-  mountains) with the Light Crossbow equipped or a damage spell
-  memorized: a walled-off shot/spell should be refused ("Nothing in your
-  line of sight." / "Your `<spellName>` finds no target in sight."),
-  a clear-sightline shot should still work, and Fireball's epicenter
-  picker should only offer in-sight instances while its splash still
-  reaches everyone in radius regardless of walls.
+- **Line of sight** (Milestone 189) — **half-confirmed 2026-09-15**: the
+  "clear sightline still works" half is solid — a level-20 mage
+  (`save2.txt`'s Regan, via a disposable copy) targeted every alive wolf/
+  skeleton with Magic Missile/Sleep across two separate wilderness
+  encounters (forest, then a second `Battlefield: forest`-adjacent fight)
+  and every candidate stayed selectable whenever no wall actually sat
+  between caster and target — repeated after deliberately repositioning
+  next to wall clusters, never once saw a false exclusion. **Still not
+  witnessed**: the actual blocked-shot refusal ("Nothing in your line of
+  sight." / "Your `<spellName>` finds no target in sight.") and the
+  Fireball epicenter picker's in-sight-only filtering. Tried to
+  deliberately engineer a caster-wall-target line (successfully done once
+  already for wall *movement*-blocking in an earlier milestone's
+  playtest) but ran out of session budget fighting the environment
+  instead: mid-session the desktop resolution changed under the game
+  (1366x768 -> 2048x1152), which desyncs the sidebar's text-wrap width
+  from the actual font size and truncates every log/status line to ~6-10
+  characters (real rendering bug, reproducible on a fresh relaunch at
+  that resolution too — not just a stale-window artifact; low priority,
+  cosmetic, only seen at a non-default resolution) — and separately, the
+  player character appears to be unable to move at all once melee-engaged
+  (every directional key returned a "Something..." log line whose full
+  text couldn't be read because of the above), which blocked the
+  "reposition until a wall sits on the line" approach that worked cleanly
+  in the earlier movement-blocking test. Next session: retry on a fresh
+  desktop resolution (don't fight a mid-session change again — just
+  relaunch), and either use a non-engaged ranged attack from the start or
+  confirm what actually blocks post-engagement movement before relying on
+  it.
 - **Multi-square creatures + Blue Dragon** (Milestone 190) — not yet
   interactively confirmed at all. Needs an Ogre/Troll (1x2), Griffon
   (2x1), or the Blue Dragon (2x2, salt-flat terrain — which doesn't
