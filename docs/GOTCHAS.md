@@ -585,3 +585,52 @@ you hit something surprising — that's the whole point of it existing.
   unfixed residual (cosmetic/pacing only — mountain is passable, so it
   doesn't block movement) — both elven forests still render with a visible
   fake-mountain speckle.
+
+## Live/interactive testing via desktop automation
+
+`ansalon_sfml_phase1` has no piped-input path (real `sf::Event`s, no
+headless mode) — the only way to actually drive it interactively from a
+session is real desktop/GUI access (`SendKeys` + `GetClientRect`/
+`CopyFromScreen`, DPI-aware). Notes accumulated across many live-testing
+sessions (2026-09-11 through 2026-09-15), kept here so the technique and
+its quirks don't have to be rediscovered each time:
+
+- **Desktop/GUI access is session-launch-dependent, not a stable
+  guarantee** — it has been confirmed working and confirmed blocked on
+  different session launches with no code change in between. Retest
+  cheaply at the start of a session rather than assuming either way from
+  a prior session's streak.
+- **For a long overworld walk between two known points, don't send blind
+  directional `SendKeys`** — it's expensive and error-prone against real
+  coastlines/wall clusters. Instead write a small throwaway Python BFS
+  script over the real `data/overworld.grid` (cardinal-moves-only is
+  usually sufficient; match the game's own diagonal corner-cutting rule
+  if precision matters) respecting the real impassability codes
+  (`~!r?` etc.), emit the path as a `SendKeys` token sequence, and send
+  it in batches (~10-15 keys). Not checked into the repo — a one-off
+  verification script each time, same spirit as this project's
+  throwaway self-test convention.
+- **Poll the save file between batches instead of screenshotting every
+  step** — `POS`/`HP`/`MODE` are cheap to read and enough to detect a
+  stall or an unexpected encounter/knockout mid-route.
+- **`{ENTER}f{ENTER}` clears an ordinary wilderness encounter** (dismiss
+  the "X appear!" intro, Flee, dismiss the "You fled" message) — the
+  standard combo for flee-and-continue when the goal is reaching a
+  destination, not fighting. Flee always succeeds regardless of
+  level/HP (see the Combat section above).
+- **Known automation artifact, not a game bug**: a very high volume of
+  synthetic `SendKeys` input over a long session can cause the app to
+  close cleanly and unexpectedly (no crash dump, no Application-Error
+  event). Autosave is continuous and per-keypress, so the character's
+  progress is always intact on relaunch — just resume against the same
+  save file.
+- **Known automation artifact, not a rendering bug**: the combat
+  sidebar's `dist N` readout can appear to lag one real action behind
+  when captured by a screenshot tool that isn't synced to the game's own
+  `window.display()` calls. The actual render path was traced end to
+  end (input drains and mutates positions, then the whole frame —
+  including the sidebar — redraws from those same live positions, all
+  before `window.display()`) and has no stale/cached copy anywhere. If
+  this comes up again, add a short (~150-250ms) settle delay between
+  sending a keypress and capturing the screenshot before assuming it's a
+  real bug.
