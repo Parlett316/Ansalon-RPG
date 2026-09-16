@@ -1,6 +1,22 @@
 # Current work
 
-**Nothing in flight.** The quest system's engine-confirmation checklist
+**Nothing in flight.** Milestone 195 (character creation's three more
+DQoK-inspired UX pieces -- persistent stat sidebar, letter-keyed
+selection, Gold Box-style roll screen, all `ansalon_sfml_phase1` only)
+shipped and was confirmed live 2026-09-16 in the same session it was
+built: a full SendKeys/screenshot pass through Name -> RollPool (letter
+reroll confirmed) -> AssignAbility -> PickRace -> RaceAdjustments ->
+PickClass -> PickAlignment -> Summary -> declined/restart, against the
+previously-empty Slot 3. Mike's and Regan's real `save1.txt`/`save2.txt`
+were never opened; no `save3.txt` was created. See Milestone 195 in
+`docs/MILESTONES.md` for the full writeup. This was the second DQoK-
+inspired pass -- Milestone 194 (panel chrome) was the first -- and both
+came from the user live-driving *Dark Queen of Krynn* (SSI Gold Box,
+DOSBox) for UX ideas; a bigger, explicitly-parked "multiple player-built
+party members" question came up in that same original conversation and
+was **not** pursued -- don't raise it unprompted.
+
+The quest system's engine-confirmation checklist
 closed 2026-09-15: all three tracked quests (`road_wolves`, `a_widows_due`,
 `ore_for_the_forge`) are now confirmed live end-to-end on the SFML build —
 see `docs/QUEST_NOTES.md` for each quest's own writeup. Everything else

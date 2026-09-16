@@ -7540,6 +7540,68 @@ now fully verified, nothing further outstanding.
      Regan's real Slot 1/2 saves were never opened. **Confirmed live by
      the user the same session**, at their own keyboard.
 
+195. **Character creation, three more DQoK-inspired UX pieces
+     (`ansalon_sfml_phase1` only): a persistent stat sidebar, letter-keyed
+     selection, and a Gold Box-style roll screen.** Continuation of
+     Milestone 194's pass (also prompted by live-driving Dark Queen of
+     Krynn) -- asked which specific conventions to port next, the user
+     picked all three offered. Pure presentation/input change on the
+     already-complete, already-sourced 2e AD&D wizard (Milestone 180) --
+     no rules content, no new mechanics, no save-format change.
+
+     All of it lives inside the character-creation block in
+     `sfml_phase1/main.cpp` as a new, wizard-local `drawCreationOverlay`
+     lambda -- deliberately **not** a change to the shared
+     `drawPickerOverlay` (26 other call sites: dialogue, shop, inventory,
+     spellbook, journal, help, the save-slot menu), so no other screen's
+     layout is affected:
+
+     - **Persistent sidebar** -- a `buildSidebarLines()` lambda closed
+       over the in-progress `character`/`scores`/`step` locals renders
+       Name, STR-CHA, and Race/Class/Alignment/Knight order as each is
+       decided, in a left-hand column inside the panel chrome. Gated by
+       `CreationStep`'s declaration order (`step > CreationStep::X`)
+       rather than tracking separate "is this known yet" flags -- e.g.
+       Class is gated on `ClassForcedTinker`'s ordinal (not `PickClass`'s)
+       so both the normal and Gnome-forced-Tinker paths, which both land
+       on `PickAlignment` next, show it at the same point. Shown from
+       `PickRace` onward; not shown for `RollPool`/`AssignAbility`, whose
+       own main content already *is* the stat display.
+     - **Letter-keyed selection** -- every selectable step's items get
+       `A)`/`B)`/`C)`... prefixes, selectable by pressing that letter
+       directly (`letterIndexForKey`, a 26-entry lookup table + linear
+       search over `sf::Keyboard::Key`, not arithmetic on the enum --
+       matches this file's existing per-key-`case` idiom elsewhere).
+       Applied alongside the existing up/down+Enter navigation, not in
+       place of it. `RaceAdjustments`/`ClassForcedTinker`'s "press any
+       key" info screens are unaffected -- they already advance on any
+       key, letters included.
+     - **Gold Box roll screen** -- `RollPool` now lists each of the 6
+       rolls on its own line plus a running total, instead of one
+       comma-joined "Rolled: 14, 12, ..." line, still ending in the same
+       Yes/No reroll prompt (now `A`/`B`).
+
+     Verified: clean rebuild of `ansalon_sfml_phase1` (`--clean-first` on
+     just that target, zero new `/W4` warnings), then a full interactive
+     pass live this session via SendKeys/screenshot (desktop/GUI access
+     confirmed working this session) against the previously-empty Slot 3:
+     Name -> the new roll screen (confirmed a letter press, `B`,
+     triggered a real reroll with different values) -> `A` to keep ->
+     AssignAbility (letters A-F over the shrinking pool, confirmed) ->
+     PickRace (confirmed sidebar + letters rendering together, race list
+     correctly showing ineligible races for the rolled scores) ->
+     RaceAdjustments (sidebar gained "Race: Human", no letters, as
+     designed) -> PickClass (letters, no "Class:" line yet while still on
+     that step) -> PickAlignment (sidebar gained "Class: Cleric"; all 9
+     alignments lettered A-I with no clipping, the longest list in the
+     wizard) -> Summary (sidebar showing the full progressive state
+     alongside the existing recap) -> declined at Summary (`B`/No),
+     confirmed the wizard reset cleanly to a blank Name step (Milestone
+     180's already-confirmed restart path, unaffected). Slot 3 stayed
+     empty throughout (`save3.txt` never created); Mike's and Regan's real
+     `save1.txt`/`save2.txt` were never opened by the running game.
+     **Confirmed live this session.**
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

@@ -1480,6 +1480,27 @@ int runPhase1(const std::string& savePath) {
                 Summary,
             };
 
+            // Gold-Box-style letter selection (DQoK-inspired pass, see
+            // docs/MILESTONES.md): a lookup table + linear search rather
+            // than arithmetic on the sf::Keyboard::Key enum, matching this
+            // file's existing per-key switch idiom elsewhere (e.g. the
+            // movement-key switch). Returns 0-25 for A-Z, -1 otherwise.
+            constexpr std::array<sf::Keyboard::Key, 26> kLetterKeys = {
+                sf::Keyboard::Key::A, sf::Keyboard::Key::B, sf::Keyboard::Key::C, sf::Keyboard::Key::D,
+                sf::Keyboard::Key::E, sf::Keyboard::Key::F, sf::Keyboard::Key::G, sf::Keyboard::Key::H,
+                sf::Keyboard::Key::I, sf::Keyboard::Key::J, sf::Keyboard::Key::K, sf::Keyboard::Key::L,
+                sf::Keyboard::Key::M, sf::Keyboard::Key::N, sf::Keyboard::Key::O, sf::Keyboard::Key::P,
+                sf::Keyboard::Key::Q, sf::Keyboard::Key::R, sf::Keyboard::Key::S, sf::Keyboard::Key::T,
+                sf::Keyboard::Key::U, sf::Keyboard::Key::V, sf::Keyboard::Key::W, sf::Keyboard::Key::X,
+                sf::Keyboard::Key::Y, sf::Keyboard::Key::Z,
+            };
+            auto letterIndexForKey = [&](sf::Keyboard::Key k) -> int {
+                for (int i = 0; i < static_cast<int>(kLetterKeys.size()); ++i) {
+                    if (kLetterKeys[static_cast<size_t>(i)] == k) return i;
+                }
+                return -1;
+            };
+
             bool creationComplete = false;
             while (!creationComplete) {
                 CreationStep step = CreationStep::Name;
@@ -1492,6 +1513,140 @@ int runPhase1(const std::string& savePath) {
                 int confirmCursor2 = 0;
                 std::string stepMessage;
                 character::Character character; // this attempt's in-progress character
+
+                // Gold-Box-style persistent stat sidebar (DQoK-inspired
+                // pass). Built fresh each frame from the in-progress
+                // character/scores/step locals above, so it live-updates
+                // as choices are made without duplicating any state. Race
+                // shows the base race name while still on PickSubrace,
+                // upgrading to the specific subrace once past it; Class is
+                // gated on ClassForcedTinker's ordinal rather than
+                // PickClass's so it correctly covers both the normal and
+                // Gnome-forced-Tinker paths (both land on PickAlignment
+                // next). CreationStep's declaration order matches the
+                // wizard's flow, so these relational comparisons hold even
+                // for paths that skip a step (e.g. non-Elf/Dwarf skipping
+                // PickSubrace).
+                auto buildSidebarLines = [&]() {
+                    std::vector<std::string> lines;
+                    lines.push_back(character.name);
+                    lines.push_back("STR " + std::to_string(scores.strength));
+                    lines.push_back("DEX " + std::to_string(scores.dexterity));
+                    lines.push_back("CON " + std::to_string(scores.constitution));
+                    lines.push_back("INT " + std::to_string(scores.intelligence));
+                    lines.push_back("WIS " + std::to_string(scores.wisdom));
+                    lines.push_back("CHA " + std::to_string(scores.charisma));
+                    if (step > CreationStep::PickRace) {
+                        const character::SubraceInfo* sub = character::subraceInfo(character.subrace);
+                        lines.push_back(std::string("Race: ") +
+                                         (sub != nullptr && step > CreationStep::PickSubrace
+                                              ? sub->name
+                                              : character::raceInfo(character.race).name));
+                    }
+                    if (step > CreationStep::ClassForcedTinker) {
+                        lines.push_back(std::string("Class: ") + character::classInfo(character.charClass).name);
+                    }
+                    if (step > CreationStep::PickAlignment) {
+                        lines.push_back(std::string("Alignment: ") + character::alignmentName(character.alignment));
+                    }
+                    if (character.knightOrder != character::KnightOrder::None) {
+                        lines.push_back(std::string(character::knightOrderName(character.knightOrder)));
+                    }
+                    return lines;
+                };
+
+                // Wizard-local overlay: the same title/items/footer/message
+                // frame drawPickerOverlay draws (shared with 26 other call
+                // sites, deliberately left untouched here), plus two
+                // additions only this wizard needs: A)/B)/C)... letters on
+                // the selectable range [letterStart, items.size()) -- -1
+                // means no lettering -- and an optional persistent stat
+                // sidebar. Kept as a separate lambda rather than extending
+                // drawPickerOverlay itself so no other screen's layout is
+                // affected. Letters assume at most 26 items and, for
+                // legible A-Z single-letter labels, realistically far fewer
+                // -- true of every wizard list (Alignment, the largest, has
+                // 9).
+                constexpr float kCreationSidebarWidth = 280.f;
+                auto drawCreationOverlay = [&](const std::string& title, const std::vector<std::string>& items,
+                                                int selectedIndex, const std::string& footer,
+                                                const std::string& message, int letterStart, bool showSidebar) {
+                    drawPanelChrome();
+
+                    float contentX = kSheetMarginX;
+                    float contentWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
+                    if (showSidebar) {
+                        contentX = kCreationSidebarWidth + kSheetMarginX;
+                        contentWidthPx = static_cast<float>(windowW) - contentX - kSheetMarginX;
+
+                        sf::RectangleShape divider(sf::Vector2f(2.f, static_cast<float>(windowH) - 24.f));
+                        divider.setPosition(sf::Vector2f(kCreationSidebarWidth, 12.f));
+                        divider.setFillColor(kPanelBorderInner);
+                        window.draw(divider);
+
+                        float sy = 40.f;
+                        auto drawSideLine = [&](const std::string& text, sf::Color color, unsigned size) {
+                            sf::Text sfText(font, text, size);
+                            sfText.setFillColor(color);
+                            sfText.setPosition(sf::Vector2f(kSheetMarginX, sy));
+                            window.draw(sfText);
+                            sy += static_cast<float>(size) + 8.f;
+                        };
+                        drawSideLine("Character", kPanelHeaderColor, kSheetHeaderCharSize);
+                        sy += 6.f;
+                        for (const std::string& line : buildSidebarLines()) {
+                            drawSideLine(line, kSheetBodyColor, kSheetBodyCharSize);
+                        }
+                    }
+
+                    // "A) " is wider than the plain "> " prefix
+                    // drawPickerOverlay uses, so lettered items wrap a bit
+                    // narrower -- measured directly, same idiom
+                    // drawPickerOverlay itself uses for its own prefix.
+                    const float letterPrefixWidthPx = sf::Text(font, "A) ", kSheetBodyCharSize).getLocalBounds().size.x;
+
+                    float y = 40.f;
+                    auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
+                        sf::Text sfText(font, text, size);
+                        sfText.setFillColor(color);
+                        sfText.setPosition(sf::Vector2f(contentX, y));
+                        window.draw(sfText);
+                        y += static_cast<float>(size) + 10.f;
+                    };
+
+                    for (const std::string& line : wrapToPixelWidth(font, kSheetTitleCharSize, title, contentWidthPx)) {
+                        drawLine(line, kPanelHeaderColor, kSheetTitleCharSize);
+                    }
+                    y += 10.f;
+                    for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+                        const bool lettered = letterStart >= 0 && i >= letterStart;
+                        const bool isSelected = i == selectedIndex;
+                        const float wrapWidth = lettered ? contentWidthPx - letterPrefixWidthPx : contentWidthPx;
+                        std::vector<std::string> wrapped =
+                            wrapToPixelWidth(font, kSheetBodyCharSize, items[static_cast<size_t>(i)], wrapWidth);
+                        if (wrapped.empty()) wrapped.push_back("");
+                        for (size_t lineIdx = 0; lineIdx < wrapped.size(); ++lineIdx) {
+                            std::string prefix;
+                            if (lineIdx == 0 && lettered) {
+                                prefix = std::string(1, static_cast<char>('A' + (i - letterStart))) + ") ";
+                            } else if (lettered) {
+                                prefix = "   ";
+                            } else {
+                                prefix = "  ";
+                            }
+                            drawLine(prefix + wrapped[lineIdx], isSelected ? sf::Color::White : kSheetBodyColor,
+                                      kSheetBodyCharSize);
+                        }
+                    }
+                    if (!message.empty()) {
+                        y += 10.f;
+                        for (const std::string& line : wrapToPixelWidth(font, kSheetBodyCharSize, message, contentWidthPx)) {
+                            drawLine(line, sf::Color::White, kSheetBodyCharSize);
+                        }
+                    }
+                    y += 10.f;
+                    drawLine(footer, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                };
 
                 bool stepDone = false;
                 while (!stepDone) {
@@ -1511,6 +1666,14 @@ int runPhase1(const std::string& savePath) {
                             const bool wantsDown = key == sf::Keyboard::Key::Down || key == sf::Keyboard::Key::S;
                             const bool wantsBack = key == sf::Keyboard::Key::Escape || key == sf::Keyboard::Key::Q;
                             const bool wantsEnter = key == sf::Keyboard::Key::Enter;
+                            // Gold-Box-style direct letter selection (DQoK-
+                            // inspired pass) -- -1 when the key isn't A-Z.
+                            // Never collides with wantsBack (Q, index 16,
+                            // is handled below before any per-step letter
+                            // check runs) or with the W/S Up/Down bindings
+                            // (indices 22/18), since every wizard list here
+                            // has at most 9 items (Alignment, the largest).
+                            const int letterIdx = letterIndexForKey(key);
 
                             // Escape/Q abandons creation entirely (closes the
                             // window) at every step -- there's no "cancel back
@@ -1541,7 +1704,8 @@ int runPhase1(const std::string& savePath) {
                                 case CreationStep::RollPool:
                                     if (wantsUp || wantsDown) {
                                         confirmCursor2 = 1 - confirmCursor2;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 2)) {
+                                        if (letterIdx >= 0 && letterIdx < 2) confirmCursor2 = letterIdx;
                                         if (confirmCursor2 == 0) {
                                             scores = character::AbilityScores{};
                                             assignIndex = 0;
@@ -1560,7 +1724,11 @@ int runPhase1(const std::string& savePath) {
                                                      static_cast<int>(pool.size());
                                     } else if (wantsDown) {
                                         listCursor = (listCursor + 1) % static_cast<int>(pool.size());
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter ||
+                                               (letterIdx >= 0 && letterIdx < static_cast<int>(pool.size()))) {
+                                        if (letterIdx >= 0 && letterIdx < static_cast<int>(pool.size())) {
+                                            listCursor = letterIdx;
+                                        }
                                         character::Ability ability =
                                             kCreationAbilityOrder[static_cast<size_t>(assignIndex)];
                                         scores.adjust(ability, pool[static_cast<size_t>(listCursor)]);
@@ -1575,7 +1743,8 @@ int runPhase1(const std::string& savePath) {
                                         listCursor = (listCursor + 5) % 6;
                                     } else if (wantsDown) {
                                         listCursor = (listCursor + 1) % 6;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 6)) {
+                                        if (letterIdx >= 0 && letterIdx < 6) listCursor = letterIdx;
                                         character::RaceId candidate =
                                             character::kAllRaces[static_cast<size_t>(listCursor)];
                                         if (!creationRaceIsSelectable(candidate, scores)) {
@@ -1611,7 +1780,8 @@ int runPhase1(const std::string& savePath) {
                                         listCursor = (listCursor + count - 1) % count;
                                     } else if (wantsDown) {
                                         listCursor = (listCursor + 1) % count;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < count)) {
+                                        if (letterIdx >= 0 && letterIdx < count) listCursor = letterIdx;
                                         character::SubraceId candidate = subraceList[static_cast<size_t>(listCursor)];
                                         if (!character::meetsSubraceAbilityRange(candidate, scores)) {
                                             stepMessage = "Your rolled ability scores don't meet " +
@@ -1643,7 +1813,8 @@ int runPhase1(const std::string& savePath) {
                                         listCursor = (listCursor + 3) % 4;
                                     } else if (wantsDown) {
                                         listCursor = (listCursor + 1) % 4;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 4)) {
+                                        if (letterIdx >= 0 && letterIdx < 4) listCursor = letterIdx;
                                         character::ClassId candidate =
                                             character::kAllClasses[static_cast<size_t>(listCursor)];
                                         if (character::classLevelCap(character.race, character.subrace, candidate) ==
@@ -1675,7 +1846,8 @@ int runPhase1(const std::string& savePath) {
                                         listCursor = (listCursor + 8) % 9;
                                     } else if (wantsDown) {
                                         listCursor = (listCursor + 1) % 9;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 9)) {
+                                        if (letterIdx >= 0 && letterIdx < 9) listCursor = letterIdx;
                                         character::Alignment candidate =
                                             static_cast<character::Alignment>(listCursor);
                                         if (!character::meetsAlignmentRestriction(character.race, candidate)) {
@@ -1701,7 +1873,8 @@ int runPhase1(const std::string& savePath) {
                                 case CreationStep::KnightOffer:
                                     if (wantsUp || wantsDown) {
                                         confirmCursor2 = 1 - confirmCursor2;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 2)) {
+                                        if (letterIdx >= 0 && letterIdx < 2) confirmCursor2 = letterIdx;
                                         if (confirmCursor2 == 0) character.knightOrder = character::KnightOrder::Crown;
                                         confirmCursor2 = 0;
                                         step = CreationStep::Specialization;
@@ -1710,7 +1883,8 @@ int runPhase1(const std::string& savePath) {
                                 case CreationStep::Specialization:
                                     if (wantsUp || wantsDown) {
                                         confirmCursor2 = 1 - confirmCursor2;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 2)) {
+                                        if (letterIdx >= 0 && letterIdx < 2) confirmCursor2 = letterIdx;
                                         if (confirmCursor2 == 0) character.specializedWeapon = true;
                                         computeDerivedStats(character);
                                         confirmCursor2 = 0;
@@ -1720,7 +1894,8 @@ int runPhase1(const std::string& savePath) {
                                 case CreationStep::Summary:
                                     if (wantsUp || wantsDown) {
                                         confirmCursor2 = 1 - confirmCursor2;
-                                    } else if (wantsEnter) {
+                                    } else if (wantsEnter || (letterIdx >= 0 && letterIdx < 2)) {
+                                        if (letterIdx >= 0 && letterIdx < 2) confirmCursor2 = letterIdx;
                                         if (confirmCursor2 == 0) {
                                             newCharacter = character;
                                             creationComplete = true;
@@ -1760,21 +1935,41 @@ int runPhase1(const std::string& savePath) {
                     } else {
                         std::vector<std::string> items;
                         std::string title;
-                        std::string footer = "up/down=select   Enter=choose";
+                        std::string footer = "up/down or letter=select   Enter=choose";
                         int selectedIndex = listCursor;
+                        // -1 = no letters (RaceAdjustments/ClassForcedTinker's
+                        // "press any key" info screens); set per-case below
+                        // to match each list's selectable range.
+                        int letterStart = -1;
+                        // Persistent stat sidebar (DQoK-inspired pass) --
+                        // shown from race selection onward, once ability
+                        // scores are finalized; RollPool/AssignAbility's own
+                        // main content already *is* the stat display, so a
+                        // sidebar there would just repeat it.
+                        bool showSidebar = true;
                         switch (step) {
                         case CreationStep::RollPool: {
-                            std::ostringstream oss;
-                            oss << "Rolled: ";
-                            for (size_t i = 0; i < pool.size(); ++i) oss << (i == 0 ? "" : ", ") << pool[i];
-                            oss << " -- keep these rolls?";
-                            title = oss.str();
-                            items = {"Yes", "No"};
-                            selectedIndex = confirmCursor2;
-                            footer = "Enter=confirm";
+                            // Gold Box-style roll screen: each roll on its
+                            // own line plus a running total, rather than one
+                            // comma-joined line -- the DQoK-inspired ask.
+                            showSidebar = false;
+                            for (size_t i = 0; i < pool.size(); ++i) {
+                                items.push_back("Roll " + std::to_string(i + 1) + ": " + std::to_string(pool[i]));
+                            }
+                            int total = 0;
+                            for (int v : pool) total += v;
+                            items.push_back("Total: " + std::to_string(total));
+                            items.push_back("Keep these rolls?");
+                            items.push_back("Yes");
+                            items.push_back("No");
+                            title = "Ability Scores";
+                            letterStart = static_cast<int>(items.size()) - 2;
+                            selectedIndex = letterStart + confirmCursor2;
+                            footer = "Enter=confirm (or A/B)";
                             break;
                         }
                         case CreationStep::AssignAbility: {
+                            showSidebar = false;
                             title = std::string("Assigning: ") +
                                     character::abilityName(kCreationAbilityOrder[static_cast<size_t>(assignIndex)]);
                             for (int i = 0; i < 6; ++i) {
@@ -1783,12 +1978,14 @@ int runPhase1(const std::string& savePath) {
                                                      (i < assignIndex ? std::to_string(scores.get(shown)) : "--");
                                 items.push_back(label);
                             }
+                            letterStart = static_cast<int>(items.size());
                             for (int v : pool) items.push_back(std::to_string(v));
-                            selectedIndex = 6 + listCursor;
-                            footer = "up/down=select   Enter=assign";
+                            selectedIndex = letterStart + listCursor;
+                            footer = "up/down or letter=select   Enter=assign";
                             break;
                         }
                         case CreationStep::PickRace:
+                            letterStart = 0;
                             title = "Choose a race:";
                             for (character::RaceId r : character::kAllRaces) {
                                 std::string label = character::raceInfo(r).name;
@@ -1797,6 +1994,7 @@ int runPhase1(const std::string& savePath) {
                             }
                             break;
                         case CreationStep::PickSubrace: {
+                            letterStart = 0;
                             const std::vector<character::SubraceId> subraceList =
                                 character.race == character::RaceId::Elf
                                     ? std::vector<character::SubraceId>(character::kElfSubraces.begin(),
@@ -1833,6 +2031,7 @@ int runPhase1(const std::string& savePath) {
                             break;
                         }
                         case CreationStep::PickClass:
+                            letterStart = 0;
                             title = "Choose a class:";
                             for (character::ClassId c : character::kAllClasses) {
                                 const character::ClassInfo& info = character::classInfo(c);
@@ -1859,6 +2058,7 @@ int runPhase1(const std::string& savePath) {
                             footer = "(press any key to continue)";
                             break;
                         case CreationStep::PickAlignment:
+                            letterStart = 0;
                             title = "Choose an alignment:";
                             for (int i = 0; i < 9; ++i) {
                                 character::Alignment a = static_cast<character::Alignment>(i);
@@ -1873,10 +2073,10 @@ int runPhase1(const std::string& savePath) {
                             // Long descriptive text goes into a
                             // non-selectable leading item instead of the
                             // title -- same idiom Summary already uses --
-                            // since drawPickerOverlay's title line is meant
-                            // to stay a short heading, not a full sentence.
-                            // drawPickerOverlay wraps this item itself
-                            // (measured against the real font/window
+                            // since drawCreationOverlay's title line is
+                            // meant to stay a short heading, not a full
+                            // sentence. drawCreationOverlay wraps this item
+                            // itself (measured against the real font/window
                             // width), so it isn't pre-wrapped here too.
                             title = "Knights of Solamnia";
                             items.push_back(
@@ -1884,8 +2084,9 @@ int runPhase1(const std::string& savePath) {
                                 "of Solamnia as a Knight of the Crown. Swear the oath and join?");
                             items.push_back("Yes");
                             items.push_back("No");
-                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
-                            footer = "Enter=confirm";
+                            letterStart = static_cast<int>(items.size()) - 2;
+                            selectedIndex = letterStart + confirmCursor2;
+                            footer = "Enter=confirm (or A/B)";
                             break;
                         }
                         case CreationStep::Specialization: {
@@ -1896,8 +2097,9 @@ int runPhase1(const std::string& savePath) {
                                 "Specialize?");
                             items.push_back("Yes");
                             items.push_back("No");
-                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
-                            footer = "Enter=confirm";
+                            letterStart = static_cast<int>(items.size()) - 2;
+                            selectedIndex = letterStart + confirmCursor2;
+                            footer = "Enter=confirm (or A/B)";
                             break;
                         }
                         case CreationStep::Summary: {
@@ -1955,14 +2157,15 @@ int runPhase1(const std::string& savePath) {
                             items.push_back("Begin your journey as this character?");
                             items.push_back("Yes");
                             items.push_back("No");
-                            selectedIndex = static_cast<int>(items.size()) - 2 + confirmCursor2;
-                            footer = "Enter=confirm";
+                            letterStart = static_cast<int>(items.size()) - 2;
+                            selectedIndex = letterStart + confirmCursor2;
+                            footer = "Enter=confirm (or A/B)";
                             break;
                         }
                         default:
                             break;
                         }
-                        drawPickerOverlay(title, items, selectedIndex, footer, stepMessage);
+                        drawCreationOverlay(title, items, selectedIndex, footer, stepMessage, letterStart, showSidebar);
                     }
                     window.display();
                 }
