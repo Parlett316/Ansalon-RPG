@@ -12,6 +12,11 @@ six reward flags — especially the Wayreth Test of High Sorcery's
 three-outcome ethical-choice scene. This is content/data work, not engine
 work — research the sourced material first, per the usual workflow.
 
+A real rendering bug found live 2026-09-16 while playtesting Milestone
+180 (text clipping mid-word in the character-creation wizard and
+save-slot menu) was fixed the same session — see Milestone 193 in
+`docs/MILESTONES.md` for the root cause and fix; confirmed live.
+
 Otherwise, see the Playtest backlog below for what's implemented and
 verified (clean rebuild + smoke test) but not yet walked with a real
 keyboard, and the two Parked sections for long-shelved decisions with
@@ -63,7 +68,13 @@ tracks what's still open and how to force it.
   from the actual font size and truncates every log/status line to ~6-10
   characters (real rendering bug, reproducible on a fresh relaunch at
   that resolution too — not just a stale-window artifact; low priority,
-  cosmetic, only seen at a non-default resolution) — and separately, the
+  cosmetic, only seen at a non-default resolution). **Likely the same
+  root cause as Milestone 193's fix** (`window.getSize()` returning the
+  stale pre-maximize 1280x800 size rather than the real maximized one,
+  confirmed live 2026-09-16 in the character-creation wizard) rather
+  than something specific to a resolution *change* mid-session — worth
+  re-checking live in combat before assuming this is still open. Also
+  separately noted, not yet re-tested: the
   player character appears to be unable to move at all once melee-engaged
   (every directional key returned a "Something..." log line whose full
   text couldn't be read because of the above), which blocked the
@@ -86,9 +97,24 @@ tracks what's still open and how to force it.
 - **Look command** (Milestone 182) — still open: `'l'` with an overworld
   NPC/canon Hero actually present, or a `TIMELINE_ANCHOR` tile with one —
   needs a canon Hero to actually be nearby per the timeline schedule.
-- **Native character creation** (Milestone 180) — still open: the final
-  summary's "No" restart path, the Elf/Dwarf subrace step, the
-  Gnome-forced-Tinker path, and the save-slot menu's overwrite branch.
+- **Native character creation** (Milestone 180) — **mostly confirmed live
+  2026-09-16**, driven via SendKeys/screenshot against a disposable test
+  character in the previously-empty Slot 3 (Mike's and Regan's real
+  Slot 1/2 saves were never touched): the final summary's "No" restart
+  path correctly resets the wizard all the way back to a blank Name
+  step; the Elf/Dwarf subrace step correctly gates Silvanesti/
+  Qualinesti/Kagonesti Elf and Hill/Mountain Dwarf by the rolled scores
+  (same inline "your ability scores don't qualify" pattern as the race
+  step, confirmed on both a Dwarf and, on a second roll, an Elf); and
+  the save-slot menu's overwrite branch (List -> occupied slot -> "Continue
+  X?" -> No -> "Start a new character in Slot N? This will overwrite...”
+  -> No safely backs out to the list with the slot untouched) all work
+  correctly. Also incidentally confirmed the delete-confirmation branch
+  (used to clean up the disposable test slot afterward). Still open, by
+  the user's own request this session (skipped deliberately, not
+  forgotten): the Gnome-forced-Tinker path specifically. The same live
+  session also found and fixed a real text-clipping bug in this wizard
+  and the slot menu — see Milestone 193 in `docs/MILESTONES.md`.
 - **Stale startup banner fix** (Milestone 181) — not yet interactively
   confirmed (no desktop/GUI access the session it shipped in).
 - **Combat spellcasting** (Milestone 169) — still open, hardest to force:

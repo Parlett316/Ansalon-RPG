@@ -989,11 +989,39 @@ int runPhase1(const std::string& savePath) {
     // Done before any drawing happens, so the loading screen itself already
     // renders at the maximized size, not a small window that then grows.
     ShowWindow(window.getNativeHandle(), SW_MAXIMIZE);
-    const sf::Vector2u maximizedSize = window.getSize();
-    windowW = maximizedSize.x;
-    windowH = maximizedSize.y;
+    // window.getSize() here is unreliable -- confirmed live (diagnostic
+    // std::cout, since removed) that it still returns the pre-maximize
+    // 1280x800 construction size immediately after ShowWindow returns, on
+    // at least one real environment (SFML 3's WindowImplWin32 apparently
+    // caches its size and doesn't refresh it just because the native
+    // handle was resized out from under it via a raw ShowWindow call
+    // rather than SFML's own resize path). GetClientRect queries the
+    // actual OS window geometry directly, with no SFML-side caching to go
+    // stale.
+    RECT clientRect;
+    GetClientRect(window.getNativeHandle(), &clientRect);
+    windowW = static_cast<unsigned>(clientRect.right - clientRect.left);
+    windowH = static_cast<unsigned>(clientRect.bottom - clientRect.top);
 #endif
     const float mapWidth = static_cast<float>(windowW) - sidebarWidth;
+
+    // Relocated here (originally declared much later, alongside the map
+    // texture) for the same reason drawPickerOverlay itself was moved
+    // earlier, just below -- the save-slot menu and character-creation
+    // wizard draw before that later point too, and without this they ran
+    // under SFML's default view, which is only computed once at
+    // window-creation time (1280x800) and never recomputed on resize/
+    // maximize. drawPickerOverlay's text-wrap budget is computed from the
+    // real (larger) windowW/windowH, so a long line would wrap "correctly"
+    // against a budget the stale default view couldn't actually show,
+    // overflowing off the real visible edge (confirmed live at 2048x1152:
+    // the Weapon Specialization prompt and the slot-menu's overwrite/
+    // delete confirmation titles all clipped mid-word). windowW/windowH
+    // are never reassigned again after the maximize block above, so this
+    // stays correct for the rest of the run.
+    const sf::View uiView(sf::FloatRect({0.f, 0.f},
+                                         sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH))));
+    window.setView(uiView);
 
     sf::Font font;
     if (!font.openFromFile("C:/Windows/Fonts/consola.ttf")) {
@@ -1969,13 +1997,9 @@ int runPhase1(const std::string& savePath) {
     sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
-    // Built explicitly from windowW/windowH rather than window.getDefaultView():
-    // RenderTarget's default view is only computed once, at window-creation
-    // time (1280x800, before the SW_MAXIMIZE resize above), and SFML never
-    // recomputes it on resize -- getDefaultView() would keep returning that
-    // stale, too-small view for the rest of the run.
-    const sf::View uiView(sf::FloatRect({0.f, 0.f},
-                                         sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH))));
+    // uiView itself is declared much earlier now (right after the
+    // SW_MAXIMIZE block) so the save-slot menu and character-creation
+    // wizard can use it too -- see that declaration for why.
 
     sf::Sprite mapSprite(mapTexture);
 

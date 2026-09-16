@@ -7431,6 +7431,71 @@ now fully verified, nothing further outstanding.
      frame (Milestone 191 wired that flash to the player's own swings
      only).
 
+193. **Fixed a real text-clipping bug in the character-creation wizard
+     and save-slot menu (`ansalon_sfml_phase1` only), found live while
+     playtesting Milestone 180.** At the session's real desktop
+     resolution (2048x1152, non-default), the Weapon Specialization
+     prompt's long sentence and the slot-menu's overwrite/delete
+     confirmation titles all clipped mid-word (e.g. "...as you level.
+     Speci" -- cut off mid-"Specialize?").
+
+     Root cause was diagnosed twice, and the first diagnosis was wrong
+     in an instructive way: the initial theory (matching a comment
+     already in the code at the time, `main.cpp:1972-1976`) was that the
+     save-slot menu and creation wizard simply ran before Milestone
+     181's `uiView`/`mapView` fix was constructed, leaving them on
+     SFML's stale, un-resized default view. Relocating `uiView`'s
+     construction earlier (right after the `SW_MAXIMIZE` block) and
+     activating it via `window.setView()` before those screens draw
+     was implemented first -- but a live re-test showed *identical*
+     clipping, proving that theory incomplete. A temporary diagnostic
+     (`std::cout` of `windowW`/`windowH` right after the maximize block,
+     removed before the final build) revealed the real bug: `window.
+     getSize()`, called immediately after `ShowWindow(window.
+     getNativeHandle(), SW_MAXIMIZE)`, was returning the stale
+     *pre-maximize* 1280x800 construction size, not the true maximized
+     size -- even though the window was visibly, genuinely maximized
+     on screen at that point. SFML 3's `WindowImplWin32` apparently
+     caches its size and doesn't refresh it just because the native
+     handle was resized out from under it via a raw Win32 `ShowWindow`
+     call rather than SFML's own resize path. Every `windowW`/`windowH`-
+     derived value in the entire file -- not just the two early
+     screens -- was quietly wrong as a result.
+
+     **Real fix:** replaced the `window.getSize()` call with a direct
+     `GetClientRect(window.getNativeHandle(), &clientRect)` query,
+     which reads the actual OS window geometry synchronously with no
+     SFML-side caching to go stale. Confirmed live: a diagnostic print
+     showed `windowW`/`windowH` jump from the wrong 1280x800 to the
+     correct real values (2560x1351 in this session's environment) once
+     fixed. The `uiView` relocation from the first attempt was kept too
+     (still correct and needed on its own merits -- it's what makes the
+     early screens use a real, live-sized view at all instead of
+     SFML's default one; it just wasn't sufficient by itself while
+     `windowW`/`windowH` themselves were wrong).
+
+     Also worth noting for future sessions: this may well be the same
+     root cause behind the previously-tracked "sidebar text-wrap
+     desync" bug in `docs/CURRENT_WORK.md`'s Line of Sight entry
+     (Milestone 189), which was attributed to a resolution *change*
+     mid-session rather than to `window.getSize()` staleness at
+     startup -- not yet re-confirmed live in combat, but likely fixed
+     by the same change.
+
+     Verified: clean rebuild of all three targets (zero new `/W4`
+     warnings), a launch smoke test. **Confirmed live 2026-09-16**
+     (same session, via SendKeys/screenshot against a disposable test
+     character in the previously-empty Slot 3 -- Mike's and Regan's
+     real Slot 1/2 saves were never touched): the Weapon Specialization
+     prompt's full sentence now renders on one line ending cleanly at
+     "Specialize?", and the slot-menu's delete-confirmation title
+     ("Delete Slot N -- ... This cannot be undone.") now renders in
+     full too. Text also now renders at its correct, smaller proportion
+     of the window instead of appearing artificially enlarged --
+     consistent with the stretch-from-wrong-view-size theory being
+     the right mechanism all along, just triggered by a different root
+     cause than first suspected.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
