@@ -47,6 +47,76 @@ their own resumption notes. Don't resume either parked topic, or the
 console-retirement conversation (`docs/CONSOLE_RETIREMENT_PROPOSAL.md`),
 unprompted — wait for the user.
 
+**A third live-playtest sweep ran 2026-09-16** (same disposable-save
+technique: `save1_copy.txt`/`save2_copy.txt` in `build\Debug`, direct
+`POS`/`MODE`/`ZONE`/`HOURS` save-file edits to teleport/time-skip instead
+of walking every step, then a real relaunch + SendKeys/screenshot per
+scenario — Mike's and Regan's real `save1.txt`/`save2.txt` never opened
+by the running game). Requested as "do all the backlog" — not fully
+exhausted in one sitting (several items are genuinely RNG- or
+travel-heavy), but a large batch closed or newly informed:
+
+- **VIEW command + status tags (Milestone 186) — now fully closed.**
+  Escape cancelled the View picker with zero state change (same HP/dist/
+  log/Movement before and after — confirmed no round consumed). Cast
+  Hold Monster on a Gnoll mid-fight (bog terrain): sidebar showed
+  `Gnoll A -- HP 10/10 dist 1 [Held]` and the View card independently
+  showed `Status: Held` for the same monster — both halves confirmed
+  matching.
+- **Look command (Milestone 182) — now fully closed.** Teleported Mike's
+  copy into Thorbardin's Great Hall (`ZONE thorbardin`, `ZONEPOS 12 4`,
+  the `TIMELINE_ANCHOR H` tile) with the clock set inside the Heroes'
+  real `PRESENCE thorbardin 33 41` window. `'l'` listed all eight canon
+  Heroes present at once; selecting Tanis showed the exact `PRESENCE`
+  line from `data/timeline.txt` verbatim. The anchor mechanism works
+  exactly as designed.
+- **Battlemap walls (Milestone 188) — bog, glacier, and road confirmed
+  live**, each via a real wilderness encounter fought on that terrain
+  (Gnolls/bog, a Ghast/glacier, Baaz Draconians/road): every terrain
+  rendered multiple wall clusters, and bog additionally logged a real
+  `Blocked: cannot walk onto a wall.` refusal. **Real finding, not just
+  an unconfirmed item: `salt_flat` and `savannah` have zero tiles
+  anywhere in the current 480x320 `data/overworld.grid`** (checked by
+  direct script scan, not inference) — so both are structurally
+  impossible to reach through any live encounter, the same standing
+  caveat Milestone 190's notes already recorded for the Blue Dragon
+  specifically, just not previously stated for savannah too. Their
+  `data/battlemaps/salt_flat.txt`/`savannah.txt` files exist and do
+  contain walls (20/37 tiles respectively) but can only ever be reached
+  by a debug/dev save forcing that terrain, not by real play. Still open
+  for the 3 reachable terrains: a diagonal corner-cut against a wall
+  logging `Blocked: can't cut across the wall.` (every wall cluster
+  actually encountered this session was a solid rectangle with no
+  corner-shaped gap) and visible monster AI detouring around one.
+- **Combat item use (Milestone 170) — Brooch's once-per-day gate
+  confirmed.** One combat use (Globe of Invulnerability, absorbed a
+  Gnoll's hit) correctly set the day-gate; a second `USE` attempt the
+  same fight/day showed `You have nothing to use.` Still open: the 2+
+  item picker itself (no test save carries two usable items at once),
+  Staff of Curing, and a monsters-act-first knockout preventing an item
+  from being consumed.
+- **False "ocean" pockets near Qualinesti — reasonably confirmed, not
+  just inferred.** A direct scan of `data/overworld.grid` found zero
+  `~`/`!` tiles within a 30-tile radius of Regan's original `save2.txt`
+  position (176, 214); a live walk north/west from that point produced
+  no spurious `Blocked: cannot walk onto the ocean.` (the walk was cut
+  short by an unrelated real wilderness encounter, fled to end the
+  check). Reasonable to consider this item closed barring a report of a
+  specific spot still showing the bug.
+
+**Thief backstab got a real, unsuccessful attempt** (added
+`COMPANION dessa_corrin` to a disposable save, fought three encounters
+trying to engineer the flanking geometry) — still open, see its own
+Playtest backlog entry below for exactly why it's hard and what to try
+next. Genuinely untouched by this sweep otherwise (needs more session
+time — RNG-heavy, travel-heavy, or a different specific setup):
+same-cell combat-movement retreat collision, combat spellcasting's
+monsters-act-first-then-knockout case, multi-square creatures/Blue
+Dragon, Griffon/Stirge, Astinus's day-gated SUBJECT topics and ask-input
+edge cases, and bigger battlefield's movement-running-out-mid-round
+message and differing monster-AI closing speeds. See each item below,
+unchanged except where struck.
+
 ## Playtest backlog
 
 Implemented and verified via clean rebuild + launch smoke test, but not
@@ -63,20 +133,29 @@ tracks what's still open and how to force it.
   monster/companion AI closing distance at their own differing rates (a
   fast Wraith/Spectre vs. a slow Zombie/Mummy/Boring Beetle, easiest to
   force by fighting each with a fresh character on open terrain).
-- **VIEW command + status tags** (Milestone 186) — still open: a Status
-  line actually appearing on a viewed character's card (needs a
-  debuff/buff active — memorize/cast Slow or Hold Monster and check both
-  the card and the sidebar roster line for the same tag); Escape/Q
-  cancelling the picker without consuming a round.
-- **Battlemap walls + wall-aware pathing** (Milestone 188) — hills-terrain
-  walls reconfirmed live 2026-09-16 (a real wall-clustered hills
-  battlefield fought end-to-end). Still open: a diagonal corner-cut
-  against a wall specifically logging "Blocked: can't cut across the
-  wall." (needs a corner-shaped gap, not a solid rectangle);
-  monster/companion AI visibly detouring around a wall cluster (a
-  held-in-place retry was inconclusive — needs a monster that has to
-  route around, not just toward, a wall); the remaining 5 of 9 terrains
-  (bog, salt flat, savannah, glacier, road).
+- ~~**VIEW command + status tags** (Milestone 186)~~ — confirmed live
+  2026-09-16: casting Hold Monster on a Gnoll (bog terrain) showed
+  `[Held]` on its sidebar roster line and `Status: Held` on its own View
+  card, the same tag both places; Escape on the View picker returned to
+  Idle combat with zero state change (no round consumed). Nothing left
+  open for this milestone.
+- **Battlemap walls + wall-aware pathing** (Milestone 188) — hills
+  terrain reconfirmed live 2026-09-16 (a real wall-clustered hills
+  battlefield fought end-to-end), and bog/glacier/road all newly
+  confirmed live 2026-09-16 too (each a real wilderness encounter on
+  that terrain, every one rendering multiple wall clusters; bog also
+  logged a real `Blocked: cannot walk onto a wall.` refusal). **`salt_flat`
+  and `savannah` are confirmed to have zero tiles anywhere in the current
+  `data/overworld.grid`** (direct script scan, not inference) — genuinely
+  unreachable through any live encounter, not just unconfirmed; their
+  `data/battlemaps/` files exist and do carry walls (20/37 tiles) but can
+  only ever be seen via a debug/dev save forcing that terrain code. Still
+  open, on the 3 reachable terrains: a diagonal corner-cut against a wall
+  specifically logging "Blocked: can't cut across the wall." (every wall
+  cluster actually encountered this session, on any terrain, was a solid
+  rectangle with no corner-shaped gap); monster/companion AI visibly
+  detouring around a wall cluster (a held-in-place retry was inconclusive
+  — needs a monster that has to route around, not just toward, a wall).
 - **Multi-square creatures + Blue Dragon** (Milestone 190) — not yet
   interactively confirmed at all. Needs an Ogre/Troll (1x2), Griffon
   (2x1), or the Blue Dragon (2x2, salt-flat terrain — which doesn't
@@ -87,9 +166,12 @@ tracks what's still open and how to force it.
   opportunity-attack targeting works from any side of it, a wall-blocked
   shot refuses via its nearest visible edge, and the Dragon's lightning
   breath fires ~30% of the time with real damage.
-- **Look command** (Milestone 182) — still open: `'l'` with an overworld
-  NPC/canon Hero actually present, or a `TIMELINE_ANCHOR` tile with one —
-  needs a canon Hero to actually be nearby per the timeline schedule.
+- ~~**Look command** (Milestone 182)~~ — confirmed live 2026-09-16:
+  teleported into Thorbardin's Great Hall (`TIMELINE_ANCHOR H`) with the
+  clock inside the Heroes' real `PRESENCE thorbardin 33 41` window;
+  `'l'` listed all eight canon Heroes at once, and selecting Tanis showed
+  his exact `PRESENCE` line from `data/timeline.txt` verbatim. Nothing
+  left open for this milestone.
 - **Native character creation** (Milestone 180) — **mostly confirmed live
   2026-09-16**, driven via SendKeys/screenshot against a disposable test
   character in the previously-empty Slot 3 (Mike's and Regan's real
@@ -121,17 +203,38 @@ tracks what's still open and how to force it.
   (retry until initiative favors them) on a round where `M` is pressed,
   and confirm a knockout that round means the spell was never actually
   cast (still shows as memorized afterward).
-- **Combat item use** (Milestone 170) — not separately confirmed: the
-  2+-item picker and its Escape/Q cancel, Staff of Curing (no current
-  save carries one), the Brooch's once-per-day gate and companion
-  exclusion, and a monsters-act-first knockout preventing an item from
-  being consumed.
+- **Combat item use** (Milestone 170) — the Brooch's once-per-day gate
+  **confirmed live 2026-09-16**: one in-combat use (Globe of
+  Invulnerability, absorbed a Gnoll's hit) set the gate, and a second
+  `USE` attempt the same fight/day showed "You have nothing to use."
+  Companion exclusion not separately exercised (the only companion
+  present was already knocked out, so never got a turn to try). Still
+  open: the 2+-item picker and its Escape/Q cancel (no current save
+  carries two usable items at once), Staff of Curing (no current save
+  carries one), and a monsters-act-first knockout preventing an item
+  from being consumed.
 - **Thief backstab** (Milestone 171) — still not interactively confirmed
-  (Fighter sweep half is confirmed, see Milestone 171). Needs a
-  Thief-type party member in light-or-no armor (e.g. Dessa Corrin at
-  Haven, once recruited) positioned opposite whoever first attacked an
-  instance; confirm "Backstab! " logs with a visibly larger damage
-  number, and no bonus from any other square or in heavier armor.
+  (Fighter sweep half is confirmed, see Milestone 171), despite a real
+  attempt 2026-09-16 (added `COMPANION dessa_corrin` directly to a
+  disposable save's companion line — deterministic given the id, same as
+  a real recruit — then fought three separate wilderness encounters
+  trying to engineer the geometry). **Genuinely hard to force, not just
+  unlucky**: Dessa's own AI usually swings at a monster (even a miss
+  counts) before the player can reposition to be its first attacker, and
+  once she's `firstAttackerId` on an instance she can never backstab
+  around her own anchor. The one time the player did land the first hit
+  and get positioned opposite Dessa (Mike north, Dessa south of the same
+  Gnoll, confirmed by both sidebar positions and dist), the player's own
+  hit finished the Gnoll before Dessa's turn came around, so there was
+  nothing left to backstab. A 4-Gnoll pile-on afterward got dangerous
+  (player 6/26 HP, Dessa 1/6 HP) and was fled rather than pushed further.
+  Best forcing strategy for next attempt: a single, tougher (higher-HP)
+  monster rather than several weak ones, so the anchor-setting hit
+  doesn't also finish it — and ideally engage it somewhere Dessa is
+  genuinely delayed (behind a wall corner, across a gap) so the player
+  reliably gets the first swing. Incidentally reconfirmed live: the
+  sourced "free strike" opportunity-attack-on-retreat message ("As you
+  pull back, the Gnoll B gets a free strike! It hits you for 4.").
 - **Same-cell combat-movement collision fix** (Milestone 172, both
   builds) — not yet re-confirmed live for the specific case: retreat from
   an adjacent monster on a round where it can close the distance,
@@ -148,10 +251,11 @@ tracks what's still open and how to force it.
   the extension-roll *fail* path (pure chance which branch fires live).
 - **Inventory** (Milestone 165) — the Brooch of Imog's "That can only be
   used in combat." no-op **confirmed live 2026-09-16** (Regan's copied
-  save carried one). Still open: the same no-op for a Webnet or an actual
-  quest item (no quest item currently carried in either real save), and
-  the Brooch's in-combat once-per-day gate/companion exclusion (Milestone
-  170 territory, below).
+  save carried one), and its in-combat once-per-day gate **also confirmed
+  live 2026-09-16** (see Milestone 170, below). Still open: the same
+  outside-combat no-op for a Webnet or an actual quest item (no quest
+  item currently carried in either real save), and the Brooch's companion
+  exclusion specifically.
 - **152** — Fireball/Delayed Blast Fireball's area-damage math is proven
   on the SFML build. Still open, low priority: walking the *console*
   (`ansalon_rpg`) build's own `pickTarget` epicenter-picking UI, which
@@ -169,12 +273,16 @@ tracks what's still open and how to force it.
   190 below) but triggered a Bugbear encounter instead. Griffon needs
   `MIN_TOWN_DISTANCE 35`, genuinely far wilderness travel — try again
   further from any town.
-- **False "ocean" pockets inside Qualinesti/Silvanesti forest** — fixed
+- ~~**False "ocean" pockets inside Qualinesti/Silvanesti forest**~~ — fixed
   (see `docs/MAP_NOTES.md`'s "Fixing false 'ocean' pockets inside
-  forest"), not yet walked live. Worth deliberately walking north and
-  west from Regan's saved position (`save2.txt`, `POS 176 214`), and
-  generally through Qualinesti near Bianost/Dark Tower, to confirm no
-  more spurious "Blocked: cannot walk onto the ocean." Data-only change —
+  forest"), and **reasonably confirmed live 2026-09-16**: a direct script
+  scan of `data/overworld.grid` found zero `~`/`!` tiles within a 30-tile
+  radius of Regan's original saved position (`save2.txt`, `POS 176 214`),
+  and a live walk north/west from that point (disposable copy) produced
+  no spurious "Blocked: cannot walk onto the ocean." (cut short by an
+  unrelated real wilderness encounter, fled to end the check cleanly).
+  Consider this closed barring a future report of a specific spot still
+  showing the bug. Data-only change —
   applies to `ansalon_rpg` too, not just the SFML build.
 
 ## Parked: Dragonlance Adventure modules as full quests
