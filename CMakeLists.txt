@@ -187,9 +187,10 @@ endif()
 # References/dragonlancemap2.png as plain relative literals (no
 # executable-relative resolution like ansalon_rpg's -- see
 # docs/ARCHITECTURE.md's SFML section), so those need to actually exist next
-# to the built exe. Only dragonlancemap2.png is copied out of References/, not
-# the whole folder -- that folder also holds 460MB+ of reference PDFs/scratch
-# art never read at runtime, same one-file convention
+# to the built exe. Only dragonlancemap2.png and the Gold Box Games.ttf UI
+# font are copied out of References/, not the whole folder -- that folder
+# also holds 460MB+ of reference PDFs/scratch art never read at runtime,
+# same one-file-at-a-time convention
 # tools/package_playable_release.ps1 already uses for external distribution.
 # Running from the repo root (this
 # target's original convention) still works too, unaffected.
@@ -209,4 +210,7 @@ add_custom_command(TARGET ansalon_sfml_phase1 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
             "${CMAKE_SOURCE_DIR}/References/dragonlancemap2.png"
             "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/References/dragonlancemap2.png"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_SOURCE_DIR}/References/Gold Box Games.ttf"
+            "$<TARGET_FILE_DIR:ansalon_sfml_phase1>/References/Gold Box Games.ttf"
 )

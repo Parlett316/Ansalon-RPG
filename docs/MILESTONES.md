@@ -7602,6 +7602,248 @@ now fully verified, nothing further outstanding.
      `save1.txt`/`save2.txt` were never opened by the running game.
      **Confirmed live this session.**
 
+196. **Real Gold Box UI font, replacing the Consolas placeholder
+     (`ansalon_sfml_phase1` only), whole build, not just character
+     creation.** Continuation of the same DQoK-inspired pass (194, 195).
+     `sfml_phase1/main.cpp` declares exactly one `sf::Font font` for the
+     entire running application (`main.cpp:1026`) -- every screen
+     (overworld, zones, combat, dialogue, shop, inventory, spellbook,
+     journal, help, the save-slot menu, the character sheet, and
+     character creation) draws text through that single object, so this
+     is a whole-build re-skin, not a character-creation-scoped change.
+     It previously loaded `C:/Windows/Fonts/consola.ttf` as an explicit
+     stand-in ("until this project has its own"); `References/Gold Box
+     Games.ttf`, a Gold Box-style bitmap font the user had already added
+     to `References/` (present since 2026-09-09, never wired in), is now
+     that font. Swapped the `openFromFile` path and updated the
+     load-failure message to match the existing fail-fast pattern used
+     for `References/dragonlancemap2.png` (print, `return 1`, no silent
+     fallback).
+
+     Because `ansalon_sfml_phase1` reads `References/` content as plain
+     relative literals rather than resolving executable-relative (see
+     `docs/ARCHITECTURE.md`'s SFML section), the font needed the same
+     one-file `POST_BUILD` copy treatment `dragonlancemap2.png` already
+     has: added a second `COMMAND ${CMAKE_COMMAND} -E copy` to the
+     existing `add_custom_command(TARGET ansalon_sfml_phase1 POST_BUILD
+     ...)` block in `CMakeLists.txt` so `References/Gold Box Games.ttf`
+     lands next to the built exe automatically, same as before.
+     `tools/package_playable_release.ps1` (external-distribution
+     packaging, separate from the CMake post-build step) got the matching
+     treatment too -- a `$fontSrc` existence check alongside the existing
+     `$mapSrc` one, and a second `Copy-Item` into the staged `References/`
+     folder -- so a packaged release for an outside recipient also carries
+     the font instead of failing fast on first launch.
+
+     Verified: clean rebuild of `ansalon_sfml_phase1` (`--clean-first`,
+     zero new `/W4` warnings), then real visual confirmation via
+     SendKeys/screenshot this session (desktop/GUI access confirmed
+     working) against the previously-empty Slot 3: the save-slot menu,
+     and the character-creation wizard's Name, RollPool (6-line roll
+     list + total), AssignAbility, and PickRace (sidebar + lettered list
+     together, the most layout-dense screen tested) all screenshotted
+     showing the new font rendering cleanly -- no clipping, no overlap
+     with the panel chrome or the sidebar divider, letters and body text
+     both legible at their existing character sizes. The session ended
+     there (never advanced past PickRace, never reached Summary); Slot 3
+     stayed empty (`save3.txt` never created), Mike's and Regan's real
+     `save1.txt`/`save2.txt` were never opened. **Not yet confirmed**:
+     the ~22 other `drawPickerOverlay` call sites this same font object
+     feeds (dialogue, shop, inventory, spellbook, journal, help), the
+     character sheet, and the combat HUD -- all share the identical
+     `sf::Font`/`drawAt`/`drawLine`/`wrapToPixelWidth` primitives already
+     proven correct on the screens above, so a rendering break on any of
+     them would be surprising, but none were individually screenshotted
+     this session. Added to `docs/CURRENT_WORK.md`'s Playtest backlog.
+
+197. **Fixed a real sidebar text-overflow bug found live right after
+     Milestone 196 shipped (`ansalon_sfml_phase1` only).** The user kept
+     playtesting past Milestone 196's own session, on their own keyboard,
+     and reached the Summary step as a Human Fighter/Knight of the Crown
+     -- something Milestone 195's original verification pass never
+     happened to combine (that pass used a Cleric, no Knight order) -- and
+     screenshotted a real bug: the sidebar's "Alignment: Lawful Good" and
+     "Knight of the Crown" lines rendered past the 280px sidebar column
+     (`kCreationSidebarWidth`, `main.cpp:1569`) and visually overlapped the
+     main panel's own "A) Yes"/"B) No" text sharing the same row.
+
+     Root cause: `drawCreationOverlay`'s sidebar `drawSideLine` lambda
+     (`main.cpp:1587`, added in Milestone 195) drew each line's raw text
+     at a fixed X with no width constraint, unlike the main content column
+     right next to it, which already wraps every line through
+     `wrapToPixelWidth`. Short lines ("Race: Human", "Class: Cleric") never
+     exceeded 280px, so the bug stayed latent through Milestone 195's own
+     verification pass; the longer "Alignment: <name>" combined with a
+     "Knight of the <order>" line was long enough to cross the divider.
+     Fix: `drawSideLine` now runs each line through the same
+     `wrapToPixelWidth` primitive, wrapping to `kCreationSidebarWidth -
+     kSheetMarginX - 12.f` (leaving a small gap before the divider) and
+     advancing `sy` per wrapped line, same pattern the main content's
+     `drawLine` already uses for its own multi-line items.
+
+     Verified: clean rebuild (`--clean-first`, zero new `/W4` warnings --
+     required closing the user's own still-open test window first, since
+     Windows held the exe file locked; confirmed no `save3.txt` existed
+     and `save1.txt`/`save2.txt` timestamps were untouched before closing
+     it), then a live SendKeys/screenshot reproduction of the exact
+     reported scenario against the previously-empty Slot 3: Human Fighter,
+     Lawful Good, accepted the Knights of Solamnia offer as a Knight of
+     the Crown, declined Weapon Specialization, reached Summary --
+     "Alignment: Lawful Good" and "Knight of the Crown" both now wrap
+     cleanly onto their own line(s) inside the sidebar column with no
+     overlap into the main panel's Yes/No prompt. Declined at Summary
+     (`B`/No); Slot 3 stayed empty (`save3.txt` never created), Mike's and
+     Regan's real `save1.txt`/`save2.txt` were never opened. **Confirmed
+     live this session.**
+
+198. **Follow-up audit for the same class of bug across the rest of
+     `ansalon_sfml_phase1`, plus visual font confirmation on two more
+     screens (`ansalon_sfml_phase1` only).** Asked to "take a gander" at
+     other screens after Milestone 197's sidebar-overflow fix, rather than
+     wait for the user to find the next one live. Read every local
+     text-drawing lambda in `main.cpp` (`drawPanelChrome`,
+     `drawPickerOverlay`, `drawCreationOverlay`, `drawCharacterSheetOverlay`,
+     `drawDialogueOverlay`, and the combat HUD's `drawLine`/
+     `drawWrappedLine`) rather than guessing from screenshots alone.
+
+     Found one real, structurally-identical latent bug: the combat
+     sidebar's companion roster line (`main.cpp:7079-7084`) drew its
+     `<name> -- HP X/Y  AC Z [(knocked out)]` line with plain `drawLine`,
+     unwrapped, while the near-identical monster roster line three lines
+     below it already used `drawWrappedLine` -- specifically because this
+     exact bug (a long dynamic line running past the sidebar's own edge)
+     had already bitten this file twice before, both documented in
+     existing comments: the command-row prompt lines (found live
+     2026-09-11) and the monster roster's `dist N` suffix (Milestone 185).
+     The companion line was the one spot the fix never reached. Switched
+     it to `drawWrappedLine`, matching its neighbor exactly.
+
+     Confirmed everything else already wraps correctly by reading the
+     code, not assuming: `drawPickerOverlay` (the shared 26-call-site
+     primitive covering shop/inventory/spellbook/journal/help/save-slot
+     menu) already wraps title/items/message through `wrapToPixelWidth`;
+     `drawDialogueOverlay` wraps its body text against the full window
+     width (not a narrow column, so much lower risk than the sidebar
+     ever was); the character sheet's two stat columns are each roughly
+     half the window wide, far short of what any current field value
+     reaches.
+
+     Verified: clean rebuild (`--clean-first`, zero new `/W4` warnings --
+     had to close the user's own already-running window first, same
+     file-lock situation as Milestone 197, reconfirmed no save was ever
+     written before closing it), then live SendKeys/screenshot on a
+     disposable copy of Mike's real `save1.txt` (`save1_copy.txt`,
+     deleted afterward -- the original's mtime confirmed unchanged
+     start to finish): the character sheet (`C`) and inventory (`I`)
+     screens both confirmed rendering the new Gold Box font cleanly, no
+     clipping, closing two of the three items Milestone 196 had left open
+     (dialogue was already covered by code review above; shop/spellbook/
+     journal/help/the combat HUD were not reached this session -- shop
+     specifically needs a town visit, and combat needs a live encounter,
+     which 40 SendKeys movement steps didn't trigger and wasn't worth
+     grinding for further). **The companion-line fix itself is
+     code-reviewed and pattern-matched against its already-proven
+     neighbor, not yet witnessed in an actual fight** -- Mike's real save
+     does carry a recruited companion (Bren Alder, currently knocked out
+     in that save, which would exercise the longest variant of the line:
+     the `" (knocked out)"` suffix) so a real combat encounter would
+     settle it decisively; added to `docs/CURRENT_WORK.md`'s Playtest
+     backlog rather than claimed as confirmed.
+
+199. **DQoK-style combat HUD redesign (`ansalon_sfml_phase1` only): the
+     persistent roster+log sidebar replaced with a single-unit stat card
+     and a bottom command/message bar.** The user asked directly for this
+     as the next DQoK-fidelity pass after 194-198: "get rid of the right
+     status bar and copy what Dark Queen of Krynn does" -- a per-selected-
+     unit card plus Aim/Move/Use/Cast bottom bar, and drop the battle log
+     entirely. Grounded in real evidence, not memory: pulled up
+     `References/BattleFrames_extracted/frame_*.png` (the same recorded
+     DQoK gameplay session Milestone 186 already sourced) and confirmed,
+     across ~15 sampled frames, the exact layout -- one unit's card
+     (name/HITPOINTS/AC/weapon) top-right, a full-width bottom bar with
+     either the verb menu or a contextual message, no persistent roster or
+     log anywhere.
+
+     Since every event in a round (the player's action, each companion's,
+     each monster's) pushes its own `combatSession.log` line -- a round
+     can produce 4-6 at once -- dropping the log outright would silently
+     lose most of what happened each round. Asked the user how messages
+     should surface instead of assuming: **"one message at a time, paced"**
+     -- classic Gold Box narration, each event its own beat with a "press
+     Enter to continue" gate -- over a compact multi-line alternative.
+     Planned properly (`EnterPlanMode`, a Plan sub-agent for the
+     architecture, both spot-checked against the real code afterward
+     rather than trusted blind) given the scope: this touches combat's
+     core render loop and input dispatch, not a contained visual tweak.
+
+     **Mechanism** (`sfml_phase1/main.cpp`): round resolution itself is
+     completely unchanged -- every `combatSession.log.push_back` call, every
+     attack/spell/companion/monster function, byte-for-byte the same. Only
+     presentation changed. Three real state-transition functions
+     (`combatWrapUpRound`, `combatKnockedOutBy`, `combatBeginFlee`) now flag
+     `roundJustConcluded` right after their own unchanged `uiState`
+     assignment; six action entry points (`combatBeginPlayerAttack`,
+     `combatCommitSpellChoice`, `combatCommitItemChoice`, `combatEndTurn`,
+     `combatBeginFlee`, `combatBeginPlayerMove`) snapshot
+     `actionLogStart = log.size()` as their first statement.
+     `combatConfirmTarget` deliberately does **not** re-snapshot -- caught
+     during implementation that `combatCommitItemChoice`'s Webnet case
+     pushes its result message *before* opening the target picker, so
+     re-arming in `combatConfirmTarget` would have silently dropped that
+     line from the replay; it now inherits whatever the opening function
+     already snapshotted. A new wrapper, run once after the input switch,
+     diverts a concluded round into the existing `AwaitContinue` state
+     (previously only combat-start's "X appears!" beat, never revisited
+     until now) with the queued range to replay; the dismiss handler
+     advances one queued line per Enter until the real target state
+     (Idle/Won/Lost/Fled) applies. A plain action that never calls one of
+     the three transition functions (a refused move, "You have no movement
+     left this round.") is correctly never paced -- it shows immediately as
+     a live, un-gated status line instead (`combatSession.log.back()`,
+     drawn above the Idle command row), which is also what keeps that kind
+     of single-line refusal visible now that the always-on log block is
+     gone.
+
+     **Layout**: a new `combatMapView` (distinct from the shared `mapView`
+     Overworld/Zone also use, deliberately untouched) reserves a new
+     `kCombatBottomBarHeight` (140px, invented/flagged) strip along the
+     bottom, combat-only. `combatConfirmView`'s stat-line body was factored
+     into a standalone `combatBuildCardLines` lambda, reused by three
+     places: `View`'s own existing card (unchanged behavior), the new
+     persistent player card, and a new secondary target card shown below it
+     while `PickingTarget` is open (DQoK's own "a second small card appears
+     below it" idiom) -- no new stat-gathering logic, just reused data.
+
+     **Hit the already-documented DPI-virtualized-screenshot gotcha while
+     verifying this** (`docs/GOTCHAS.md`'s "Live/interactive testing via
+     desktop automation" section) -- live captures of both Overworld and
+     Combat initially appeared to show the map covering the entire window
+     with no sidebar/HUD at all, byte-identical before and after input,
+     looking exactly like a real rendering bug (and reproduced on the very
+     first attempt, before this milestone's code existed, which is what
+     ruled this milestone out as the cause and pointed at the capture
+     tooling instead). `SetProcessDPIAware()` in the capture script, per
+     the existing gotcha entry, fixed it immediately.
+
+     Verified live end-to-end with the corrected capture method, via
+     SendKeys/screenshot on a disposable copy of Mike's real `save1.txt`
+     (`save1_copy.txt`, deleted after; original mtime unchanged) teleported
+     to the same deep-mountain-cluster tile Milestone 198 used to force an
+     encounter: a real Black Bear fight from arrival through victory --
+     "A Black Bear appears!" (paced, arrival beat) -> Idle (live status
+     line + relabeled command row `AIM (Enter) MOVE (wasd) CAST (m) USE
+     (i) VIEW (v) FLEE (f) DONE (Space)` + movement counter, all rendering
+     cleanly) -> "The Black Bear closes in." (paced, monster movement) ->
+     "You hit the Black Bear for 7." and "You miss the Black Bear."
+     (each its own paced beat) -> the player's HP dropping live on the
+     persistent card (7/26 -> 6/26) as the bear's own counter-attacks
+     landed -> "You defeated the Black Bear." -> cleanly back on the
+     Overworld with HP/day/time all correctly preserved. No clipping, no
+     overlap, at any point. **Not yet witnessed live**: `PickingTarget`'s
+     secondary target card (needs a 2+-monster encounter, this fight was a
+     solo Black Bear) and the `Lost`/`Fled` end states -- added to
+     `docs/CURRENT_WORK.md`'s Playtest backlog.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

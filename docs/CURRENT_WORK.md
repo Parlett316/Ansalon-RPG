@@ -1,20 +1,37 @@
 # Current work
 
-**Nothing in flight.** Milestone 195 (character creation's three more
-DQoK-inspired UX pieces -- persistent stat sidebar, letter-keyed
-selection, Gold Box-style roll screen, all `ansalon_sfml_phase1` only)
-shipped and was confirmed live 2026-09-16 in the same session it was
-built: a full SendKeys/screenshot pass through Name -> RollPool (letter
-reroll confirmed) -> AssignAbility -> PickRace -> RaceAdjustments ->
-PickClass -> PickAlignment -> Summary -> declined/restart, against the
-previously-empty Slot 3. Mike's and Regan's real `save1.txt`/`save2.txt`
-were never opened; no `save3.txt` was created. See Milestone 195 in
-`docs/MILESTONES.md` for the full writeup. This was the second DQoK-
-inspired pass -- Milestone 194 (panel chrome) was the first -- and both
-came from the user live-driving *Dark Queen of Krynn* (SSI Gold Box,
-DOSBox) for UX ideas; a bigger, explicitly-parked "multiple player-built
-party members" question came up in that same original conversation and
-was **not** pursued -- don't raise it unprompted.
+**Nothing in flight.** Milestone 199 (DQoK-style combat HUD redesign,
+`ansalon_sfml_phase1` only) shipped 2026-09-16: the combat screen's
+always-on right-hand sidebar (full party+monster roster, 10-line scrolling
+log) is replaced with a single-unit stat card (defaults to the player;
+`View`/`PickingTarget` show others) and a full-width bottom command/
+message bar, matching real DQoK gameplay frames already in the repo
+(`References/BattleFrames_extracted/`). Combat messages are now paced one
+at a time (classic Gold Box narration, "press Enter to continue" per
+event) rather than dumped into a log -- round-resolution logic itself is
+completely unchanged, only presentation. Planned via `EnterPlanMode` +
+a Plan sub-agent given the scope (combat's core render/input loop), both
+spot-checked against the real code before implementing.
+
+Verified live end-to-end via SendKeys/screenshot on a disposable
+`save1_copy.txt` (deleted after; Mike's and Regan's real saves untouched):
+a full Black Bear fight, arrival through victory, with hit/miss/movement
+messages all pacing correctly and HP tracking live on the card. **Not yet
+witnessed live**: `PickingTarget`'s secondary target card (needs a
+2+-monster encounter) and the `Lost`/`Fled` end states. See Milestone 199
+in `docs/MILESTONES.md` for the full writeup, and the Playtest backlog
+below.
+
+This is the fourth DQoK-inspired pass this session -- Milestone 194 (panel
+chrome), 195 (character-creation sidebar/letters/roll-screen), 196 (real
+Gold Box font, whole build), 197 (fixed a real sidebar-wrap bug 195
+exposed), and 198 (audited the rest of the build for the same bug class,
+fixed one more instance in the old combat sidebar) all came first -- see
+each in `docs/MILESTONES.md`. All were prompted by the user live-driving
+*Dark Queen of Krynn* (SSI Gold Box, DOSBox) for UX ideas. A bigger,
+explicitly-parked "multiple player-built party members" question came up
+in that same original conversation and was **not** pursued -- don't raise
+it unprompted.
 
 The quest system's engine-confirmation checklist
 closed 2026-09-15: all three tracked quests (`road_wolves`, `a_widows_due`,
@@ -140,6 +157,27 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
+- **Gold Box UI font** (Milestone 196) — confirmed live on the save-slot
+  menu, the full character-creation wizard through Summary (Milestone 197),
+  the character sheet + inventory screens (Milestone 198), and now the
+  combat HUD too (Milestone 199's live Black Bear fight). Not yet
+  individually screenshotted: shop, spellbook, journal, help — same shared
+  `sf::Font`/`drawPickerOverlay`/`wrapToPixelWidth` primitives already
+  proven correct on every screen checked so far, so low risk, but worth a
+  quick look next time any of those screens comes up live.
+- ~~**Combat sidebar companion-line wrap fix** (Milestone 198)~~ — moot:
+  Milestone 199 deleted the entire old combat sidebar (roster + log) this
+  fix lived in, replacing it with a per-unit card + bottom bar. Companion
+  HP is no longer shown passively at all (by design, see Milestone 199) —
+  nothing left to verify here.
+- **DQoK-style combat HUD** (Milestone 199) — confirmed live end-to-end
+  against a solo Black Bear: arrival, Idle command bar, paced hit/miss/
+  movement messages, live HP tracking on the player card, and a clean
+  Won transition back to the Overworld. Still open: `PickingTarget`'s
+  secondary target card (needs a 2+-monster encounter — a group monster
+  like Kobolds/Gnolls/Skeletons would force it) and the `Lost`/`Fled` end
+  states (Lost needs a losing fight or a debug/dev save at low HP; Fled
+  is just `f` from Idle, cheap to force next time any encounter comes up).
 - **Bigger battlefield + real movement** (Milestone 185) — a real
   wilderness encounter (3 Bugbears, hills terrain, spawned at dist 24)
   was fought live 2026-09-16 and confirmed the bigger-battlefield spawn

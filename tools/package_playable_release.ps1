@@ -14,8 +14,8 @@
     longer bundles ansalon_rpg.exe or a separate "create in the console,
     then switch to the graphical build" step the way it used to.
 
-    ansalon_sfml_phase1 resolves data/*.txt and
-    References/dragonlancemap2.png relative to process CWD -- no batch-file
+    ansalon_sfml_phase1 resolves data/*.txt, References/dragonlancemap2.png,
+    and References/Gold Box Games.ttf relative to process CWD -- no batch-file
     launcher needed for that (unlike the old package_sfml_demo.ps1, which
     needed RunDemo.bat for two reasons that are both gone now: supplying
     the save-path argument, no longer required since character creation
@@ -120,8 +120,10 @@ $sfmlExePath = Join-Path $releaseDir "ansalon_sfml_phase1.exe"
 $dataSrc = Join-Path $repoRoot "data"
 $assetsSrc = Join-Path $repoRoot "assets"
 $mapSrc = Join-Path $repoRoot "References\dragonlancemap2.png"
+$fontSrc = Join-Path $repoRoot "References\Gold Box Games.ttf"
 if (-not (Test-Path $sfmlExePath)) { throw "Build succeeded but $sfmlExePath is missing" }
 if (-not (Test-Path $mapSrc)) { throw "$mapSrc is missing" }
+if (-not (Test-Path $fontSrc)) { throw "$fontSrc is missing" }
 
 Write-Host "Staging $stageDir ..."
 if (Test-Path $stageDir) { Remove-Item -Recurse -Force $stageDir }
@@ -145,6 +147,7 @@ if (Test-Path $assetsSrc) {
 
 New-Item -ItemType Directory -Force -Path (Join-Path $stageDir "References") | Out-Null
 Copy-Item $mapSrc -Destination (Join-Path $stageDir "References\dragonlancemap2.png")
+Copy-Item $fontSrc -Destination (Join-Path $stageDir "References\Gold Box Games.ttf")
 
 Set-Content -Path (Join-Path $stageDir "VERSION.txt") -Value "AnsalonRPG-Playable build $version"
 

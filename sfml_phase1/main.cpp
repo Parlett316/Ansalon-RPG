@@ -118,6 +118,15 @@ constexpr int kCombatGridWidth = 50;
 constexpr int kCombatGridHeight = 25;
 constexpr float kCombatTilePx = 56.f;
 
+// DQoK-style combat HUD (Milestone 199): a full-width bottom command/message
+// bar, combat-only -- see combatMapView below for why the map's own viewport
+// shrinks to make room for it rather than overlapping. Invented, unverified
+// layout number, same "flagged, not sourced" idiom as kAiStepAnimationMs
+// below -- sanity-check live once built (the bar has to fit an optional
+// status line, a wrapped paced message + its continue prompt, and the Idle
+// command row + movement line, several of which can wrap to 2 lines).
+constexpr float kCombatBottomBarHeight = 140.f;
+
 // Pluralizes a monster's display name for the group-arrival/victory summary
 // lines -- copied verbatim from game::pluralMonsterName (GameLoop.cpp),
 // which isn't itself exported (GameLoop.cpp isn't linked into this target).
@@ -806,6 +815,32 @@ struct CombatSession {
     // read-only drawPickerOverlay card (selectedIndex -1) while
     // uiState == ViewingCard.
     std::vector<std::string> viewCardLines;
+
+    // Message-pacing queue (DQoK-style combat HUD, Milestone 199). A single
+    // keypress can synchronously push several log lines below (the player's
+    // own action, each companion's, each monster's, a death/knockout) before
+    // the round-ending function decides Idle/Won/Lost/Fled -- actionLogStart/
+    // roundJustConcluded let that internal resolution run completely
+    // unchanged, while the input dispatch intercepts the result afterward
+    // and replays [actionLogStart, log.size()) one line per Enter press
+    // before ever applying the real target state. actionLogStart is re-armed
+    // (to log.size()) and roundJustConcluded reset false as the first
+    // statement of every entry point that can end a round (see
+    // combatBeginPlayerAttack/combatConfirmTarget/combatCommitSpellChoice/
+    // combatCommitItemChoice/combatEndTurn/combatBeginFlee/
+    // combatBeginPlayerMove); roundJustConcluded is set true by
+    // combatWrapUpRound/combatKnockedOutBy/combatBeginFlee right after their
+    // own (unchanged) uiState assignment.
+    size_t actionLogStart = 0;
+    bool roundJustConcluded = false;
+    // Set once roundJustConcluded fires (by the wrapper just after the input
+    // switch): which log lines to replay, and which real CombatUiState to
+    // apply once pendingMessageIndex reaches pendingMessageEnd.
+    // combatStartEncounter sets these three by hand too, for the same "X
+    // appears!" beat this used to hardcode as AwaitContinue's struct default.
+    size_t pendingMessageIndex = 0;
+    size_t pendingMessageEnd = 0;
+    CombatUiState pendingTargetState = CombatUiState::Idle;
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
@@ -1024,9 +1059,8 @@ int runPhase1(const std::string& savePath) {
     window.setView(uiView);
 
     sf::Font font;
-    if (!font.openFromFile("C:/Windows/Fonts/consola.ttf")) {
-        std::cerr << "Failed to load placeholder UI font (C:/Windows/Fonts/consola.ttf) -- "
-                     "this build uses a system font as a stand-in until this project has its own.\n";
+    if (!font.openFromFile("References/Gold Box Games.ttf")) {
+        std::cerr << "Failed to load References/Gold Box Games.ttf\n";
         return 1;
     }
 
@@ -1584,13 +1618,25 @@ int runPhase1(const std::string& savePath) {
                         divider.setFillColor(kPanelBorderInner);
                         window.draw(divider);
 
+                        // Wrapped to fit inside the sidebar column, not drawn
+                        // raw -- a long line ("Alignment: Lawful Good",
+                        // "Knight of the Crown") at the previous unwrapped
+                        // width ran straight past the divider and overlapped
+                        // the main panel's own text on the same row (seen
+                        // live on the Summary screen, a Knight character).
+                        // Same wrapToPixelWidth primitive drawLine below
+                        // already uses for the main content.
                         float sy = 40.f;
+                        const float kSidebarTextWidthPx = kCreationSidebarWidth - kSheetMarginX - 12.f;
                         auto drawSideLine = [&](const std::string& text, sf::Color color, unsigned size) {
-                            sf::Text sfText(font, text, size);
-                            sfText.setFillColor(color);
-                            sfText.setPosition(sf::Vector2f(kSheetMarginX, sy));
-                            window.draw(sfText);
-                            sy += static_cast<float>(size) + 8.f;
+                            for (const std::string& wrappedLine :
+                                 wrapToPixelWidth(font, size, text, kSidebarTextWidthPx)) {
+                                sf::Text sfText(font, wrappedLine, size);
+                                sfText.setFillColor(color);
+                                sfText.setPosition(sf::Vector2f(kSheetMarginX, sy));
+                                window.draw(sfText);
+                                sy += static_cast<float>(size) + 8.f;
+                            }
                         };
                         drawSideLine("Character", kPanelHeaderColor, kSheetHeaderCharSize);
                         sy += 6.f;
@@ -2231,6 +2277,20 @@ int runPhase1(const std::string& savePath) {
     sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
+    // Combat-only counterpart to mapView, reserving kCombatBottomBarHeight
+    // along the bottom for the new DQoK-style command/message bar (Milestone
+    // 199) -- a separate view rather than resizing mapView itself, since
+    // mapView is shared by Overworld/Zone too and neither of those gets a
+    // bottom bar. The camera-clamp math in combatAnimateAiStep and the main
+    // combat draw branch both read this view's own size, so a focused token
+    // near the bottom of the 50x25 grid clamps against the real unobstructed
+    // height instead of the bar's dead zone.
+    sf::View combatMapView(sf::Vector2f(0.f, 0.f),
+                            sf::Vector2f(mapWidth, static_cast<float>(windowH) - kCombatBottomBarHeight));
+    combatMapView.setViewport(sf::FloatRect(
+        {0.f, 0.f}, {mapWidth / static_cast<float>(windowW),
+                     (static_cast<float>(windowH) - kCombatBottomBarHeight) / static_cast<float>(windowH)}));
+
     // uiView itself is declared much earlier now (right after the
     // SW_MAXIMIZE block) so the save-slot menu and character-creation
     // wizard can use it too -- see that declaration for why.
@@ -2255,6 +2315,16 @@ int runPhase1(const std::string& savePath) {
     sf::RectangleShape sidebarBg(sf::Vector2f(sidebarWidth, static_cast<float>(windowH)));
     sidebarBg.setPosition(sf::Vector2f(mapWidth, 0.f));
     sidebarBg.setFillColor(sf::Color(20, 20, 28));
+
+    // Combat-only bottom command/message bar background (Milestone 199) --
+    // spans the full window width, so it deliberately overlaps the bottom
+    // kCombatBottomBarHeight strip of sidebarBg's own rectangle (same fill
+    // color, harmless) and the bottom strip combatMapView's shrunk viewport
+    // already excludes the map from drawing into. Drawn after sidebarBg,
+    // same frame, only ever inside the combatSession.active branch.
+    sf::RectangleShape combatBottomBarBg(sf::Vector2f(static_cast<float>(windowW), kCombatBottomBarHeight));
+    combatBottomBarBg.setPosition(sf::Vector2f(0.f, static_cast<float>(windowH) - kCombatBottomBarHeight));
+    combatBottomBarBg.setFillColor(sf::Color(20, 20, 28));
 
     // Combat grid + marker shapes -- same "declare once, mutate per cell/
     // entity" convention as zoneTileShape/locationMarker above. These stay
@@ -3590,6 +3660,7 @@ int runPhase1(const std::string& savePath) {
         }
         pushLog("You were knocked out by the " + cause + " and woke up back in " + refugeName + ".");
         combatSession.uiState = CombatUiState::Lost;
+        combatSession.roundJustConcluded = true;
     };
 
     // Checks the player's HP after any step that could have dropped it
@@ -3652,13 +3723,13 @@ int runPhase1(const std::string& savePath) {
         const float combatPxH = static_cast<float>(kCombatGridHeight) * kCombatTilePx;
         const float focusPxX = (static_cast<float>(focus.x) + 0.5f) * kCombatTilePx;
         const float focusPxY = (static_cast<float>(focus.y) + 0.5f) * kCombatTilePx;
-        const sf::Vector2f viewSize = mapView.getSize();
+        const sf::Vector2f viewSize = combatMapView.getSize();
         const float halfW = viewSize.x / 2.f;
         const float halfH = viewSize.y / 2.f;
         const float camX = std::clamp(focusPxX, halfW, std::max(halfW, combatPxW - halfW));
         const float camY = std::clamp(focusPxY, halfH, std::max(halfH, combatPxH - halfH));
-        mapView.setCenter(sf::Vector2f(camX, camY));
-        window.setView(mapView);
+        combatMapView.setCenter(sf::Vector2f(camX, camY));
+        window.setView(combatMapView);
 
         // Paints over exactly the currently-visible map region before
         // redrawing it, rather than window.clear() (which would also blank
@@ -3903,6 +3974,7 @@ int runPhase1(const std::string& savePath) {
                         ? ("You defeated the " + pluralMonsterName(combatSession.monster.name) + ".")
                         : ("You defeated the " + combatSession.monster.name + "."));
             combatSession.uiState = CombatUiState::Won;
+            combatSession.roundJustConcluded = true;
             return;
         }
         if (combatCheckPlayerDown(combatSession.monster.name)) return;
@@ -3912,6 +3984,7 @@ int runPhase1(const std::string& savePath) {
         combatSession.movementRemaining = character::movementSquares(state.character);
         combatSession.initiativeRolledThisRound = false;
         combatSession.uiState = CombatUiState::Idle;
+        combatSession.roundJustConcluded = true;
     };
 
     // id == 0 is the player; id == N (N >= 1) is state.companions[N-1] --
@@ -4515,6 +4588,8 @@ int runPhase1(const std::string& savePath) {
     // behavior (its own castSpell() call is inside playerCasts, itself
     // gated on the player still being conscious, GameLoop.cpp:3017-3020).
     auto combatCommitSpellChoice = [&](const std::string& spellId) {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         character::SpellCastResult result = character::castSpell(state.character, spellId);
         if (!result.success) { // defensive -- shouldn't happen, combatBeginCast already checked
@@ -4632,6 +4707,8 @@ int runPhase1(const std::string& savePath) {
     // real console behavior combatCommitSpellChoice already established for
     // Cast.
     auto combatCommitItemChoice = [&](character::CombatItemKind kind) {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         const long long today = state.hoursElapsed / 24;
         switch (kind) {
@@ -4727,6 +4804,8 @@ int runPhase1(const std::string& savePath) {
     // the round (a wasted swing costs your action just like a real one);
     // exactly 1 resolves immediately, 2+ opens the in-frame picker.
     auto combatBeginPlayerAttack = [&]() {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         bool hasRangedWeapon = state.character.weaponName == character::kLightCrossbowName;
         bool adjacentToAny = false;
@@ -4853,6 +4932,8 @@ int runPhase1(const std::string& savePath) {
     // move or attack of a round actually rolls initiative/runs the
     // monsters' turn.
     auto combatBeginPlayerMove = [&](int dx, int dy) {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         if (combatSession.movementRemaining <= 0) {
             combatSession.log.push_back("You have no movement left this round.");
             return;
@@ -4926,9 +5007,12 @@ int runPhase1(const std::string& savePath) {
     // GameLoop::runCombat, where Flee is checked and handled before
     // anything else in its round loop), so no monster gets a free action.
     auto combatBeginFlee = [&]() {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         combatSession.log.push_back("You break off and retreat.");
         pushLog("You fled from the " + combatSession.monster.name + ".");
         combatSession.uiState = CombatUiState::Fled;
+        combatSession.roundJustConcluded = true;
     };
 
     // Space pressed while Idle (Milestone 185, new): deliberately end the
@@ -4938,6 +5022,8 @@ int runPhase1(const std::string& savePath) {
     // this is the round's first action (a player who presses Space
     // immediately, having not moved at all, shouldn't skip that check).
     auto combatEndTurn = [&]() {
+        combatSession.actionLogStart = combatSession.log.size();
+        combatSession.roundJustConcluded = false;
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         combatSession.log.push_back("You hold your action.");
         combatFinishPlayerAction(combatSession.pendingGoFirst);
@@ -4986,6 +5072,16 @@ int runPhase1(const std::string& savePath) {
     // candidate and resolve the rest of the round exactly as the
     // immediate (0/1-candidate) path in combatBeginPlayerAttack does.
     auto combatConfirmTarget = [&]() {
+        // Deliberately does NOT re-arm actionLogStart/roundJustConcluded --
+        // PickingTarget is only ever entered from combatBeginPlayerAttack/
+        // combatCommitSpellChoice/combatCommitItemChoice, all three of which
+        // already snapshotted actionLogStart at their own top before this
+        // picker ever opened. Re-arming here would silently drop any log
+        // line pushed before the picker opened -- confirmed this actually
+        // happens: combatCommitItemChoice's Webnet case pushes the "you use
+        // the Webnet" result.message (main.cpp ~4725) before checking
+        // candidate count, so a 2+-candidate Webnet throw would otherwise
+        // lose that line from the paced replay.
         int target = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
         switch (combatSession.pickReason) {
             case TargetPickReason::Spell:
@@ -5005,26 +5101,24 @@ int runPhase1(const std::string& savePath) {
         combatFinishPlayerAction(combatSession.pendingGoFirst);
     };
 
-    // Enter pressed while ViewPicking: builds the read-only stat card for
-    // the highlighted candidate. Reuses THAC0/AC/HP straight from the
-    // relevant character::Character (player/companion) or
+    // Builds a read-only stat card for one ViewCandidate. Reuses THAC0/AC/HP
+    // straight from the relevant character::Character (player/companion) or
     // combatSession.monster + combatSession.instances (monster instance,
-    // which has no individually-named weapon -- its dice line stands in
-    // for one). No round cost either, matching combatBeginView's own
-    // reasoning.
-    auto combatConfirmView = [&]() {
-        const CombatSession::ViewCandidate candidate =
-            combatSession.viewCandidates[static_cast<size_t>(combatSession.viewSelected)];
-        combatSession.viewCardLines.clear();
+    // which has no individually-named weapon -- its dice line stands in for
+    // one). Factored out of combatConfirmView (Milestone 199) so the new
+    // DQoK-style persistent player card and PickingTarget's secondary target
+    // card can build the identical card data View already did, instead of
+    // duplicating this switch.
+    auto combatBuildCardLines = [&](const CombatSession::ViewCandidate& candidate) -> std::vector<std::string> {
+        std::vector<std::string> lines;
         if (candidate.kind == CombatSession::ViewCandidate::Kind::Monster) {
             const int idx = candidate.index;
             const CombatInstance& inst = combatSession.instances[static_cast<size_t>(idx)];
             const combat::Monster& monster = combatSession.monster;
-            combatSession.viewCardLines.push_back("HP " + std::to_string(std::max(0, inst.hp)) + "/" +
-                                                    std::to_string(inst.maxHp));
-            combatSession.viewCardLines.push_back("AC " + std::to_string(monster.armorClass));
-            combatSession.viewCardLines.push_back("THAC0 " + std::to_string(monster.thac0));
-            combatSession.viewCardLines.push_back(
+            lines.push_back("HP " + std::to_string(std::max(0, inst.hp)) + "/" + std::to_string(inst.maxHp));
+            lines.push_back("AC " + std::to_string(monster.armorClass));
+            lines.push_back("THAC0 " + std::to_string(monster.thac0));
+            lines.push_back(
                 "Damage " + std::to_string(monster.damageDiceCount) + "d" +
                 std::to_string(monster.damageDiceSides) +
                 (monster.damageFlatBonus != 0
@@ -5034,17 +5128,16 @@ int runPhase1(const std::string& savePath) {
             if (!tags.empty()) {
                 std::string joined = "Status: ";
                 for (size_t i = 0; i < tags.size(); ++i) joined += (i > 0 ? ", " : "") + tags[i];
-                combatSession.viewCardLines.push_back(joined);
+                lines.push_back(joined);
             }
         } else {
             const character::Character& c = candidate.kind == CombatSession::ViewCandidate::Kind::Player
                                                   ? state.character
                                                   : state.companions[static_cast<size_t>(candidate.index)].character;
-            combatSession.viewCardLines.push_back("HP " + std::to_string(std::max(0, c.currentHp)) + "/" +
-                                                    std::to_string(c.maxHp));
-            combatSession.viewCardLines.push_back("AC " + std::to_string(c.armorClass));
-            combatSession.viewCardLines.push_back("THAC0 " + std::to_string(c.thac0));
-            combatSession.viewCardLines.push_back("Weapon: " + c.weaponName);
+            lines.push_back("HP " + std::to_string(std::max(0, c.currentHp)) + "/" + std::to_string(c.maxHp));
+            lines.push_back("AC " + std::to_string(c.armorClass));
+            lines.push_back("THAC0 " + std::to_string(c.thac0));
+            lines.push_back("Weapon: " + c.weaponName);
             // combatPlayerStatusTags is player-only (see its own doc
             // comment) -- there is no per-companion equivalent, so a
             // companion's card simply has no Status line at all.
@@ -5053,10 +5146,19 @@ int runPhase1(const std::string& savePath) {
                 if (!tags.empty()) {
                     std::string joined = "Status: ";
                     for (size_t i = 0; i < tags.size(); ++i) joined += (i > 0 ? ", " : "") + tags[i];
-                    combatSession.viewCardLines.push_back(joined);
+                    lines.push_back(joined);
                 }
             }
         }
+        return lines;
+    };
+
+    // Enter pressed while ViewPicking: no round cost, matching
+    // combatBeginView's own reasoning.
+    auto combatConfirmView = [&]() {
+        const CombatSession::ViewCandidate candidate =
+            combatSession.viewCandidates[static_cast<size_t>(combatSession.viewSelected)];
+        combatSession.viewCardLines = combatBuildCardLines(candidate);
         combatSession.uiState = CombatUiState::ViewingCard;
     };
 
@@ -5131,6 +5233,15 @@ int runPhase1(const std::string& savePath) {
             combatSession.log.push_back("A " + monster.name + " appears! " + monster.description);
             pushLog("A " + monster.name + " appears!");
         }
+        // Message-pacing queue (Milestone 199): the fresh CombatSession{}
+        // above already reset uiState to AwaitContinue (its struct default,
+        // main.cpp:696-ish) -- this just makes the "X appears!" beat above a
+        // degenerate 1-message instance of the same queue every other round-
+        // ending action uses, rather than a hardcoded special case.
+        combatSession.actionLogStart = 0;
+        combatSession.pendingMessageIndex = 0;
+        combatSession.pendingMessageEnd = combatSession.log.size();
+        combatSession.pendingTargetState = CombatUiState::Idle;
     };
 
     // Character sheet ('C') -- a read-only, full-window overlay drawn on top
@@ -6313,7 +6424,19 @@ int runPhase1(const std::string& savePath) {
                         // below).
                         switch (combatSession.uiState) {
                             case CombatUiState::AwaitContinue:
-                                if (handleEnter) combatSession.uiState = CombatUiState::Idle;
+                                // Message-pacing queue (Milestone 199): each
+                                // Enter reveals the next queued log line
+                                // (see the bottom-bar render code) until
+                                // pendingMessageEnd is reached, then applies
+                                // the real state combatWrapUpRound/
+                                // combatKnockedOutBy/combatBeginFlee/
+                                // combatStartEncounter actually decided.
+                                if (handleEnter) {
+                                    ++combatSession.pendingMessageIndex;
+                                    if (combatSession.pendingMessageIndex >= combatSession.pendingMessageEnd) {
+                                        combatSession.uiState = combatSession.pendingTargetState;
+                                    }
+                                }
                                 break;
                             case CombatUiState::PickingTarget: {
                                 const int candidateCount = static_cast<int>(combatSession.pickCandidates.size());
@@ -6394,6 +6517,26 @@ int runPhase1(const std::string& savePath) {
                                 // means a key was pressed.
                                 combatSession.uiState = CombatUiState::Idle;
                                 break;
+                        }
+                        // Message-pacing queue (Milestone 199): fires only
+                        // when one of the real round-ending functions
+                        // (combatWrapUpRound/combatKnockedOutBy/
+                        // combatBeginFlee) actually ran during the switch
+                        // above -- an ordinary action that leaves uiState at
+                        // Idle without ending the round (e.g. a plain move)
+                        // never sets roundJustConcluded, so it's correctly
+                        // not paced (see the bottom-bar render code's
+                        // always-shown log.back() line for how that case
+                        // still surfaces). Diverts the real target state
+                        // into AwaitContinue until every log line pushed
+                        // since the action began has been shown one at a
+                        // time.
+                        if (combatSession.roundJustConcluded) {
+                            combatSession.pendingTargetState = combatSession.uiState;
+                            combatSession.pendingMessageIndex = combatSession.actionLogStart;
+                            combatSession.pendingMessageEnd = combatSession.log.size();
+                            combatSession.uiState = CombatUiState::AwaitContinue;
+                            combatSession.roundJustConcluded = false;
                         }
                     } else if (dialogueSession.active) {
                         // Dialogue's own input dispatch -- see
@@ -6824,13 +6967,13 @@ int runPhase1(const std::string& savePath) {
                 }
                 const float combatFocusPxX = (static_cast<float>(combatFocus.x) + 0.5f) * kCombatTilePx;
                 const float combatFocusPxY = (static_cast<float>(combatFocus.y) + 0.5f) * kCombatTilePx;
-                const sf::Vector2f combatViewSize = mapView.getSize();
+                const sf::Vector2f combatViewSize = combatMapView.getSize();
                 const float combatHalfW = combatViewSize.x / 2.f;
                 const float combatHalfH = combatViewSize.y / 2.f;
                 const float combatCamX = std::clamp(combatFocusPxX, combatHalfW, std::max(combatHalfW, combatPxW - combatHalfW));
                 const float combatCamY = std::clamp(combatFocusPxY, combatHalfH, std::max(combatHalfH, combatPxH - combatHalfH));
-                mapView.setCenter(sf::Vector2f(combatCamX, combatCamY));
-                window.setView(mapView);
+                combatMapView.setCenter(sf::Vector2f(combatCamX, combatCamY));
+                window.setView(combatMapView);
 
                 for (int gy = 0; gy < kCombatGridHeight; ++gy) {
                     for (int gx = 0; gx < kCombatGridWidth; ++gx) {
@@ -7037,107 +7180,64 @@ int runPhase1(const std::string& savePath) {
             };
 
             if (combatSession.active) {
-                const world::TerrainInfo& floorTerrain = world::terrainFor(combatSession.floorTerrainCode);
-                drawLine("Battlefield: " + std::string(floorTerrain.name), sf::Color(200, 200, 140));
-                // Milestone 185: DQoK.pdf p.51's own "a character's movement
-                // range is displayed... during the character's segment in
-                // combat" -- the sidebar equivalent of that readout, now
-                // that a move no longer just ends the round outright.
-                drawLine("Movement: " + std::to_string(combatSession.movementRemaining) + "/" +
-                              std::to_string(character::movementSquares(state.character)),
-                          sf::Color(160, 200, 230));
-                lineY += lineHeight * 0.3f;
+                // Persistent player card (Milestone 199, DQoK-style): the
+                // sidebar's default content is always the player's own card,
+                // not a full party/monster roster -- View ('v') still opens
+                // its own separate ViewingCard overlay to check anyone else,
+                // unaffected by this. combatBuildCardLines is the same data
+                // gathering View itself uses (factored out above).
+                drawLine(state.character.name, sf::Color(255, 215, 0));
+                for (const std::string& cardLine :
+                     combatBuildCardLines({CombatSession::ViewCandidate::Kind::Player, 0})) {
+                    drawWrappedLine(cardLine, sf::Color::White);
+                }
 
-                {
-                    std::string playerLine = state.character.name + " -- HP " +
-                                              std::to_string(state.character.currentHp) + "/" +
-                                              std::to_string(state.character.maxHp) + "  AC " +
-                                              std::to_string(state.character.armorClass);
-                    // Milestone 186: the same status tags the VIEW card
-                    // shows (see combatPlayerStatusTags), surfaced here too
-                    // so an active buff/debuff is visible without opening
-                    // the card every round.
-                    std::vector<std::string> tags = combatPlayerStatusTags();
-                    if (!tags.empty()) {
-                        playerLine += "  [";
-                        for (size_t i = 0; i < tags.size(); ++i) playerLine += (i > 0 ? ", " : "") + tags[i];
-                        playerLine += "]";
+                // Secondary target card: DQoK's own "a second small card
+                // appears below it" idiom once a target is highlighted,
+                // replacing the old roster's ">" cursor with the same data
+                // the picker itself already computes.
+                if (combatSession.uiState == CombatUiState::PickingTarget &&
+                    !combatSession.pickCandidates.empty()) {
+                    lineY += lineHeight * 0.3f;
+                    const int focusedIdx =
+                        combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
+                    drawLine(combatMonsterLabel(focusedIdx), sf::Color(220, 100, 100));
+                    for (const std::string& cardLine : combatBuildCardLines(
+                             {CombatSession::ViewCandidate::Kind::Monster, focusedIdx})) {
+                        drawWrappedLine(cardLine, sf::Color::White);
                     }
-                    drawWrappedLine(playerLine, sf::Color(255, 215, 0));
                 }
-                for (const game::RecruitedCompanion& rc : state.companions) {
-                    const character::Character& c = rc.character;
-                    std::string line = c.name + " -- HP " + std::to_string(std::max(0, c.currentHp)) + "/" +
-                                        std::to_string(c.maxHp) + "  AC " + std::to_string(c.armorClass);
-                    if (c.currentHp <= 0) line += " (knocked out)";
-                    drawLine(line, sf::Color(80, 150, 220));
-                }
-                lineY += lineHeight * 0.3f;
 
-                const bool showRosterCursor = combatSession.uiState == CombatUiState::PickingTarget;
-                for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-                    std::string line;
-                    if (showRosterCursor) {
-                        const bool isSelected =
-                            !combatSession.pickCandidates.empty() &&
-                            combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)] ==
-                                static_cast<int>(i);
-                        line += isSelected ? "> " : "  ";
+                // Bottom command/message bar (Milestone 199) -- full window
+                // width, drawn in the same uiView space as the sidebar
+                // above, just anchored to its own margin/width instead of
+                // the sidebar's.
+                window.draw(combatBottomBarBg);
+                float barY = static_cast<float>(windowH) - kCombatBottomBarHeight + 12.f;
+                constexpr float kBarMarginX = 16.f;
+                const float barMaxWidthPx = static_cast<float>(windowW) - 2.f * kBarMarginX;
+                auto drawBarLine = [&](const std::string& text, sf::Color color) {
+                    sf::Text sfText(font, text, kSidebarCharSize);
+                    sfText.setFillColor(color);
+                    sfText.setPosition(sf::Vector2f(kBarMarginX, barY));
+                    window.draw(sfText);
+                    barY += lineHeight;
+                };
+                auto drawWrappedBarLine = [&](const std::string& text, sf::Color color) {
+                    for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, text, barMaxWidthPx)) {
+                        drawBarLine(wrapped, color);
                     }
-                    line += combatMonsterLabel(static_cast<int>(i)) + " -- HP " +
-                            std::to_string(std::max(0, combatSession.instances[i].hp)) + "/" +
-                            std::to_string(combatSession.instances[i].maxHp);
-                    if (combatSession.instances[i].hp <= 0) {
-                        line += " (defeated)";
-                    } else {
-                        // Milestone 185: the field no longer fits on screen
-                        // at once, so an off-screen instance's distance is
-                        // the cheap compensation for losing the whole-map
-                        // view every round used to give for free.
-                        // Milestone 190: nearest footprint cell, not the
-                        // bare anchor (degenerates to the exact same value
-                        // for every ordinary 1x1 monster).
-                        line += "  dist " +
-                                std::to_string(combat::chebyshevDistance(
-                                    combatSession.playerPos,
-                                    combat::nearestFootprintCell(combatSession.playerPos, combatSession.instancePositions[i],
-                                                                  combatSession.monster.footprintWidth,
-                                                                  combatSession.monster.footprintHeight)));
-                        // Milestone 186: same status tags the VIEW card
-                        // shows for this instance (see
-                        // combatMonsterStatusTags), surfaced passively too.
-                        std::vector<std::string> tags = combatMonsterStatusTags(static_cast<int>(i));
-                        if (!tags.empty()) {
-                            line += "  [";
-                            for (size_t t = 0; t < tags.size(); ++t) line += (t > 0 ? ", " : "") + tags[t];
-                            line += "]";
-                        }
-                    }
-                    // A longer monster name (e.g. "Giant Centipede A") plus
-                    // the new "dist N" suffix can run past the sidebar's
-                    // own width -- drawWrappedLine (not plain drawLine)
-                    // avoids the same clipped-off-the-window-edge bug this
-                    // file already fixed once for the command-row prompt
-                    // lines above, found live by the user (2026-09-11).
-                    drawWrappedLine(line, sf::Color(220, 100, 100));
-                }
-                lineY += lineHeight * 0.3f;
-
-                drawLine("-- Log --", sf::Color(140, 140, 160));
-                constexpr std::size_t kCombatLogTail = 10;
-                const std::size_t combatLogStart =
-                    combatSession.log.size() > kCombatLogTail ? combatSession.log.size() - kCombatLogTail : 0;
-                for (std::size_t i = combatLogStart; i < combatSession.log.size(); ++i) {
-                    for (const std::string& wrapped :
-                         wrapToPixelWidth(font, kSidebarCharSize, combatSession.log[i], maxLineWidthPx)) {
-                        drawLine(wrapped, sf::Color(190, 190, 200));
-                    }
-                }
-                lineY += lineHeight * 0.3f;
+                };
 
                 switch (combatSession.uiState) {
                     case CombatUiState::AwaitContinue:
-                        drawWrappedLine("Press Enter to continue.", sf::Color(230, 220, 160));
+                        // Message-pacing queue: one queued log line per
+                        // Enter press (see the input dispatch above) --
+                        // DQoK's own one-message-at-a-time combat narration.
+                        if (combatSession.pendingMessageIndex < combatSession.log.size()) {
+                            drawWrappedBarLine(combatSession.log[combatSession.pendingMessageIndex], sf::Color::White);
+                        }
+                        drawBarLine("(press Enter to continue)", sf::Color(150, 150, 160));
                         break;
                     case CombatUiState::PickingTarget: {
                         std::string prompt;
@@ -7152,8 +7252,8 @@ int runPhase1(const std::string& savePath) {
                                 prompt = "Attack which enemy?";
                                 break;
                         }
-                        drawWrappedLine(prompt, sf::Color(230, 220, 160));
-                        drawWrappedLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
+                        drawWrappedBarLine(prompt, sf::Color(230, 220, 160));
+                        drawWrappedBarLine("up/down=select   Enter=choose", sf::Color(150, 150, 160));
                         break;
                     }
                     case CombatUiState::PickingSpell:
@@ -7161,35 +7261,57 @@ int runPhase1(const std::string& savePath) {
                         // draws on top of this whole frame -- this line is
                         // never actually seen, just here so the switch
                         // covers every CombatUiState value.
-                        drawWrappedLine("Choose a spell...", sf::Color(230, 220, 160));
+                        drawWrappedBarLine("Choose a spell...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::PickingItem:
                         // Same "never actually seen" idiom as PickingSpell
                         // above -- drawCombatItemPickerOverlay draws on top.
-                        drawWrappedLine("Choose an item...", sf::Color(230, 220, 160));
+                        drawWrappedBarLine("Choose an item...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::ViewPicking:
                         // Same "never actually seen" idiom as PickingSpell
                         // above -- drawCombatViewPickerOverlay draws on top.
-                        drawWrappedLine("Choose who to view...", sf::Color(230, 220, 160));
+                        drawWrappedBarLine("Choose who to view...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::ViewingCard:
                         // Same "never actually seen" idiom -- drawCombatViewCardOverlay draws on top.
-                        drawWrappedLine("Viewing stats...", sf::Color(230, 220, 160));
+                        drawWrappedBarLine("Viewing stats...", sf::Color(230, 220, 160));
                         break;
                     case CombatUiState::Won:
-                        drawWrappedLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
+                        drawWrappedBarLine("Victory! Press Enter to continue.", sf::Color(120, 220, 120));
                         break;
                     case CombatUiState::Lost:
-                        drawWrappedLine("Press Enter to continue.", sf::Color(220, 120, 120));
+                        drawWrappedBarLine("Press Enter to continue.", sf::Color(220, 120, 120));
                         break;
                     case CombatUiState::Fled:
-                        drawWrappedLine("Press Enter to continue.", sf::Color(220, 190, 120));
+                        drawWrappedBarLine("Press Enter to continue.", sf::Color(220, 190, 120));
                         break;
                     case CombatUiState::Idle:
-                        drawWrappedLine(
-                            "ATTACK (Enter)   MOVE (wasd)   HOLD/END TURN (Space)   FLEE (f)   CAST (m)   USE (i)",
+                        // A live, un-gated status line -- what keeps a
+                        // single-line, round-preserving refusal ("Blocked:
+                        // cannot walk onto a wall.", "You have nothing to
+                        // use.") or a plain "You move north." visible now
+                        // that the always-on log block is gone: none of
+                        // those set roundJustConcluded, so they never enter
+                        // the paced AwaitContinue loop above and must be
+                        // shown immediately instead. Also keeps showing the
+                        // last paced message's own text for continuity right
+                        // after a queue drains.
+                        if (!combatSession.log.empty()) {
+                            drawWrappedBarLine(combatSession.log.back(), sf::Color(190, 190, 200));
+                        }
+                        // DQoK's real command-verb bar (MOVE VIEW AIM USE
+                        // CAST QUICK DONE), relabeled onto this game's real
+                        // bound actions -- AIM ~= this game's Attack; QUICK
+                        // is dropped outright (no equivalent mechanic).
+                        // Movement remaining moves here from the old
+                        // always-on sidebar line, unchanged content.
+                        drawWrappedBarLine(
+                            "AIM (Enter)   MOVE (wasd)   CAST (m)   USE (i)   VIEW (v)   FLEE (f)   DONE (Space)",
                             sf::Color(190, 190, 200));
+                        drawBarLine("Movement: " + std::to_string(combatSession.movementRemaining) + "/" +
+                                        std::to_string(character::movementSquares(state.character)),
+                                    sf::Color(160, 200, 230));
                         break;
                 }
             } else {

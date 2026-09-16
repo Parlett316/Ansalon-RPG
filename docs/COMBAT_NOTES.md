@@ -2093,6 +2093,44 @@ the Gold Box games actually use.
 
 This closes the six-part Gold Box battlefield chain (185-190) in full.
 
+## DQoK-style combat HUD (Milestone 199, `ansalon_sfml_phase1` only)
+
+Pure presentation/interaction change -- no combat math, rules, or monster
+data touched. Continuation of the same DQoK-inspired UI pass as Milestones
+194-198 (character creation's panel chrome/sidebar/letters/roll-screen,
+`docs/MILESTONES.md`), this time replacing the combat screen's own
+always-visible right-hand sidebar (full party+monster roster with HP/AC/
+status on every unit at once, plus a persistent 10-line scrolling log)
+with DQoK's real convention, confirmed against real gameplay frames already
+in the repo (`References/BattleFrames_extracted/`, from the same recording
+Milestone 186 sourced): a single unit's stat card (name/HP/AC/weapon,
+top-right) and a full-width bottom command/message bar, with no persistent
+roster or log at all.
+
+**Message pacing, not just a reskin.** Every event in a round (the
+player's own action, each companion's, each monster's) still pushes its
+own line to `combatSession.log` exactly as before -- that resolution logic
+is completely unchanged. What changed is presentation: instead of dumping
+a round's worth of new lines into an always-visible list, the round-ending
+functions (`combatWrapUpRound`/`combatKnockedOutBy`/`combatBeginFlee`) now
+flag the range of newly-added lines, and the bottom bar reveals them one
+at a time, gated on Enter, before the screen ever shows the real next
+state (Idle/Won/Lost/Fled) -- classic Gold Box one-message-at-a-time
+combat narration, reusing the existing `AwaitContinue` state (previously
+only combat-start's "X appears!" beat) rather than adding a new one. A
+plain action that doesn't end the round (a refused move, "You have no
+movement left this round.") isn't paced -- it shows immediately as a live
+status line above the command row instead, since it was never queued.
+
+**Real trade-off, confirmed against the reference frames, not an
+oversight**: companion/monster HP is no longer glanceable during ordinary
+play -- only the player's own card by default. `View` ('v',
+`ViewPicking`/`ViewingCard`, Milestone 186) still works unchanged and is
+now the only way to check anyone else's stats; a `PickingTarget` secondary
+card (below the player's, same card data as `View`) shows the currently
+highlighted target while choosing one. Full writeup, exact mechanism, and
+live-verification notes: Milestone 199 in `docs/MILESTONES.md`.
+
 ## Live DQoK research session (2026-09-16)
 
 Distinct from `References/DQoK.pdf` (the manual) and `References/
