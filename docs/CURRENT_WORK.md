@@ -1,5 +1,86 @@
 # Current work
 
+**2026-09-15 (fourth session): `road_wolves` turn-in finally closed, plus
+two smaller backlog items, all via `SendKeys` + screenshot automation
+(desktop/GUI access retested and working again this session).** Picked up
+the disposable slot-3 character exactly where the third session left it
+(Port Balifor interior, `road_wolves` at `ReadyToTurnIn`, ~166 tiles from
+Solace) and finished the walk this time, rather than deferring it again.
+
+- **Zone-exit mechanic confirmed for the first time**: stepping onto a
+  zone's `ENTRY` tile and pressing Enter (with an empty `zoneStack`)
+  correctly pops back to `MODE OVERWORLD` at the zone's associated
+  overworld `POS` ("You step back outside."). Port Balifor's `ENTRY 20
+  14` sits exactly in its boundary wall's gap, one tile from where the
+  disposable character was standing.
+- **New technique for a future session needing to relocate a character
+  long-distance**: rather than blind directional `SendKeys` (expensive
+  and error-prone against real coastlines -- several batches were wasted
+  on "Blocked: cannot walk onto shallow water" before switching
+  approaches), a small throwaway Python script
+  (BFS over the real `data/overworld.grid`, respecting the same
+  ocean/Blood-Sea/shallow-water impassability and diagonal corner-cutting
+  rule the game itself enforces) computed an actual walkable path and
+  emitted it as a `SendKeys` token sequence, executed in batches with the
+  save file's own `POS`/`HP` fields polled between batches (cheaper than
+  a screenshot) to detect stalls/encounters. Covered the ~215-step real
+  route from Port Balifor to Solace this way. Not checked into the repo
+  (a one-off verification script, same spirit as this project's
+  throwaway self-test convention) -- the technique, not the script
+  itself, is the reusable part.
+- **`ansalon_sfml_phase1` closed unexpectedly once during the automated
+  walk** (clean exit, no crash dump) -- matches the already-documented
+  "automation artifact" from a very high volume of synthetic input (see
+  2026-09-12's identical note further down this file), not a new bug.
+  Autosave had the disposable character's progress intact
+  (`POS 243 220`, HP 10/10); simply relaunching against `save3.txt` and
+  resuming the walk from there worked cleanly.
+- **`road_wolves` turn-in fully confirmed, closing the last open piece of
+  Milestone 183's quest system.** Fled every wilderness encounter along
+  the route (a Sivak Draconian, 4 Kobold Skirmishers, a Troll, 3
+  Zombies, a Wraith, 4 Giant Rats, 2 Timber Wolves, 4 Goblin Raiders, 4
+  Giant Centipedes -- all fled clean, zero damage taken, HP 10/10
+  throughout) and reached Solace's Notice Board. Talking to it correctly
+  routed through `questBegin`'s `ReadyToTurnIn` branch (not just the
+  POI's plain `TALK_AGAIN` flavor text) to the real turn-in text --
+  "Someone's pinned a fresh scrap beneath where the notice used to be:
+  'Paid, with my thanks -- a grateful farmer.' Tucked behind it, sure
+  enough, is a small pouch of steel." -- followed by the reward log line
+  ("Quest complete: The Wolves on the Solace Road. +40 steel. +90 XP.")
+  and confirmed in the save file: `STEEL` 120->160, `EXP` 360->450 (exact
+  match to the logged amounts), `QUEST road_wolves` flipped from `2`
+  (`ReadyToTurnIn`) to `1` (`game::QuestStatus::Complete`, confirmed
+  against the actual enum in `src/game/GameState.h`). The Troll encounter
+  along the way is a genuine multi-square creature (Milestone 190) but
+  was fled before the battle grid rendered, so it does **not** confirm
+  that backlog item -- still open, see below.
+- **Save-slot menu's delete branch confirmed**: with the disposable
+  character's own quest arc now finished, deleted Slot 3 from the native
+  save-slot menu (`d`, confirmed the "This cannot be undone" prompt
+  defaults safely to "No", selected "Yes") -- `save3.txt` was actually
+  removed from disk, the menu correctly re-rendered the slot as
+  `(empty)`, and Slots 1/2 (Mike, Regan) were confirmed untouched. Closes
+  that sub-item of Milestone 180's backlog.
+- **`ansalon_sfml_phase1`'s empty-name validation fix (from this same
+  day's second session) now fully confirmed interactively**, closing
+  that backlog item completely: used the freshly-emptied Slot 3 to start
+  native character creation, pressed Enter on a blank name and saw the
+  inline "Please enter a name before continuing." message with no
+  advance past the Name step, then typed a real name ("Tester") and
+  confirmed Enter advanced normally into ability-score rolling. Backed
+  out afterward with Escape rather than completing creation (character
+  creation doesn't autosave until the final "Begin your journey?"
+  confirmation -- confirmed no partial save was left in Slot 3, and that
+  Escape mid-creation cleanly quits the whole app with nothing left
+  behind).
+- **Still open, unchanged by this session**: Griffon/Stirge encounters,
+  an Ogre/Troll/Griffon/Dragon's multi-square footprint actually
+  rendering/behaving right (a Troll came up but was fled from before the
+  grid rendered -- still needs a fight actually fought, not just
+  triggered), line of sight, wall corner-cutting, the remaining 5/9
+  terrains, VIEW's Status line, and the rest of the Playtest backlog
+  below.
+
 **2026-09-15 (third session): live playtest, via `SendKeys` + screenshot
 automation (real desktop/GUI access confirmed working again this
 session -- retested per `feedback_no_desktop_gui_access`).** Played the
@@ -756,14 +837,13 @@ Implemented and verified via clean rebuild + launch smoke test, but not
 yet fully walked live with a real keyboard. Full sourcing/detail for
 each is in its `docs/MILESTONES.md` entry (linked below).
 
-- **Empty-name validation fix** (fixed 2026-09-15, second session, see
-  this file's own top section) -- `ansalon_rpg` is already confirmed via
-  the piped path (blank Enter is rejected with a message, a real name is
-  then accepted). `ansalon_sfml_phase1` only got a launch smoke test:
-  still needs a live keyboard to confirm the Name step's inline "Please
-  enter a name before continuing." message actually renders and blocks
-  advancing on a blank Enter, and that typing a name afterward still
-  works normally.
+- ~~**Empty-name validation fix**~~ (fixed 2026-09-15, second session) --
+  **fully confirmed live 2026-09-15 (fourth session)**: `ansalon_rpg` was
+  already confirmed via the piped path; `ansalon_sfml_phase1` now
+  confirmed interactively too -- blank Enter on the Name step shows
+  "Please enter a name before continuing." and doesn't advance, and a
+  real name typed afterward advances normally into ability-score
+  rolling.
 - ~~**Companion sprite art: Bren Alder**~~ (Milestone 192) -- **confirmed
   live 2026-09-12**: his real sprite renders in place of the marker+letter
   during a real fight (4 Giant Centipedes). Confirmed by design, not a
@@ -876,28 +956,27 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   `'l'` with an overworld NPC/canon Hero actually present, or a
   `TIMELINE_ANCHOR` tile with one -- every canon Hero was at Pax Tharkas
   today, 50+ overworld tiles from anywhere reachable this session.
-- **Quest system** (Milestone 183) -- **further confirmed live
-  2026-09-15**: `road_wolves` (Solace's Notice Board) end-to-end through
+- **Quest system** (Milestone 183) -- **`road_wolves` now fully confirmed
+  end-to-end, closing that quest, as of 2026-09-15 (fourth session)**:
   offer/accept (real dialogue text, `Accept`/`Decline` picker), the
   journal (`'g'`) rendering real quest state including a live-incrementing
   `SLAY` objective counter (`(0/3)` -> `(1/3)` -> `(2/3)` -> `(3/3)` on
   real kills, persisting across three separate knockouts and one
-  unexpected app close), and the objective flipping to checked
-  (`[x] Kill three timber wolves...`) with the exact `ReadyToTurnIn`
-  one-time log line firing ("...is ready to turn in -- return to the
-  Notice Board..."). Also confirmed: `SHOP_LOCKED` actually gates a shop
-  (Flint's Smithy refused "There's nothing to buy here yet." while
-  `ore_for_the_forge` was unaccepted). **Still not confirmed**: the actual
-  turn-in exchange (`COMPLETE` text + reward + shop unlock afterward) --
-  see this file's own top section for why (the character ended up ~166
-  tiles from Solace when the third kill landed), the progress-text
-  revisit, any `DELIVER`-type quest (`ore_for_the_forge` itself, found and
-  confirmed locked but never offered/accepted/turned in), and all six
-  reward flags (especially the Wayreth Test of High Sorcery's
-  ethical-choice scene and its three outcome passages). The disposable
-  slot-3 character (Human Fighter, `road_wolves` ready to turn in, sitting
-  in Port Balifor) is a ready-made starting point for whoever picks up the
-  walk back to Solace.
+  unexpected app close), the objective flipping to checked with the
+  `ReadyToTurnIn` log line, and now the actual turn-in exchange too: the
+  real `COMPLETE` text at Solace's Notice Board, the reward log line
+  ("+40 steel. +90 XP."), and the save file flipping to
+  `QuestStatus::Complete` -- see this file's own top section for the full
+  writeup. Also confirmed: `SHOP_LOCKED` actually gates a shop (Flint's
+  Smithy refused "There's nothing to buy here yet." while
+  `ore_for_the_forge` was unaccepted). **Still not confirmed**: the
+  progress-text revisit, any `DELIVER`-type quest (`ore_for_the_forge`
+  itself, found and confirmed locked but never offered/accepted/turned
+  in), and all six reward flags (especially the Wayreth Test of High
+  Sorcery's ethical-choice scene and its three outcome passages) -- none
+  of these are `road_wolves`-specific, so a fresh quest needs picking up
+  to close them (the disposable slot-3 character was deleted this session
+  once its own arc finished).
 - **Native character creation** (Milestone 180) -- **further confirmed
   live 2026-09-15**: the full ability-score flow (roll pool, keep/reroll,
   per-ability assignment from the pool); an ineligible race pick's inline
@@ -909,16 +988,19 @@ each is in its `docs/MILESTONES.md` entry (linked below).
   qualifications... Swear the oath and join?"); the Weapon Specialization
   prompt; and the final "Begin your journey as this character?" summary
   screen -- confirmed "Yes" lands correctly in Solace with the exact
-  stats/HP/AC/THAC0 shown on the summary. **Also found** (not a
-  confirmation -- a real gap): the `CreationStep::Name` text-entry step
-  silently accepts an empty name with no validation, see this file's own
-  top section. **Also confirmed** (second pass, same day): the save-slot
-  menu's **Continue** branch on an occupied slot ("Continue this
-  character?" -> resumes at the exact saved position/HP/day, twice,
-  including once after an unexpected app close -- see this file's own top
-  section). **Still open**: the final summary's "No" restart path, the
-  Elf/Dwarf subrace step, the Gnome-forced-Tinker path, and the save-slot
-  menu's overwrite/delete branches.
+  stats/HP/AC/THAC0 shown on the summary. **Also found, then fixed and
+  confirmed** (see this file's own top section across three sessions the
+  same day): the `CreationStep::Name` text-entry step's empty-name gap --
+  found, fixed in both builds, and now fully confirmed live in both
+  (blank Enter refused with an inline message, a real name accepted
+  afterward). **Also confirmed**: the save-slot menu's **Continue** branch
+  on an occupied slot ("Continue this character?" -> resumes at the exact
+  saved position/HP/day, twice, including once after an unexpected app
+  close), and (fourth session) its **delete** branch (`d` -> confirm ->
+  file actually removed from disk, other slots untouched). **Still
+  open**: the final summary's "No" restart path, the Elf/Dwarf subrace
+  step, the Gnome-forced-Tinker path, and the save-slot menu's overwrite
+  branch.
 - **Stale startup banner fix** (Milestone 181) -- not yet interactively
   confirmed; no desktop/GUI access this session to watch the corrected
   banner render.
