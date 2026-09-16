@@ -7496,6 +7496,50 @@ now fully verified, nothing further outstanding.
      the right mechanism all along, just triggered by a different root
      cause than first suspected.
 
+194. **Gold-Box-style panel chrome for `drawPickerOverlay`
+     (`ansalon_sfml_phase1` only).** Pure visual/rendering change, no
+     game logic touched. Prompted by live-driving Dark Queen of Krynn
+     (SSI Gold Box, DOSBox) this session to look for character-creation
+     UX ideas; the user picked the visual style as the first thing to
+     act on, separately from a bigger, explicitly-parked "multiple
+     player-built party members" question (not pursued -- see
+     `docs/CURRENT_WORK.md` if that resumes).
+
+     `drawPickerOverlay` (`main.cpp:1054`, added in Milestone 163) is
+     this build's single most-reused screen primitive -- 26 call sites,
+     covering dialogue picking, shop, inventory, spellbook, journal,
+     help, the save-slot menu, and 9 of the 12 character-creation
+     wizard steps. It previously drew a flat `(18,18,24)` near-black
+     background with a tan title and no border. Added a new
+     `drawPanelChrome()` lambda (warm umber `(52,46,40)` background, a
+     bronze `(150,125,85)` outer border and a darker `(90,75,55)` inner
+     ruled line, both plain `sf::RectangleShape` outlines -- no new art
+     assets) plus a dedicated coral-red `(230,95,70)` header color used
+     only here, called from `drawPickerOverlay` and from the wizard's
+     Name step (`main.cpp:1739`, which hand-rolls the same background
+     pattern locally since it needs a live-editable text line rather
+     than a selectable list -- included so Name doesn't look like a
+     seam one step before RollPool). Deliberately a new, separate
+     palette rather than a repurposing of the existing
+     `kSheetSectionColor`/`kSheetBodyColor` constants, so the loading
+     screen, character sheet, and wilderness/dialogue-topic overlays
+     (which also duplicate a similar flat-bg pattern independently, but
+     are separate screen families) are untouched for now rather than
+     ending up inconsistently half-styled -- good candidates for a fast
+     follow-up once this first pass has been seen and confirmed by the
+     user.
+
+     Verified: clean rebuild (zero new `/W4` warnings), and real visual
+     confirmation (not just a launch smoke test) via SendKeys/screenshot
+     this session -- the save-slot menu, the wizard's Name step, and its
+     RollPool `drawPickerOverlay` step all screenshotted showing the new
+     panel/border/header rendering correctly with no text clipping, all
+     three visually consistent with each other. Slot 3 stayed empty
+     throughout (character creation was only driven as far as naming
+     and the ability-roll prompt, never finished/saved); Mike's and
+     Regan's real Slot 1/2 saves were never opened. **Confirmed live by
+     the user the same session**, at their own keyboard.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

@@ -1046,6 +1046,41 @@ int runPhase1(const std::string& savePath) {
     const sf::Color kSheetBodyColor(210, 210, 210);
     const float kSheetMarginX = 40.f;
 
+    // Gold-Box-style panel chrome, scoped to drawPickerOverlay and the
+    // character-creation wizard's Name step (the one step that hand-rolls
+    // the same flat-bg-then-text pattern locally instead of calling
+    // drawPickerOverlay, since it needs a live-editable text line rather
+    // than a selectable list). Deliberately a separate palette from
+    // kSheetSectionColor/kSheetBodyColor above, not a repurposing of them
+    // -- the loading screen, character sheet, and wilderness/dialogue
+    // overlays keep their existing flat-black look for now rather than
+    // ending up half-styled by a shared-constant side effect.
+    const sf::Color kPanelBg(52, 46, 40);
+    const sf::Color kPanelBorderOuter(150, 125, 85);
+    const sf::Color kPanelBorderInner(90, 75, 55);
+    const sf::Color kPanelHeaderColor(230, 95, 70);
+    auto drawPanelChrome = [&]() {
+        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
+        bg.setFillColor(kPanelBg);
+        window.draw(bg);
+
+        sf::RectangleShape outerBorder(
+            sf::Vector2f(static_cast<float>(windowW) - 12.f, static_cast<float>(windowH) - 12.f));
+        outerBorder.setPosition(sf::Vector2f(6.f, 6.f));
+        outerBorder.setFillColor(sf::Color::Transparent);
+        outerBorder.setOutlineColor(kPanelBorderOuter);
+        outerBorder.setOutlineThickness(3.f);
+        window.draw(outerBorder);
+
+        sf::RectangleShape innerBorder(
+            sf::Vector2f(static_cast<float>(windowW) - 24.f, static_cast<float>(windowH) - 24.f));
+        innerBorder.setPosition(sf::Vector2f(12.f, 12.f));
+        innerBorder.setFillColor(sf::Color::Transparent);
+        innerBorder.setOutlineColor(kPanelBorderInner);
+        innerBorder.setOutlineThickness(2.f);
+        window.draw(innerBorder);
+    };
+
     // "Title + selectable list + footer + optional message" frame -- this
     // project's single most-reused screen primitive (see docs/CURRENT_WORK.md's
     // "Generic picker overlay" writeup). A Yes/No prompt is just a 2-item
@@ -1053,9 +1088,7 @@ int runPhase1(const std::string& savePath) {
     // same idiom Help/Journal/Spellbook already use).
     auto drawPickerOverlay = [&](const std::string& title, const std::vector<std::string>& items,
                                   int selectedIndex, const std::string& footer, const std::string& message = "") {
-        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-        bg.setFillColor(sf::Color(18, 18, 24));
-        window.draw(bg);
+        drawPanelChrome();
 
         // Wrapped against the real rendered pixel width (wrapToPixelWidth
         // measures via the actual font/size) so a long title/message wraps
@@ -1078,7 +1111,7 @@ int runPhase1(const std::string& savePath) {
         };
 
         for (const std::string& line : wrapToPixelWidth(font, kSheetTitleCharSize, title, maxWidthPx)) {
-            drawLine(line, kSheetSectionColor, kSheetTitleCharSize);
+            drawLine(line, kPanelHeaderColor, kSheetTitleCharSize);
         }
         y += 10.f;
         // Each item can itself run long (a race/class name plus an
@@ -1704,9 +1737,7 @@ int runPhase1(const std::string& savePath) {
 
                     window.clear();
                     if (step == CreationStep::Name) {
-                        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-                        bg.setFillColor(sf::Color(18, 18, 24));
-                        window.draw(bg);
+                        drawPanelChrome();
                         float y = 40.f;
                         auto drawLine = [&](const std::string& text, sf::Color color, unsigned size) {
                             sf::Text sfText(font, text, size);
@@ -1715,7 +1746,7 @@ int runPhase1(const std::string& savePath) {
                             window.draw(sfText);
                             y += static_cast<float>(size) + 10.f;
                         };
-                        drawLine("=== Character Creation (2nd Edition AD&D) ===", kSheetSectionColor,
+                        drawLine("=== Character Creation (2nd Edition AD&D) ===", kPanelHeaderColor,
                                  kSheetTitleCharSize);
                         y += 10.f;
                         drawLine("What is your name, traveler?", kSheetBodyColor, kSheetBodyCharSize);
