@@ -1,6 +1,26 @@
 # Current work
 
-**Nothing in flight.** Milestone 202 (Gold Box UI font spot-check on
+**Nothing in flight.** Milestone 203 (Gold-Box chrome for the last 3
+flat-black overlays -- character sheet, world map, dialogue's prose
+states -- `ansalon_sfml_phase1` only) shipped 2026-09-16, prompted by the
+user asking "what else should we look at from DQoK" as a follow-up
+brainstorm to Milestone 201. All three had been a deliberate exception
+(see the comment above `drawPanelChrome`'s declaration, now updated) that
+stopped making sense once nearly every other screen had the chrome --
+dialogue especially, since its own picker states already got it via
+`drawPickerOverlay`, so a single conversation was flickering between two
+looks depending on state. Also fixed, same file/pass: the Help screen's
+Combat section still described the pre-Milestone-200 key scheme ("Enter
+= attack", "m = cast", "i = drink a potion") -- the same stale-text bug
+class Milestone 202 fixed for the Movement section's WASD line, just not
+caught there. Verified live via SendKeys/screenshot on a disposable copy
+of Mike's real `save1.txt` (deleted after; original untouched): character
+sheet and world map both render the chrome cleanly, a real conversation
+(Flint's Smithy) showed its greeting and topic-list states now share
+identical chrome, and Help shows the corrected Combat lines. See
+Milestone 203 in `docs/MILESTONES.md` for the full writeup.
+
+Before that, Milestone 202 (Gold Box UI font spot-check on
 shop/spellbook/journal/help, `ansalon_sfml_phase1` only) shipped
 2026-09-16, closing the last item on Milestone 196's own Playtest backlog
 entry. Verified live on a disposable copy of Regan's real `save2.txt`:

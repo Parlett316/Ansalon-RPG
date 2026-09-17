@@ -1097,15 +1097,18 @@ int runPhase1(const std::string& savePath) {
     const sf::Color kSheetBodyColor(210, 210, 210);
     const float kSheetMarginX = 40.f;
 
-    // Gold-Box-style panel chrome, scoped to drawPickerOverlay and the
+    // Gold-Box-style panel chrome, used directly by drawPickerOverlay, the
     // character-creation wizard's Name step (the one step that hand-rolls
     // the same flat-bg-then-text pattern locally instead of calling
     // drawPickerOverlay, since it needs a live-editable text line rather
-    // than a selectable list). Deliberately a separate palette from
-    // kSheetSectionColor/kSheetBodyColor above, not a repurposing of them
-    // -- the loading screen, character sheet, and wilderness/dialogue
-    // overlays keep their existing flat-black look for now rather than
-    // ending up half-styled by a shared-constant side effect.
+    // than a selectable list), and, as of the full-overlay chrome pass,
+    // drawCharacterSheetOverlay/drawWorldMapOverlay/drawDialogueOverlay
+    // too -- every full-window overlay now shares this look. Deliberately
+    // a separate palette from kSheetSectionColor/kSheetBodyColor above,
+    // not a repurposing of them. The one remaining exception is the
+    // startup loading screen, which keeps its own flat-black look --
+    // it's a one-shot screen the player never returns to, not worth
+    // matching.
     const sf::Color kPanelBg(52, 46, 40);
     const sf::Color kPanelBorderOuter(150, 125, 85);
     const sf::Color kPanelBorderInner(90, 75, 55);
@@ -5391,9 +5394,7 @@ int runPhase1(const std::string& savePath) {
     const float kSheetMaxWidthPx = kSheetColumnWidth - 10.f;
 
     auto drawCharacterSheetOverlay = [&]() {
-        sf::RectangleShape sheetBg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-        sheetBg.setFillColor(sf::Color(18, 18, 24));
-        window.draw(sheetBg);
+        drawPanelChrome();
 
         const character::Character& c = state.character;
         const auto& race = character::raceInfo(c.race);
@@ -5620,9 +5621,9 @@ int runPhase1(const std::string& savePath) {
             "  o = world map           / = this help screen",
             "",
             "Combat:",
-            "  Arrow keys = move (spend movement)   Enter = attack",
-            "  m = cast (if a caster)         i = drink a potion",
-            "  Space = hold action/end turn   f = flee",
+            "  Arrow keys = move (spend movement)   a = attack",
+            "  c = cast (if a caster)         u = use an item",
+            "  d / Space = end turn           f = flee",
             "  v = view any unit's stats",
             "",
             "q / Esc = quit (asks to confirm) or leave the current screen",
@@ -5812,9 +5813,7 @@ int runPhase1(const std::string& savePath) {
     // too many locations sit close together at this resolution for inline
     // labels drawn directly on the map to stay legible.
     auto drawWorldMapOverlay = [&]() {
-        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-        bg.setFillColor(sf::Color(18, 18, 24));
-        window.draw(bg);
+        drawPanelChrome();
 
         sf::Text title(font, "World Map", kSheetTitleCharSize);
         title.setFillColor(kSheetSectionColor);
@@ -5992,10 +5991,6 @@ int runPhase1(const std::string& savePath) {
     // delegate to drawPickerOverlay above instead of rendering their own
     // list.
     auto drawDialogueOverlay = [&]() {
-        sf::RectangleShape bg(sf::Vector2f(static_cast<float>(windowW), static_cast<float>(windowH)));
-        bg.setFillColor(sf::Color(18, 18, 24));
-        window.draw(bg);
-
         const float maxWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
         float y = 40.f;
 
@@ -6016,6 +6011,10 @@ int runPhase1(const std::string& savePath) {
             case DialogueUiState::QuestProgressText:
             case DialogueUiState::QuestCompleteText:
             case DialogueUiState::WayrethIntro: {
+                // Chrome drawn per-case (not once at the top of this
+                // lambda) so the picker-delegated states below don't
+                // double-draw it via their own drawPickerOverlay() call.
+                drawPanelChrome();
                 // Only Greeting can differ from the NPC's own name (the
                 // askLimitLocked override, see dialogueStartTalk) --
                 // TopicText/AskResponse always speak as the NPC itself,
@@ -6084,6 +6083,7 @@ int runPhase1(const std::string& savePath) {
                 break;
             }
             case DialogueUiState::AskInput:
+                drawPanelChrome();
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
                          kSheetTitleCharSize);
                 y += 10.f;

@@ -8083,6 +8083,70 @@ now fully verified, nothing further outstanding.
      one-line text change in an already-clean tree) showed zero new `/W4`
      warnings before the live re-verification.
 
+203. **Gold-Box chrome for the last 3 flat-black overlays (character
+     sheet, world map, dialogue's prose states), plus a second real
+     stale-text bug the same pass surfaced.** Prompted by the user asking
+     "what else should we look at from DQoK" as a follow-up brainstorm to
+     Milestone 201. A direct read of `sfml_phase1/main.cpp` found a
+     comment (right above `drawPanelChrome`'s own declaration) explicitly
+     recording this as a deliberate exception: "the loading screen,
+     character sheet, and wilderness/dialogue overlays keep their
+     existing flat-black look for now" -- the same reasoning Milestone
+     202 restated when it found the character sheet's flat background and
+     correctly concluded it wasn't a bug. That reasoning no longer held
+     once nearly every other screen had the chrome, and dialogue turned
+     out to be the strongest case: its own picker-shaped states
+     (PickingCandidate, TopicPicker, BoatOffer, RecruitOffer,
+     QuestAcceptDecline, WayrethChoice) already delegate to
+     `drawPickerOverlay`, which already calls `drawPanelChrome()` -- so a
+     single conversation was flickering between two different looks
+     depending on which dialogue state was active.
+
+     `drawCharacterSheetOverlay` and `drawWorldMapOverlay` each had their
+     flat `sf::Color(18, 18, 24)` fill swapped for a `drawPanelChrome()`
+     call -- no layout changes needed, both already used margins
+     (`kSheetMarginX`, `kTopMargin`/`kBottomMargin`) that clear the
+     chrome's border. `drawDialogueOverlay` needed a small restructure
+     instead of a one-line swap: the old unconditional top-level flat
+     fill was removed, and `drawPanelChrome()` calls were added inside
+     the switch itself -- once at the top of the shared prose-case block
+     (Greeting/TopicText/AskResponse/QuestOfferText/QuestAcceptText/
+     QuestProgressText/QuestCompleteText/WayrethIntro) and once in
+     `AskInput` -- so the already-chromed picker states don't double-draw
+     it. The doc comment that had recorded the old exception was updated
+     to narrow it to just the loading screen (the one remaining
+     deliberate case, out of scope here -- a one-shot startup screen the
+     player never returns to).
+
+     **Second stale-text bug found in the same file, same pass, fixed
+     alongside**: the Help screen's Combat section still read "Enter =
+     attack", "m = cast (if a caster)", "i = drink a potion", "Space =
+     hold action/end turn" -- the pre-Milestone-200 key scheme. Milestone
+     200 rebound these to DQoK's own first-letter verbs (confirmed
+     against the real `CombatUiState::Idle` switch case,
+     `sfml_phase1/main.cpp`): `a`=attack, `c`=cast, `u`=use item,
+     `v`=view, `f`=flee, `Space`/`d`=end turn. Milestone 202's own
+     stale-text fix caught the Movement section's leftover "wasd = move"
+     line but evidently missed this one. `kHelpLines`' three Combat lines
+     were rewritten to match the real bindings.
+
+     Verified live (`ansalon_sfml_phase1`, via SendKeys/screenshot on a
+     disposable copy of Mike's real `save1.txt`, `save1_copy.txt`,
+     deleted after; original untouched): the character sheet (`c`) and
+     world map (`o`) both render the brown/gold Gold Box chrome cleanly,
+     no clipping against the sheet's two-column layout or the map's
+     sprite/legend. Talked to Flint's Smithy in Solace and confirmed the
+     greeting (a prose state) and the resulting "Ask Flint's Smithy
+     about..." topic list (a picker state) now render *identical* chrome
+     -- the flicker is gone. Help (`/`) shows the corrected Combat lines
+     with no wrapping/clipping. Desktop/GUI access was re-confirmed
+     working this session before attempting any of this (session-
+     dependent, per `docs/CURRENT_WORK.md`'s standing note) --
+     `VirtualScreen`/`SendKeys` both worked immediately.
+
+     Clean rebuild (`--clean-first`, all three CMake targets) showed zero
+     new `/W4` warnings before the live verification above.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
