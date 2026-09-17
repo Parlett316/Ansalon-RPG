@@ -8038,6 +8038,51 @@ now fully verified, nothing further outstanding.
      test-editing method, not to real saves (written by `SaveGame::save`
      via `std::ofstream`, which never emits a BOM).
 
+202. **Gold Box UI font spot-check on the four remaining un-screenshotted
+     screens (shop, spellbook, journal, help) -- closes the last item on
+     Milestone 196's own Playtest backlog entry -- plus a real stale-text
+     bug the same check surfaced and fixed.** Milestone 196 gave the whole
+     build the real Gold Box font via one shared `sf::Font`/
+     `drawPickerOverlay`/`wrapToPixelWidth` set of primitives, individually
+     confirmed live on most screens by Milestones 197-199 but not these
+     four specifically -- low risk since they share the exact same
+     primitives, but never actually looked at.
+
+     Verified live (`ansalon_sfml_phase1`, via SendKeys/screenshot on a
+     disposable copy of Regan's real `save2.txt`, `save2_copy.txt`, deleted
+     after; original untouched) standing on Kalaman's Curiosities Cart
+     (`SHOP magic`, matching Regan's actual saved `ZONEPOS`): Shop rendered
+     its full buy list (name/stats/price columns, an apostrophe in "foe's"
+     rendering correctly) with no clipping. Spellbook (Regan is a level-20
+     Mage with 37 memorized spells, `MEMORIZED` in her save) rendered a
+     full 20-row page cleanly with the "Lines 1-20 of 45" / scroll footer
+     correct. Journal showed her real `a_widows_due` quest (complete, one
+     objective checked). Help rendered its whole multi-section command
+     list with no clipping. The character sheet (opened en route to the
+     spellbook, not itself a target of this check but incidentally
+     confirmed again) correctly has no border chrome at all -- read the
+     code (`drawCharacterSheetOverlay`'s own comment) rather than assuming
+     a bug: it's a deliberate full-window compositing layer with its own
+     flat background fill, not a `drawPickerOverlay` box, since covering
+     the whole window means it isn't bound by the 320px sidebar width the
+     bordered screens are laid out around.
+
+     **Real bug found and fixed, not just a font issue**: the Help
+     screen's static text still read "wasd = move" in both its Movement
+     and Combat sections -- stale since Milestone 200 removed WASD as
+     movement entirely (confirmed by grep: no `Key::W`/`A`/`S`/`D` case
+     exists anywhere in the movement switch any more, only arrow keys and
+     numpad). Milestone 200's own text update evidently missed this
+     screen. Fixed both lines in `sfml_phase1/main.cpp`'s `kHelpLines` to
+     read "Arrow keys = move" instead, confirmed live afterward (see
+     screenshot description above -- same Help screen, corrected text, no
+     wrapping/clipping introduced by the slightly longer replacement
+     string). No other file touched.
+
+     Clean rebuild (incremental, not `--clean-first`, since this was a
+     one-line text change in an already-clean tree) showed zero new `/W4`
+     warnings before the live re-verification.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

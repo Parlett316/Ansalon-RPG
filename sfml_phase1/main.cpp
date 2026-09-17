@@ -5609,7 +5609,7 @@ int runPhase1(const std::string& savePath) {
     auto drawHelpOverlay = [&]() {
         static const std::vector<std::string> kHelpLines = {
             "Movement:",
-            "  wasd = move    numpad = move + diagonals",
+            "  Arrow keys = move    numpad = move + diagonals",
             "",
             "Overworld / zone:",
             "  l = look around        t = talk to someone here",
@@ -5620,7 +5620,7 @@ int runPhase1(const std::string& savePath) {
             "  o = world map           / = this help screen",
             "",
             "Combat:",
-            "  wasd = move (spend movement)   Enter = attack",
+            "  Arrow keys = move (spend movement)   Enter = attack",
             "  m = cast (if a caster)         i = drink a potion",
             "  Space = hold action/end turn   f = flee",
             "  v = view any unit's stats",

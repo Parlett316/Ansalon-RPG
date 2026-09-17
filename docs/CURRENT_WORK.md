@@ -1,6 +1,18 @@
 # Current work
 
-**Nothing in flight.** Milestone 201 (Gold-Box sidebar chrome for the
+**Nothing in flight.** Milestone 202 (Gold Box UI font spot-check on
+shop/spellbook/journal/help, `ansalon_sfml_phase1` only) shipped
+2026-09-16, closing the last item on Milestone 196's own Playtest backlog
+entry. Verified live on a disposable copy of Regan's real `save2.txt`:
+all four screens render the real Gold Box font cleanly, no clipping. Also
+found and fixed a real bug the same check surfaced: the Help screen's
+static text still said "wasd = move" in both its Movement and Combat
+sections, stale since Milestone 200 removed WASD as movement project-wide
+-- fixed to "Arrow keys = move" in `sfml_phase1/main.cpp`'s `kHelpLines`,
+confirmed live afterward. See Milestone 202 in `docs/MILESTONES.md` for
+the full writeup.
+
+Before that, Milestone 201 (Gold-Box sidebar chrome for the
 Overworld/Zone screens, `ansalon_sfml_phase1` only) shipped 2026-09-16,
 closing the one visual seam Milestone 200 left behind: combat had its own
 bordered, content-sized stat card, but Overworld/Zone still drew the
@@ -214,14 +226,15 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
-- **Gold Box UI font** (Milestone 196) — confirmed live on the save-slot
-  menu, the full character-creation wizard through Summary (Milestone 197),
-  the character sheet + inventory screens (Milestone 198), and now the
-  combat HUD too (Milestone 199's live Black Bear fight). Not yet
-  individually screenshotted: shop, spellbook, journal, help — same shared
-  `sf::Font`/`drawPickerOverlay`/`wrapToPixelWidth` primitives already
-  proven correct on every screen checked so far, so low risk, but worth a
-  quick look next time any of those screens comes up live.
+- ~~**Gold Box UI font** (Milestone 196)~~ — now fully closed. Confirmed
+  live on the save-slot menu, the full character-creation wizard through
+  Summary (Milestone 197), the character sheet + inventory screens
+  (Milestone 198), the combat HUD (Milestone 199's live Black Bear fight),
+  and, 2026-09-16 (Milestone 202), the last four screens: shop, spellbook,
+  journal, help. That same check found and fixed a real stale-text bug —
+  the Help screen still taught "wasd = move" after Milestone 200 removed
+  WASD movement entirely — see Milestone 202. Nothing left open for this
+  item.
 - ~~**Combat sidebar companion-line wrap fix** (Milestone 198)~~ — moot:
   Milestone 199 deleted the entire old combat sidebar (roster + log) this
   fix lived in, replacing it with a per-unit card + bottom bar. Companion
