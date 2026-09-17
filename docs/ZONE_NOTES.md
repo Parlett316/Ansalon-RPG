@@ -288,6 +288,22 @@ QUEST <char> <quest-id>                 optional, at most one per POI --
                                         below); same "must already have a
                                         POI **and** a TALK line" rule as
                                         BOAT
+TOWN_MENU                               optional, no argument, at most one
+                                        per zone -- marks this zone as
+                                        using the Gold-Box-style letter-menu
+                                        interaction instead of free walking
+                                        (see "Town menus: letter-keyed
+                                        navigation instead of walking"
+                                        below); `sfml_phase1` only, has no
+                                        effect on the console build. 'L'/'l'
+                                        may not be used as any POI's code in
+                                        a TOWN_MENU zone (reserved for the
+                                        menu's own synthetic "Leave town"
+                                        row), and every POI the menu would
+                                        offer (a PORTAL target, SHOP, BED, or
+                                        anything with a TALK line) must use
+                                        a plain ASCII letter code -- both
+                                        checked by ZoneLoader at load time
 END
 ```
 
@@ -326,6 +342,52 @@ back to `zoneTileFor`, so a POI character never gets treated as an unknown
 alongside the nested-zone work below — see `docs/GOTCHAS.md`. If a future
 POI genuinely needs to block movement (a statue viewed only from outside,
 say), that needs a new, explicit mechanism — don't rely on the glyph alone.
+
+## Town menus: letter-keyed navigation instead of walking
+
+`ansalon_sfml_phase1` only (see `docs/ARCHITECTURE.md`'s SFML section;
+`ansalon_rpg` ignores `TOWN_MENU` entirely and always walks). A zone
+marked `TOWN_MENU` (grammar above) replaces free walking with the real
+SSI Gold Box town interface: a letter-keyed list of destinations instead
+of a walkable `GRID`. Deliberately **auto-derived from data the zone file
+already has**, not a second, hand-authored list — no new per-POI grammar
+at all.
+
+**What becomes a menu row.** Every *actionable* POI — a `PORTAL` target,
+`SHOP`, `BED`, or anything with a `TALK` line — becomes one row, keyed by
+that POI's own already-declared `char` and labeled with its own `name`.
+A pure-scenery POI (a `POI` line with none of those — Solace's Vallenwood
+Tree, say) is silently omitted, the same way a real Gold Box town menu
+only ever lists actual destinations, never ambient flavor; there is
+currently no way to read a scenery-only POI's description at all inside
+a `TOWN_MENU` zone (walking, and therefore standing on its tile, doesn't
+happen there). A synthetic final row, always present, isn't a POI at
+all: `L` for "Leave town," which is why `L`/`l` is reserved and
+`ZoneLoader` fails fast if any real POI tries to use it.
+
+**Selecting a row never invents new behavior.** `shopBegin`/
+`restBegin(true)`/the talk path (`gatherTalkCandidates` and friends) are
+already position-based — they act on whatever POI sits at the player's
+current tile, nothing else. Picking a menu row just silently moves the
+player onto that POI's tile and calls the exact same handler a walking
+player pressing `p`/`z`/`t` there would trigger — identical behavior
+either way (every `TALK_AFTER`/`TALK_BEFORE`/`SAY_IF`/quest/boat/recruit
+rule still applies), so there's no second, parallel interaction path to
+keep in sync. A portal-target row runs the same zone-entry sequence as
+stepping onto a `PORTAL` tile. Selecting `L` runs the same
+zone-exit sequence as stepping onto `ENTRY` and leaving.
+
+**Not currently supported inside a `TOWN_MENU` zone**: free walking
+(obviously), Look (`;` -- "standing on a tile" isn't a coherent idea once
+there's no walking), and reading a scenery-only POI's own description.
+Global, zone-independent screens (Inventory/Sheet/Help/Journal/World
+Map/Quit) are unaffected either way.
+
+**Pilot**: `data/zones/solace.txt` is the first (and, as of this writing,
+only) `TOWN_MENU` zone — see Milestone 205's follow-up in
+`docs/MILESTONES.md`. Every other zone, including Solace's own nested
+`solace_inn.txt`, stays walkable; converting more zones is a future,
+separate decision per zone, not an all-or-nothing switch.
 
 ## NPCs: POIs you can talk to
 

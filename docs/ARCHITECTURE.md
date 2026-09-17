@@ -266,6 +266,106 @@ wired to the companion sweep/attack loops in `combatCompanionActs`, which
 call the same underlying `combat::resolvePlayerAttack` function but for a
 different attacker entirely.
 
+### Zone landmark plates (Milestone 205)
+
+A second, much simpler use of the same "the file's mere presence is the
+opt-in" convention `loadCombatSprite` established above. Zone interiors
+(`docs/ZONE_NOTES.md`) are still a flat-colored tile grid + generic
+`PoiIconShapes` — every landmark, from Thorbardin's Great Hall to an
+ordinary shop back room, looks identical today. Milestone 205 gives a
+handful of named locations a single static illustration shown full-
+window on entry, before dropping back to the ordinary tile view —
+deliberately borrowing a real SSI Gold Box convention rather than
+inventing a new presentation idiom, since this project's own recent UI
+chrome (Milestones 194–203) already comes from that same family.
+
+**No zone-file grammar change, no `ZoneLoader`/`Zone.h` change.** A zone
+simply gets a plate if `assets/plates/<zone-id>.png` exists (`<zone-id>`
+= the same id `ZoneCatalog` already keys zones by, matching the
+`data/zones/<id>.txt` filename stem) — no new `PointOfInterest`/`Zone`
+field, no cross-file validation, nothing for `ZoneLoader` to fail-fast
+on. `sfml_phase1/main.cpp`'s `loadZonePlateTexture` tries that path and
+returns `std::nullopt` on any failure, never throwing — same "optional
+presentation" contract as `loadCombatSprite`, just without that
+function's frame-splitting math (a plate is one full image, not an
+idle/attack pair), so it stays a small free function rather than earning
+its own file the way `CombatSprite.h/.cpp` did. Ships correctly with
+zero art, exactly like combat sprites did before "player.png" existed.
+
+Triggered at both places `main.cpp` already transitions into a zone
+(overworld → zone, and portal → nested zone) — checking both, rather
+than only the overworld entry, means a plate for a portal-reached
+interior works with no special-casing. State is transient UI
+(`zonePlateOpen`/`zonePlateTexture`/`zonePlateZoneName`), not
+`game::GameState` — same "screen transition, not world state" reasoning
+as `DialogueSession`/`worldMapOpen`. Dismissed by any key, folded into
+the existing `helpOpen`/`worldMapOpen`/`journalOpen` cascade, and
+rendered through the same shared `drawPanelChrome()` frame every other
+full-window overlay uses, with the image contain-fit scaled and centered
+the same way `drawWorldMapOverlay`'s own minimap already scales the real
+map texture.
+
+**Shows on every entry, not gated behind "seen before" tracking** —
+confirmed with the user up front, since the alternative (first-visit-
+only, persisted forever) would need a new `SaveGame`/`GameState` field
+and, per `CLAUDE.md`'s own release-versioning rule, count as a save-
+format change requiring a major-version release. This choice needs
+neither, and is the easier one to make more elaborate later if it ever
+feels repetitive.
+
+### Gold Box town menu (Milestone 206, pilot: Solace)
+
+After seeing the plate above, the user's actual mental model turned out
+to be the full SSI Gold Box town interface: a picture *plus* a letter-
+keyed menu of destinations, no walking around town at all. A zone marked
+`TOWN_MENU` (see `docs/ZONE_NOTES.md`'s "Town menus" for the grammar,
+auto-derivation rule, and what's deliberately not supported) replaces
+the ordinary walkable interior with exactly that, for as long as the
+player is in it — the plate texture (if any) persists in a fixed-height
+band at the top of the screen the whole time, confirmed with the user up
+front, rather than dismissing into the tile grid the way an ordinary
+zone's plate still does.
+
+**`enterZone`/`leaveCurrentZone` (both in `main.cpp`) are new shared
+helpers**, extracted from what used to be two near-duplicate inline
+zone-entry/exit sequences (overworld → zone, and a walked-into `PORTAL`
+tile) — the menu's own portal-type rows are a third caller doing the
+identical thing, which is what justified the extraction (this project's
+own "rule of three"). `enterZone` decides whether to set the one-shot
+`zonePlateOpen` flourish or leave it off (menu-town target) purely by
+asking the target zone's own `isMenuTown()` — no separate transient flag
+tracks this. `leaveCurrentZone` also **re-loads the plate texture for
+whichever zone becomes current** (not just the zone most recently
+entered forward) — a real correctness fix found during implementation:
+without it, backing out of a child zone (Solace's own Inn, say) into a
+`TOWN_MENU` parent would show the child's (usually absent) plate instead
+of the parent's own.
+
+**Menu rows are auto-derived, never hand-authored** — one row per
+*actionable* POI (a `PORTAL` target, `SHOP`, `BED`, or anything with a
+`TALK` line), keyed by that POI's own already-declared character
+(`buildTownMenuItems`, `main.cpp`). Selecting a row never invents new
+behavior: it silently moves the player onto that POI's tile and calls
+the exact same `shopBegin`/`restBegin(true)`/`dialogueBegin` a walking
+player pressing `p`/`z`/`t` there would trigger — those functions were
+already position-based (keyed off `currentZone->poiAt(state.zoneX,
+state.zoneY)`, never taking an explicit POI), which is what made this
+possible with zero changes to any of them.
+
+**A real, deliberate keybinding trade-off**: while standing in a
+`TOWN_MENU` zone with no other overlay open, *every* letter key is
+treated as a menu-selection attempt, full stop — there is no fall-
+through to that letter's ordinary global meaning (Inventory's `I`,
+Journal's `G`, Rest's `R`, Look's `L`, ...) even when the current zone's
+own menu doesn't happen to use that letter. Simpler and more predictable
+than a per-letter fallback rule, and it matches how the original Gold
+Box town-menu screens had no other interface running alongside them —
+Quit (`Q`/Escape, checked earlier in the same key-dispatch cascade) and
+non-letter global commands (Help's `/`) are unaffected either way. For
+Solace specifically, this means Inventory/Journal/Rest are unreachable
+while inside its town screen (its own `I`/`G`/`R` destinations shadow
+them) — documented, not accidental.
+
 ## Why location data is a hand-rolled text format, not JSON
 
 Unchanged reasoning from Milestone 1: no external dependency to vendor for

@@ -515,6 +515,100 @@ PoiKind poiKindFor(bool isPortal, const world::PointOfInterest& poi) {
     return PoiKind::Landmark;
 }
 
+// Zone landmark plates: a single static illustration shown full-window on
+// entry to a zone, if one exists for it -- the Gold Box convention this
+// project's own UI chrome already comes from (see docs/ARCHITECTURE.md's
+// SFML section). Same "the file's mere presence is the opt-in" contract as
+// loadCombatSprite (CombatSprite.h) -- no zone-file grammar, no
+// ZoneLoader/Zone.h change, ships correctly with zero art since every zone
+// simply has no matching file yet. Unlike CombatSprite there's no pure
+// frame-splitting math worth a separate file/unit test here, just a
+// straight image load, so this stays a small free function alongside the
+// other small rendering helpers in this file. Never throws -- optional
+// presentation, same as loadCombatSprite.
+std::optional<sf::Texture> loadZonePlateTexture(const std::string& zoneId) {
+    sf::Texture texture;
+    if (!texture.loadFromFile("assets/plates/" + zoneId + ".png")) return std::nullopt;
+    texture.setSmooth(true);  // a painted illustration, not pixel art --
+                              // unlike CombatSprite's setSmooth(false)
+    return texture;
+}
+
+// Gold-Box town menu (Milestone 206, docs/ZONE_NOTES.md's "Town menus"):
+// one row per actionable POI in a TOWN_MENU zone, auto-derived from data
+// the zone file already has -- see buildTownMenuItems below.
+struct TownMenuItem {
+    char hotkeyChar = '?';
+    std::string label;
+    bool isPortal = false;
+    std::string portalTarget;  // only meaningful if isPortal
+    int x = 0;
+    int y = 0;                 // only meaningful if !isPortal
+};
+
+// Same "lookup table, not enum arithmetic" idiom as the character-creation
+// wizard's own Gold-Box letter picker further down this file -- kept as
+// its own small, self-contained copy (rather than sharing that one's local
+// declaration) so this stays fully isolated from that large, separately-
+// verified block. Returns 0-25 for A-Z, -1 otherwise.
+int letterIndexForKey(sf::Keyboard::Key key) {
+    static constexpr std::array<sf::Keyboard::Key, 26> kLetterKeys = {
+        sf::Keyboard::Key::A, sf::Keyboard::Key::B, sf::Keyboard::Key::C, sf::Keyboard::Key::D,
+        sf::Keyboard::Key::E, sf::Keyboard::Key::F, sf::Keyboard::Key::G, sf::Keyboard::Key::H,
+        sf::Keyboard::Key::I, sf::Keyboard::Key::J, sf::Keyboard::Key::K, sf::Keyboard::Key::L,
+        sf::Keyboard::Key::M, sf::Keyboard::Key::N, sf::Keyboard::Key::O, sf::Keyboard::Key::P,
+        sf::Keyboard::Key::Q, sf::Keyboard::Key::R, sf::Keyboard::Key::S, sf::Keyboard::Key::T,
+        sf::Keyboard::Key::U, sf::Keyboard::Key::V, sf::Keyboard::Key::W, sf::Keyboard::Key::X,
+        sf::Keyboard::Key::Y, sf::Keyboard::Key::Z,
+    };
+    for (int i = 0; i < static_cast<int>(kLetterKeys.size()); ++i) {
+        if (kLetterKeys[static_cast<size_t>(i)] == key) return i;
+    }
+    return -1;
+}
+
+// Scans the zone grid once, collecting one row per actionable POI -- a
+// PORTAL target, SHOP, BED, or anything with a TALK line -- deduped by POI
+// char. Pure scenery (no TALK, not a shop/bed/portal) is silently omitted,
+// same as a real Gold Box town menu only ever listing actual destinations.
+// A synthetic final row, hotkey 'L', is always appended for "Leave town" --
+// ZoneLoader already guarantees no real POI in a TOWN_MENU zone uses that
+// letter (see docs/ZONE_NOTES.md). Rebuilt fresh on demand (a handful of
+// POIs per zone) rather than cached, same "no premature caching" restraint
+// as loadZonePlateTexture above.
+std::vector<TownMenuItem> buildTownMenuItems(const world::Zone& zone) {
+    std::vector<TownMenuItem> items;
+    std::vector<char> seen;
+    for (int y = 0; y < zone.height(); ++y) {
+        for (int x = 0; x < zone.width(); ++x) {
+            const world::PointOfInterest* poi = zone.poiAt(x, y);
+            if (poi == nullptr) continue;
+            if (std::find(seen.begin(), seen.end(), poi->code) != seen.end()) continue;
+            seen.push_back(poi->code);
+            const std::string* portalTarget = zone.portalAt(x, y);
+            const bool actionable = poi->isShop || poi->isBed || !poi->dialogue.empty() || portalTarget != nullptr;
+            if (!actionable) continue;
+            TownMenuItem item;
+            item.hotkeyChar = static_cast<char>(std::toupper(static_cast<unsigned char>(poi->code)));
+            item.label = poi->name;
+            item.x = x;
+            item.y = y;
+            if (portalTarget != nullptr) {
+                item.isPortal = true;
+                item.portalTarget = *portalTarget;
+            }
+            items.push_back(std::move(item));
+        }
+    }
+    std::sort(items.begin(), items.end(),
+              [](const TownMenuItem& a, const TownMenuItem& b) { return a.hotkeyChar < b.hotkeyChar; });
+    TownMenuItem leave;
+    leave.hotkeyChar = 'L';
+    leave.label = "Leave town";
+    items.push_back(std::move(leave));
+    return items;
+}
+
 // Small reusable shape pool for drawPoiIcon -- declared once and mutated
 // per cell, same "declare outside the loop" convention as zoneTileShape/
 // locationMarker below. Each icon is 1-2 primitives so the placeholder
@@ -2328,6 +2422,25 @@ int runPhase1(const std::string& savePath) {
         }
     }
 
+    // Zone landmark plate -- same transient-full-window-overlay reasoning
+    // as helpOpen/worldMapOpen/journalOpen (declared further below,
+    // alongside those), dismissed by any key, but set from the zone-entry
+    // code (enterZone/leaveCurrentZone below) rather than a dedicated
+    // keybind. Declared here, right after currentZone, rather than beside
+    // helpOpen/worldMapOpen, because enterZone/leaveCurrentZone -- defined
+    // well before those -- need to capture it. zonePlateTexture/
+    // zonePlateZoneName only matter while zonePlateOpen is true (see
+    // loadZonePlateTexture above and drawZonePlateOverlay below).
+    // zonePlateLoaded (Milestone 206) is independent of zonePlateOpen: it
+    // tracks whether the *current* zone has a plate texture loaded at all,
+    // needed because a TOWN_MENU zone (see enterZone/drawTownMenuOverlay)
+    // never sets zonePlateOpen -- it draws the same texture persistently
+    // instead of as a one-shot full-window flourish.
+    bool zonePlateOpen = false;
+    bool zonePlateLoaded = false;
+    sf::Texture zonePlateTexture;
+    std::string zonePlateZoneName;
+
     sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
@@ -3050,6 +3163,80 @@ int runPhase1(const std::string& savePath) {
         }
 
         restBeginSpellMemorization(message, dayAfterRest);
+    };
+
+    // Shared zone-entry sequence (Milestone 206) -- used by the overworld
+    // Enter handler, a walked-into PORTAL tile, and a TOWN_MENU portal-type
+    // menu row (a third caller doing the identical thing, which is what
+    // justified pulling this out of two near-duplicate inline copies).
+    // pushStack is true only for the PORTAL/menu-portal cases -- entering
+    // straight from the Overworld has no zone to push onto zoneStack.
+    // Returns false (does nothing else) if zoneId isn't a real zone --
+    // callers decide what to log in that case, since the wording differs
+    // (a portal with a dangling target vs. a location with no interior).
+    auto enterZone = [&](const std::string& zoneId, bool pushStack) -> bool {
+        const world::Zone* target = zones.getZone(zoneId);
+        if (target == nullptr) return false;
+        if (pushStack) {
+            state.zoneStack.push_back({state.currentZoneId, state.zoneX, state.zoneY});
+        }
+        state.mode = game::Mode::Zone;
+        state.currentZoneId = zoneId;
+        state.zoneX = target->entryX();
+        state.zoneY = target->entryY();
+        currentZone = target;
+        pushLog("You step into " + target->name() + ".");
+        if (auto plate = loadZonePlateTexture(zoneId)) {
+            zonePlateTexture = std::move(*plate);
+            zonePlateZoneName = target->name();
+            zonePlateLoaded = true;
+            // A TOWN_MENU zone draws this same texture persistently inside
+            // drawTownMenuOverlay instead -- the one-shot full-window
+            // flourish (zonePlateOpen) is only for a walkable zone's
+            // arrival, same as it's shipped since Milestone 205.
+            zonePlateOpen = !target->isMenuTown();
+        } else {
+            zonePlateLoaded = false;
+            zonePlateOpen = false;
+        }
+        return true;
+    };
+
+    // Shared zone-exit sequence (Milestone 206) -- the walkable-zone
+    // "stepped onto ENTRY and pressed Enter" logic, factored out so a
+    // TOWN_MENU zone's synthetic "Leave town" menu row can call it directly
+    // without requiring the player to actually stand on the ENTRY tile.
+    auto leaveCurrentZone = [&]() {
+        if (!state.zoneStack.empty()) {
+            const game::ZoneReturnPoint back = state.zoneStack.back();
+            state.zoneStack.pop_back();
+            state.currentZoneId = back.zoneId;
+            state.zoneX = back.x;
+            state.zoneY = back.y;
+            currentZone = zones.getZone(state.currentZoneId);
+            pushLog("You step back out into " + (currentZone ? currentZone->name() : back.zoneId) + ".");
+        } else {
+            pushLog("You step back outside.");
+            state.mode = game::Mode::Overworld;
+            currentZone = nullptr;
+        }
+        // Refresh the plate texture for whichever zone is now current --
+        // needed so a TOWN_MENU zone's persistent menu image
+        // (drawTownMenuOverlay) stays correct after a round trip through a
+        // child zone (e.g. Solace -> its Inn -> back to Solace), since
+        // zonePlateTexture/zonePlateLoaded otherwise still reflect
+        // whichever zone was most recently *entered* forward. Never sets
+        // zonePlateOpen -- backing out is not a fresh arrival, so the
+        // one-shot full-window flourish never re-fires here.
+        if (currentZone != nullptr) {
+            if (auto plate = loadZonePlateTexture(state.currentZoneId)) {
+                zonePlateTexture = std::move(*plate);
+                zonePlateZoneName = currentZone->name();
+                zonePlateLoaded = true;
+            } else {
+                zonePlateLoaded = false;
+            }
+        }
     };
 
     // Enter on the "talk to whom?" picker.
@@ -6019,6 +6206,95 @@ int runPhase1(const std::string& savePath) {
         window.draw(footer);
     };
 
+    // Zone landmark plate -- shown full-window on entry to a zone that has
+    // one (see loadZonePlateTexture above). Same contain-fit-and-center
+    // scaling idea drawWorldMapOverlay's own minimap uses just above,
+    // applied to the plate image instead of the real map texture.
+    auto drawZonePlateOverlay = [&]() {
+        drawPanelChrome();
+
+        constexpr float kTopMargin = 40.f;
+        constexpr float kCaptionAreaH = 90.f;
+        const float boxW = static_cast<float>(windowW) - 2.f * kSheetMarginX;
+        const float boxH = static_cast<float>(windowH) - kTopMargin - kCaptionAreaH;
+
+        const sf::Vector2u plateSize = zonePlateTexture.getSize();
+        if (plateSize.x > 0 && plateSize.y > 0) {
+            const float scale =
+                std::min(boxW / static_cast<float>(plateSize.x), boxH / static_cast<float>(plateSize.y));
+            const float drawW = static_cast<float>(plateSize.x) * scale;
+            const float drawH = static_cast<float>(plateSize.y) * scale;
+            sf::Sprite plateSprite(zonePlateTexture);
+            plateSprite.setScale(sf::Vector2f(scale, scale));
+            plateSprite.setPosition(
+                sf::Vector2f(kSheetMarginX + (boxW - drawW) / 2.f, kTopMargin + (boxH - drawH) / 2.f));
+            window.draw(plateSprite);
+        }
+
+        sf::Text title(font, zonePlateZoneName, kSheetTitleCharSize);
+        title.setFillColor(kSheetSectionColor);
+        const float titleY = kTopMargin + boxH + 12.f;
+        title.setPosition(sf::Vector2f(kSheetMarginX, titleY));
+        window.draw(title);
+
+        sf::Text footer(font, "(press any key to continue)", kSheetHeaderCharSize);
+        footer.setFillColor(sf::Color(150, 150, 160));
+        footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 36.f));
+        window.draw(footer);
+    };
+
+    // Gold-Box town menu (Milestone 206, docs/ZONE_NOTES.md's "Town
+    // menus") -- unlike drawZonePlateOverlay above, this never dismisses
+    // on its own: it's the base scene for a TOWN_MENU zone for as long as
+    // the player is in it, drawn every frame (see the render-loop call
+    // site) rather than toggled by a bool. The plate texture (if any),
+    // scaled into a fixed-height band at the top rather than full-window,
+    // stays visible the whole time -- confirmed with the user up front,
+    // matching how the real Gold Box games kept the town picture on
+    // screen while its own letter menu sat underneath it. currentZone is
+    // guaranteed non-null by the isMenuTown() check at every call site.
+    auto drawTownMenuOverlay = [&]() {
+        drawPanelChrome();
+
+        sf::Text title(font, currentZone->name(), kSheetTitleCharSize);
+        title.setFillColor(kSheetSectionColor);
+        title.setPosition(sf::Vector2f(kSheetMarginX, 30.f));
+        window.draw(title);
+
+        float listY = 90.f;
+        if (zonePlateLoaded) {
+            constexpr float kImageAreaH = 260.f;
+            const float boxW = static_cast<float>(windowW) - 2.f * kSheetMarginX;
+            const sf::Vector2u plateSize = zonePlateTexture.getSize();
+            if (plateSize.x > 0 && plateSize.y > 0) {
+                const float scale = std::min(boxW / static_cast<float>(plateSize.x),
+                                              kImageAreaH / static_cast<float>(plateSize.y));
+                const float drawW = static_cast<float>(plateSize.x) * scale;
+                const float drawH = static_cast<float>(plateSize.y) * scale;
+                sf::Sprite plateSprite(zonePlateTexture);
+                plateSprite.setScale(sf::Vector2f(scale, scale));
+                plateSprite.setPosition(sf::Vector2f(kSheetMarginX + (boxW - drawW) / 2.f,
+                                                      listY + (kImageAreaH - drawH) / 2.f));
+                window.draw(plateSprite);
+            }
+            listY += kImageAreaH + 20.f;
+        }
+
+        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+        for (const TownMenuItem& item : items) {
+            sf::Text line(font, "[" + std::string(1, item.hotkeyChar) + "] " + item.label, kSheetBodyCharSize);
+            line.setFillColor(kSheetBodyColor);
+            line.setPosition(sf::Vector2f(kSheetMarginX, listY));
+            window.draw(line);
+            listY += static_cast<float>(kSheetBodyCharSize) + 10.f;
+        }
+
+        sf::Text footer(font, "(press a letter)", kSheetHeaderCharSize);
+        footer.setFillColor(sf::Color(150, 150, 160));
+        footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 36.f));
+        window.draw(footer);
+    };
+
     // Spellbook ('s' from the character sheet, casters only) -- the
     // sheet's own full-spellbook drill-down, pixel-space equivalent of
     // render::MapRenderer::drawSpellbookFrame (MapRenderer.cpp:842-885).
@@ -6511,6 +6787,9 @@ int runPhase1(const std::string& savePath) {
                     } else if (worldMapOpen) {
                         // Same "any key dismisses" shape as helpOpen above.
                         worldMapOpen = false;
+                    } else if (zonePlateOpen) {
+                        // Same "any key dismisses" shape as helpOpen above.
+                        zonePlateOpen = false;
                     } else if (journalOpen) {
                         // Same "any key dismisses" shape as helpOpen above.
                         journalOpen = false;
@@ -6999,49 +7278,66 @@ int runPhase1(const std::string& savePath) {
                             }
                             inventorySession.selected = 0;
                         }
+                    } else if (state.mode == game::Mode::Zone && currentZone != nullptr &&
+                               currentZone->isMenuTown() && letterIndexForKey(key) >= 0) {
+                        // Gold-Box town menu (Milestone 206, docs/ZONE_NOTES.md's
+                        // "Town menus"): every letter key is interpreted as a
+                        // destination-selection attempt here, full stop -- no
+                        // fall-through to a same-lettered global command like
+                        // Inventory/Journal/Rest, matching how the original Gold
+                        // Box town-menu screens had no other interface running
+                        // alongside them. Quit ('Q'/Escape, the wantsQuit branch
+                        // above, checked before this one) and non-letter global
+                        // commands (Help's Slash, ...) are unaffected either way.
+                        const char pressed = static_cast<char>('A' + letterIndexForKey(key));
+                        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+                        const TownMenuItem* match = nullptr;
+                        for (const TownMenuItem& item : items) {
+                            if (item.hotkeyChar == pressed) {
+                                match = &item;
+                                break;
+                            }
+                        }
+                        if (match == nullptr) {
+                            pushLog("Nothing here by that name.");
+                        } else if (match->hotkeyChar == 'L') {
+                            leaveCurrentZone();
+                        } else if (match->isPortal) {
+                            if (!enterZone(match->portalTarget, true)) {
+                                pushLog("That doorway doesn't lead anywhere in this build.");
+                            }
+                        } else {
+                            state.zoneX = match->x;
+                            state.zoneY = match->y;
+                            const world::PointOfInterest* poi = currentZone->poiAt(match->x, match->y);
+                            if (poi != nullptr && poi->isShop) {
+                                shopBegin();
+                            } else if (poi != nullptr && poi->isBed) {
+                                restBegin(true);
+                            } else {
+                                dialogueBegin();
+                            }
+                        }
+                    } else if (state.mode == game::Mode::Zone && currentZone != nullptr &&
+                               currentZone->isMenuTown()) {
+                        // Any other key while in a town menu (arrows, Enter,
+                        // digits, ...) -- no walking and no Enter-to-confirm in
+                        // this interaction model, so nothing happens. Silent, to
+                        // avoid log spam from an arrow key pressed out of habit.
                     } else if (handleEnter) {
                         if (state.mode == game::Mode::Overworld) {
                             const world::Location* here = world.locationAt(state.x, state.y);
-                            const world::Zone* zone = here ? zones.getZone(here->id) : nullptr;
-                            if (zone) {
-                                state.mode = game::Mode::Zone;
-                                state.currentZoneId = here->id;
-                                state.zoneX = zone->entryX();
-                                state.zoneY = zone->entryY();
-                                currentZone = zone;
-                                pushLog("You step into " + zone->name() + ".");
-                            } else {
+                            if (here == nullptr || !enterZone(here->id, false)) {
                                 pushLog("There's nothing to enter here.");
                             }
                         } else if (currentZone) {
                             if (const std::string* portalTarget = currentZone->portalAt(state.zoneX, state.zoneY)) {
-                                const world::Zone* target = zones.getZone(*portalTarget);
-                                if (target) {
-                                    state.zoneStack.push_back({state.currentZoneId, state.zoneX, state.zoneY});
-                                    state.currentZoneId = *portalTarget;
-                                    state.zoneX = target->entryX();
-                                    state.zoneY = target->entryY();
-                                    currentZone = target;
-                                    pushLog("You step into " + target->name() + ".");
-                                } else {
+                                if (!enterZone(*portalTarget, true)) {
                                     pushLog("That doorway doesn't lead anywhere in this build.");
                                 }
                             } else if (state.zoneX == currentZone->entryX() &&
                                        state.zoneY == currentZone->entryY()) {
-                                if (!state.zoneStack.empty()) {
-                                    const game::ZoneReturnPoint back = state.zoneStack.back();
-                                    state.zoneStack.pop_back();
-                                    state.currentZoneId = back.zoneId;
-                                    state.zoneX = back.x;
-                                    state.zoneY = back.y;
-                                    currentZone = zones.getZone(state.currentZoneId);
-                                    pushLog("You step back out into " +
-                                            (currentZone ? currentZone->name() : back.zoneId) + ".");
-                                } else {
-                                    pushLog("You step back outside.");
-                                    state.mode = game::Mode::Overworld;
-                                    currentZone = nullptr;
-                                }
+                                leaveCurrentZone();
                             } else {
                                 pushLog("Nothing to step through here.");
                             }
@@ -7781,6 +8077,16 @@ int runPhase1(const std::string& savePath) {
                 drawCombatViewCardOverlay();
             }
 
+            // Gold-Box town menu (Milestone 206) -- drawn as the base scene
+            // for a TOWN_MENU zone, ahead of dialogueSession/shopSession/
+            // inventorySession below so a sub-interaction opened from a
+            // menu row (talk/shop/bed) paints over it, exactly like it
+            // already paints over an ordinary walkable zone's scene.
+            if (state.mode == game::Mode::Zone && currentZone != nullptr && currentZone->isMenuTown()) {
+                window.setView(uiView);
+                drawTownMenuOverlay();
+            }
+
             if (dialogueSession.active) {
                 window.setView(uiView);
                 drawDialogueOverlay();
@@ -7802,6 +8108,9 @@ int runPhase1(const std::string& savePath) {
             } else if (worldMapOpen) {
                 window.setView(uiView);
                 drawWorldMapOverlay();
+            } else if (zonePlateOpen) {
+                window.setView(uiView);
+                drawZonePlateOverlay();
             } else if (journalOpen) {
                 window.setView(uiView);
                 drawJournalOverlay();

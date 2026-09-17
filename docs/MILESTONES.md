@@ -8201,6 +8201,161 @@ now fully verified, nothing further outstanding.
      - Clean rebuild (`--clean-first`, all three CMake targets) showed zero
        new `/W4` warnings before the live verification above.
 
+205. **Zone landmark plates (`ansalon_sfml_phase1` only): a single static
+     illustration shown full-window on entry to a zone that has one.**
+     Raised as a design-brainstorm ("ideas for city interiors and
+     landmarks" -- interiors today are still a flat-colored tile grid +
+     generic `PoiIconShapes`, the pre-art placeholder state combat itself
+     was in before Milestone 191) and drafted into a real plan at the
+     user's request. Deliberately borrows a real SSI Gold Box convention
+     -- the same family this project's own recent UI-chrome milestones
+     (194-203) already ported -- rather than inventing a new presentation
+     idiom: a handful of named locations (Thorbardin's Great Hall, the
+     High Clerist's Tower, etc.) can get one illustrated "arrival" plate,
+     with the tile-grid interior unchanged for everything else.
+     - **Zero zone-file grammar changes, zero `ZoneLoader`/`Zone.h`
+       changes.** Follows the exact precedent `CombatSprite.h`'s
+       `loadCombatSprite` already established for "player"/"bren_alder"
+       combat art: the mere presence of `assets/plates/<zone-id>.png`
+       (`<zone-id>` = the same id `ZoneCatalog` keys zones by) is the
+       whole opt-in. `assets/` is already copied wholesale to the build
+       output, so no `CMakeLists.txt` change either. Ships with **zero
+       art** -- every zone has no matching file today, so nothing
+       visually changes until art is actually dropped in, same
+       bootstrapping state combat sprites shipped in before "player.png"
+       existed.
+     - New small free function `loadZonePlateTexture` in
+       `sfml_phase1/main.cpp` (no pure frame-splitting math worth its own
+       file/unit test here, unlike `CombatSprite`, just a straight
+       `sf::Texture::loadFromFile`, `setSmooth(true)` since this is a
+       painted illustration rather than pixel art). Never throws --
+       optional presentation, same contract as `loadCombatSprite`.
+     - New transient session state (`zonePlateOpen`/`zonePlateTexture`/
+       `zonePlateZoneName`, not part of `game::GameState` -- screen-
+       transition presentation, not world state, same reasoning as
+       `DialogueSession`/`worldMapOpen`), checked at **both** existing
+       zone-entry sites (overworld -> zone, and portal -> nested zone) so
+       a plate authored for a portal-reached interior works automatically
+       with no special-casing. Dismissed by any key, added to the
+       existing `helpOpen`/`worldMapOpen`/`journalOpen` "any key
+       dismisses" cascade. Rendered via a new `drawZonePlateOverlay`
+       (reuses the shared `drawPanelChrome()` Gold-Box frame every other
+       full-window overlay already uses, plus the same contain-fit-and-
+       center scaling `drawWorldMapOverlay`'s own minimap already does,
+       applied to the plate image instead of the map texture).
+     - **Confirmed with the user up front: the plate shows every time the
+       player enters, not gated behind any "seen before" tracking** --
+       the alternative (first-visit-only, persisted forever) would have
+       meant a new `SaveGame`/`GameState` field and, per `CLAUDE.md`'s own
+       versioning rule, a save-format change requiring a major-version
+       release. This choice needs neither.
+     - Verified via a clean rebuild (zero new `/W4` warnings) and a
+       **launch smoke test** against a disposable save copy (`build/Debug/
+       smoketest_zone_plate.txt`, deleted after; real `save1.txt`/
+       `save2.txt` confirmed untouched by mtime and checksum) with a
+       throwaway placeholder image temporarily at
+       `assets/plates/solace.png` (copied from `assets/sprites/player.png`,
+       deleted after) -- confirmed the process starts, every catalog
+       (World/Zone/Monster/BattleMap/Timeline/Quest) loads, and the real
+       save loads cleanly with the new code paths compiled in. **Not yet
+       interactively confirmed**: actually walking into a zone to see the
+       plate render/scale/center correctly and dismiss on a keypress --
+       same standing SFML limitation as every other visual change in this
+       project; added to `docs/CURRENT_WORK.md`'s Playtest backlog.
+
+206. **Gold Box town menu (`ansalon_sfml_phase1` only), pilot: Solace.**
+     After seeing Milestone 205's placeholder plate live, the user's
+     actual mental model turned out to be the real SSI Gold Box town
+     interface -- a picture *plus* a letter-keyed menu of destinations
+     (`P` for Palace, `I` for Inn, ...), not walking around town at all.
+     Scoped down deliberately to one pilot zone first, this project's own
+     repeated "one location first" precedent (Raistlin's `PRESENCE
+     solace` proof of concept, Xak Tsaroth's echo-quest stub, Astinus's
+     original 4-topic pool): every zone but `data/zones/solace.txt`
+     (including Solace's own nested `solace_inn.txt`) stays exactly as
+     walkable as it's always been.
+     - **One new zone-file flag, `TOWN_MENU`** (bare, zero-argument, at
+       most one per zone -- see `docs/ZONE_NOTES.md`'s new "Town menus"
+       section for the full grammar/rules). No other new grammar: menu
+       rows are auto-derived from data the zone file already has, not a
+       second hand-authored list. `Zone::isMenuTown()` is a live check
+       (not stored transient UI state), so it can never drift out of
+       sync with which zone is actually current. `ZoneLoader` fails fast
+       if a `TOWN_MENU` zone uses `L`/`l` as any POI's code (reserved for
+       the menu's own synthetic "Leave town" row) or gives an actionable
+       POI a non-letter code (menu hotkeys map straight onto
+       `sf::Keyboard::Key::A`-`Z`).
+     - **Menu rows are auto-derived, never hand-authored**
+       (`buildTownMenuItems`, `main.cpp`): one row per *actionable* POI --
+       a `PORTAL` target, `SHOP`, `BED`, or anything with a `TALK` line --
+       keyed by that POI's own already-declared character, deduped, pure
+       scenery silently omitted (Solace's Vallenwood Tree, no `TALK`,
+       correctly doesn't appear). Solace's real POIs already fit cleanly:
+       `I`(Inn, portal)/`B`(Notice Board)/`G`(General Store)/`S`(Flint's
+       Smithy)/`K`(Bren Alder)/`R`(A Robed Stranger), plus the always-
+       appended `L` for Leave.
+     - **Selecting a row invents no new behavior** -- `shopBegin`/
+       `restBegin(true)`/the talk path were all already position-based
+       (keyed off `currentZone->poiAt(state.zoneX, state.zoneY)`, never
+       taking an explicit POI), a real finding from reading `main.cpp`
+       before planning this. Picking a row just silently moves the
+       player onto that POI's tile and calls the exact same handler a
+       walking player pressing `p`/`z`/`t` there would -- identical
+       behavior either way, zero risk of the menu and a hypothetical
+       walkable version ever drifting apart.
+     - **`enterZone`/`leaveCurrentZone`, new shared helpers in
+       `main.cpp`**, extracted from two near-duplicate inline zone-entry/
+       exit sequences (overworld → zone, walked-into `PORTAL`) once the
+       menu's own portal-type rows became a third caller doing the
+       identical thing (this project's "rule of three"). Implementing
+       `leaveCurrentZone` surfaced a real bug before it ever shipped:
+       backing out of a child zone into a `TOWN_MENU` parent needs to
+       *re-load* the parent's own plate texture, not keep whatever was
+       last loaded going *forward* into the child -- fixed by having
+       `leaveCurrentZone` reload the plate for whichever zone becomes
+       current (never setting the one-shot `zonePlateOpen` flourish,
+       since backing out isn't a fresh arrival).
+     - **The plate persists instead of dismissing**, confirmed with the
+       user up front: a `TOWN_MENU` zone's plate texture (if any) draws
+       in a fixed-height band at the top of `drawTownMenuOverlay`'s panel
+       for as long as the player is in that zone, rather than Milestone
+       205's one-shot full-window flourish -- matching how the real Gold
+       Box games kept the town picture up while its own letter menu sat
+       underneath it.
+     - **Deliberate keybinding trade-off, called out explicitly rather
+       than glossed over**: inside a `TOWN_MENU` zone with no other
+       overlay open, every letter key is a menu-selection attempt, full
+       stop -- no fall-through to that letter's ordinary global meaning
+       (Inventory's `I`, Journal's `G`, Rest's `R`, Look's `L`) even when
+       unmatched. Simpler and more predictable than a per-zone-dependent
+       fallback rule, and it matches the original games having no other
+       interface running alongside the town menu. For Solace, this means
+       Inventory/Journal/Rest are unreachable while inside its town
+       screen -- documented (`docs/ARCHITECTURE.md`'s SFML section,
+       `docs/ZONE_NOTES.md`'s "Town menus"), not accidental. Quit (`Q`/
+       Escape, checked earlier in the same cascade) and non-letter
+       globals (Help's `/`) are unaffected.
+     - Not currently supported inside a `TOWN_MENU` zone: free walking
+       (the point), Look, and reading a scenery-only POI's own
+       description -- see `docs/ZONE_NOTES.md`.
+     - Verified via a clean rebuild (all three CMake targets, since
+       `Zone.h`/`ZoneLoader.cpp` are shared -- zero new `/W4` warnings)
+       and a launch smoke test against a disposable save copy
+       (`build/Debug/smoketest_town_menu.txt`, deleted after; real
+       `save1.txt`/`save2.txt` confirmed untouched by mtime and checksum)
+       -- confirmed all 29 zones (including the now-`TOWN_MENU` Solace)
+       parse cleanly and the real save loads. **Additionally eyeballed
+       live by the user themselves** (their own real character's save
+       happens to already sit inside Solace, so the smoke-test window
+       showed the actual menu on launch) against a disposable copy, via
+       their own RDP session rather than SendKeys automation -- general
+       "looks good" reaction, not an exhaustive per-hotkey walkthrough.
+       Still added to `docs/CURRENT_WORK.md`'s Playtest backlog: each
+       destination (talk/shop/bed) individually confirmed to return to
+       the menu afterward, the Inn round-trip (tests the
+       `leaveCurrentZone` plate-reload fix above), and real art in place
+       of a placeholder.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

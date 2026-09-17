@@ -218,13 +218,19 @@ public:
     // to the id of the party companion it recruits (Milestone 118) -- same
     // "id payload needing cross-file validation" shape, checked against
     // character::isKnownCompanionId by main.cpp.
+    // `townMenu` is TOWN_MENU (see docs/ZONE_NOTES.md) -- marks this zone as
+    // using the Gold-Box-style letter-menu interaction
+    // (sfml_phase1::drawTownMenuOverlay) instead of free walking. A bare,
+    // zero-argument, at-most-one-per-zone flag, same "collected once,
+    // applied after the whole file is parsed" shape as TIMELINE_ANCHOR
+    // above, just with no payload at all.
     Zone(std::string name, std::vector<std::string> rows, int entryX, int entryY,
          std::unordered_map<char, PointOfInterest> pois,
          std::unordered_map<char, std::string> portals, char timelineAnchorPoi,
          std::string timelineLocationId, std::unordered_map<char, std::string> quests,
          std::unordered_map<char, BoatVoyage> boatVoyages,
          std::unordered_map<char, std::string> shopLocks,
-         std::unordered_map<char, std::string> recruits);
+         std::unordered_map<char, std::string> recruits, bool townMenu);
 
     const std::string& name() const { return name_; }
     int width() const { return width_; }
@@ -294,6 +300,14 @@ public:
     // filename/catalog id already matches a Location id).
     const std::string& timelineLocationId() const { return timelineLocationId_; }
 
+    // True if this zone uses the Gold-Box-style letter-menu interaction
+    // instead of free walking -- set via a bare TOWN_MENU line (see
+    // docs/ZONE_NOTES.md). sfml_phase1/main.cpp checks this live wherever
+    // it decides how to render/dispatch input for Mode::Zone; it is not
+    // stored transient UI state anywhere, so it can never drift out of
+    // sync with which zone is actually current.
+    bool isMenuTown() const { return townMenu_; }
+
 private:
     std::string name_;
     int width_ = 0;
@@ -309,6 +323,7 @@ private:
     std::unordered_map<char, BoatVoyage> boatVoyages_;
     std::unordered_map<char, std::string> shopLocks_;
     std::unordered_map<char, std::string> recruits_;
+    bool townMenu_ = false;
 };
 
 } // namespace world

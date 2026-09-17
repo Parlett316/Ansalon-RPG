@@ -1,24 +1,39 @@
 # Current work
 
-**Nothing in flight.** Milestone 204 (real DQoK Aim -- a free-look
-targeting cursor -- plus auto-advancing round narration,
-`ansalon_sfml_phase1` only) shipped 2026-09-16, fixing a real combat-feel
-bug the user hit live: pressing `a` (Attack) while nothing was adjacent
-used to still consume the round (letting monsters close in for free)
-because initiative was rolled before checking for a legal target; on top
-of that, every round's narration needed an Enter press per line. Both
-fixed: `a` now opens a genuine zero-cost free-look cursor that only spends
-the round once Enter confirms a legal target, and an ordinary round's
-narration now auto-plays, stopping for input only at real decision points
-(your turn, the encounter-open beat, and Won/Lost/Fled). Verified live
-end-to-end via SendKeys/screenshot on a disposable save copy (real
-`save1.txt` confirmed untouched by mtime) through a full 4-Skeleton fight,
-including sweep re-triggering correctly and auto-advance correctly
-stopping the instant the fight-ending round resolved. Full writeup:
-Milestone 204 in `docs/MILESTONES.md` and its own section in
-`docs/COMBAT_NOTES.md`. Not yet witnessed live: the ranged-weapon
-(crossbow) half of the new Aim legality check — see the Playtest backlog
-below.
+**Nothing in flight.** Milestone 206 (Gold Box town menu, pilot: Solace --
+`ansalon_sfml_phase1` only) shipped 2026-09-17, following directly on
+Milestone 205's zone landmark plates: after seeing the placeholder plate
+live, the user's actual mental model turned out to be the full SSI Gold
+Box town interface -- a picture *plus* a letter-keyed menu of
+destinations, no walking around town at all. `data/zones/solace.txt` is
+now the first (and only) `TOWN_MENU` zone; every other zone, including
+Solace's own nested `solace_inn.txt`, stays walkable. Menu rows are
+auto-derived from data the zone file already has (one row per actionable
+POI -- a `PORTAL`/`SHOP`/`BED`/`TALK`-carrying POI, keyed by its own
+already-declared character), not a second hand-authored list, and
+selecting one invents no new behavior -- it silently moves the player
+onto that POI's tile and calls the exact same `shopBegin`/
+`restBegin(true)`/`dialogueBegin` a walking player pressing `p`/`z`/`t`
+there would, since those were already position-based. Real, deliberate
+trade-off, documented rather than glossed over: inside Solace's menu, a
+letter always means "go there or nothing," never falling through to that
+letter's ordinary global meaning -- so Inventory (`I`)/Journal (`G`)/Rest
+(`R`) are unreachable while inside its town screen (its own destinations
+use those letters). Verified via a clean rebuild (all three CMake
+targets, zero new `/W4` warnings) and a launch smoke test against a
+disposable save copy (real `save1.txt`/`save2.txt` confirmed untouched by
+mtime and checksum); additionally eyeballed live by the user themselves
+(a general "looks good" reaction, not an exhaustive per-hotkey
+walkthrough) since their own real character already stood inside Solace,
+so the smoke-test window showed the actual menu on launch. Full writeup:
+Milestone 206 in `docs/MILESTONES.md`, its own section in
+`docs/ARCHITECTURE.md`'s SFML section, and `docs/ZONE_NOTES.md`'s new
+"Town menus" section for the grammar. **Not fully interactively
+confirmed** -- see the Playtest backlog below. Milestone 205 (zone
+landmark plates) itself remains shipped and described in its own
+`docs/MILESTONES.md`/`docs/ARCHITECTURE.md` entries; still ships with
+zero real art in either case -- the user is sourcing artwork for the
+towns next.
 
 Everything else recently shipped is verified and handed off — see
 `docs/MILESTONES.md` for the full shipping history (each numbered entry
@@ -44,6 +59,31 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
+- **Gold Box town menu, pilot: Solace** (Milestone 206) — smoke-tested
+  clean and given one live, informal look by the user (a general "looks
+  good" reaction against a disposable save copy, not an exhaustive
+  walkthrough). Still open: each destination (`I`/`B`/`G`/`S`/`K`)
+  individually confirmed to actually open the right screen and return to
+  the menu afterward (not just launch into Solace's menu on load); the
+  Inn round-trip specifically (`I` in, then leave the Inn back to
+  Solace) — this exercises the `leaveCurrentZone` plate-reload fix found
+  during implementation, unverified live; `L` (Leave town) confirmed
+  from a fresh overworld-entry into Solace, not just a save that already
+  starts inside it; and the "Nothing here by that name." message for an
+  unmatched letter. No real plate art exists for Solace yet either (see
+  the Milestone 205 item below) — the persistent top-of-screen image
+  band in `drawTownMenuOverlay` has only ever been exercised with a
+  throwaway placeholder.
+- **Zone landmark plates** (Milestone 205) — implemented and smoke-tested
+  clean, but never watched actually render with real art: needs a real
+  `assets/plates/<zone-id>.png` dropped in (the user is sourcing artwork
+  for the towns now) and a live entry into an *ordinary* (non-`TOWN_MENU`)
+  zone with one to confirm the image contain-fit scales/centers correctly
+  inside the Gold-Box frame, the caption/zone-name text reads right, and
+  any keypress dismisses cleanly back to the ordinary tile view without
+  also being consumed as a movement/menu key. Also unverified: the
+  portal-entry trigger site specifically (no portal-nested zone has a
+  plate yet either).
 - **Real DQoK Aim cursor + auto-advancing narration** (Milestone 204) —
   confirmed live end-to-end (free-look/zero-cost, live status text, Escape
   cancel, commit/sweep, auto-advance, and Won staying manual — see that

@@ -47,4 +47,5 @@ POI R "A Robed Stranger" A hooded figure at the corner of the square, unremarkab
 TALK R The figure doesn't sell anything, doesn't beg, doesn't seem to be waiting for anyone in particular -- just watches the square go by from beneath a plain, unremarkable hood. When you meet their eyes, they incline their head slightly, as if you were an old acquaintance they hadn't expected to see again so soon.
 TALK_AGAIN R The hooded figure is still there, watching the square with the same unhurried patience as before. They say nothing more to you today.
 QUEST R wayreth_summons
+TOWN_MENU
 END

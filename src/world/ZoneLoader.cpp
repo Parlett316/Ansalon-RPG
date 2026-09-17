@@ -3,6 +3,7 @@
 #include "world/ZoneTile.h"
 
 #include <array>
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -169,6 +170,13 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
     // an already-declared POI with a TALK line" treatment as BOAT above.
     // Value is {quest-id, the line number QUEST appeared on}.
     std::unordered_map<char, std::pair<std::string, int>> questLines;
+    // TOWN_MENU -- a bare, zero-argument, at-most-one-per-zone flag (see
+    // docs/ZONE_NOTES.md). townMenuLine is only meaningful while townMenu is
+    // true, used to anchor this flag's own post-parse validation failures
+    // (below) to a real line, same "fail against the flag's own line, not
+    // the referenced POI's" precedent TIMELINE_ANCHOR already established.
+    bool townMenu = false;
+    int townMenuLine = -1;
     int gridWidth = -1;
 
     // GRID/ENDGRID is a literal raw-text block embedded inside an otherwise
@@ -534,6 +542,15 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                     fail(path, lineNumber, "malformed QUEST (expected: QUEST <char> <quest-id>)");
                 }
                 questLines[codeToken[0]] = {questId, lineNumber};
+            } else if (keyword == "TOWN_MENU") {
+                if (!rest.empty()) {
+                    fail(path, lineNumber, "malformed TOWN_MENU (expected: TOWN_MENU, no arguments)");
+                }
+                if (townMenu) {
+                    fail(path, lineNumber, "a zone can only have one TOWN_MENU");
+                }
+                townMenu = true;
+                townMenuLine = lineNumber;
             } else if (keyword == "END") {
                 state = State::Done;
             } else {
@@ -541,7 +558,7 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
                      "unexpected '" + keyword +
                          "' after GRID (expected POI, PORTAL, TALK, TALK_AGAIN, TALK_AFTER, TALK_BEFORE, SHOP, "
                          "SHOP_LOCKED, BOAT, GRANTS_ITEM, BED, SAY_IF, TOPIC, SUBJECT, SUBJECT_UNKNOWN, "
-                         "TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, or END)");
+                         "TIMELINE_ANCHOR, TIMELINE_LOCATION, QUEST, TOWN_MENU, or END)");
             }
         } else {
             fail(path, lineNumber, "content found after END");
@@ -944,10 +961,31 @@ Zone ZoneLoader::loadFromFile(const std::string& path) {
         fail(path, timelineAnchorLine,
              "TIMELINE_ANCHOR '" + std::string(1, timelineAnchorCode) + "' has no matching POI declaration");
     }
+    // TOWN_MENU validation: 'L'/'l' is reserved zone-wide for the menu's own
+    // synthetic "Leave town" row (sfml_phase1::buildTownMenuItems), and
+    // every POI the menu would actually offer (a portal target, a shop, a
+    // bed, or anything with a TALK line -- the same "actionable" test the
+    // menu itself uses) needs a plain ASCII letter code, since menu hotkeys
+    // map directly onto sf::Keyboard::Key::A-Z. Both fail fast here, at
+    // load time, rather than surfacing as a silently-unreachable menu row
+    // (or a crash mapping a non-letter code to a key) at first entry.
+    if (townMenu) {
+        for (const auto& [code, poi] : pois) {
+            if (code == 'L' || code == 'l') {
+                fail(path, townMenuLine,
+                     "TOWN_MENU zones can't use 'L'/'l' as a POI code (reserved for \"Leave town\")");
+            }
+            const bool actionable = poi.isShop || poi.isBed || !poi.dialogue.empty() || portals.count(code) > 0;
+            if (actionable && (std::isalpha(static_cast<unsigned char>(code)) == 0)) {
+                fail(path, townMenuLine,
+                     "TOWN_MENU zone POI '" + std::string(1, code) + "' must use an ASCII letter code");
+            }
+        }
+    }
 
     return Zone(std::move(name), std::move(gridRows), entryX, entryY, std::move(pois), std::move(portals),
                 timelineAnchorCode, std::move(timelineLocationId), std::move(quests), std::move(boatVoyages),
-                std::move(shopLocks), std::move(recruits));
+                std::move(shopLocks), std::move(recruits), townMenu);
 }
 
 } // namespace world
