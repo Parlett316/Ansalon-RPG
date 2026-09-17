@@ -1,39 +1,35 @@
 # Current work
 
-**Nothing in flight.** Milestone 206 (Gold Box town menu, pilot: Solace --
-`ansalon_sfml_phase1` only) shipped 2026-09-17, following directly on
-Milestone 205's zone landmark plates: after seeing the placeholder plate
-live, the user's actual mental model turned out to be the full SSI Gold
-Box town interface -- a picture *plus* a letter-keyed menu of
-destinations, no walking around town at all. `data/zones/solace.txt` is
-now the first (and only) `TOWN_MENU` zone; every other zone, including
-Solace's own nested `solace_inn.txt`, stays walkable. Menu rows are
-auto-derived from data the zone file already has (one row per actionable
-POI -- a `PORTAL`/`SHOP`/`BED`/`TALK`-carrying POI, keyed by its own
-already-declared character), not a second hand-authored list, and
-selecting one invents no new behavior -- it silently moves the player
-onto that POI's tile and calls the exact same `shopBegin`/
-`restBegin(true)`/`dialogueBegin` a walking player pressing `p`/`z`/`t`
-there would, since those were already position-based. Real, deliberate
-trade-off, documented rather than glossed over: inside Solace's menu, a
-letter always means "go there or nothing," never falling through to that
-letter's ordinary global meaning -- so Inventory (`I`)/Journal (`G`)/Rest
-(`R`) are unreachable while inside its town screen (its own destinations
-use those letters). Verified via a clean rebuild (all three CMake
-targets, zero new `/W4` warnings) and a launch smoke test against a
-disposable save copy (real `save1.txt`/`save2.txt` confirmed untouched by
-mtime and checksum); additionally eyeballed live by the user themselves
-(a general "looks good" reaction, not an exhaustive per-hotkey
-walkthrough) since their own real character already stood inside Solace,
-so the smoke-test window showed the actual menu on launch. Full writeup:
-Milestone 206 in `docs/MILESTONES.md`, its own section in
-`docs/ARCHITECTURE.md`'s SFML section, and `docs/ZONE_NOTES.md`'s new
-"Town menus" section for the grammar. **Not fully interactively
-confirmed** -- see the Playtest backlog below. Milestone 205 (zone
-landmark plates) itself remains shipped and described in its own
-`docs/MILESTONES.md`/`docs/ARCHITECTURE.md` entries; still ships with
-zero real art in either case -- the user is sourcing artwork for the
-towns next.
+**Nothing in flight.** Milestones 205-207 (zone landmark plates, the Gold
+Box town menu pilot on Solace, and a same-session art/layout follow-up)
+all shipped 2026-09-17. Menu rows are auto-derived from data the zone
+file already has (one row per actionable POI, keyed by its own
+already-declared character), and selecting one reuses the exact same
+`shopBegin`/`restBegin(true)`/`dialogueBegin` a walking player would
+trigger. Deliberate, documented trade-off: inside Solace's menu, a
+letter always means "go there or nothing," so Inventory (`I`)/Journal
+(`G`)/Rest (`R`) are unreachable while inside its town screen (its own
+destinations use those letters).
+
+**Milestone 207**: the user generated and dropped in real banner art for
+Solace (`assets/plates/solace.png`, following `docs/TOWN_ART_PROMPTS.md`'s
+brief) -- the first real, non-placeholder plate art this project has
+shipped. Looking at it live immediately surfaced two layout bugs in
+`drawTownMenuOverlay`, both fixed the same session: the image area was a
+fixed 260px band (wasting most of the window whenever the menu itself
+was short), and contain-fit scaling left visible letterboxing against the
+real art's actual aspect ratio. Fixed by anchoring the letter list to the
+bottom of the panel and letting the image fill whatever space is left
+above it, and switching to cover-fit (crops a little rather than
+letterboxing) so the image fully fills its area. Confirmed live by the
+user across three iterations, ending in "Chefs kiss."
+
+Full writeups: Milestones 205-207 in `docs/MILESTONES.md`, the SFML
+section of `docs/ARCHITECTURE.md`, and `docs/ZONE_NOTES.md`'s "Town
+menus" section for the grammar. **Not fully interactively confirmed** --
+see the Playtest backlog below: individual destination hotkeys, the Inn
+round-trip, and Leave still haven't been walked live, only the visual
+layout has. Every zone besides Solace still ships with zero art.
 
 Everything else recently shipped is verified and handed off — see
 `docs/MILESTONES.md` for the full shipping history (each numbered entry
@@ -59,21 +55,20 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
-- **Gold Box town menu, pilot: Solace** (Milestone 206) — smoke-tested
-  clean and given one live, informal look by the user (a general "looks
-  good" reaction against a disposable save copy, not an exhaustive
-  walkthrough). Still open: each destination (`I`/`B`/`G`/`S`/`K`)
-  individually confirmed to actually open the right screen and return to
-  the menu afterward (not just launch into Solace's menu on load); the
-  Inn round-trip specifically (`I` in, then leave the Inn back to
-  Solace) — this exercises the `leaveCurrentZone` plate-reload fix found
-  during implementation, unverified live; `L` (Leave town) confirmed
-  from a fresh overworld-entry into Solace, not just a save that already
-  starts inside it; and the "Nothing here by that name." message for an
-  unmatched letter. No real plate art exists for Solace yet either (see
-  the Milestone 205 item below) — the persistent top-of-screen image
-  band in `drawTownMenuOverlay` has only ever been exercised with a
-  throwaway placeholder.
+- **Gold Box town menu, pilot: Solace** (Milestones 206-207) — the
+  *visual layout* is now confirmed live and looking right (real art,
+  cover-fit image filling the space, bottom-anchored menu -- see
+  Milestone 207), but the *interaction* itself still hasn't been walked
+  with a real keyboard beyond launching into it. Still open: each
+  destination (`I`/`B`/`G`/`S`/`K`) individually confirmed to actually
+  open the right screen and return to the menu afterward (not just
+  launch into Solace's menu on load); the Inn round-trip specifically
+  (`I` in, then leave the Inn back to Solace) — this exercises the
+  `leaveCurrentZone` plate-reload fix found during implementation,
+  unverified live; `L` (Leave town) not yet confirmed from a fresh
+  overworld-entry into Solace, only from a save that already starts
+  inside it; and the "Nothing here by that name." message for an
+  unmatched letter.
 - **Zone landmark plates** (Milestone 205) — implemented and smoke-tested
   clean, but never watched actually render with real art: needs a real
   `assets/plates/<zone-id>.png` dropped in (the user is sourcing artwork

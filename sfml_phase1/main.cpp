@@ -6247,12 +6247,18 @@ int runPhase1(const std::string& savePath) {
     // menus") -- unlike drawZonePlateOverlay above, this never dismisses
     // on its own: it's the base scene for a TOWN_MENU zone for as long as
     // the player is in it, drawn every frame (see the render-loop call
-    // site) rather than toggled by a bool. The plate texture (if any),
-    // scaled into a fixed-height band at the top rather than full-window,
+    // site) rather than toggled by a bool. The plate texture (if any)
     // stays visible the whole time -- confirmed with the user up front,
     // matching how the real Gold Box games kept the town picture on
     // screen while its own letter menu sat underneath it. currentZone is
     // guaranteed non-null by the isMenuTown() check at every call site.
+    //
+    // Layout, top to bottom: title, then the image filling whatever
+    // vertical space is left over once the letter list (anchored to the
+    // bottom, above the footer) has claimed its own space -- rather than
+    // a fixed-height image band, so the image actually fills the window
+    // instead of leaving a large dead gap above a short menu (found live
+    // 2026-09-17, screenshotted by the user).
     auto drawTownMenuOverlay = [&]() {
         drawPanelChrome();
 
@@ -6261,37 +6267,54 @@ int runPhase1(const std::string& savePath) {
         title.setPosition(sf::Vector2f(kSheetMarginX, 30.f));
         window.draw(title);
 
-        float listY = 90.f;
-        if (zonePlateLoaded) {
-            constexpr float kImageAreaH = 260.f;
+        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+        const float lineHeight = static_cast<float>(kSheetBodyCharSize) + 10.f;
+        const float listHeight = static_cast<float>(items.size()) * lineHeight;
+        const float footerY = static_cast<float>(windowH) - 36.f;
+        constexpr float kListFooterGap = 20.f;
+        const float listStartY = footerY - kListFooterGap - listHeight;
+
+        constexpr float kImageTopY = 90.f;
+        constexpr float kImageListGap = 20.f;
+        const float imageAreaH = std::max(0.f, listStartY - kImageListGap - kImageTopY);
+        if (zonePlateLoaded && imageAreaH > 0.f) {
             const float boxW = static_cast<float>(windowW) - 2.f * kSheetMarginX;
             const sf::Vector2u plateSize = zonePlateTexture.getSize();
             if (plateSize.x > 0 && plateSize.y > 0) {
-                const float scale = std::min(boxW / static_cast<float>(plateSize.x),
-                                              kImageAreaH / static_cast<float>(plateSize.y));
-                const float drawW = static_cast<float>(plateSize.x) * scale;
-                const float drawH = static_cast<float>(plateSize.y) * scale;
+                // Cover-fit (fills the whole image area, cropping any
+                // overflow off the centered excess axis) rather than
+                // contain-fit -- the box and the source image are rarely
+                // the exact same aspect ratio, and letterboxing read as
+                // "too small" (found live, user feedback 2026-09-17).
+                const float imgW = static_cast<float>(plateSize.x);
+                const float imgH = static_cast<float>(plateSize.y);
+                const float scale = std::max(boxW / imgW, imageAreaH / imgH);
+                const float visibleSrcW = boxW / scale;
+                const float visibleSrcH = imageAreaH / scale;
+                const int cropX = static_cast<int>(std::round((imgW - visibleSrcW) / 2.f));
+                const int cropY = static_cast<int>(std::round((imgH - visibleSrcH) / 2.f));
                 sf::Sprite plateSprite(zonePlateTexture);
+                plateSprite.setTextureRect(
+                    sf::IntRect({cropX, cropY}, {static_cast<int>(std::round(visibleSrcW)),
+                                                  static_cast<int>(std::round(visibleSrcH))}));
                 plateSprite.setScale(sf::Vector2f(scale, scale));
-                plateSprite.setPosition(sf::Vector2f(kSheetMarginX + (boxW - drawW) / 2.f,
-                                                      listY + (kImageAreaH - drawH) / 2.f));
+                plateSprite.setPosition(sf::Vector2f(kSheetMarginX, kImageTopY));
                 window.draw(plateSprite);
             }
-            listY += kImageAreaH + 20.f;
         }
 
-        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+        float listY = listStartY;
         for (const TownMenuItem& item : items) {
             sf::Text line(font, "[" + std::string(1, item.hotkeyChar) + "] " + item.label, kSheetBodyCharSize);
             line.setFillColor(kSheetBodyColor);
             line.setPosition(sf::Vector2f(kSheetMarginX, listY));
             window.draw(line);
-            listY += static_cast<float>(kSheetBodyCharSize) + 10.f;
+            listY += lineHeight;
         }
 
         sf::Text footer(font, "(press a letter)", kSheetHeaderCharSize);
         footer.setFillColor(sf::Color(150, 150, 160));
-        footer.setPosition(sf::Vector2f(kSheetMarginX, static_cast<float>(windowH) - 36.f));
+        footer.setPosition(sf::Vector2f(kSheetMarginX, footerY));
         window.draw(footer);
     };
 

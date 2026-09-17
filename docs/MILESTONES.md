@@ -8356,6 +8356,42 @@ now fully verified, nothing further outstanding.
        `leaveCurrentZone` plate-reload fix above), and real art in place
        of a placeholder.
 
+207. **Real Solace artwork + a town-menu layout fix, both found live the
+     same session as Milestone 206.** The user generated real banner art
+     for Solace (a painted vallenwood-treetop town at sunset, following
+     `docs/TOWN_ART_PROMPTS.md`'s own brief) and dropped it in at
+     `assets/plates/solace.png` -- the first real (non-placeholder) plate
+     art this project has ever shipped. Looking at it live immediately
+     surfaced two real layout problems in `drawTownMenuOverlay`
+     (`main.cpp`), both fixed the same session:
+     - **The image area was a fixed 260px band**, leaving a large dead
+       gap between a short menu (Solace has 7 rows) and the bottom of the
+       screen. Fixed by computing the image area's height dynamically --
+       the letter list is now anchored to the *bottom* of the panel
+       (`listStartY` measured up from the footer), and the image fills
+       whatever vertical space is left above it, so a short menu no
+       longer wastes most of the window.
+     - **Contain-fit scaling left visible letterboxing** whenever the
+       source image's aspect ratio didn't exactly match the available
+       box (the real 2056x765 Solace art doesn't, quite) -- the user's
+       own reaction ("fill it more") called this out directly. Switched
+       to cover-fit: `scale = max(boxW/imgW, imageAreaH/imgH)` instead of
+       `min`, with `sf::Sprite::setTextureRect` cropping a centered
+       region of the source image sized to exactly match what the scaled
+       box shows, so the image fully fills its area with no gaps,
+       trading a small amount of centered crop instead.
+     - Verified via clean rebuild (zero new `/W4` warnings) and three
+       successive launch-smoke-test rounds against fresh disposable save
+       copies (each deleted after; real `save1.txt`/`save2.txt` confirmed
+       untouched by mtime/checksum throughout) -- each round's visual
+       result was eyeballed live by the user themselves (their own real
+       character's save already sits inside Solace, so every smoke-test
+       window showed the actual live-in-game result), culminating in a
+       final "Chefs kiss" -- the first town-menu visual confirmed
+       correct, not just smoke-tested clean. Individual destination
+       hotkeys, the Inn round-trip, and Leave are still unconfirmed --
+       see `docs/CURRENT_WORK.md`'s Playtest backlog.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
