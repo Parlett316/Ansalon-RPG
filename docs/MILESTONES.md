@@ -7972,6 +7972,72 @@ now fully verified, nothing further outstanding.
        to cast/breathe" beat (needs a Bozak/Aurak), and the `Lost` end
        state.
 
+201. **Gold-Box sidebar chrome for the Overworld/Zone screens
+     (`ansalon_sfml_phase1` only), closing the one visual seam Milestone
+     200 left behind.** After Milestones 194-200 gave the whole build real
+     Gold-Box/DQoK panel chrome, font, and (in combat specifically) a
+     bordered content-sized stat card, the user asked (via a "what else
+     should we mimic from DQoK and the Gold Box games" brainstorm, then
+     picking this one of three offered options) to bring that same chrome
+     to the Overworld/Zone sidebar -- the one screen still drawing the
+     original pre-redesign look: a flat dark rectangle (`sidebarBg`, color
+     `(20,20,28)`, no border at all) holding the character stat lines and
+     the scrolling log. Combat looked like DQoK; walking around didn't.
+
+     **Mechanism** (`sfml_phase1/main.cpp`, the only file touched):
+     `drawCombatCardPanel` (introduced at Milestone 200 for combat's own
+     card) was already a generic arbitrary-sized bordered-box lambda with
+     no combat-specific state -- renamed to `drawCardPanel` (its doc
+     comment updated to say it's shared) and reused as-is, no logic
+     change. The non-combat sidebar draw is now two boxes instead of one
+     flat fill: a stat card sized to its own content (name/level/race/
+     class, HP, day/time, and, Zone mode only, "Indoors -- {zone name}" --
+     the same padding/margin constants combat's own card uses), and a
+     separate log card below it running to the bottom of the sidebar
+     column, holding the same `kMaxLogLines = 14`-capped scrolling log
+     exactly as before (same wrapping, same capacity, no new pacing). Two
+     boxes rather than one merged panel deliberately mirrors real SSI Gold
+     Box exploration screens, which use a separate status box and message
+     box rather than a single wrapper. The now-dead `sidebarBg`
+     declaration and its sole remaining draw call were deleted outright
+     (confirmed via grep those were its only two references) rather than
+     left unused. No change to `mapWidth`/`sidebarWidth`, log capacity/
+     content, input handling, combat's own card/turn-follow logic, or any
+     other overlay (dialogue/shop/journal/spellbook/help/character sheet,
+     which already had their own `drawPanelChrome` chrome from Milestone
+     194) -- purely a chrome swap on one screen.
+
+     Planned via `EnterPlanMode` given the scope (touches the shared
+     render loop, same caution as any combat-adjacent rendering change),
+     approved before implementing.
+
+     Verified: a full clean rebuild (`--clean-first`, all three targets)
+     showed zero new `/W4` warnings. Live SendKeys/screenshot check (desktop
+     access reconfirmed working this session) on a disposable copy of
+     Mike's real `save1.txt` (`save1_copy.txt`, deleted after; original
+     untouched) confirmed both cases live: the Zone stat card (4 lines,
+     "Indoors -- Solace") and the Overworld stat card (3 lines, no Indoors
+     line) each rendered at their own correctly-computed height with no
+     clipping or overlap, and the log card below each rendered cleanly.
+     Also triggered a real wilderness encounter (3 Black Bears) specifically
+     to confirm the `drawCombatCardPanel` -> `drawCardPanel` rename didn't
+     affect combat -- its compact card and turn-follow behavior (a
+     monsters-act-first round correctly showing the Black Bear's own card,
+     then the player's) both still rendered correctly. Did not get close
+     enough to the bears to reopen `PickingTarget`'s secondary card, so that
+     still-open Playtest backlog item (from Milestone 199/200) remains open,
+     not newly closed by this milestone.
+
+     One test-tooling note, not a codebase bug: hand-editing the disposable
+     save's `MODE` field via PowerShell's `Set-Content -Encoding utf8`
+     silently added a UTF-8 BOM, which made the save's first-line `#`
+     comment parse as an unknown keyword (`﻿#`) and fail fast -- correctly
+     caught by the existing fail-fast loader, not a defect in it. Worked
+     around by rewriting the file via `[System.IO.File]::WriteAllText`
+     with a BOM-less `UTF8Encoding`. Only relevant to this session's own
+     test-editing method, not to real saves (written by `SaveGame::save`
+     via `std::ofstream`, which never emits a BOM).
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

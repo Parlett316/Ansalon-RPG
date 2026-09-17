@@ -2329,16 +2329,11 @@ int runPhase1(const std::string& savePath) {
     entryMarker.setOrigin(sf::Vector2f(kZoneTilePx * 0.35f, kZoneTilePx * 0.35f));
     entryMarker.setFillColor(sf::Color(60, 200, 220));
 
-    sf::RectangleShape sidebarBg(sf::Vector2f(sidebarWidth, static_cast<float>(windowH)));
-    sidebarBg.setPosition(sf::Vector2f(mapWidth, 0.f));
-    sidebarBg.setFillColor(sf::Color(20, 20, 28));
-
     // Combat-only bottom command/message bar background (Milestone 199) --
     // spans the full window width, so it deliberately overlaps the bottom
-    // kCombatBottomBarHeight strip of sidebarBg's own rectangle (same fill
-    // color, harmless) and the bottom strip combatMapView's shrunk viewport
-    // already excludes the map from drawing into. Drawn after sidebarBg,
-    // same frame, only ever inside the combatSession.active branch.
+    // kCombatBottomBarHeight strip of the sidebar column (same fill color,
+    // harmless) and the bottom strip combatMapView's shrunk viewport
+    // already excludes the map from drawing into.
     sf::RectangleShape combatBottomBarBg(sf::Vector2f(static_cast<float>(windowW), kCombatBottomBarHeight));
     combatBottomBarBg.setPosition(sf::Vector2f(0.f, static_cast<float>(windowH) - kCombatBottomBarHeight));
     combatBottomBarBg.setFillColor(sf::Color(20, 20, 28));
@@ -5259,12 +5254,13 @@ int runPhase1(const std::string& savePath) {
         return combatSession.playerPos;
     };
 
-    // Small bordered-box chrome for the compact combat card (Milestone
-    // 200) -- same color trio as drawPanelChrome (kPanelBg/
-    // kPanelBorderOuter/kPanelBorderInner) but sized to arbitrary content
-    // instead of always the whole window, since the persistent card no
-    // longer fills the full legacy sidebar height.
-    auto drawCombatCardPanel = [&](float x, float y, float w, float h) {
+    // Small bordered-box chrome for a content-sized card -- same color
+    // trio as drawPanelChrome (kPanelBg/kPanelBorderOuter/
+    // kPanelBorderInner) but sized to arbitrary content instead of always
+    // the whole window. Introduced for combat's compact card (Milestone
+    // 200); Milestone 201 reuses it, unchanged, for the non-combat
+    // Overworld/Zone sidebar's stat and log boxes too.
+    auto drawCardPanel = [&](float x, float y, float w, float h) {
         sf::RectangleShape bg(sf::Vector2f(w, h));
         bg.setPosition(sf::Vector2f(x, y));
         bg.setFillColor(kPanelBg);
@@ -7308,14 +7304,11 @@ int runPhase1(const std::string& savePath) {
             }
 
             window.setView(uiView);
-            // Milestone 200: combat draws its own compact, content-sized
-            // card box instead of the always-on full-height sidebar fill
-            // (see drawCombatCardPanel below) -- non-combat (Overworld/
-            // Zone) keeps the plain full-height sidebarBg exactly as
-            // before.
-            if (!combatSession.active) {
-                window.draw(sidebarBg);
-            }
+            // Milestone 200 gave combat its own compact, content-sized
+            // card box in place of the old always-on full-height sidebar
+            // fill; Milestone 201 did the same for the non-combat
+            // Overworld/Zone sidebar below (see drawCardPanel, shared by
+            // both) -- the old flat sidebarBg fill is gone entirely now.
 
             float lineY = 16.f;
             const float lineX = mapWidth + 16.f;
@@ -7381,8 +7374,8 @@ int runPhase1(const std::string& savePath) {
                 // Compact card box (Milestone 200): sized to actual content
                 // (one name row + each card's stat rows, plus a small gap
                 // before the secondary card) instead of the old always-on
-                // full-height sidebar fill -- see drawCombatCardPanel's own
-                // doc comment. Width/position still live inside the same
+                // full-height sidebar fill -- see drawCardPanel's own doc
+                // comment. Width/position still live inside the same
                 // reserved sidebar column (mapWidth/sidebarWidth
                 // themselves are untouched, so the map viewport is
                 // unaffected) -- only the height and the fact that it's a
@@ -7395,7 +7388,7 @@ int runPhase1(const std::string& savePath) {
                 if (showSecondaryCard) {
                     cardHeight += lineHeight * 0.3f + lineHeight * static_cast<float>(1 + secondaryLines.size());
                 }
-                drawCombatCardPanel(cardX, kCardMarginTop, cardWidth, cardHeight);
+                drawCardPanel(cardX, kCardMarginTop, cardWidth, cardHeight);
 
                 lineY = kCardMarginTop + kCardPaddingY;
                 drawLine(primaryLabel, sf::Color(255, 215, 0));
@@ -7522,6 +7515,28 @@ int runPhase1(const std::string& savePath) {
                         break;
                 }
             } else {
+                // Milestone 201: two Gold-Box-bordered cards (via the same
+                // drawCardPanel combat's own card uses) in place of the old
+                // flat sidebarBg fill -- a stat card sized to its own
+                // content, and a separate log card below it filling the
+                // rest of the column. Real SSI Gold Box exploration screens
+                // use two boxes here (a status box, a message box) rather
+                // than one merged panel, so this mirrors that instead of a
+                // single full-height wrapper. Same content/data as before in
+                // both boxes -- only the chrome and the split are new.
+                constexpr float kCardPaddingY = 12.f;
+                constexpr float kCardMarginTop = 8.f;
+                const float cardX = mapWidth + 8.f;
+                const float cardWidth = sidebarWidth - 16.f;
+                const bool showIndoors = state.mode == game::Mode::Zone && currentZone;
+
+                float statCardHeight = kCardPaddingY * 2.f + lineHeight * 3.f;
+                if (showIndoors) {
+                    statCardHeight += lineHeight;
+                }
+                drawCardPanel(cardX, kCardMarginTop, cardWidth, statCardHeight);
+
+                lineY = kCardMarginTop + kCardPaddingY;
                 drawLine(state.character.name + ", level " + std::to_string(state.character.level) + " " +
                               std::string(character::raceInfo(state.character.race).name) + " " +
                               std::string(character::classInfo(state.character.charClass).name),
@@ -7530,12 +7545,17 @@ int runPhase1(const std::string& savePath) {
                               std::to_string(state.character.maxHp),
                           sf::Color(220, 90, 90));
                 drawLine(formatDayTime(state.hoursElapsed), sf::Color(200, 200, 140));
-                if (state.mode == game::Mode::Zone && currentZone) {
+                if (showIndoors) {
                     drawLine("Indoors -- " + currentZone->name(), sf::Color(150, 200, 230));
                 }
-                lineY += lineHeight * 0.5f;
-                drawLine("-- Log --", sf::Color(140, 140, 160));
 
+                constexpr float kLogCardMarginTop = 8.f;
+                const float logCardY = kCardMarginTop + statCardHeight + kLogCardMarginTop;
+                const float logCardHeight = static_cast<float>(windowH) - logCardY - kCardMarginTop;
+                drawCardPanel(cardX, logCardY, cardWidth, logCardHeight);
+
+                lineY = logCardY + kCardPaddingY;
+                drawLine("-- Log --", sf::Color(140, 140, 160));
                 for (const std::string& entry : log) {
                     for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, entry, maxLineWidthPx)) {
                         drawLine(wrapped, sf::Color(190, 190, 200));

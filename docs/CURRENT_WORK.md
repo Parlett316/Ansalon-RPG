@@ -1,9 +1,47 @@
 # Current work
 
-**Nothing in flight.** Milestone 200 (DQoK combat HUD refinements --
-real key parity, a tightened compact stat card, and a turn-follow camera/
-card, `ansalon_sfml_phase1` only) shipped 2026-09-16, on top of Milestone
-199's combat HUD redesign from earlier the same session: combat's Idle
+**Nothing in flight.** Milestone 201 (Gold-Box sidebar chrome for the
+Overworld/Zone screens, `ansalon_sfml_phase1` only) shipped 2026-09-16,
+closing the one visual seam Milestone 200 left behind: combat had its own
+bordered, content-sized stat card, but Overworld/Zone still drew the
+original pre-redesign sidebar -- a flat dark rectangle (`sidebarBg`, no
+border chrome) holding the stat lines and log. Prompted by the user
+asking, after a "what else should we mimic from DQoK" brainstorm, to
+close that specific seam. The flat fill is now two bordered boxes (same
+`kPanelBg`/`kPanelBorderOuter`/`kPanelBorderInner` chrome and box-drawing
+lambda combat's card already used, renamed from `drawCombatCardPanel` to
+the neutral `drawCardPanel` since it's now shared) -- a content-sized
+stat card (name/level/race/class, HP, day/time, and, Zone-only, "Indoors
+-- {zone}"), and a separate log card below it holding the same
+14-entry-capped scrolling log as before. Matches real SSI Gold Box
+exploration screens, which use two separate boxes here (a status box, a
+message box) rather than one merged panel. No behavior change at all --
+same data, same log cap/wrapping, no new pacing or input -- purely the
+old flat `sidebarBg` fill (and its sole remaining draw call) replaced
+with chrome. `sfml_phase1/main.cpp` only, no other file touched.
+
+Verified live end-to-end via SendKeys/screenshot (desktop access
+reconfirmed working this session) on a disposable copy of Mike's real
+`save1.txt` (`save1_copy.txt`, deleted after; original untouched): the
+Zone stat card (4 lines, "Indoors -- Solace") and the Overworld stat card
+(3 lines, no Indoors line) both rendered correctly at their own sized
+heights with no clipping/overlap, and the log card below each rendered
+cleanly. Also triggered a real wilderness encounter (3 Black Bears) to
+confirm the `drawCombatCardPanel` -> `drawCardPanel` rename didn't affect
+combat -- the compact card and turn-follow behavior (a monsters-act-first
+round correctly showing the Black Bear's own card, then the player's)
+both still rendered correctly, reconfirming Milestone 200's own mechanism
+incidentally. Didn't get close enough to the bears to reopen the
+`PickingTarget` secondary card specifically ("You're too far away to
+attack.") -- that item stays open on the Playtest backlog below,
+unchanged from Milestone 200.
+
+Clean rebuild (`--clean-first`, all three targets) confirmed zero new
+`/W4` warnings before any of the above.
+
+This is the seventh DQoK-inspired pass this session, after Milestone 200
+(combat HUD refinements) below -- see Milestone 200 in
+`docs/MILESTONES.md` for that one's own writeup: combat's Idle
 keys now match DQoK's own first-letter verbs (`a`=Aim, `c`=Cast, `u`=Use,
 `v`=View, `d`/Space=Done, `f`=Flee, confirmed against
 `References/BattleFrames_extracted/` frames) instead of the old Enter/`m`/
@@ -205,7 +243,11 @@ tracks what's still open and how to force it.
   Fighter had nothing to cast/use), the new "preparing to cast/breathe"
   beat (needs a Bozak/Aurak Draconian, `MIN_TOWN_DISTANCE 25`/`45`
   wilderness), and the `Lost` end state (needs a losing fight or a
-  debug/dev save at low HP).
+  debug/dev save at low HP). Milestone 201's own verification incidentally
+  triggered a real 3-Black-Bear group and reconfirmed the card/turn-follow
+  mechanism still renders correctly after `drawCombatCardPanel` was
+  renamed to `drawCardPanel` — but didn't get close enough to attack, so
+  the `PickingTarget` secondary-card item above is still open, not closed.
 - **Bigger battlefield + real movement** (Milestone 185) — a real
   wilderness encounter (3 Bugbears, hills terrain, spawned at dist 24)
   was fought live 2026-09-16 and confirmed the bigger-battlefield spawn
