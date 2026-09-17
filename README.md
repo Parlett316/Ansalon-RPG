@@ -378,7 +378,15 @@ recruited, fights alongside you in SFML combat, sweep/backstab included.)*
     squares wide, and a Blue Dragon a full 2×2, matching the Gold Box
     games' own convention — and everything (targeting, movement,
     rendering) accounts for their whole footprint, not just one corner of
-    it. See `docs/COMBAT_NOTES.md`.)*
+    it. Pressing `a` to Aim opens a real free-look targeting cursor — pan
+    anywhere on the battlefield at no cost, see what's under the cursor,
+    and only actually spend your round once you confirm an attack on a
+    legal target — instead of immediately attempting (and possibly
+    wasting) an attack the moment you press it. A round's own narration
+    (monsters closing in, attacks landing) now plays out on its own too,
+    the way the Gold Box games do it, rather than needing a keypress per
+    line — only your own turn, a new fight starting, and the fight ending
+    still wait for you. See `docs/COMBAT_NOTES.md`.)*
 - Three of the draconians fight back with real, book-sourced abilities
   beyond a plain weapon swing: Bozaks sometimes cast Magic Missile instead
   of attacking, Auraks sometimes breathe a noxious cloud (save for half

@@ -8147,6 +8147,60 @@ now fully verified, nothing further outstanding.
      Clean rebuild (`--clean-first`, all three CMake targets) showed zero
      new `/W4` warnings before the live verification above.
 
+204. **Real DQoK Aim (a free-look targeting cursor) + auto-advancing round
+     narration (`ansalon_sfml_phase1` only).** Live playtest the same
+     session surfaced a real combat-feel bug, not just polish: fighting a
+     Hobgoblin group, pressing `a` (Attack/"Aim" since Milestone 200) while
+     nothing was adjacent still consumed the whole round -- the monsters
+     got a free turn to close in -- because `combatBeginPlayerAttack`
+     rolled initiative *before* checking for a legal target, unlike
+     `combatBeginCast`/`combatBeginUseItem`, which both already bail out
+     for free when there's nothing to do. Compounding it, every resulting
+     "closes in" line needed its own Enter press. The user, having watched
+     more real DQoK, confirmed the fuller fix on both counts (not just a
+     minimal round-cost patch): full detail and live-verification writeup
+     in `docs/COMBAT_NOTES.md`'s own Milestone 204 section -- summarized
+     here:
+     - **`a` now opens a real free-look Aim cursor** (`CombatUiState::
+       Aiming`, `combatSession.aimCursor`), replacing the old immediate-
+       resolve `combatBeginPlayerAttack` for physical attacks. Costs
+       nothing to open or pan (arrows/numpad, camera follows, a live
+       zero-cost status line via a new shared `combatAimLegality`); only
+       `Enter` on a currently-legal target (`combatConfirmAim`) rolls
+       initiative and actually spends the round. `PickingTarget` is
+       untouched, still used for Spell/Webnet targeting only (its now-dead
+       `TargetPickReason::Attack` was removed outright). Fighter sweep
+       still auto-triggers, just re-checked at the new post-initiative
+       commit point instead of the old function's top, so a monster
+       closing in *this* round can still trigger it.
+     - **The whole round's narration now auto-plays** (a new
+       `pendingMessageAutoAdvance` flag + `sf::Clock`-paced
+       `combatAdvancePendingMessage`, `kMessageAutoAdvanceMs = 600`),
+       stopping for input only at real decision points: `Idle` (your
+       turn), the encounter-opening "X appears!" beat, and the closing
+       Won/Lost/Fled screen all still require a deliberate Enter; Enter
+       still works as a manual skip-ahead mid-auto-play too. The existing
+       message-pacing queue/turn-follow camera mechanism (Milestone
+       199/200) is otherwise completely unchanged.
+     - Verified live end-to-end via SendKeys/screenshot on a disposable
+       save copy (`save1_copy.txt`, deleted after; real `save1.txt`
+       confirmed untouched by mtime) teleported into forest near Solace: a
+       real 4-Skeleton fight confirmed zero round cost pressing `a`/Escape
+       from out of range, correct live legality status text, sweep
+       re-triggering correctly from the new commit point across several
+       kills, the entire approach/attack narration auto-playing with no
+       Enter presses across multiple multi-line rounds, and -- critically
+       -- auto-advance correctly *stopping* the instant the fight-ending
+       round resolved (five separate manual Enter presses needed through
+       to the real `Victory!` screen), plus the arrival beat staying
+       manual throughout. Help (`/`) shows the corrected Combat line.
+       **Not yet witnessed live**: the ranged-weapon (Light Crossbow) half
+       of `combatAimLegality` (implemented, mirrors the pre-existing LOS/
+       adjacency logic exactly, but no current save carries a crossbow) --
+       added to `docs/CURRENT_WORK.md`'s Playtest backlog.
+     - Clean rebuild (`--clean-first`, all three CMake targets) showed zero
+       new `/W4` warnings before the live verification above.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

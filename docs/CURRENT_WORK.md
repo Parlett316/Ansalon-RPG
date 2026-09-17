@@ -1,243 +1,41 @@
 # Current work
 
-**Nothing in flight.** Milestone 203 (Gold-Box chrome for the last 3
-flat-black overlays -- character sheet, world map, dialogue's prose
-states -- `ansalon_sfml_phase1` only) shipped 2026-09-16, prompted by the
-user asking "what else should we look at from DQoK" as a follow-up
-brainstorm to Milestone 201. All three had been a deliberate exception
-(see the comment above `drawPanelChrome`'s declaration, now updated) that
-stopped making sense once nearly every other screen had the chrome --
-dialogue especially, since its own picker states already got it via
-`drawPickerOverlay`, so a single conversation was flickering between two
-looks depending on state. Also fixed, same file/pass: the Help screen's
-Combat section still described the pre-Milestone-200 key scheme ("Enter
-= attack", "m = cast", "i = drink a potion") -- the same stale-text bug
-class Milestone 202 fixed for the Movement section's WASD line, just not
-caught there. Verified live via SendKeys/screenshot on a disposable copy
-of Mike's real `save1.txt` (deleted after; original untouched): character
-sheet and world map both render the chrome cleanly, a real conversation
-(Flint's Smithy) showed its greeting and topic-list states now share
-identical chrome, and Help shows the corrected Combat lines. See
-Milestone 203 in `docs/MILESTONES.md` for the full writeup.
+**Nothing in flight.** Milestone 204 (real DQoK Aim -- a free-look
+targeting cursor -- plus auto-advancing round narration,
+`ansalon_sfml_phase1` only) shipped 2026-09-16, fixing a real combat-feel
+bug the user hit live: pressing `a` (Attack) while nothing was adjacent
+used to still consume the round (letting monsters close in for free)
+because initiative was rolled before checking for a legal target; on top
+of that, every round's narration needed an Enter press per line. Both
+fixed: `a` now opens a genuine zero-cost free-look cursor that only spends
+the round once Enter confirms a legal target, and an ordinary round's
+narration now auto-plays, stopping for input only at real decision points
+(your turn, the encounter-open beat, and Won/Lost/Fled). Verified live
+end-to-end via SendKeys/screenshot on a disposable save copy (real
+`save1.txt` confirmed untouched by mtime) through a full 4-Skeleton fight,
+including sweep re-triggering correctly and auto-advance correctly
+stopping the instant the fight-ending round resolved. Full writeup:
+Milestone 204 in `docs/MILESTONES.md` and its own section in
+`docs/COMBAT_NOTES.md`. Not yet witnessed live: the ranged-weapon
+(crossbow) half of the new Aim legality check — see the Playtest backlog
+below.
 
-Before that, Milestone 202 (Gold Box UI font spot-check on
-shop/spellbook/journal/help, `ansalon_sfml_phase1` only) shipped
-2026-09-16, closing the last item on Milestone 196's own Playtest backlog
-entry. Verified live on a disposable copy of Regan's real `save2.txt`:
-all four screens render the real Gold Box font cleanly, no clipping. Also
-found and fixed a real bug the same check surfaced: the Help screen's
-static text still said "wasd = move" in both its Movement and Combat
-sections, stale since Milestone 200 removed WASD as movement project-wide
--- fixed to "Arrow keys = move" in `sfml_phase1/main.cpp`'s `kHelpLines`,
-confirmed live afterward. See Milestone 202 in `docs/MILESTONES.md` for
-the full writeup.
-
-Before that, Milestone 201 (Gold-Box sidebar chrome for the
-Overworld/Zone screens, `ansalon_sfml_phase1` only) shipped 2026-09-16,
-closing the one visual seam Milestone 200 left behind: combat had its own
-bordered, content-sized stat card, but Overworld/Zone still drew the
-original pre-redesign sidebar -- a flat dark rectangle (`sidebarBg`, no
-border chrome) holding the stat lines and log. Prompted by the user
-asking, after a "what else should we mimic from DQoK" brainstorm, to
-close that specific seam. The flat fill is now two bordered boxes (same
-`kPanelBg`/`kPanelBorderOuter`/`kPanelBorderInner` chrome and box-drawing
-lambda combat's card already used, renamed from `drawCombatCardPanel` to
-the neutral `drawCardPanel` since it's now shared) -- a content-sized
-stat card (name/level/race/class, HP, day/time, and, Zone-only, "Indoors
--- {zone}"), and a separate log card below it holding the same
-14-entry-capped scrolling log as before. Matches real SSI Gold Box
-exploration screens, which use two separate boxes here (a status box, a
-message box) rather than one merged panel. No behavior change at all --
-same data, same log cap/wrapping, no new pacing or input -- purely the
-old flat `sidebarBg` fill (and its sole remaining draw call) replaced
-with chrome. `sfml_phase1/main.cpp` only, no other file touched.
-
-Verified live end-to-end via SendKeys/screenshot (desktop access
-reconfirmed working this session) on a disposable copy of Mike's real
-`save1.txt` (`save1_copy.txt`, deleted after; original untouched): the
-Zone stat card (4 lines, "Indoors -- Solace") and the Overworld stat card
-(3 lines, no Indoors line) both rendered correctly at their own sized
-heights with no clipping/overlap, and the log card below each rendered
-cleanly. Also triggered a real wilderness encounter (3 Black Bears) to
-confirm the `drawCombatCardPanel` -> `drawCardPanel` rename didn't affect
-combat -- the compact card and turn-follow behavior (a monsters-act-first
-round correctly showing the Black Bear's own card, then the player's)
-both still rendered correctly, reconfirming Milestone 200's own mechanism
-incidentally. Didn't get close enough to the bears to reopen the
-`PickingTarget` secondary card specifically ("You're too far away to
-attack.") -- that item stays open on the Playtest backlog below,
-unchanged from Milestone 200.
-
-Clean rebuild (`--clean-first`, all three targets) confirmed zero new
-`/W4` warnings before any of the above.
-
-This is the seventh DQoK-inspired pass this session, after Milestone 200
-(combat HUD refinements) below -- see Milestone 200 in
-`docs/MILESTONES.md` for that one's own writeup: combat's Idle
-keys now match DQoK's own first-letter verbs (`a`=Aim, `c`=Cast, `u`=Use,
-`v`=View, `d`/Space=Done, `f`=Flee, confirmed against
-`References/BattleFrames_extracted/` frames) instead of the old Enter/`m`/
-`i`/`wasd` mismatch; WASD is removed as movement project-wide (Overworld/
-Zone/Combat all share one key switch, so this was a single-point change),
-leaving arrow keys + the existing numpad scheme; the persistent stat card
-is now the real DQoK-minimal 4-line format (no THAC0/Status -- those stay
-on the dedicated `V` View command's own full card) in a small
-content-sized bordered box instead of the old full-height sidebar fill;
-and, the one genuinely new mechanic, the camera and that persistent card
-now follow whoever's turn each paced message is actually about (player,
-a companion, or a monster instance) instead of always defaulting to the
-player. Round-resolution logic itself is completely unchanged, only
-presentation and input binding. Planned via `EnterPlanMode` + a Plan
-sub-agent given the scope (combat's core render/input loop again), spot-
-checked against the real code (including a real correctness fix the
-sub-agent's own draft missed -- see Milestone 200 in `docs/MILESTONES.md`)
-before implementing.
-
-Verified live end-to-end via SendKeys/screenshot on a disposable
-`save1_copy.txt` (deleted after; Mike's and Regan's real saves untouched):
-teleported into a Karthay mountain cluster and walked until a real Wight
-encounter triggered. Directly confirmed: `w` is a total no-op in combat;
-the new command-bar text/letters; `a`/`d`/`f` all do the right thing
-(attack attempt, end turn, flee); and, exercising the turn-follow
-mechanic's actual hard case rather than just the happy path, a
-monsters-act-first round correctly showed the Wight's own card/camera
-for its "closes in" message, then correctly swapped back to the player
-for the player's own "too far away" message. **Not yet witnessed live**:
-the turn-follow card/camera following a *companion's* turn specifically
-(no live companion available in the test save), `c`/`u` (Cast/Use --
-untested this fight), the `PickingTarget` secondary card in its new
-compact format against a 2+-monster group, the new "preparing to
-cast/breathe" beat (needs a Bozak/Aurak), and the `Lost` end state. See
-Milestone 200 in `docs/MILESTONES.md` for the full writeup, and the
-Playtest backlog below.
-
-This is the fifth and sixth DQoK-inspired pass this session -- Milestone
-194 (panel chrome), 195 (character-creation sidebar/letters/roll-screen),
-196 (real Gold Box font, whole build), 197 (fixed a real sidebar-wrap bug
-195 exposed), 198 (audited the rest of the build for the same bug class),
-and 199 (the combat HUD redesign Milestone 200 above just refined) all
-came first -- see each in `docs/MILESTONES.md`. All were prompted by the
-user live-driving *Dark Queen of Krynn* (SSI Gold Box, DOSBox) for UX
-ideas. A bigger, explicitly-parked "multiple player-built party members"
-question came up in that same original conversation and was **not**
-pursued -- don't raise it unprompted.
-
-The quest system's engine-confirmation checklist
-closed 2026-09-15: all three tracked quests (`road_wolves`, `a_widows_due`,
-`ore_for_the_forge`) are now confirmed live end-to-end on the SFML build —
-see `docs/QUEST_NOTES.md` for each quest's own writeup. Everything else
-recently shipped is verified and handed off; see `docs/MILESTONES.md` for
-the shipping history.
+Everything else recently shipped is verified and handed off — see
+`docs/MILESTONES.md` for the full shipping history (each numbered entry
+has its own writeup; this file tracks only what's still open, not a
+running log).
 
 **Concrete open item**: the quest system's progress-text revisit and its
 six reward flags — especially the Wayreth Test of High Sorcery's
 three-outcome ethical-choice scene. This is content/data work, not engine
 work — research the sourced material first, per the usual workflow.
 
-A real rendering bug found live 2026-09-16 while playtesting Milestone
-180 (text clipping mid-word in the character-creation wizard and
-save-slot menu) was fixed the same session — see Milestone 193 in
-`docs/MILESTONES.md` for the root cause and fix; confirmed live.
-
-**Line of sight (Milestone 189) fully confirmed live 2026-09-16** — both
-halves left open after Milestone 193 (the blocked-shot refusal message
-and the Fireball epicenter's LOS-vs-splash behavior) were witnessed this
-session; see `docs/COMBAT_NOTES.md`'s Line of Sight section for exactly
-what was seen. Nothing left open for this milestone.
-
-**A second live-playtest sweep of the Playtest backlog ran 2026-09-16**
-(disposable Slot 3 character + disposable copies of `save1.txt`/
-`save2.txt`, driven via SendKeys/screenshot — Mike's and Regan's real
-saves were never touched, and the Slot 3 test character was deleted
-afterward). Confirmed and struck from the list below: the Gnome-forced-
-Tinker path (closing Milestone 180 entirely), the stale-banner fix
-(Milestone 181), the Kalaman "Curiosities Cart"-adjacent quest-offer
-dialogue (Milestone 161 — turned out to already be a real, fully working
-quest offer rather than a placeholder, so that concern is moot), hills-
-terrain battlemap walls (Milestone 188, reconfirmed), and the Brooch of
-Imog's "That can only be used in combat." no-op outside combat
-(Milestone 165, partial). Also incidentally exercised and found working,
-though not itemized backlog entries themselves: Flee, natural rest
-healing (1 hp/night, no healer), and the wilderness random-encounter
-distance/terrain gating. See each struck item below for exactly what was
-witnessed. Nothing new was found broken.
-
-Otherwise, see the Playtest backlog below for what's implemented and
-verified (clean rebuild + smoke test) but not yet walked with a real
-keyboard, and the two Parked sections for long-shelved decisions with
-their own resumption notes. Don't resume either parked topic, or the
-console-retirement conversation (`docs/CONSOLE_RETIREMENT_PROPOSAL.md`),
-unprompted — wait for the user.
-
-**A third live-playtest sweep ran 2026-09-16** (same disposable-save
-technique: `save1_copy.txt`/`save2_copy.txt` in `build\Debug`, direct
-`POS`/`MODE`/`ZONE`/`HOURS` save-file edits to teleport/time-skip instead
-of walking every step, then a real relaunch + SendKeys/screenshot per
-scenario — Mike's and Regan's real `save1.txt`/`save2.txt` never opened
-by the running game). Requested as "do all the backlog" — not fully
-exhausted in one sitting (several items are genuinely RNG- or
-travel-heavy), but a large batch closed or newly informed:
-
-- **VIEW command + status tags (Milestone 186) — now fully closed.**
-  Escape cancelled the View picker with zero state change (same HP/dist/
-  log/Movement before and after — confirmed no round consumed). Cast
-  Hold Monster on a Gnoll mid-fight (bog terrain): sidebar showed
-  `Gnoll A -- HP 10/10 dist 1 [Held]` and the View card independently
-  showed `Status: Held` for the same monster — both halves confirmed
-  matching.
-- **Look command (Milestone 182) — now fully closed.** Teleported Mike's
-  copy into Thorbardin's Great Hall (`ZONE thorbardin`, `ZONEPOS 12 4`,
-  the `TIMELINE_ANCHOR H` tile) with the clock set inside the Heroes'
-  real `PRESENCE thorbardin 33 41` window. `'l'` listed all eight canon
-  Heroes present at once; selecting Tanis showed the exact `PRESENCE`
-  line from `data/timeline.txt` verbatim. The anchor mechanism works
-  exactly as designed.
-- **Battlemap walls (Milestone 188) — bog, glacier, and road confirmed
-  live**, each via a real wilderness encounter fought on that terrain
-  (Gnolls/bog, a Ghast/glacier, Baaz Draconians/road): every terrain
-  rendered multiple wall clusters, and bog additionally logged a real
-  `Blocked: cannot walk onto a wall.` refusal. **Real finding, not just
-  an unconfirmed item: `salt_flat` and `savannah` have zero tiles
-  anywhere in the current 480x320 `data/overworld.grid`** (checked by
-  direct script scan, not inference) — so both are structurally
-  impossible to reach through any live encounter, the same standing
-  caveat Milestone 190's notes already recorded for the Blue Dragon
-  specifically, just not previously stated for savannah too. Their
-  `data/battlemaps/salt_flat.txt`/`savannah.txt` files exist and do
-  contain walls (20/37 tiles respectively) but can only ever be reached
-  by a debug/dev save forcing that terrain, not by real play. Still open
-  for the 3 reachable terrains: a diagonal corner-cut against a wall
-  logging `Blocked: can't cut across the wall.` (every wall cluster
-  actually encountered this session was a solid rectangle with no
-  corner-shaped gap) and visible monster AI detouring around one.
-- **Combat item use (Milestone 170) — Brooch's once-per-day gate
-  confirmed.** One combat use (Globe of Invulnerability, absorbed a
-  Gnoll's hit) correctly set the day-gate; a second `USE` attempt the
-  same fight/day showed `You have nothing to use.` Still open: the 2+
-  item picker itself (no test save carries two usable items at once),
-  Staff of Curing, and a monsters-act-first knockout preventing an item
-  from being consumed.
-- **False "ocean" pockets near Qualinesti — reasonably confirmed, not
-  just inferred.** A direct scan of `data/overworld.grid` found zero
-  `~`/`!` tiles within a 30-tile radius of Regan's original `save2.txt`
-  position (176, 214); a live walk north/west from that point produced
-  no spurious `Blocked: cannot walk onto the ocean.` (the walk was cut
-  short by an unrelated real wilderness encounter, fled to end the
-  check). Reasonable to consider this item closed barring a report of a
-  specific spot still showing the bug.
-
-**Thief backstab got a real, unsuccessful attempt** (added
-`COMPANION dessa_corrin` to a disposable save, fought three encounters
-trying to engineer the flanking geometry) — still open, see its own
-Playtest backlog entry below for exactly why it's hard and what to try
-next. Genuinely untouched by this sweep otherwise (needs more session
-time — RNG-heavy, travel-heavy, or a different specific setup):
-same-cell combat-movement retreat collision, combat spellcasting's
-monsters-act-first-then-knockout case, multi-square creatures/Blue
-Dragon, Griffon/Stirge, Astinus's day-gated SUBJECT topics and ask-input
-edge cases, and bigger battlefield's movement-running-out-mid-round
-message and differing monster-AI closing speeds. See each item below,
-unchanged except where struck.
+See the Playtest backlog below for what's implemented and verified (clean
+rebuild + smoke test) but not yet walked with a real keyboard, and the two
+Parked sections for long-shelved decisions with their own resumption
+notes. Don't resume either parked topic, or the console-retirement
+conversation (`docs/CONSOLE_RETIREMENT_PROPOSAL.md`), unprompted — wait
+for the user.
 
 ## Playtest backlog
 
@@ -246,6 +44,15 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
+- **Real DQoK Aim cursor + auto-advancing narration** (Milestone 204) —
+  confirmed live end-to-end (free-look/zero-cost, live status text, Escape
+  cancel, commit/sweep, auto-advance, and Won staying manual — see that
+  milestone's own writeup for the full list). Still open: the
+  ranged-weapon (Light Crossbow) half of the new `combatAimLegality`
+  check — "Nothing in your line of sight." and "An enemy is too close to
+  fire your crossbow!" while Aiming — implemented but not eyeballed live
+  (no current save carries a crossbow; would need one added to a
+  disposable test save, or a fresh character built with one).
 - ~~**Gold Box UI font** (Milestone 196)~~ — now fully closed. Confirmed
   live on the save-slot menu, the full character-creation wizard through
   Summary (Milestone 197), the character sheet + inventory screens
@@ -267,20 +74,17 @@ tracks what's still open and how to force it.
   movement messages, the compact card tracking HP live, the turn-follow
   camera/card correctly handling a monsters-act-first round, and a clean
   `Fled` exit back to the Overworld (confirmed working this session,
-  struck from "still open" below). Still open: `PickingTarget`'s secondary
-  target card in the new compact format (needs a 2+-monster encounter — a
-  group monster like Kobolds/Gnolls/Skeletons would force it), the
-  turn-follow card/camera specifically following a *companion's* turn
-  (needs a fight with a living companion in the party — Bren Alder was
-  knocked out in the test save used), `c`/`u` (Cast/Use — this fight's
-  Fighter had nothing to cast/use), the new "preparing to cast/breathe"
-  beat (needs a Bozak/Aurak Draconian, `MIN_TOWN_DISTANCE 25`/`45`
-  wilderness), and the `Lost` end state (needs a losing fight or a
-  debug/dev save at low HP). Milestone 201's own verification incidentally
-  triggered a real 3-Black-Bear group and reconfirmed the card/turn-follow
-  mechanism still renders correctly after `drawCombatCardPanel` was
-  renamed to `drawCardPanel` — but didn't get close enough to attack, so
-  the `PickingTarget` secondary-card item above is still open, not closed.
+  struck from "still open" below). ~~The secondary target card in compact
+  format~~ is now closed too — Milestone 204's own live 4-Skeleton fight
+  confirmed the Aiming cursor's secondary card (its replacement for
+  `PickingTarget`'s old attack-picker card) against a real 2+-monster
+  group. Still open: the turn-follow card/camera specifically following a
+  *companion's* turn (needs a fight with a living companion in the party —
+  Bren Alder was knocked out in the test save used), `c`/`u` (Cast/Use —
+  no fight so far has had a caster/item to test with), the new "preparing
+  to cast/breathe" beat (needs a Bozak/Aurak Draconian, `MIN_TOWN_DISTANCE
+  25`/`45` wilderness), and the `Lost` end state (needs a losing fight or a
+  debug/dev save at low HP).
 - **Bigger battlefield + real movement** (Milestone 185) — a real
   wilderness encounter (3 Bugbears, hills terrain, spawned at dist 24)
   was fought live 2026-09-16 and confirmed the bigger-battlefield spawn

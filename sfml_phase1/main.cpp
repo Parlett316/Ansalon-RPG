@@ -53,6 +53,7 @@
 #include "world/ZoneTile.h"
 
 #include <SFML/Graphics.hpp>
+#include <SFML/System/Clock.hpp>
 #include <SFML/System/Sleep.hpp>
 #include <SFML/System/Time.hpp>
 
@@ -642,11 +643,21 @@ void drawPoiIcon(sf::RenderWindow& window, PoiIconShapes& shapes, PoiKind kind, 
 // 2955-2977), each resolves entirely before initiative is rolled, so
 // cancelling it (Escape/Q) costs nothing; PickingTarget itself is reused
 // for a spell's or Webnet's target choice once one is picked (see
-// CombatSession::pickReason/TargetPickReason below), same single mechanism
-// GameLoop::pickTarget already is for attack, spell, and Webnet targeting.
+// CombatSession::pickReason/TargetPickReason below) -- a physical Attack
+// used to be PickingTarget's third reason too, but Milestone 204 moved
+// attack targeting to its own free-look Aiming cursor/combatConfirmAim
+// instead (see Aiming's own doc comment below), so PickingTarget is Spell/
+// Webnet only now.
 enum class CombatUiState {
     AwaitContinue,
     Idle,
+    // Free-look targeting cursor for a physical Attack (Milestone 204,
+    // real DQoK "AIM" semantics -- see combatBeginAim's own doc comment):
+    // pans anywhere on the battlefield with zero round cost, only
+    // committing (and rolling initiative) once Enter confirms a legal
+    // target. Distinct from PickingTarget below, which stays a list-cycle
+    // over already-known-legal candidates for Spell/Webnet.
+    Aiming,
     PickingTarget,
     PickingSpell,
     PickingItem,
@@ -662,14 +673,15 @@ enum class CombatUiState {
     Fled
 };
 
-// Which of the three real reasons PickingTarget is ever open for -- an
-// ordinary melee attack, a spell that needs a target, or Webnet's own
-// "tangle which enemy?" (character::useWebnet succeeded, still needs to
-// know who) -- since combatConfirmTarget and the footer text both need to
-// know which action to actually resolve once a target is chosen. Replaces
-// what used to be a plain bool (attack vs. spell) now that item use adds a
-// third case.
-enum class TargetPickReason { Attack, Spell, Webnet };
+// Which of the two real reasons PickingTarget is ever open for -- a spell
+// that needs a target, or Webnet's own "tangle which enemy?"
+// (character::useWebnet succeeded, still needs to know who) -- since
+// combatConfirmTarget and the footer text both need to know which action to
+// actually resolve once a target is chosen. A physical Attack was a third
+// case here before Milestone 204 gave it its own free-look Aiming cursor
+// instead (see CombatUiState::Aiming's own doc comment) -- removed rather
+// than left unreachable.
+enum class TargetPickReason { Spell, Webnet };
 
 struct CombatInstance {
     int hp = 0;
@@ -703,6 +715,12 @@ struct CombatSession {
     std::vector<combat::GridPos> wallPositions;
     std::vector<std::string> log;
     CombatUiState uiState = CombatUiState::AwaitContinue;
+
+    // Free-look Aim cursor (Milestone 204) -- only meaningful while uiState
+    // == Aiming. Position on the combat grid the player is currently
+    // looking at; moves freely (no bounds beyond the grid itself, no wall/
+    // occupancy check -- it's a viewfinder, not the character moving).
+    combat::GridPos aimCursor;
 
     // Target-picker state -- only meaningful while uiState == PickingTarget.
     std::vector<int> pickCandidates;
@@ -766,10 +784,11 @@ struct CombatSession {
     // target choice resolves pendingSpellResult (character::castSpell has
     // already run, consuming the memorized slot -- see
     // combatCommitSpellChoice); Webnet means it resolves a successful
-    // character::useWebnet call instead (see combatCommitItemChoice);
-    // Attack means an ordinary melee attack, same as before this feature
-    // existed.
-    TargetPickReason pickReason = TargetPickReason::Attack;
+    // character::useWebnet call instead (see combatCommitItemChoice). The
+    // default value here is never actually read before being explicitly
+    // set (both entry points set it before opening PickingTarget) --
+    // arbitrary, just needs to be a valid enumerator.
+    TargetPickReason pickReason = TargetPickReason::Spell;
     character::SpellCastResult pendingSpellResult;
 
     // Item-choice picker state -- only meaningful while uiState ==
@@ -839,13 +858,15 @@ struct CombatSession {
     // the round-ending function decides Idle/Won/Lost/Fled -- actionLogStart/
     // roundJustConcluded let that internal resolution run completely
     // unchanged, while the input dispatch intercepts the result afterward
-    // and replays [actionLogStart, log.size()) one line per Enter press
-    // before ever applying the real target state. actionLogStart is re-armed
-    // (to log.size()) and roundJustConcluded reset false as the first
-    // statement of every entry point that can end a round (see
-    // combatBeginPlayerAttack/combatConfirmTarget/combatCommitSpellChoice/
-    // combatCommitItemChoice/combatEndTurn/combatBeginFlee/
-    // combatBeginPlayerMove); roundJustConcluded is set true by
+    // and replays [actionLogStart, log.size()), one line at a time (Milestone
+    // 204: automatically for an ordinary round conclusion, see
+    // pendingMessageAutoAdvance below; still one Enter press at a time for
+    // the encounter-opening/closing beats), before ever applying the real
+    // target state. actionLogStart is re-armed (to log.size()) and
+    // roundJustConcluded reset false as the first statement of every entry
+    // point that can end a round (see combatConfirmAim/combatConfirmTarget/
+    // combatCommitSpellChoice/combatCommitItemChoice/combatEndTurn/
+    // combatBeginFlee/combatBeginPlayerMove); roundJustConcluded is set true by
     // combatWrapUpRound/combatKnockedOutBy/combatBeginFlee right after their
     // own (unchanged) uiState assignment.
     size_t actionLogStart = 0;
@@ -858,6 +879,19 @@ struct CombatSession {
     size_t pendingMessageIndex = 0;
     size_t pendingMessageEnd = 0;
     CombatUiState pendingTargetState = CombatUiState::Idle;
+    // Milestone 204: whether the CURRENT pendingMessageIndex..pendingMessageEnd
+    // queue should advance on its own (a short timer, see kMessageAutoAdvanceMs/
+    // combatAdvancePendingMessage near the main loop) instead of waiting for an
+    // Enter press each line -- real Gold Box games don't stop for a keypress on
+    // routine round narration ("the enemies just keep going until it's your
+    // turn"). Only ever set true for an ordinary round conclusion that lands
+    // back on Idle (see the wrapper right after the input-dispatch switch,
+    // where this is set alongside pendingTargetState) -- defaults false so the
+    // encounter-opening "X appears!" beat (set up by hand in
+    // combatStartEncounter, never touching this field) and the closing
+    // Won/Lost/Fled beats both stay a deliberate, manual Enter-to-continue.
+    // Enter still works as a manual skip-ahead even while auto-advancing.
+    bool pendingMessageAutoAdvance = false;
 };
 
 // Dialogue's own UI states -- non-blocking port of GameLoop::talkTo's
@@ -3627,6 +3661,25 @@ int runPhase1(const std::string& savePath) {
         return false;
     };
 
+    // Milestone 204: which monster instance (if any) occupies `cell`, for
+    // the Aim cursor -- same whole-footprint check as combatCellOccupied's
+    // monster loop just above (not a copy-paste divergence, just a
+    // different return type: an index instead of a bool, since Aim needs
+    // to know WHICH instance, not just whether one is there). Returns -1
+    // for empty ground, a wall, the player, or a companion -- only a
+    // living monster instance is ever a legal Aim target.
+    auto combatInstanceAtCell = [&](combat::GridPos cell) -> int {
+        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+            if (combatSession.instances[i].hp <= 0) continue;
+            for (const combat::GridPos& occupied : combat::footprintCells(
+                     combatSession.instancePositions[i], combatSession.monster.footprintWidth,
+                     combatSession.monster.footprintHeight)) {
+                if (occupied.x == cell.x && occupied.y == cell.y) return static_cast<int>(i);
+            }
+        }
+        return -1;
+    };
+
     auto combatNearestRefuge = [&]() -> const world::Location* {
         const world::Location* best = nullptr;
         long long bestDistSq = 0;
@@ -3735,6 +3788,13 @@ int runPhase1(const std::string& savePath) {
     // deliberate swing, not a walk cycle. Expect this needs the same kind
     // of live-feedback tuning pass once seen at a real keyboard.
     constexpr int kAttackPoseFlashMs = 200;
+    // Milestone 204: how long each auto-advanced AwaitContinue message line
+    // stays on screen before combatAdvancePendingMessage (near the main
+    // loop) moves to the next one -- same "invented, flagged pacing
+    // number, needs live tuning" idiom as kAiStepAnimationMs/
+    // kAttackPoseFlashMs above. Text needs longer than a walk-step to
+    // actually read, so this is well above kAiStepAnimationMs.
+    constexpr int kMessageAutoAdvanceMs = 600;
     // Centers the camera on whichever cell is actually moving this step
     // (the same live-feedback pass: the camera used to stay fixed on the
     // player, so a companion or monster walking far from the player was
@@ -4014,6 +4074,26 @@ int runPhase1(const std::string& savePath) {
         combatSession.roundJustConcluded = true;
     };
 
+    // Milestone 204: paces combatSession.pendingMessageAutoAdvance's timer
+    // (see that field's own doc comment) -- restarted every time a line
+    // advances, by either path below, so each line gets its own full
+    // kMessageAutoAdvanceMs on screen.
+    sf::Clock combatMessageClock;
+
+    // Advances the AwaitContinue message queue by one line, applying the
+    // real target state once the queue drains -- shared by the manual
+    // Enter-press handler (AwaitContinue's own key-dispatch case, below)
+    // and the automatic timer-driven advance (the main loop, guarded on
+    // pendingMessageAutoAdvance) so both paths use identical logic instead
+    // of duplicating it.
+    auto combatAdvancePendingMessage = [&]() {
+        ++combatSession.pendingMessageIndex;
+        if (combatSession.pendingMessageIndex >= combatSession.pendingMessageEnd) {
+            combatSession.uiState = combatSession.pendingTargetState;
+        }
+        combatMessageClock.restart();
+    };
+
     // id == 0 is the player; id == N (N >= 1) is state.companions[N-1] --
     // same identity encoding as CombatSession::firstAttackerId. Direct port
     // of GameLoop.cpp:2035-2037.
@@ -4171,7 +4251,7 @@ int runPhase1(const std::string& savePath) {
             int attackerId = static_cast<int>(ci) + 1;
             // Fighter-type companion sweep -- same rule and same
             // combatAdjacentWeakInstances helper as the player's own sweep
-            // in combatBeginPlayerAttack. Ends this companion's turn
+            // in combatConfirmAim. Ends this companion's turn
             // (continue) rather than falling into the single-target loop
             // below. Direct port of GameLoop.cpp:2347-2380.
             if (character::classGroupFor(companion.charClass) == character::ClassGroup::Warrior) {
@@ -4675,8 +4755,9 @@ int runPhase1(const std::string& savePath) {
         // instance used to be unconditionally eligible, so this couldn't
         // happen before. The spell is already cast (character::castSpell
         // ran above) and the round is spent either way -- same "a wasted
-        // action still costs the round" precedent combatBeginPlayerAttack
-        // already applies to 0 eligible attack targets.
+        // action still costs the round" precedent combatConfirmAim's own
+        // post-initiative re-check falls back to when a physical attack's
+        // target stops being legal after all.
         if (candidates.empty()) {
             combatPushLog("Your " + result.spellName + " finds no target in sight.");
             combatFinishPlayerAction(combatSession.pendingGoFirst);
@@ -4836,38 +4917,95 @@ int runPhase1(const std::string& savePath) {
         combatSession.uiState = CombatUiState::PickingItem;
     };
 
-    // Enter pressed while Idle: commit to attacking this round. Melee-locked
-    // (must be adjacent) unless wielding the Light Crossbow, which can hit
-    // anyone on the grid but is disabled outright the instant an enemy
-    // closes to melee range (DQoK.pdf's own manual) -- mirrors
-    // GameLoop::playerAttacks. 0 eligible targets or 2+ both still consume
-    // the round (a wasted swing costs your action just like a real one);
-    // exactly 1 resolves immediately, 2+ opens the in-frame picker.
-    auto combatBeginPlayerAttack = [&]() {
+    // Milestone 204: whether `instanceIdx` is a legal physical-attack target
+    // RIGHT NOW, and if not, the exact reason -- shared by the Aiming
+    // status line (evaluated live every frame the cursor moves, at zero
+    // cost) and combatConfirmAim's actual commit (re-evaluated once more
+    // right after initiative rolls, since monster movement earlier in the
+    // round can change the answer -- see that lambda's own comment).
+    // Melee-locked (must be adjacent) unless wielding the Light Crossbow,
+    // which can hit anyone on the grid in sight but is disabled outright
+    // the instant an enemy closes to melee range (DQoK.pdf's own manual) --
+    // mirrors GameLoop::playerAttacks/the old combatBeginPlayerAttack this
+    // replaces. Kept as one small function instead of inlined so both call
+    // sites can't silently drift apart.
+    auto combatAimLegality = [&](int instanceIdx) -> std::pair<bool, std::string> {
+        bool hasRangedWeapon = state.character.weaponName == character::kLightCrossbowName;
+        if (hasRangedWeapon) {
+            for (size_t i = 0; i < combatSession.instances.size(); ++i) {
+                if (combatSession.instances[i].hp > 0 &&
+                    combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
+                                                   combatSession.monster.footprintWidth,
+                                                   combatSession.monster.footprintHeight)) {
+                    return {false, "An enemy is too close to fire your crossbow!"};
+                }
+            }
+            combat::GridPos losTarget = combat::nearestFootprintCell(
+                combatSession.playerPos, combatSession.instancePositions[static_cast<size_t>(instanceIdx)],
+                combatSession.monster.footprintWidth, combatSession.monster.footprintHeight);
+            if (!combat::hasLineOfSight(combatSession.playerPos, losTarget, combatSession.wallPositions)) {
+                return {false, "Nothing in your line of sight."};
+            }
+            return {true, ""};
+        }
+        if (!combat::isAdjacentToFootprint(combatSession.playerPos,
+                                            combatSession.instancePositions[static_cast<size_t>(instanceIdx)],
+                                            combatSession.monster.footprintWidth,
+                                            combatSession.monster.footprintHeight)) {
+            return {false, "Too far away to attack."};
+        }
+        return {true, ""};
+    };
+
+    // 'a' pressed while Idle: real DQoK "AIM" semantics (see this
+    // milestone's own writeup in docs/COMBAT_NOTES.md) -- opens a free
+    // look-around cursor (the Aiming case in the key dispatch below) rather
+    // than immediately attempting an attack. Costs nothing: no initiative
+    // roll, no monster turn, until Enter actually commits to a legal
+    // target via combatConfirmAim. Starts on the nearest living instance
+    // (combatNearestLivingEnemyPos, falling back to the player's own
+    // position on the never-really-possible case of no living instances)
+    // so the common case -- something's already adjacent -- still needs
+    // just one more Enter, same feel the old immediate-resolve path had.
+    auto combatBeginAim = [&]() {
+        combatSession.aimCursor = combatNearestLivingEnemyPos().value_or(combatSession.playerPos);
+        combatSession.uiState = CombatUiState::Aiming;
+    };
+
+    // Enter pressed while Aiming: commits to attacking whatever the cursor
+    // is currently on, if legal -- a silent no-op otherwise (the status
+    // line already shows why; there's nothing to confirm). This is the
+    // ONLY point in the whole Aim flow that costs a round: rolls initiative
+    // now (idempotent, same call every other committing action uses), then
+    // re-checks combatAimLegality once more for the SAME instance --
+    // monster AI only ever closes distance, never retreats, so the one way
+    // this can flip from the pre-roll check above is a DIFFERENT monster
+    // closing to melee and disabling an already-aimed ranged shot; same
+    // "still costs the round" consequence the old immediate-resolve path
+    // always had once initiative was rolled. Fighter-type sweep is
+    // re-checked here too, at the exact same point relative to initiative
+    // the old combatBeginPlayerAttack had it (after the roll, before
+    // resolving a single target) -- moved here from that function
+    // (Milestone 204) rather than left at Aim-entry, so a monster that
+    // closes in THIS round can still trigger it, not just one already
+    // adjacent when 'a' was first pressed.
+    auto combatConfirmAim = [&]() {
+        const int idx = combatInstanceAtCell(combatSession.aimCursor);
+        if (idx < 0 || !combatAimLegality(idx).first) return;
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
         combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
         combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
-        bool hasRangedWeapon = state.character.weaponName == character::kLightCrossbowName;
-        bool adjacentToAny = false;
-        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp > 0 &&
-                combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
-                                               combatSession.monster.footprintWidth,
-                                               combatSession.monster.footprintHeight)) {
-                adjacentToAny = true;
-                break;
-            }
-        }
-        if (hasRangedWeapon && adjacentToAny) {
-            combatPushLog("An enemy is too close to fire your crossbow!");
+        auto [stillLegal, reason] = combatAimLegality(idx);
+        if (!stillLegal) {
+            combatPushLog(reason);
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
-        // Fighter-type sweep bypasses the picker and meleeAttacksThisRound's
-        // progression entirely -- one swing per adjacent weak instance, no
-        // to-hit/damage bonus (DQoK's own wording gives none; sweeping is an
+        // Fighter-type sweep bypasses the single-target resolve below
+        // entirely -- one swing per adjacent weak instance, no to-hit/
+        // damage bonus (DQoK's own wording gives none; sweeping is an
         // action-economy ability only). See combatAdjacentWeakInstances's
         // doc comment. Direct port of GameLoop.cpp:2214-2245.
         if (character::classGroupFor(state.character.charClass) == character::ClassGroup::Warrior) {
@@ -4893,7 +5031,7 @@ int runPhase1(const std::string& savePath) {
                         if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                             // A death-burst knockout mid-sweep -- combatFinishPlayerAction is still called
                             // unconditionally below (it and combatCompanionActs both no-op safely once
-                            // uiState is Lost), same pattern candidates.size()==1's own call site uses.
+                            // uiState is Lost), same pattern the single-target resolve below uses.
                             if (combatHandleInstanceDeath(targetIndex)) break;
                         }
                     } else {
@@ -4904,50 +5042,8 @@ int runPhase1(const std::string& savePath) {
                 return;
             }
         }
-        // Milestone 189: a ranged shot also needs a real sightline to the
-        // target now that battlemap walls exist -- tracked separately from
-        // "nothing alive/adjacent" so the refusal message names the actual
-        // reason (adjacentToAny is already false here whenever
-        // hasRangedWeapon is true, so every alive instance failing this
-        // loop for a ranged weapon failed on line of sight specifically).
-        std::vector<int> candidates;
-        bool anyAliveOutOfSight = false;
-        for (size_t i = 0; i < combatSession.instances.size(); ++i) {
-            if (combatSession.instances[i].hp <= 0) continue;
-            if (!hasRangedWeapon &&
-                !combat::isAdjacentToFootprint(combatSession.playerPos, combatSession.instancePositions[i],
-                                                combatSession.monster.footprintWidth,
-                                                combatSession.monster.footprintHeight)) {
-                continue;
-            }
-            if (hasRangedWeapon) {
-                // Milestone 190: same nearest-footprint-cell LOS endpoint as
-                // spell targeting above.
-                combat::GridPos losTarget = combat::nearestFootprintCell(
-                    combatSession.playerPos, combatSession.instancePositions[i], combatSession.monster.footprintWidth,
-                    combatSession.monster.footprintHeight);
-                if (!combat::hasLineOfSight(combatSession.playerPos, losTarget, combatSession.wallPositions)) {
-                    anyAliveOutOfSight = true;
-                    continue;
-                }
-            }
-            candidates.push_back(static_cast<int>(i));
-        }
-        if (candidates.empty()) {
-            combatPushLog(anyAliveOutOfSight ? "Nothing in your line of sight."
-                                                             : "You're too far away to attack.");
-            combatFinishPlayerAction(combatSession.pendingGoFirst);
-            return;
-        }
-        if (candidates.size() == 1) {
-            combatResolveAttackAgainstTarget(candidates.front());
-            combatFinishPlayerAction(combatSession.pendingGoFirst);
-            return;
-        }
-        combatSession.pickReason = TargetPickReason::Attack;
-        combatSession.pickCandidates = candidates;
-        combatSession.pickSelected = 0;
-        combatSession.uiState = CombatUiState::PickingTarget;
+        combatResolveAttackAgainstTarget(idx);
+        combatFinishPlayerAction(combatSession.pendingGoFirst);
     };
 
     // combatCellOccupied itself now lives up near combatCompanionAlive (see
@@ -5116,17 +5212,18 @@ int runPhase1(const std::string& savePath) {
     };
 
     // Enter pressed while PickingTarget: commit to the highlighted
-    // candidate and resolve the rest of the round exactly as the
-    // immediate (0/1-candidate) path in combatBeginPlayerAttack does.
+    // candidate and resolve the rest of the round. Spell/Webnet only now --
+    // a physical Attack used to be a third reason here, moved to its own
+    // free-look Aiming cursor at Milestone 204 (combatConfirmAim).
     auto combatConfirmTarget = [&]() {
         // Deliberately does NOT re-arm actionLogStart/roundJustConcluded --
-        // PickingTarget is only ever entered from combatBeginPlayerAttack/
-        // combatCommitSpellChoice/combatCommitItemChoice, all three of which
-        // already snapshotted actionLogStart at their own top before this
-        // picker ever opened. Re-arming here would silently drop any log
-        // line pushed before the picker opened -- confirmed this actually
-        // happens: combatCommitItemChoice's Webnet case pushes the "you use
-        // the Webnet" result.message (main.cpp ~4725) before checking
+        // PickingTarget is only ever entered from combatCommitSpellChoice/
+        // combatCommitItemChoice, both of which already snapshotted
+        // actionLogStart at their own top before this picker ever opened.
+        // Re-arming here would silently drop any log line pushed before
+        // the picker opened -- confirmed this actually happens:
+        // combatCommitItemChoice's Webnet case pushes the "you use the
+        // Webnet" result.message (main.cpp ~4725) before checking
         // candidate count, so a 2+-candidate Webnet throw would otherwise
         // lose that line from the paced replay.
         int target = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
@@ -5139,9 +5236,6 @@ int runPhase1(const std::string& savePath) {
                 // own silent ++blockedAttacksRemaining[...] once pickTarget
                 // returns.
                 ++combatSession.blockedAttacksRemaining[static_cast<size_t>(target)];
-                break;
-            case TargetPickReason::Attack:
-                combatResolveAttackAgainstTarget(target);
                 break;
         }
         if (combatSession.uiState == CombatUiState::Lost) return;
@@ -5621,7 +5715,8 @@ int runPhase1(const std::string& savePath) {
             "  o = world map           / = this help screen",
             "",
             "Combat:",
-            "  Arrow keys = move (spend movement)   a = attack",
+            "  Arrow keys = move (spend movement)",
+            "  a = aim (free look; Enter attacks a legal target)",
             "  c = cast (if a caster)         u = use an item",
             "  d / Space = end turn           f = flee",
             "  v = view any unit's stats",
@@ -6486,7 +6581,8 @@ int runPhase1(const std::string& savePath) {
                                (combatSession.uiState == CombatUiState::PickingSpell ||
                                 combatSession.uiState == CombatUiState::PickingItem ||
                                 combatSession.uiState == CombatUiState::ViewPicking ||
-                                combatSession.uiState == CombatUiState::PickingTarget) &&
+                                combatSession.uiState == CombatUiState::PickingTarget ||
+                                combatSession.uiState == CombatUiState::Aiming) &&
                                wantsQuit) {
                         // Escape/Q cancels the spell/item/view/target choice
                         // itself, back to Idle, no round consumed -- mirrors
@@ -6532,6 +6628,11 @@ int runPhase1(const std::string& savePath) {
                         // webnet wasted this way is an accepted, honest
                         // consequence of picking a reason that had 2+ valid
                         // targets and then changing your mind -- not a bug.
+                        //
+                        // Aiming (Milestone 204) is the simplest case of
+                        // all: combatBeginAim never rolls initiative in the
+                        // first place (same as ViewPicking), so cancelling
+                        // out of the free-look cursor costs nothing either.
                         combatSession.uiState = CombatUiState::Idle;
                     } else if (wantsQuit && !askInputActive) {
                         // Opens the confirmation instead of closing outright
@@ -6559,12 +6660,13 @@ int runPhase1(const std::string& savePath) {
                                 // the real state combatWrapUpRound/
                                 // combatKnockedOutBy/combatBeginFlee/
                                 // combatStartEncounter actually decided.
-                                if (handleEnter) {
-                                    ++combatSession.pendingMessageIndex;
-                                    if (combatSession.pendingMessageIndex >= combatSession.pendingMessageEnd) {
-                                        combatSession.uiState = combatSession.pendingTargetState;
-                                    }
-                                }
+                                // Milestone 204: an auto-advancing queue
+                                // (pendingMessageAutoAdvance) also advances
+                                // on its own via the main loop's timer check
+                                // -- Enter here still works too, as a manual
+                                // skip-ahead, via the same shared
+                                // combatAdvancePendingMessage.
+                                if (handleEnter) combatAdvancePendingMessage();
                                 break;
                             case CombatUiState::PickingTarget: {
                                 const int candidateCount = static_cast<int>(combatSession.pickCandidates.size());
@@ -6634,11 +6736,32 @@ int runPhase1(const std::string& savePath) {
                                 } else if (key == sf::Keyboard::Key::V) {
                                     combatBeginView();
                                 } else if (key == sf::Keyboard::Key::A) {
-                                    combatBeginPlayerAttack();
+                                    combatBeginAim();
                                 } else if (key == sf::Keyboard::Key::Space || key == sf::Keyboard::Key::D) {
                                     combatEndTurn();
                                 } else if (dx != 0 || dy != 0) {
                                     combatBeginPlayerMove(dx, dy);
+                                }
+                                break;
+                            // Milestone 204: dx/dy pan the free-look cursor
+                            // by one cell anywhere on the 50x25 grid -- a
+                            // viewfinder, not the character moving, so only
+                            // bounds-clamped, no wall/occupancy check (see
+                            // combatBeginAim's own doc comment). Enter
+                            // commits via combatConfirmAim, a no-op if the
+                            // cursor isn't on a legal target right now.
+                            // Escape/Q cancels for free -- handled by the
+                            // guard above this whole switch, alongside
+                            // PickingSpell/PickingItem/ViewPicking/
+                            // PickingTarget.
+                            case CombatUiState::Aiming:
+                                if (dx != 0 || dy != 0) {
+                                    combatSession.aimCursor.x =
+                                        std::clamp(combatSession.aimCursor.x + dx, 0, kCombatGridWidth - 1);
+                                    combatSession.aimCursor.y =
+                                        std::clamp(combatSession.aimCursor.y + dy, 0, kCombatGridHeight - 1);
+                                } else if (handleEnter) {
+                                    combatConfirmAim();
                                 }
                                 break;
                             case CombatUiState::ViewPicking: {
@@ -6680,6 +6803,14 @@ int runPhase1(const std::string& savePath) {
                             combatSession.pendingMessageEnd = combatSession.log.size();
                             combatSession.uiState = CombatUiState::AwaitContinue;
                             combatSession.roundJustConcluded = false;
+                            // Milestone 204: only an ordinary round
+                            // conclusion landing back on Idle auto-plays --
+                            // a finishing Won/Lost/Fled stays a deliberate
+                            // manual Enter-to-continue (see
+                            // pendingMessageAutoAdvance's own doc comment).
+                            combatSession.pendingMessageAutoAdvance =
+                                combatSession.pendingTargetState == CombatUiState::Idle;
+                            combatMessageClock.restart();
                         }
                     } else if (dialogueSession.active) {
                         // Dialogue's own input dispatch -- see
@@ -7086,6 +7217,20 @@ int runPhase1(const std::string& savePath) {
                 }
             }
 
+            // Milestone 204: auto-advances a round's AwaitContinue message
+            // queue on its own once pendingMessageAutoAdvance is set,
+            // instead of waiting for an Enter press per line -- runs once
+            // per real frame (this loop is a continuous 60fps pollEvent-
+            // then-draw loop, window.setFramerateLimit(60) above, so no new
+            // timing infrastructure is needed beyond combatMessageClock).
+            // Enter (handled above, inside the KeyPressed branch) still
+            // advances manually too, as a faster skip-ahead.
+            if (combatSession.active && combatSession.uiState == CombatUiState::AwaitContinue &&
+                combatSession.pendingMessageAutoAdvance &&
+                combatMessageClock.getElapsedTime().asMilliseconds() >= kMessageAutoAdvanceMs) {
+                combatAdvancePendingMessage();
+            }
+
             window.clear(sf::Color::Black);
             window.setView(mapView);
 
@@ -7107,6 +7252,11 @@ int runPhase1(const std::string& savePath) {
                 if (combatSession.uiState == CombatUiState::PickingTarget && !combatSession.pickCandidates.empty()) {
                     const int focusedIdx = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
                     combatFocus = combatSession.instancePositions[static_cast<size_t>(focusedIdx)];
+                } else if (combatSession.uiState == CombatUiState::Aiming) {
+                    // Milestone 204: follows the free-look cursor itself,
+                    // not any particular instance -- the whole point is
+                    // being able to pan somewhere nothing is standing.
+                    combatFocus = combatSession.aimCursor;
                 } else if (combatSession.uiState == CombatUiState::AwaitContinue &&
                            combatSession.pendingMessageIndex < combatSession.logActorForLine.size()) {
                     // Turn-follow camera (Milestone 200): while the paced
@@ -7153,6 +7303,27 @@ int runPhase1(const std::string& savePath) {
                     // every ordinary 1x1 monster).
                     const float fw = static_cast<float>(combatSession.monster.footprintWidth);
                     const float fh = static_cast<float>(combatSession.monster.footprintHeight);
+                    const float cx = (static_cast<float>(pos.x) + fw / 2.f) * kCombatTilePx;
+                    const float cy = (static_cast<float>(pos.y) + fh / 2.f) * kCombatTilePx;
+                    combatPickHighlight.setSize(sf::Vector2f(kCombatTilePx * fw - 6.f, kCombatTilePx * fh - 6.f));
+                    combatPickHighlight.setPosition(
+                        sf::Vector2f(cx - (kCombatTilePx * fw - 6.f) / 2.f, cy - (kCombatTilePx * fh - 6.f) / 2.f));
+                    window.draw(combatPickHighlight);
+                } else if (combatSession.uiState == CombatUiState::Aiming) {
+                    // Milestone 204: same box, but drawn at the cursor
+                    // itself rather than a resolved candidate -- sized to
+                    // a monster's whole footprint when the cursor happens
+                    // to be on one (same sizing as PickingTarget's box
+                    // above), else a plain single cell.
+                    const int aimedIdx = combatInstanceAtCell(combatSession.aimCursor);
+                    combat::GridPos pos = combatSession.aimCursor;
+                    float fw = 1.f;
+                    float fh = 1.f;
+                    if (aimedIdx >= 0) {
+                        pos = combatSession.instancePositions[static_cast<size_t>(aimedIdx)];
+                        fw = static_cast<float>(combatSession.monster.footprintWidth);
+                        fh = static_cast<float>(combatSession.monster.footprintHeight);
+                    }
                     const float cx = (static_cast<float>(pos.x) + fw / 2.f) * kCombatTilePx;
                     const float cy = (static_cast<float>(pos.y) + fh / 2.f) * kCombatTilePx;
                     combatPickHighlight.setSize(sf::Vector2f(kCombatTilePx * fw - 6.f, kCombatTilePx * fh - 6.f));
@@ -7359,14 +7530,21 @@ int runPhase1(const std::string& savePath) {
                 // Secondary target card: DQoK's own "a second small card
                 // appears below it" idiom once a target is highlighted,
                 // replacing the old roster's ">" cursor with the same data
-                // the picker itself already computes.
-                const bool showSecondaryCard = combatSession.uiState == CombatUiState::PickingTarget &&
-                                                !combatSession.pickCandidates.empty();
+                // the picker itself already computes. Milestone 204: also
+                // shown live while Aiming, whenever the free-look cursor
+                // happens to be sitting on a living instance -- no separate
+                // confirm step needed the way View's own card requires,
+                // since Aiming already redraws every frame the cursor moves.
                 int secondaryFocusedIdx = -1;
-                std::vector<std::string> secondaryLines;
-                if (showSecondaryCard) {
+                if (combatSession.uiState == CombatUiState::PickingTarget && !combatSession.pickCandidates.empty()) {
                     secondaryFocusedIdx =
                         combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
+                } else if (combatSession.uiState == CombatUiState::Aiming) {
+                    secondaryFocusedIdx = combatInstanceAtCell(combatSession.aimCursor);
+                }
+                const bool showSecondaryCard = secondaryFocusedIdx >= 0;
+                std::vector<std::string> secondaryLines;
+                if (showSecondaryCard) {
                     secondaryLines = combatBuildCompactCardLines(
                         {CombatSession::ViewCandidate::Kind::Monster, secondaryFocusedIdx});
                 }
@@ -7435,6 +7613,27 @@ int runPhase1(const std::string& savePath) {
                         }
                         drawBarLine("(press Enter to continue)", sf::Color(150, 150, 160));
                         break;
+                    case CombatUiState::Aiming: {
+                        // Milestone 204: live, zero-cost status -- recomputed
+                        // every frame the cursor moves, same combatAimLegality
+                        // combatConfirmAim itself re-checks at commit time, so
+                        // this line and the actual Enter behavior can never
+                        // disagree.
+                        const int aimedIdx = combatInstanceAtCell(combatSession.aimCursor);
+                        if (aimedIdx >= 0) {
+                            auto [legal, reason] = combatAimLegality(aimedIdx);
+                            if (legal) {
+                                drawWrappedBarLine("Attack the " + combatMonsterLabel(aimedIdx) + "? (Enter)",
+                                                    sf::Color(230, 220, 160));
+                            } else {
+                                drawWrappedBarLine(reason, sf::Color(200, 140, 120));
+                            }
+                        } else {
+                            drawWrappedBarLine("Aiming -- arrows to look, Enter to attack, Esc to cancel",
+                                                sf::Color(190, 190, 200));
+                        }
+                        break;
+                    }
                     case CombatUiState::PickingTarget: {
                         std::string prompt;
                         switch (combatSession.pickReason) {
@@ -7443,9 +7642,6 @@ int runPhase1(const std::string& savePath) {
                                 break;
                             case TargetPickReason::Webnet:
                                 prompt = "Tangle which enemy?";
-                                break;
-                            case TargetPickReason::Attack:
-                                prompt = "Attack which enemy?";
                                 break;
                         }
                         drawWrappedBarLine(prompt, sf::Color(230, 220, 160));

@@ -2271,6 +2271,159 @@ turn, `c`/`u` in a fight where they're actually usable, the
 2+-monster group, the new anticipation beat, and the `Lost` end state --
 see `docs/CURRENT_WORK.md`'s Playtest backlog.
 
+## Real DQoK Aim + auto-advancing round narration (Milestone 204, `ansalon_sfml_phase1` only)
+
+Live playtest (2026-09-16, same session as the research notes below) found
+a real combat-feel bug, not just a UX nit: fighting a group of Hobgoblins,
+pressing `a` (bound to Attack/"Aim" since Milestone 200) while nothing was
+adjacent yet still consumed the whole round -- the monsters got a free turn
+to close in, and repeating this (not realizing movement was required first)
+felt like "my character keeps trying to attack" while the log filled with
+repeated "The Hobgoblin closes in." lines, each needing its own Enter press.
+Two real, separable problems, both fixed:
+
+**1. `a` now opens a genuine free-look Aim cursor, matching real DQoK, not
+just its word.** Root cause: `combatBeginPlayerAttack` called
+`combatRollGoFirstAndMaybeActMonsters()` -- rolling initiative and possibly
+running the monsters' whole turn -- *before* it even checked whether a
+legal target existed, then still ended the round on 0 candidates. This was
+a real inconsistency with `combatBeginCast`/`combatBeginUseItem`, which
+both already bail out for free ("You have no spell to cast.", "You have
+nothing to use.") before ever touching initiative. Milestone 186 had
+concluded (from a *sample* of `References/BattleFrames.zip`'s 225 frames)
+that AIM was "already covered by the existing attack picker" -- a
+reasonable read of a static sample that turned out to be incomplete: the
+user's own description of the real game is that Aim is a free cursor you
+can move anywhere on the battlefield to see every square/enemy (no round
+cost), and only firing at a target -- particularly a missile weapon's
+target, which need not be adjacent at all -- costs the round.
+
+- `combatBeginPlayerAttack` is retired. A new `CombatUiState::Aiming`
+  (`main.cpp` ~line 648) plus `CombatSession::aimCursor` replace it for
+  physical attacks; `PickingTarget`'s existing list-cycling picker is
+  untouched and still used for Spell/Webnet targeting (`TargetPickReason`
+  dropped its now-dead `Attack` value entirely rather than leaving it
+  unreachable).
+- `combatBeginAim` (`a` while Idle, after the unchanged Fighter-sweep
+  auto-trigger check) costs nothing -- no initiative roll -- and starts the
+  cursor on the nearest living instance (`combatNearestLivingEnemyPos`), so
+  the common "something's already adjacent" case still needs just one more
+  Enter, same feel as before.
+- While Aiming, arrow/numpad keys pan the cursor anywhere on the 50x25 grid
+  (bounds-clamped only -- no wall/occupancy check, it's a viewfinder, not
+  the character moving); the camera follows it (a new branch in the
+  existing `combatFocus` chain) and a highlight box is drawn at it (reusing
+  `combatPickHighlight`, sized to a monster's whole footprint when the
+  cursor lands on one). Landing on a living instance also shows its compact
+  card live in the same secondary-card slot `PickingTarget` already uses
+  (`combatBuildCompactCardLines`) -- no separate confirm step, since Aiming
+  already redraws every frame the cursor moves. The bottom bar shows a
+  live, zero-cost status line computed by a new shared `combatAimLegality`
+  lambda: `"Attack the <name>? (Enter)"` when legal, or the exact same
+  refusal wording as before ("Too far away to attack.", "Nothing in your
+  line of sight.", "An enemy is too close to fire your crossbow!") when
+  not, so the status line and Enter's actual behavior can never disagree.
+- Enter commits **only** when the cursor is on a currently-legal target:
+  `combatConfirmAim` then rolls initiative (the round's real first action),
+  re-checks `combatAimLegality` once more for the same instance (monster AI
+  only ever closes distance, never retreats, so the one way this can flip
+  is a *different* monster closing to melee and disabling an already-aimed
+  ranged shot -- same "still costs the round" consequence the old
+  immediate-resolve path always had once initiative was rolled), then
+  resolves normally. Fighter-type sweep is re-checked here too, moved from
+  the old function's top to this exact point -- after initiative, before a
+  single-target resolve -- so a monster that closes in *this* round can
+  still trigger it, not just one already adjacent when `a` was first
+  pressed. Escape/Q cancels for free (extends the existing PickingSpell/
+  PickingItem/ViewPicking/PickingTarget free-cancel guard).
+- `kHelpLines`' Combat section updated (`a = aim (free look; Enter attacks
+  a legal target)`) so this doesn't become the next stale-text bug this
+  project keeps catching (Milestones 202/203).
+
+**2. The whole round's narration now auto-plays, only stopping for input at
+real decision points.** The user's own framing, from having played real
+Gold Box games: "the enemies just keep going until it's your turn" -- no
+per-line Enter needed for routine round narration (the player's own action
+result, each companion's, each monster's movement/attack), only for the
+encounter-opening "X appears!" beat and the closing Won/Lost/Fled screen,
+which remain genuine stopping points. The existing message-pacing queue
+(Milestone 199 -- `log`/`logActorForLine`/`actionLogStart`/
+`roundJustConcluded`/`pendingMessageIndex`/`pendingMessageEnd`/
+`pendingTargetState`, and the wrapper right after the input-dispatch switch
+that diverts a concluded round into `AwaitContinue`) is completely
+unchanged -- only how `pendingMessageIndex` advances changes, via a new
+automatic path that runs *alongside* the existing Enter-press path (Enter
+still works, as a manual skip-ahead, at any time).
+
+- New `CombatSession::pendingMessageAutoAdvance` (`bool`, default `false`).
+  The wrapper sets it `true` only when `pendingTargetState == Idle` --
+  `combatWrapUpRound` sets that target for an ordinary continuing round
+  (auto-plays) or `Won` for a finishing blow (stays manual);
+  `combatKnockedOutBy`/`combatBeginFlee` set `Lost`/`Fled` (also stay
+  manual). The encounter-opening arrival beat never goes through this
+  wrapper at all (`combatStartEncounter` sets up its own `AwaitContinue`
+  queue by hand) so it's unaffected and stays manual by the field's own
+  default.
+- A new `sf::Clock combatMessageClock` (declared once, just above the main
+  loop) paces a new shared `combatAdvancePendingMessage` lambda -- the
+  exact same "next line, or apply the real target state" logic the manual
+  Enter handler already had, now factored out so both paths use it. A
+  small block runs once per real frame (this loop is already a continuous
+  60fps `pollEvent`-then-draw loop, so no new timing infrastructure was
+  needed) checking `combatMessageClock.getElapsedTime() >=
+  kMessageAutoAdvanceMs` (new `constexpr int`, `600` -- same "invented,
+  flagged pacing number, needs live tuning" idiom as `kAiStepAnimationMs`/
+  `kAttackPoseFlashMs`) whenever `pendingMessageAutoAdvance` is set.
+- The turn-follow camera/card (Milestone 200, keyed off
+  `pendingMessageIndex`/`logActorForLine`) needed no change at all -- it
+  already just reads whatever the current index is, regardless of how it
+  got there, so it tracks correctly through an auto-playing sequence too.
+  `combatAnimateAiStep`'s own per-step movement animation/pacing
+  (130ms/step, already fully synchronous, already finished playing out
+  before this queue is even built) is likewise untouched -- this only
+  changes how the *text log* queue advances afterward.
+
+**Verified live end-to-end**, via SendKeys/screenshot on a disposable save
+copy (desktop/GUI access re-confirmed working this session; `save1_copy.txt`
+deleted after, original `save1.txt` untouched -- confirmed by mtime,
+2026-09-15, unchanged by this session) teleported (direct `MODE`/`POS` edit)
+into forest just outside Solace, walked into a real 4-Skeleton wilderness
+encounter:
+
+- Pressing `a` from spawn distance produced the cursor/highlight/secondary
+  card and a live "Too far away to attack." status with **zero round
+  cost** -- HP, movement counter, and monster positions all provably
+  unchanged (screenshot-identical) before and after, directly fixing the
+  reported bug. Escape cancelled the same way, twice, equally free.
+- Panning the cursor and committing (`Enter`) against an adjacent Skeleton
+  correctly showed `"Attack the Skeleton A? (Enter)"`, rolled initiative
+  only on commit, and -- since this Fighter had 2-4 weak Skeletons adjacent
+  by the time contact was made -- correctly re-triggered Fighter sweep from
+  its new `combatConfirmAim` location each time, confirmed by watching
+  multiple Skeletons' HP drop to 0 and fall across several sweeps, ending
+  in `"The Skeletons are defeated!"`.
+- The whole multi-line approach/attack narration for every ordinary
+  round auto-played with **no Enter presses at all** (confirmed repeatedly,
+  including a 5+-line queue spanning monster movement, the player's own
+  "You hold your action."/attack lines, and a knockout), landing correctly
+  back on `Idle` with the movement counter refreshed each time. The instant
+  the round that killed the last Skeleton resolved (`pendingTargetState ==
+  Won`), auto-advance correctly stopped -- five separate real Enter presses
+  were needed to step through "You hit...", "...falls!", "You gain N
+  experience.", "The Skeletons are defeated!", and finally the real
+  `Victory! Press Enter to continue.` screen, exactly matching the
+  stays-manual design. The encounter-opening "4 Skeletons appear!" beat
+  also required its own manual Enter, unaffected.
+- Help (`/`) shows the corrected Combat line, no clipping.
+
+**Not yet interactively confirmed**: the ranged-weapon (Light Crossbow)
+half of `combatAimLegality` -- the test character carried a longsword, and
+no current save carries the crossbow -- so "Nothing in your line of
+sight."/"An enemy is too close to fire your crossbow!" while Aiming are
+implemented (mirroring the exact pre-existing LOS/adjacency logic, unit-
+for-unit) but not eyeballed live. See `docs/CURRENT_WORK.md`'s Playtest
+backlog.
+
 ## Live DQoK research session (2026-09-16)
 
 Distinct from `References/DQoK.pdf` (the manual) and `References/
