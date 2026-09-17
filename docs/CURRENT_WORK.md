@@ -1,37 +1,56 @@
 # Current work
 
-**Nothing in flight.** Milestone 199 (DQoK-style combat HUD redesign,
-`ansalon_sfml_phase1` only) shipped 2026-09-16: the combat screen's
-always-on right-hand sidebar (full party+monster roster, 10-line scrolling
-log) is replaced with a single-unit stat card (defaults to the player;
-`View`/`PickingTarget` show others) and a full-width bottom command/
-message bar, matching real DQoK gameplay frames already in the repo
-(`References/BattleFrames_extracted/`). Combat messages are now paced one
-at a time (classic Gold Box narration, "press Enter to continue" per
-event) rather than dumped into a log -- round-resolution logic itself is
-completely unchanged, only presentation. Planned via `EnterPlanMode` +
-a Plan sub-agent given the scope (combat's core render/input loop), both
-spot-checked against the real code before implementing.
+**Nothing in flight.** Milestone 200 (DQoK combat HUD refinements --
+real key parity, a tightened compact stat card, and a turn-follow camera/
+card, `ansalon_sfml_phase1` only) shipped 2026-09-16, on top of Milestone
+199's combat HUD redesign from earlier the same session: combat's Idle
+keys now match DQoK's own first-letter verbs (`a`=Aim, `c`=Cast, `u`=Use,
+`v`=View, `d`/Space=Done, `f`=Flee, confirmed against
+`References/BattleFrames_extracted/` frames) instead of the old Enter/`m`/
+`i`/`wasd` mismatch; WASD is removed as movement project-wide (Overworld/
+Zone/Combat all share one key switch, so this was a single-point change),
+leaving arrow keys + the existing numpad scheme; the persistent stat card
+is now the real DQoK-minimal 4-line format (no THAC0/Status -- those stay
+on the dedicated `V` View command's own full card) in a small
+content-sized bordered box instead of the old full-height sidebar fill;
+and, the one genuinely new mechanic, the camera and that persistent card
+now follow whoever's turn each paced message is actually about (player,
+a companion, or a monster instance) instead of always defaulting to the
+player. Round-resolution logic itself is completely unchanged, only
+presentation and input binding. Planned via `EnterPlanMode` + a Plan
+sub-agent given the scope (combat's core render/input loop again), spot-
+checked against the real code (including a real correctness fix the
+sub-agent's own draft missed -- see Milestone 200 in `docs/MILESTONES.md`)
+before implementing.
 
 Verified live end-to-end via SendKeys/screenshot on a disposable
 `save1_copy.txt` (deleted after; Mike's and Regan's real saves untouched):
-a full Black Bear fight, arrival through victory, with hit/miss/movement
-messages all pacing correctly and HP tracking live on the card. **Not yet
-witnessed live**: `PickingTarget`'s secondary target card (needs a
-2+-monster encounter) and the `Lost`/`Fled` end states. See Milestone 199
-in `docs/MILESTONES.md` for the full writeup, and the Playtest backlog
-below.
+teleported into a Karthay mountain cluster and walked until a real Wight
+encounter triggered. Directly confirmed: `w` is a total no-op in combat;
+the new command-bar text/letters; `a`/`d`/`f` all do the right thing
+(attack attempt, end turn, flee); and, exercising the turn-follow
+mechanic's actual hard case rather than just the happy path, a
+monsters-act-first round correctly showed the Wight's own card/camera
+for its "closes in" message, then correctly swapped back to the player
+for the player's own "too far away" message. **Not yet witnessed live**:
+the turn-follow card/camera following a *companion's* turn specifically
+(no live companion available in the test save), `c`/`u` (Cast/Use --
+untested this fight), the `PickingTarget` secondary card in its new
+compact format against a 2+-monster group, the new "preparing to
+cast/breathe" beat (needs a Bozak/Aurak), and the `Lost` end state. See
+Milestone 200 in `docs/MILESTONES.md` for the full writeup, and the
+Playtest backlog below.
 
-This is the fourth DQoK-inspired pass this session -- Milestone 194 (panel
-chrome), 195 (character-creation sidebar/letters/roll-screen), 196 (real
-Gold Box font, whole build), 197 (fixed a real sidebar-wrap bug 195
-exposed), and 198 (audited the rest of the build for the same bug class,
-fixed one more instance in the old combat sidebar) all came first -- see
-each in `docs/MILESTONES.md`. All were prompted by the user live-driving
-*Dark Queen of Krynn* (SSI Gold Box, DOSBox) for UX ideas. A bigger,
-explicitly-parked "multiple player-built party members" question came up
-in that same original conversation and was **not** pursued -- don't raise
-it unprompted.
+This is the fifth and sixth DQoK-inspired pass this session -- Milestone
+194 (panel chrome), 195 (character-creation sidebar/letters/roll-screen),
+196 (real Gold Box font, whole build), 197 (fixed a real sidebar-wrap bug
+195 exposed), 198 (audited the rest of the build for the same bug class),
+and 199 (the combat HUD redesign Milestone 200 above just refined) all
+came first -- see each in `docs/MILESTONES.md`. All were prompted by the
+user live-driving *Dark Queen of Krynn* (SSI Gold Box, DOSBox) for UX
+ideas. A bigger, explicitly-parked "multiple player-built party members"
+question came up in that same original conversation and was **not**
+pursued -- don't raise it unprompted.
 
 The quest system's engine-confirmation checklist
 closed 2026-09-15: all three tracked quests (`road_wolves`, `a_widows_due`,
@@ -170,14 +189,23 @@ tracks what's still open and how to force it.
   fix lived in, replacing it with a per-unit card + bottom bar. Companion
   HP is no longer shown passively at all (by design, see Milestone 199) —
   nothing left to verify here.
-- **DQoK-style combat HUD** (Milestone 199) — confirmed live end-to-end
-  against a solo Black Bear: arrival, Idle command bar, paced hit/miss/
-  movement messages, live HP tracking on the player card, and a clean
-  Won transition back to the Overworld. Still open: `PickingTarget`'s
-  secondary target card (needs a 2+-monster encounter — a group monster
-  like Kobolds/Gnolls/Skeletons would force it) and the `Lost`/`Fled` end
-  states (Lost needs a losing fight or a debug/dev save at low HP; Fled
-  is just `f` from Idle, cheap to force next time any encounter comes up).
+- **DQoK-style combat HUD** (Milestone 199) and its **key/card/turn-follow
+  refinements** (Milestone 200) — confirmed live end-to-end across a solo
+  Black Bear fight (199) and a solo Wight fight (200): arrival, the new
+  DQoK-lettered Idle command bar (`a`/`c`/`u`/`v`/`f`/`d`), paced hit/miss/
+  movement messages, the compact card tracking HP live, the turn-follow
+  camera/card correctly handling a monsters-act-first round, and a clean
+  `Fled` exit back to the Overworld (confirmed working this session,
+  struck from "still open" below). Still open: `PickingTarget`'s secondary
+  target card in the new compact format (needs a 2+-monster encounter — a
+  group monster like Kobolds/Gnolls/Skeletons would force it), the
+  turn-follow card/camera specifically following a *companion's* turn
+  (needs a fight with a living companion in the party — Bren Alder was
+  knocked out in the test save used), `c`/`u` (Cast/Use — this fight's
+  Fighter had nothing to cast/use), the new "preparing to cast/breathe"
+  beat (needs a Bozak/Aurak Draconian, `MIN_TOWN_DISTANCE 25`/`45`
+  wilderness), and the `Lost` end state (needs a losing fight or a
+  debug/dev save at low HP).
 - **Bigger battlefield + real movement** (Milestone 185) — a real
   wilderness encounter (3 Bugbears, hills terrain, spawned at dist 24)
   was fought live 2026-09-16 and confirmed the bigger-battlefield spawn

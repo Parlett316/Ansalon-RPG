@@ -702,11 +702,10 @@ the slot menu entirely.
 
 Movement is immediate — no Enter key needed:
 
-- **Move**: `W A S D` or arrow keys (4 cardinal directions), or the numpad
-  for full 8-directional movement including diagonals (works with NumLock
-  on or off)
-- **Enter** — step into/out of a location's walkable interior, or attack
-  in combat
+- **Move**: arrow keys (4 cardinal directions), or the numpad for full
+  8-directional movement including diagonals (works with NumLock on or
+  off)
+- **Enter** — step into/out of a location's walkable interior
 - `T` — talk to whoever's here (a canon character the timeline places at
   your current location today, or a talkable zone NPC — a picker asks
   who first if more than one is present). Covers greetings, repeat-visit
@@ -739,16 +738,21 @@ Movement is immediate — no Enter key needed:
   the overworld; inside a zone, a POI's own description or (on a
   Timeline Anchor tile) whichever canon character is there today.
 
-In combat: **Enter** attacks whoever's under the grid cursor, `W A S D` or
-the numpad moves on the grid (numpad diagonals included), **`M`** casts a
-memorized spell (asks which, if more than one memorized), **`I`** uses an
-item — Potion/Webnet/Brooch of Imog/Staff of Curing (asks which, if more
-than one usable), **`V`** views any unit's stats (name/HP/AC/THAC0/weapon,
-plus any active status), **`Space`** holds your action/ends the turn
-without attacking, **`F`** flees. A Fighter adjacent to 2+ weak enemies sweeps automatically; a
-correctly-positioned Thief backstabs automatically — no key needed for
-either. Losing a fight knocks you out and sends you back to the nearest
-refuge rather than ending the run.
+In combat, the command bar shows DQoK's own verbs on DQoK's own letters:
+**`A`** aims/attacks whoever's under the grid cursor (or opens a target
+picker with 2+ in range), arrow keys or the numpad move on the grid
+(numpad diagonals included), **`C`** casts a memorized spell (asks which,
+if more than one memorized), **`U`** uses an item — Potion/Webnet/Brooch
+of Imog/Staff of Curing (asks which, if more than one usable), **`V`**
+views any unit's full stats (name/HP/AC/THAC0/weapon, plus any active
+status — the persistent card shown by default is a tighter HP/AC/weapon
+readout, DQoK's own format), **`D`** or **`Space`** holds your action/ends
+the turn without attacking, **`F`** flees. The camera and the persistent
+card automatically follow whoever's turn is currently playing out — your
+own, a companion's, or a monster's. A Fighter adjacent to 2+ weak enemies
+sweeps automatically; a correctly-positioned Thief backstabs automatically
+— no key needed for either. Losing a fight knocks you out and sends you
+back to the nearest refuge rather than ending the run.
 
 ### Legacy console build
 

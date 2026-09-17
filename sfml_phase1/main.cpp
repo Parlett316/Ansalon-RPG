@@ -816,6 +816,23 @@ struct CombatSession {
     // uiState == ViewingCard.
     std::vector<std::string> viewCardLines;
 
+    // Turn-follow camera/card (Milestone 200): parallel to `log` above --
+    // logActorForLine[i] records who produced log[i] (the player, a
+    // companion, or a monster instance), so AwaitContinue's paced replay
+    // can center the camera and swap the persistent stat card onto
+    // whoever's turn each currently-displayed line is actually about,
+    // instead of always defaulting to the player. currentTurnActor is the
+    // "who's producing messages right now" cursor: reset to Player at the
+    // top of every player action function (and again right after any
+    // combatRollGoFirstAndMaybeActMonsters() call, since that can run the
+    // monsters' whole turn first and leave this pointing at one of them),
+    // and to the relevant Companion/Monster at the top of each iteration
+    // of combatCompanionActs'/combatMonstersAct's own loops. See
+    // combatPushLog below, which stamps every pushed line with whatever
+    // this is currently set to.
+    std::vector<ViewCandidate> logActorForLine;
+    ViewCandidate currentTurnActor{ViewCandidate::Kind::Player, 0};
+
     // Message-pacing queue (DQoK-style combat HUD, Milestone 199). A single
     // keypress can synchronously push several log lines below (the player's
     // own action, each companion's, each monster's, a death/knockout) before
@@ -3641,6 +3658,18 @@ int runPhase1(const std::string& savePath) {
         return count;
     };
 
+    // Turn-follow camera/card (Milestone 200): every log line goes through
+    // this instead of a bare push_back, so it's automatically tagged with
+    // whoever's turn currentTurnActor says is producing messages right now
+    // -- see CombatSession::logActorForLine/currentTurnActor's own doc
+    // comment for the full mechanism. Declared this early since even
+    // combatKnockedOutBy just below (a knockout can happen well before any
+    // of the round/action lambdas further down this file) already needs it.
+    auto combatPushLog = [&](const std::string& text) {
+        combatSession.log.push_back(text);
+        combatSession.logActorForLine.push_back(combatSession.currentTurnActor);
+    };
+
     // Knockout ending -- not a real death (this project never permadeaths
     // the player, see docs/COMBAT_NOTES.md): full-heals the player and
     // every companion, then carries them to the nearest town/sea-locked
@@ -3652,7 +3681,7 @@ int runPhase1(const std::string& savePath) {
         for (game::RecruitedCompanion& companion : state.companions) {
             companion.character.currentHp = companion.character.maxHp;
         }
-        combatSession.log.push_back("You are struck down... and wake up back in " + refugeName +
+        combatPushLog("You are struck down... and wake up back in " + refugeName +
                                      ", battered but alive.");
         if (refuge != nullptr) {
             state.x = refuge->x;
@@ -3903,21 +3932,21 @@ int runPhase1(const std::string& savePath) {
         state.character.steelPieces += steel;
         std::string name = combatMonsterLabel(idx);
         if (combatSession.monster.id == "baaz") {
-            combatSession.log.push_back("The " + name + " falls and its body crumbles to stone! You find " +
+            combatPushLog("The " + name + " falls and its body crumbles to stone! You find " +
                                          std::to_string(steel) + " steel among the rubble.");
         } else {
-            combatSession.log.push_back("The " + name + " falls! You find " + std::to_string(steel) + " steel.");
+            combatPushLog("The " + name + " falls! You find " + std::to_string(steel) + " steel.");
         }
         if (combatSession.monster.xpValue > 0) {
             state.character.experience += combatSession.monster.xpValue;
-            combatSession.log.push_back("You gain " + std::to_string(combatSession.monster.xpValue) +
+            combatPushLog("You gain " + std::to_string(combatSession.monster.xpValue) +
                                          " experience.");
             character::applyPendingLevelUps(state.character, combatSession.log);
         }
         if (combatSession.monster.burstsIntoFlameOnDeath) {
             int burstDamage = character::roll(2, 4);
             state.character.currentHp -= burstDamage;
-            combatSession.log.push_back("As it falls, the " + name + " bursts into flame! You take " +
+            combatPushLog("As it falls, the " + name + " bursts into flame! You take " +
                                          std::to_string(burstDamage) + " damage.");
             if (state.character.currentHp <= 0) {
                 combatKnockedOutBy(combatSession.monster.name);
@@ -3954,10 +3983,10 @@ int runPhase1(const std::string& savePath) {
                 combatSession.monsterThac0Penalty[i], combatSession.monsterDamagePenalty[i]);
             if (outcome.hit) {
                 state.character.currentHp -= outcome.damage;
-                combatSession.log.push_back("As you pull back, the " + name + " gets a free strike! It hits you for " +
+                combatPushLog("As you pull back, the " + name + " gets a free strike! It hits you for " +
                                              std::to_string(outcome.damage) + ".");
             } else {
-                combatSession.log.push_back("The " + name + " lunges as you pull back, but misses.");
+                combatPushLog("The " + name + " lunges as you pull back, but misses.");
             }
         }
     };
@@ -3967,7 +3996,7 @@ int runPhase1(const std::string& savePath) {
     // of GameLoop::runCombat's own `for(;;)` body.
     auto combatWrapUpRound = [&]() {
         if (combatAliveCount() == 0) {
-            combatSession.log.push_back(combatSession.useLetters
+            combatPushLog(combatSession.useLetters
                                              ? ("The " + pluralMonsterName(combatSession.monster.name) + " are defeated!")
                                              : ("You defeated the " + combatSession.monster.name + "."));
             pushLog(combatSession.useLetters
@@ -4067,6 +4096,7 @@ int runPhase1(const std::string& savePath) {
         for (size_t ci = 0; ci < state.companions.size(); ++ci) {
             if (combatSession.uiState == CombatUiState::Lost) return;
             if (!combatCompanionAlive(ci)) continue;
+            combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Companion, static_cast<int>(ci)};
             character::Character& companion = state.companions[ci].character;
             combat::GridPos& companionPos = combatSession.companionPositions[ci];
             int targetIndex = -1;
@@ -4149,7 +4179,7 @@ int runPhase1(const std::string& savePath) {
             if (character::classGroupFor(companion.charClass) == character::ClassGroup::Warrior) {
                 std::vector<int> weakTargets = combatAdjacentWeakInstances(companionPos);
                 if (weakTargets.size() >= 2) {
-                    combatSession.log.push_back(companion.name + " sweeps through the " +
+                    combatPushLog(companion.name + " sweeps through the " +
                                                  pluralMonsterName(combatSession.monster.name) + "!");
                     for (int idx : weakTargets) {
                         if (combatSession.instances[static_cast<size_t>(idx)].hp <= 0) continue;
@@ -4161,14 +4191,14 @@ int runPhase1(const std::string& savePath) {
                             combatSession.monsterAcPenalty[static_cast<size_t>(idx)]);
                         if (outcome.hit) {
                             combatSession.instances[static_cast<size_t>(idx)].hp -= outcome.damage;
-                            combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
+                            combatPushLog(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
                                                          companion.name + " hits the " + targetName + " for " +
                                                          std::to_string(outcome.damage) + ".");
                             if (combatSession.instances[static_cast<size_t>(idx)].hp <= 0) {
                                 if (combatHandleInstanceDeath(idx)) return;
                             }
                         } else {
-                            combatSession.log.push_back(companion.name + " misses the " + targetName + ".");
+                            combatPushLog(companion.name + " misses the " + targetName + ".");
                         }
                     }
                     continue;
@@ -4189,14 +4219,14 @@ int runPhase1(const std::string& savePath) {
                     combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)]);
                 if (outcome.hit) {
                     combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                    combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
+                    combatPushLog(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
                                                  companion.name + " hits the " + targetName + " for " +
                                                  std::to_string(outcome.damage) + ".");
                     if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                         if (combatHandleInstanceDeath(targetIndex)) return;
                     }
                 } else {
-                    combatSession.log.push_back(companion.name + " misses the " + targetName + ".");
+                    combatPushLog(companion.name + " misses the " + targetName + ".");
                 }
             }
         }
@@ -4218,17 +4248,18 @@ int runPhase1(const std::string& savePath) {
     auto combatMonstersAct = [&]() {
         for (size_t i = 0; i < combatSession.instances.size() && state.character.currentHp > 0; ++i) {
             if (combatSession.instances[i].hp <= 0) continue;
+            combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Monster, static_cast<int>(i)};
             std::string name = combatMonsterLabel(static_cast<int>(i));
             // Web/Hold-style block (character::SpellEffect::
             // BlockMonsterAttacks) -- checked before even Magic Missile/
             // breath weapon, same ordering as GameLoop.cpp:2438-2446.
             if (combatSession.incapacitatedRestOfFight[i]) {
-                combatSession.log.push_back("The " + name + " is unable to act!");
+                combatPushLog("The " + name + " is unable to act!");
                 continue;
             }
             if (combatSession.blockedAttacksRemaining[i] > 0) {
                 --combatSession.blockedAttacksRemaining[i];
-                combatSession.log.push_back("The " + name + " can't bring itself to attack!");
+                combatPushLog("The " + name + " can't bring itself to attack!");
                 continue;
             }
             const combat::Monster& monster = combatSession.monster;
@@ -4238,14 +4269,18 @@ int runPhase1(const std::string& savePath) {
             // companion instead), so a plain globeActive check is enough
             // here -- mirrors GameLoop.cpp:2463/2482.
             if (monster.castsMagicMissile && character::roll(1, 100) <= monster.magicMissileChancePercent) {
+                // Milestone 200: a small paced beat ahead of the outcome --
+                // pure presentation, the roll above already decided this
+                // monster IS casting this turn, no new mechanic.
+                combatPushLog("The " + name + " begins casting a spell!");
                 if (combatSession.globeActive) {
-                    combatSession.log.push_back("The globe of invulnerability absorbs the " + name +
+                    combatPushLog("The globe of invulnerability absorbs the " + name +
                                                  "'s Magic Missile!");
                     continue;
                 }
                 int missileDamage = (character::roll(1, 4) + 1) + (character::roll(1, 4) + 1);
                 state.character.currentHp -= missileDamage;
-                combatSession.log.push_back("The " + name + " casts Magic Missile! It strikes you for " +
+                combatPushLog("The " + name + " casts Magic Missile! It strikes you for " +
                                              std::to_string(missileDamage) + " -- no saving throw.");
                 continue;
             }
@@ -4253,8 +4288,11 @@ int runPhase1(const std::string& savePath) {
             // hardcoded) -- see GameLoop.cpp's identical breath weapon
             // block and docs/COMBAT_NOTES.md.
             if (monster.hasBreathWeapon && character::roll(1, 100) <= monster.breathWeaponChancePercent) {
+                // Milestone 200: same paced anticipation beat as Magic
+                // Missile above.
+                combatPushLog("The " + name + " rears back to unleash its breath weapon!");
                 if (combatSession.globeActive) {
-                    combatSession.log.push_back("The globe of invulnerability absorbs the " + name +
+                    combatPushLog("The globe of invulnerability absorbs the " + name +
                                                  "'s breath weapon!");
                     continue;
                 }
@@ -4263,12 +4301,12 @@ int runPhase1(const std::string& savePath) {
                 if (combat::rollSavingThrow(state.character, character::SaveCategory::BreathWeapon)) {
                     int halfDamage = fullDamage / 2;
                     state.character.currentHp -= halfDamage;
-                    combatSession.log.push_back("The " + name + " breathes a " + monster.breathWeaponName +
+                    combatPushLog("The " + name + " breathes a " + monster.breathWeaponName +
                                                  "! You resist -- " + std::to_string(halfDamage) + " damage.");
                 } else {
                     state.character.currentHp -= fullDamage;
                     if (monster.breathWeaponBlindsOnFail) combatSession.playerThac0Bonus -= 4;
-                    combatSession.log.push_back(
+                    combatPushLog(
                         "The " + name + " breathes a " + monster.breathWeaponName + "! It burns you for " +
                         std::to_string(fullDamage) + " damage" +
                         (monster.breathWeaponBlindsOnFail ? " and blinds you" : "") + ".");
@@ -4345,7 +4383,7 @@ int runPhase1(const std::string& savePath) {
                         break;
                     }
                 }
-                if (moved) combatSession.log.push_back("The " + name + " closes in.");
+                if (moved) combatPushLog("The " + name + " closes in.");
                 continue;
             }
             size_t chosen = adjacentTargets.size() == 1
@@ -4359,7 +4397,7 @@ int runPhase1(const std::string& savePath) {
             // resolved target is actually the player. Mirrors
             // GameLoop.cpp:2549-2556.
             if (target.isPlayer && combatSession.globeActive) {
-                combatSession.log.push_back("The globe of invulnerability absorbs the blow from the " + name + "!");
+                combatPushLog("The globe of invulnerability absorbs the blow from the " + name + "!");
                 continue;
             }
             std::string targetName = target.isPlayer ? "you" : target.character->name;
@@ -4371,23 +4409,23 @@ int runPhase1(const std::string& savePath) {
                                               combatSession.monsterThac0Penalty[i], combatSession.monsterDamagePenalty[i]);
             if (outcome.hit) {
                 target.character->currentHp -= outcome.damage;
-                combatSession.log.push_back("The " + name + " hits " + targetName + " for " +
+                combatPushLog("The " + name + " hits " + targetName + " for " +
                                              std::to_string(outcome.damage) + ".");
                 if (monster.poisonOnHit) {
                     if (combat::rollSavingThrow(*target.character, character::SaveCategory::ParalyzationPoisonDeath)) {
-                        combatSession.log.push_back(target.isPlayer ? "You resist the poison."
+                        combatPushLog(target.isPlayer ? "You resist the poison."
                                                                      : targetName + " resists the poison.");
                     } else {
-                        combatSession.log.push_back("The poison overwhelms " + targetName + "!");
+                        combatPushLog("The poison overwhelms " + targetName + "!");
                         target.character->currentHp = 0;
                     }
                 }
                 if (!target.isPlayer && target.character->currentHp <= 0) {
                     target.character->currentHp = 0;
-                    combatSession.log.push_back(targetName + " is knocked out!");
+                    combatPushLog(targetName + " is knocked out!");
                 }
             } else {
-                combatSession.log.push_back("The " + name + " misses " + targetName + ".");
+                combatPushLog("The " + name + " misses " + targetName + ".");
             }
         }
     };
@@ -4454,13 +4492,13 @@ int runPhase1(const std::string& savePath) {
             combatFlashPlayerAttackPose(); // Combat sprite art: brief attack-pose frame, whether the swing hits or misses
             if (outcome.hit) {
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + "You hit the " +
+                combatPushLog(std::string(backstabMultiplier > 1 ? "Backstab! " : "") + "You hit the " +
                                              targetName + " for " + std::to_string(outcome.damage) + ".");
                 if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                     if (combatHandleInstanceDeath(targetIndex)) return;
                 }
             } else {
-                combatSession.log.push_back("You miss the " + targetName + ".");
+                combatPushLog("You miss the " + targetName + ".");
             }
         }
     };
@@ -4477,7 +4515,7 @@ int runPhase1(const std::string& savePath) {
         switch (result.effect) {
             case character::SpellEffect::DamageMonster:
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp -= result.amount;
-                combatSession.log.push_back("Your " + result.spellName + " strikes the " + targetName + " for " +
+                combatPushLog("Your " + result.spellName + " strikes the " + targetName + " for " +
                                              std::to_string(result.amount) + ".");
                 if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
                     if (combatHandleInstanceDeath(targetIndex)) return;
@@ -4504,7 +4542,7 @@ int runPhase1(const std::string& savePath) {
                     if (i > 0) names += (i + 1 == hitNames.size()) ? " and " : ", ";
                     names += hitNames[i];
                 }
-                combatSession.log.push_back("Your " + result.spellName + " engulfs the " + names + " for " +
+                combatPushLog("Your " + result.spellName + " engulfs the " + names + " for " +
                                              std::to_string(result.amount) + (hitNames.size() > 1 ? " each." : "."));
                 for (int idx : hitTargets) {
                     // Mirrors GameLoop::playerCasts's own fightAlreadyEnded
@@ -4524,7 +4562,7 @@ int runPhase1(const std::string& savePath) {
             case character::SpellEffect::HealCaster: {
                 int healed = std::min(result.amount, state.character.maxHp - state.character.currentHp);
                 state.character.currentHp += healed;
-                combatSession.log.push_back("You cast " + result.spellName + " and heal " +
+                combatPushLog("You cast " + result.spellName + " and heal " +
                                              std::to_string(healed) + " hit points.");
                 break;
             }
@@ -4534,44 +4572,44 @@ int runPhase1(const std::string& savePath) {
                 } else {
                     combatSession.blockedAttacksRemaining[static_cast<size_t>(targetIndex)] += result.amount;
                 }
-                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                combatPushLog("You cast " + result.spellName + " on the " + targetName + "!");
                 break;
             case character::SpellEffect::BuffPlayerThac0:
                 combatSession.playerThac0Bonus += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + ".");
+                combatPushLog("You cast " + result.spellName + ".");
                 break;
             case character::SpellEffect::BuffPlayerDamage:
                 combatSession.playerDamageBonus += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + ".");
+                combatPushLog("You cast " + result.spellName + ".");
                 break;
             case character::SpellEffect::BuffPlayerAc:
                 combatSession.playerAcBonus += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + ".");
+                combatPushLog("You cast " + result.spellName + ".");
                 break;
             case character::SpellEffect::DebuffMonsterThac0:
                 combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                combatPushLog("You cast " + result.spellName + " on the " + targetName + "!");
                 break;
             case character::SpellEffect::DebuffMonsterDamage:
                 combatSession.monsterDamagePenalty[static_cast<size_t>(targetIndex)] += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                combatPushLog("You cast " + result.spellName + " on the " + targetName + "!");
                 break;
             case character::SpellEffect::BuffPlayerAndDebuffMonsterThac0:
                 combatSession.playerThac0Bonus += result.amount;
                 combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + ".");
+                combatPushLog("You cast " + result.spellName + ".");
                 break;
             case character::SpellEffect::HastePlayer:
                 combatSession.hasteAttackMultiplier = result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + "! Your attacks quicken.");
+                combatPushLog("You cast " + result.spellName + "! Your attacks quicken.");
                 break;
             case character::SpellEffect::DebuffMonsterThac0AndAc:
                 combatSession.monsterThac0Penalty[static_cast<size_t>(targetIndex)] += result.amount;
                 combatSession.monsterAcPenalty[static_cast<size_t>(targetIndex)] += result.amount;
-                combatSession.log.push_back("You cast " + result.spellName + " on the " + targetName + "!");
+                combatPushLog("You cast " + result.spellName + " on the " + targetName + "!");
                 break;
             case character::SpellEffect::InstantDefeat:
-                combatSession.log.push_back("Your " + result.spellName + " destroys the " + targetName +
+                combatPushLog("Your " + result.spellName + " destroys the " + targetName +
                                              " outright!");
                 combatSession.instances[static_cast<size_t>(targetIndex)].hp = 0;
                 if (combatHandleInstanceDeath(targetIndex)) return;
@@ -4590,7 +4628,9 @@ int runPhase1(const std::string& savePath) {
     auto combatCommitSpellChoice = [&](const std::string& spellId) {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         character::SpellCastResult result = character::castSpell(state.character, spellId);
         if (!result.success) { // defensive -- shouldn't happen, combatBeginCast already checked
             combatFinishPlayerAction(combatSession.pendingGoFirst);
@@ -4640,7 +4680,7 @@ int runPhase1(const std::string& savePath) {
         // action still costs the round" precedent combatBeginPlayerAttack
         // already applies to 0 eligible attack targets.
         if (candidates.empty()) {
-            combatSession.log.push_back("Your " + result.spellName + " finds no target in sight.");
+            combatPushLog("Your " + result.spellName + " finds no target in sight.");
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
@@ -4667,11 +4707,11 @@ int runPhase1(const std::string& savePath) {
     // dispatch below).
     auto combatBeginCast = [&]() {
         if (!character::canCastSpells(state.character.charClass)) {
-            combatSession.log.push_back("You have no spell to cast.");
+            combatPushLog("You have no spell to cast.");
             return;
         }
         if (!character::hasMemorizedSpellsAvailable(state.character)) {
-            combatSession.log.push_back("You have no spells remaining today.");
+            combatPushLog("You have no spells remaining today.");
             return;
         }
         std::vector<std::string> distinctIds;
@@ -4709,20 +4749,22 @@ int runPhase1(const std::string& savePath) {
     auto combatCommitItemChoice = [&](character::CombatItemKind kind) {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         const long long today = state.hoursElapsed / 24;
         switch (kind) {
             case character::CombatItemKind::Potion: {
                 character::PurchaseResult result =
                     character::drinkPotion(state.character, character::firstPotionIndex(state.character));
-                combatSession.log.push_back(result.message);
+                combatPushLog(result.message);
                 combatFinishPlayerAction(combatSession.pendingGoFirst);
                 break;
             }
             case character::CombatItemKind::Webnet: {
                 character::PurchaseResult result =
                     character::useWebnet(state.character, character::firstWebnetIndex(state.character));
-                combatSession.log.push_back(result.message);
+                combatPushLog(result.message);
                 if (!result.success) {
                     combatFinishPlayerAction(combatSession.pendingGoFirst);
                     break;
@@ -4753,14 +4795,14 @@ int runPhase1(const std::string& savePath) {
             }
             case character::CombatItemKind::Brooch: {
                 character::PurchaseResult result = character::activateBrooch(state.character, today);
-                combatSession.log.push_back(result.message);
+                combatPushLog(result.message);
                 if (result.success) combatSession.globeActive = true;
                 combatFinishPlayerAction(combatSession.pendingGoFirst);
                 break;
             }
             case character::CombatItemKind::StaffCure: {
                 character::PurchaseResult result = character::useStaffCure(state.character, today);
-                combatSession.log.push_back(result.message);
+                combatPushLog(result.message);
                 combatFinishPlayerAction(combatSession.pendingGoFirst);
                 break;
             }
@@ -4779,7 +4821,7 @@ int runPhase1(const std::string& savePath) {
         std::vector<character::CombatItem> usable =
             character::availableCombatItems(state.character, state.hoursElapsed / 24);
         if (usable.empty()) {
-            combatSession.log.push_back("You have nothing to use.");
+            combatPushLog("You have nothing to use.");
             return;
         }
         if (usable.size() == 1) {
@@ -4806,7 +4848,9 @@ int runPhase1(const std::string& savePath) {
     auto combatBeginPlayerAttack = [&]() {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         bool hasRangedWeapon = state.character.weaponName == character::kLightCrossbowName;
         bool adjacentToAny = false;
         for (size_t i = 0; i < combatSession.instances.size(); ++i) {
@@ -4819,7 +4863,7 @@ int runPhase1(const std::string& savePath) {
             }
         }
         if (hasRangedWeapon && adjacentToAny) {
-            combatSession.log.push_back("An enemy is too close to fire your crossbow!");
+            combatPushLog("An enemy is too close to fire your crossbow!");
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
         }
@@ -4831,7 +4875,7 @@ int runPhase1(const std::string& savePath) {
         if (character::classGroupFor(state.character.charClass) == character::ClassGroup::Warrior) {
             std::vector<int> weakTargets = combatAdjacentWeakInstances(combatSession.playerPos);
             if (weakTargets.size() >= 2) {
-                combatSession.log.push_back("You sweep through the " +
+                combatPushLog("You sweep through the " +
                                              pluralMonsterName(combatSession.monster.name) + "!");
                 for (int targetIndex : weakTargets) {
                     if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) continue;
@@ -4845,7 +4889,7 @@ int runPhase1(const std::string& savePath) {
                     combatFlashPlayerAttackPose(); // Combat sprite art: one flash per sweep swing, hit or miss
                     if (outcome.hit) {
                         combatSession.instances[static_cast<size_t>(targetIndex)].hp -= outcome.damage;
-                        combatSession.log.push_back(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
+                        combatPushLog(std::string(backstabMultiplier > 1 ? "Backstab! " : "") +
                                                      "You hit the " + targetName + " for " +
                                                      std::to_string(outcome.damage) + ".");
                         if (combatSession.instances[static_cast<size_t>(targetIndex)].hp <= 0) {
@@ -4855,7 +4899,7 @@ int runPhase1(const std::string& savePath) {
                             if (combatHandleInstanceDeath(targetIndex)) break;
                         }
                     } else {
-                        combatSession.log.push_back("You miss the " + targetName + ".");
+                        combatPushLog("You miss the " + targetName + ".");
                     }
                 }
                 combatFinishPlayerAction(combatSession.pendingGoFirst);
@@ -4892,7 +4936,7 @@ int runPhase1(const std::string& savePath) {
             candidates.push_back(static_cast<int>(i));
         }
         if (candidates.empty()) {
-            combatSession.log.push_back(anyAliveOutOfSight ? "Nothing in your line of sight."
+            combatPushLog(anyAliveOutOfSight ? "Nothing in your line of sight."
                                                              : "You're too far away to attack.");
             combatFinishPlayerAction(combatSession.pendingGoFirst);
             return;
@@ -4934,18 +4978,19 @@ int runPhase1(const std::string& savePath) {
     auto combatBeginPlayerMove = [&](int dx, int dy) {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (combatSession.movementRemaining <= 0) {
-            combatSession.log.push_back("You have no movement left this round.");
+            combatPushLog("You have no movement left this round.");
             return;
         }
         combat::GridPos destination{combatSession.playerPos.x + dx, combatSession.playerPos.y + dy};
         if (destination.x < 0 || destination.x >= kCombatGridWidth || destination.y < 0 ||
             destination.y >= kCombatGridHeight) {
-            combatSession.log.push_back("You can't move that way.");
+            combatPushLog("You can't move that way.");
             return;
         }
         if (combatCellIsWall(destination)) {
-            combatSession.log.push_back("Blocked: cannot walk onto a wall.");
+            combatPushLog("Blocked: cannot walk onto a wall.");
             return;
         }
         // Milestone 188: same corner-cutting rule Milestone 187 already
@@ -4960,14 +5005,15 @@ int runPhase1(const std::string& savePath) {
         if (dx != 0 && dy != 0 &&
             (combatCellIsWall({combatSession.playerPos.x + dx, combatSession.playerPos.y}) ||
              combatCellIsWall({combatSession.playerPos.x, combatSession.playerPos.y + dy}))) {
-            combatSession.log.push_back("Blocked: can't cut across the wall.");
+            combatPushLog("Blocked: can't cut across the wall.");
             return;
         }
         if (combatCellOccupied(destination)) {
-            combatSession.log.push_back("Something's in the way.");
+            combatPushLog("Something's in the way.");
             return;
         }
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         combatTriggerOpportunityAttacks(destination);
         if (combatCheckPlayerDown(combatSession.monster.name)) return;
         // Re-check: whatever just acted above may have moved into
@@ -4978,7 +5024,7 @@ int runPhase1(const std::string& savePath) {
         // ending the round the way this used to -- the player still has
         // their full movement budget and action left to spend differently.
         if (combatCellOccupied(destination)) {
-            combatSession.log.push_back("The way is blocked now.");
+            combatPushLog("The way is blocked now.");
             return;
         }
         // Milestone 187: an 8-way lookup, not the old 4-way ternary chain
@@ -4999,7 +5045,7 @@ int runPhase1(const std::string& savePath) {
         else dirLabel = "southeast";
         combatSession.playerPos = destination;
         --combatSession.movementRemaining;
-        combatSession.log.push_back("You move " + dirLabel + ".");
+        combatPushLog("You move " + dirLabel + ".");
     };
 
     // F pressed while Idle: an unconditional escape -- unlike attack/move,
@@ -5009,7 +5055,8 @@ int runPhase1(const std::string& savePath) {
     auto combatBeginFlee = [&]() {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
-        combatSession.log.push_back("You break off and retreat.");
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
+        combatPushLog("You break off and retreat.");
         pushLog("You fled from the " + combatSession.monster.name + ".");
         combatSession.uiState = CombatUiState::Fled;
         combatSession.roundJustConcluded = true;
@@ -5024,8 +5071,10 @@ int runPhase1(const std::string& savePath) {
     auto combatEndTurn = [&]() {
         combatSession.actionLogStart = combatSession.log.size();
         combatSession.roundJustConcluded = false;
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
         if (!combatRollGoFirstAndMaybeActMonsters()) return;
-        combatSession.log.push_back("You hold your action.");
+        combatSession.currentTurnActor = {CombatSession::ViewCandidate::Kind::Player, 0};
+        combatPushLog("You hold your action.");
         combatFinishPlayerAction(combatSession.pendingGoFirst);
     };
 
@@ -5153,6 +5202,89 @@ int runPhase1(const std::string& savePath) {
         return lines;
     };
 
+    // Compact DQoK-format card (Milestone 200): the real card sampled from
+    // References/BattleFrames_extracted/ is exactly NAME / HITPOINTS
+    // (current only, no max) / AC / WEAPON -- no THAC0, no Status line.
+    // This is a DELIBERATELY separate lambda from combatBuildCardLines
+    // above, not a trim of it in place: the dedicated 'v' View command
+    // still needs the full detailed card (THAC0 + Status -- Milestone
+    // 186's whole point), so it keeps calling combatBuildCardLines
+    // unchanged. Only the persistent top-right card and its PickingTarget
+    // secondary card use this compact version.
+    auto combatBuildCompactCardLines = [&](const CombatSession::ViewCandidate& candidate) -> std::vector<std::string> {
+        std::vector<std::string> lines;
+        if (candidate.kind == CombatSession::ViewCandidate::Kind::Monster) {
+            const CombatInstance& inst = combatSession.instances[static_cast<size_t>(candidate.index)];
+            const combat::Monster& monster = combatSession.monster;
+            lines.push_back("HITPOINTS " + std::to_string(std::max(0, inst.hp)));
+            lines.push_back("AC " + std::to_string(monster.armorClass));
+            lines.push_back(
+                "Damage " + std::to_string(monster.damageDiceCount) + "d" +
+                std::to_string(monster.damageDiceSides) +
+                (monster.damageFlatBonus != 0
+                     ? (monster.damageFlatBonus > 0 ? "+" : "") + std::to_string(monster.damageFlatBonus)
+                     : ""));
+        } else {
+            const character::Character& c = candidate.kind == CombatSession::ViewCandidate::Kind::Player
+                                                  ? state.character
+                                                  : state.companions[static_cast<size_t>(candidate.index)].character;
+            lines.push_back("HITPOINTS " + std::to_string(std::max(0, c.currentHp)));
+            lines.push_back("AC " + std::to_string(c.armorClass));
+            lines.push_back("Weapon: " + c.weaponName);
+        }
+        return lines;
+    };
+
+    // Turn-follow camera/card (Milestone 200): resolves a ViewCandidate to
+    // its current grid position, so the per-frame camera-focus code and
+    // the persistent-card code can both center on whoever
+    // CombatSession::currentTurnActor/logActorForLine says is acting.
+    // Falls back to the player's own position for Player, or for a
+    // Companion/Monster that's no longer alive (e.g. died earlier the same
+    // round the paced replay is now walking back through) -- same "harmless
+    // fallback for a stale/dead actor" reasoning as combatBackstabBonus's
+    // own dead-first-attacker check above.
+    auto combatActorPosition = [&](const CombatSession::ViewCandidate& actor) -> combat::GridPos {
+        if (actor.kind == CombatSession::ViewCandidate::Kind::Monster) {
+            const size_t idx = static_cast<size_t>(actor.index);
+            if (idx < combatSession.instances.size() && combatSession.instances[idx].hp > 0) {
+                return combatSession.instancePositions[idx];
+            }
+        } else if (actor.kind == CombatSession::ViewCandidate::Kind::Companion) {
+            const size_t idx = static_cast<size_t>(actor.index);
+            if (idx < state.companions.size() && combatCompanionAlive(idx)) {
+                return combatSession.companionPositions[idx];
+            }
+        }
+        return combatSession.playerPos;
+    };
+
+    // Small bordered-box chrome for the compact combat card (Milestone
+    // 200) -- same color trio as drawPanelChrome (kPanelBg/
+    // kPanelBorderOuter/kPanelBorderInner) but sized to arbitrary content
+    // instead of always the whole window, since the persistent card no
+    // longer fills the full legacy sidebar height.
+    auto drawCombatCardPanel = [&](float x, float y, float w, float h) {
+        sf::RectangleShape bg(sf::Vector2f(w, h));
+        bg.setPosition(sf::Vector2f(x, y));
+        bg.setFillColor(kPanelBg);
+        window.draw(bg);
+
+        sf::RectangleShape outerBorder(sf::Vector2f(w - 6.f, h - 6.f));
+        outerBorder.setPosition(sf::Vector2f(x + 3.f, y + 3.f));
+        outerBorder.setFillColor(sf::Color::Transparent);
+        outerBorder.setOutlineColor(kPanelBorderOuter);
+        outerBorder.setOutlineThickness(2.f);
+        window.draw(outerBorder);
+
+        sf::RectangleShape innerBorder(sf::Vector2f(w - 12.f, h - 12.f));
+        innerBorder.setPosition(sf::Vector2f(x + 6.f, y + 6.f));
+        innerBorder.setFillColor(sf::Color::Transparent);
+        innerBorder.setOutlineColor(kPanelBorderInner);
+        innerBorder.setOutlineThickness(1.f);
+        window.draw(innerBorder);
+    };
+
     // Enter pressed while ViewPicking: no round cost, matching
     // combatBeginView's own reasoning.
     auto combatConfirmView = [&]() {
@@ -5219,18 +5351,18 @@ int runPhase1(const std::string& savePath) {
             std::string(world::terrainFor(combatSession.floorTerrainCode).name) == "glacier") {
             combatSession.playerThac0Bonus += character::kFrostreaverMagicBonus;
             combatSession.playerDamageBonus += character::kFrostreaverMagicBonus;
-            combatSession.log.push_back("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
+            combatPushLog("Your Frostreaver's edge bites keener than steel, sharpened by the glacier's own cold.");
         }
         if (state.character.charClass == character::ClassId::Fighter && state.character.specializedWeapon) {
             combatSession.playerThac0Bonus += character::kWeaponSpecializationToHitBonus;
             combatSession.playerDamageBonus += character::kWeaponSpecializationDamageBonus;
         }
         if (combatSession.useLetters) {
-            combatSession.log.push_back(std::to_string(groupSize) + " " + pluralMonsterName(monster.name) +
+            combatPushLog(std::to_string(groupSize) + " " + pluralMonsterName(monster.name) +
                                          " appear! " + monster.description);
             pushLog(std::to_string(groupSize) + " " + pluralMonsterName(monster.name) + " appear!");
         } else {
-            combatSession.log.push_back("A " + monster.name + " appears! " + monster.description);
+            combatPushLog("A " + monster.name + " appears! " + monster.description);
             pushLog("A " + monster.name + " appears!");
         }
         // Message-pacing queue (Milestone 199): the fresh CombatSession{}
@@ -6085,16 +6217,17 @@ int runPhase1(const std::string& savePath) {
                     bool wantsRest = false;
                     bool wantsBedRest = false;
                     switch (key) {
-                        case sf::Keyboard::Key::W:
+                        // Milestone 200: WASD removed project-wide (arrow
+                        // keys + the numpad scheme below already cover
+                        // every direction with redundancy, and freeing up
+                        // the letters lets combat bind DQoK's own verbs to
+                        // them instead -- see docs/COMBAT_NOTES.md).
                         case sf::Keyboard::Key::Up:
                         case sf::Keyboard::Key::Numpad8: dy = -1; break;
-                        case sf::Keyboard::Key::S:
                         case sf::Keyboard::Key::Down:
                         case sf::Keyboard::Key::Numpad2: dy = 1; break;
-                        case sf::Keyboard::Key::A:
                         case sf::Keyboard::Key::Left:
                         case sf::Keyboard::Key::Numpad4: dx = -1; break;
-                        case sf::Keyboard::Key::D:
                         case sf::Keyboard::Key::Right:
                         case sf::Keyboard::Key::Numpad6: dx = 1; break;
                         // Milestone 187: keypad diagonal movement (numpad,
@@ -6139,7 +6272,6 @@ int runPhase1(const std::string& savePath) {
                         case sf::Keyboard::Key::O: wantsWorldMap = true; break;
                         case sf::Keyboard::Key::Slash: wantsHelp = true; break;
                         case sf::Keyboard::Key::F: placeholder = "Flee: not available outside combat."; break;
-                        case sf::Keyboard::Key::M: placeholder = "Cast: not available outside combat."; break;
                         case sf::Keyboard::Key::R: wantsRest = true; break;
                         case sf::Keyboard::Key::Z: wantsBedRest = true; break;
                         default: break;
@@ -6481,19 +6613,34 @@ int runPhase1(const std::string& savePath) {
                             case CombatUiState::Fled:
                                 if (handleEnter) combatSession.active = false;
                                 break;
+                            // Milestone 200: rebound to match real DQoK's
+                            // own first-letter verb hotkeys (confirmed via
+                            // References/BattleFrames_extracted -- "MOVE
+                            // VIEW AIM USE CAST QUICK DONE"), replacing the
+                            // old Enter-for-Aim/m-for-Cast/i-for-Use
+                            // mismatch. QUICK (Q) is still not built -- no
+                            // equivalent mechanic, and Q is already
+                            // reserved for quit/cancel above. Flee (F)
+                            // isn't one of DQoK's own words -- kept as this
+                            // project's own addition, unchanged key. Move
+                            // has no dedicated key at all: direction keys
+                            // already move directly in this engine, so
+                            // dx/dy (arrows/numpad only, WASD removed
+                            // above) covers DQoK's own MOVE verb without a
+                            // mode-switch key.
                             case CombatUiState::Idle:
                                 if (key == sf::Keyboard::Key::F) {
                                     combatBeginFlee();
-                                } else if (key == sf::Keyboard::Key::M) {
+                                } else if (key == sf::Keyboard::Key::C) {
                                     combatBeginCast();
-                                } else if (key == sf::Keyboard::Key::I) {
+                                } else if (key == sf::Keyboard::Key::U) {
                                     combatBeginUseItem();
                                 } else if (key == sf::Keyboard::Key::V) {
                                     combatBeginView();
-                                } else if (key == sf::Keyboard::Key::Space) {
-                                    combatEndTurn();
-                                } else if (handleEnter) {
+                                } else if (key == sf::Keyboard::Key::A) {
                                     combatBeginPlayerAttack();
+                                } else if (key == sf::Keyboard::Key::Space || key == sf::Keyboard::Key::D) {
+                                    combatEndTurn();
                                 } else if (dx != 0 || dy != 0) {
                                     combatBeginPlayerMove(dx, dy);
                                 }
@@ -6964,6 +7111,13 @@ int runPhase1(const std::string& savePath) {
                 if (combatSession.uiState == CombatUiState::PickingTarget && !combatSession.pickCandidates.empty()) {
                     const int focusedIdx = combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
                     combatFocus = combatSession.instancePositions[static_cast<size_t>(focusedIdx)];
+                } else if (combatSession.uiState == CombatUiState::AwaitContinue &&
+                           combatSession.pendingMessageIndex < combatSession.logActorForLine.size()) {
+                    // Turn-follow camera (Milestone 200): while the paced
+                    // message replay is showing a line, center on whoever
+                    // that line is actually about instead of always the
+                    // player -- see combatActorPosition's own doc comment.
+                    combatFocus = combatActorPosition(combatSession.logActorForLine[combatSession.pendingMessageIndex]);
                 }
                 const float combatFocusPxX = (static_cast<float>(combatFocus.x) + 0.5f) * kCombatTilePx;
                 const float combatFocusPxY = (static_cast<float>(combatFocus.y) + 0.5f) * kCombatTilePx;
@@ -7154,7 +7308,14 @@ int runPhase1(const std::string& savePath) {
             }
 
             window.setView(uiView);
-            window.draw(sidebarBg);
+            // Milestone 200: combat draws its own compact, content-sized
+            // card box instead of the always-on full-height sidebar fill
+            // (see drawCombatCardPanel below) -- non-combat (Overworld/
+            // Zone) keeps the plain full-height sidebarBg exactly as
+            // before.
+            if (!combatSession.active) {
+                window.draw(sidebarBg);
+            }
 
             float lineY = 16.f;
             const float lineX = mapWidth + 16.f;
@@ -7180,30 +7341,72 @@ int runPhase1(const std::string& savePath) {
             };
 
             if (combatSession.active) {
-                // Persistent player card (Milestone 199, DQoK-style): the
-                // sidebar's default content is always the player's own card,
-                // not a full party/monster roster -- View ('v') still opens
-                // its own separate ViewingCard overlay to check anyone else,
-                // unaffected by this. combatBuildCardLines is the same data
-                // gathering View itself uses (factored out above).
-                drawLine(state.character.name, sf::Color(255, 215, 0));
-                for (const std::string& cardLine :
-                     combatBuildCardLines({CombatSession::ViewCandidate::Kind::Player, 0})) {
-                    drawWrappedLine(cardLine, sf::Color::White);
+                // Persistent stat card (Milestone 199, tightened to DQoK's
+                // real compact format at Milestone 200): defaults to the
+                // player, but while AwaitContinue is pacing a round's
+                // messages, follows whoever's turn the currently-displayed
+                // line is about (see combatActorPosition's own doc comment
+                // for the same mechanism driving the camera). View ('v')
+                // still opens its own separate ViewingCard overlay -- the
+                // full detailed card (THAC0/Status), unaffected by this --
+                // to check anyone else on demand.
+                CombatSession::ViewCandidate primaryActor{CombatSession::ViewCandidate::Kind::Player, 0};
+                std::string primaryLabel = state.character.name;
+                if (combatSession.uiState == CombatUiState::AwaitContinue &&
+                    combatSession.pendingMessageIndex < combatSession.logActorForLine.size()) {
+                    primaryActor = combatSession.logActorForLine[combatSession.pendingMessageIndex];
+                    if (primaryActor.kind == CombatSession::ViewCandidate::Kind::Companion) {
+                        primaryLabel = state.companions[static_cast<size_t>(primaryActor.index)].character.name;
+                    } else if (primaryActor.kind == CombatSession::ViewCandidate::Kind::Monster) {
+                        primaryLabel = combatMonsterLabel(primaryActor.index);
+                    }
                 }
+                const std::vector<std::string> primaryLines = combatBuildCompactCardLines(primaryActor);
 
                 // Secondary target card: DQoK's own "a second small card
                 // appears below it" idiom once a target is highlighted,
                 // replacing the old roster's ">" cursor with the same data
                 // the picker itself already computes.
-                if (combatSession.uiState == CombatUiState::PickingTarget &&
-                    !combatSession.pickCandidates.empty()) {
-                    lineY += lineHeight * 0.3f;
-                    const int focusedIdx =
+                const bool showSecondaryCard = combatSession.uiState == CombatUiState::PickingTarget &&
+                                                !combatSession.pickCandidates.empty();
+                int secondaryFocusedIdx = -1;
+                std::vector<std::string> secondaryLines;
+                if (showSecondaryCard) {
+                    secondaryFocusedIdx =
                         combatSession.pickCandidates[static_cast<size_t>(combatSession.pickSelected)];
-                    drawLine(combatMonsterLabel(focusedIdx), sf::Color(220, 100, 100));
-                    for (const std::string& cardLine : combatBuildCardLines(
-                             {CombatSession::ViewCandidate::Kind::Monster, focusedIdx})) {
+                    secondaryLines = combatBuildCompactCardLines(
+                        {CombatSession::ViewCandidate::Kind::Monster, secondaryFocusedIdx});
+                }
+
+                // Compact card box (Milestone 200): sized to actual content
+                // (one name row + each card's stat rows, plus a small gap
+                // before the secondary card) instead of the old always-on
+                // full-height sidebar fill -- see drawCombatCardPanel's own
+                // doc comment. Width/position still live inside the same
+                // reserved sidebar column (mapWidth/sidebarWidth
+                // themselves are untouched, so the map viewport is
+                // unaffected) -- only the height and the fact that it's a
+                // bordered box rather than a flat fill are new.
+                constexpr float kCardPaddingY = 12.f;
+                constexpr float kCardMarginTop = 8.f;
+                const float cardX = mapWidth + 8.f;
+                const float cardWidth = sidebarWidth - 16.f;
+                float cardHeight = kCardPaddingY * 2.f + lineHeight * static_cast<float>(1 + primaryLines.size());
+                if (showSecondaryCard) {
+                    cardHeight += lineHeight * 0.3f + lineHeight * static_cast<float>(1 + secondaryLines.size());
+                }
+                drawCombatCardPanel(cardX, kCardMarginTop, cardWidth, cardHeight);
+
+                lineY = kCardMarginTop + kCardPaddingY;
+                drawLine(primaryLabel, sf::Color(255, 215, 0));
+                for (const std::string& cardLine : primaryLines) {
+                    drawWrappedLine(cardLine, sf::Color::White);
+                }
+
+                if (showSecondaryCard) {
+                    lineY += lineHeight * 0.3f;
+                    drawLine(combatMonsterLabel(secondaryFocusedIdx), sf::Color(220, 100, 100));
+                    for (const std::string& cardLine : secondaryLines) {
                         drawWrappedLine(cardLine, sf::Color::White);
                     }
                 }
@@ -7300,14 +7503,18 @@ int runPhase1(const std::string& savePath) {
                         if (!combatSession.log.empty()) {
                             drawWrappedBarLine(combatSession.log.back(), sf::Color(190, 190, 200));
                         }
-                        // DQoK's real command-verb bar (MOVE VIEW AIM USE
-                        // CAST QUICK DONE), relabeled onto this game's real
-                        // bound actions -- AIM ~= this game's Attack; QUICK
-                        // is dropped outright (no equivalent mechanic).
-                        // Movement remaining moves here from the old
-                        // always-on sidebar line, unchanged content.
+                        // DQoK's real command-verb bar and its own real
+                        // first-letter hotkeys (Milestone 200, confirmed
+                        // via References/BattleFrames_extracted) -- QUICK
+                        // is dropped outright, still no equivalent
+                        // mechanic, and its natural hotkey Q is already
+                        // reserved for quit/cancel. Move has no dedicated
+                        // key -- direction keys already move directly in
+                        // this engine. Movement remaining moves here from
+                        // the old always-on sidebar line, unchanged
+                        // content.
                         drawWrappedBarLine(
-                            "AIM (Enter)   MOVE (wasd)   CAST (m)   USE (i)   VIEW (v)   FLEE (f)   DONE (Space)",
+                            "MOVE (arrows/numpad)   VIEW (v)   AIM (a)   USE (u)   CAST (c)   FLEE (f)   DONE (d)",
                             sf::Color(190, 190, 200));
                         drawBarLine("Movement: " + std::to_string(combatSession.movementRemaining) + "/" +
                                         std::to_string(character::movementSquares(state.character)),

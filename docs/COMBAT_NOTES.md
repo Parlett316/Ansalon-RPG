@@ -2131,6 +2131,146 @@ card (below the player's, same card data as `View`) shows the currently
 highlighted target while choosing one. Full writeup, exact mechanism, and
 live-verification notes: Milestone 199 in `docs/MILESTONES.md`.
 
+## DQoK combat HUD refinements: keys, card, turn-follow (Milestone 200, `ansalon_sfml_phase1` only)
+
+Three corrections to Milestone 199's HUD above, prompted by the user
+watching more real DQoK footage, plus one small addition. Still pure
+presentation/input-binding -- no combat math, rules, or monster data
+touched.
+
+**Key scheme now matches DQoK's real letters, not just its words.**
+Milestone 199 already showed DQoK's own command words on the bottom bar,
+but bound them to whatever keys this project happened to already use
+(Enter for Aim, `m` for Cast, `i` for Use). The same `References/
+BattleFrames_extracted/` frames confirm DQoK's idle bar is `MOVE VIEW AIM
+USE CAST QUICK DONE` with first-letter hotkeys (standard SSI Gold Box
+convention). Idle now responds to `a`=Aim/Attack (Enter no longer does
+anything there -- it's untouched inside `PickingTarget`/`PickingSpell`/
+`PickingItem`/`ViewPicking`, which still use it to confirm a highlighted
+choice, matching DQoK's own submenu convention), `c`=Cast, `u`=Use item,
+`v`=View (unchanged), `d`=Done (an added alias for the existing Space).
+`f`=Flee is kept as this project's own addition -- DQoK's bar has no
+equivalent word for it. `QUICK` stays unbuilt, same conclusion Milestone
+186 already reached (no equivalent mechanic) -- and now additionally
+structural: its natural hotkey `q` is permanently reserved for quit/
+cancel, so it can never be added without a collision. Move has no
+dedicated key -- direction keys already move directly in this engine
+(arrow keys + the Milestone 187 numpad scheme), an honest adaptation of
+DQoK's own move-mode toggle rather than a literal port.
+
+**WASD removed as movement, project-wide.** Overworld, Zone, and Combat
+all computed movement through one shared key-to-`dx`/`dy` switch already
+-- removing `W`/`A`/`S`/`D` from it was a single-point change, not three
+separate ones, and freed those four letters for the real verb bindings
+above. Arrow keys and the full numpad (including Milestone 187's diagonal
+Home/PageUp/End/PageDown aliases) are unaffected.
+
+**Card tightened to DQoK's own minimal format.** The real card sampled
+from the reference frames is exactly `NAME` / `HITPOINTS N` (current HP
+only, no max) / `AC N` / `WEAPON` -- no THAC0, no status line. Rather than
+trim the existing `combatBuildCardLines` (which the dedicated `V` View
+command still needs at full detail -- Milestone 186's whole point was
+making THAC0/status visible), a new sibling lambda,
+`combatBuildCompactCardLines`, builds the minimal version; only the
+persistent top-right card and its `PickingTarget` secondary card switched
+to it. A new `drawCombatCardPanel` (a sized-to-content sibling of
+`drawPanelChrome`'s always-full-window chrome, same `kPanelBg`/
+`kPanelBorderOuter`/`kPanelBorderInner` colors) draws a small bordered box
+around just the card's actual lines, replacing the old full-height
+`sidebarBg` fill during combat specifically -- non-combat Overworld/Zone
+keep `sidebarBg` unchanged. `mapWidth`/`sidebarWidth`/`combatMapView`'s
+own viewport size are all untouched, so no camera or wall-grid math needed
+re-tuning for this.
+
+**Turn-follow camera and card -- the one new mechanic this pass.** During
+`AwaitContinue`'s paced replay, a round's queued messages can belong to
+the player, a companion, or a monster, interleaved -- but the camera and
+the persistent card stayed fixed on the player throughout every prior
+milestone. `CombatSession` gained `currentTurnActor` (a `ViewCandidate`,
+the same Player/Companion/Monster-plus-index type Milestone 186 already
+introduced for View) and a parallel `logActorForLine` vector, one entry
+per `log` line, recording who produced it. A new `combatPushLog` wrapper
+stamps every pushed line with `currentTurnActor` automatically; all 67
+pre-existing `combatSession.log.push_back(...)` call sites became calls to
+it via a single mechanical rename, so no individual call site needed to
+know about actor-tagging. `currentTurnActor` itself is set to the
+relevant Monster/Companion at the top of each iteration of
+`combatMonstersAct`'s/`combatCompanionActs`' own loops, and reset to
+Player at the top of each of the six player-action entry points
+(`combatBeginPlayerAttack`/`combatBeginPlayerMove`/
+`combatCommitSpellChoice`/`combatCommitItemChoice`/`combatEndTurn`/
+`combatBeginFlee`).
+
+**A real correctness subtlety, caught during implementation rather than
+shipped broken**: five of those six action functions also call
+`combatRollGoFirstAndMaybeActMonsters()`, which -- if the monsters roll to
+act first this round -- runs their *entire* turn (mutating
+`currentTurnActor` through every monster it touches) before the player's
+own action code even continues past that call. Resetting `currentTurnActor`
+to Player only once, at the very top of the function, would leave the
+player's own subsequent messages this same action (e.g. "You're too far
+away to attack.") mistagged as whichever monster acted last. Fixed by
+resetting to Player a *second* time, immediately after that call succeeds,
+in every function that makes it. `combatBeginFlee` doesn't call it at all
+(Flee ends the encounter before anyone else gets a turn, unchanged from
+Milestone 114) and only needed the one top-of-function reset.
+
+A new `combatActorPosition` resolver turns a `ViewCandidate` into a live
+grid position (falling back to the player's own position for Player, or
+for a Companion/Monster that's since died -- a harmless, honest
+approximation, not a special case that needs its own handling). Both the
+per-frame camera-focus code (a new `else if` branch alongside the existing
+`PickingTarget` case) and the persistent-card draw code consult it while
+`AwaitContinue` is showing a line, so the camera centers on and the card
+displays whoever that line is about, reverting to the player once the
+queue reaches a player-authored line again. Idle/PickingSpell/
+PickingItem/ViewPicking/Won/Lost/Fled all keep defaulting to the player
+unconditionally -- unaffected, since those are all moments where it's
+genuinely the player's own turn/choice or the fight has already ended.
+
+**Deliberately not touched**: `combatAnimateAiStep`, the pre-existing
+helper that live-animates a monster/companion's movement one square at a
+time (and already centers the camera on the mover in real time while
+doing so), still doesn't redraw the sidebar/card mid-animation -- a
+documented, pre-existing scope boundary (see its own comment in
+`sfml_phase1/main.cpp`), not something this pass addresses. In practice
+this means the card can show stale content for the brief (~100-200ms per
+step) span of a live movement animation, catching up to the correct actor
+once `AwaitContinue`'s own paced replay begins afterward.
+
+**"Preparing to..." beat**: `combatMonstersAct`'s Magic Missile (Bozak
+Draconian) and breath-weapon (Aurak Draconian) branches each gained one
+`combatPushLog` call as the very first line inside their already-gated
+`if` -- by that point the round's chance roll has already decided the
+monster IS casting/breathing this turn, so this adds no new roll or
+state, just an extra paced beat ("The X begins casting a spell!" / "The X
+rears back to unleash its breath weapon!") ahead of the existing outcome
+message. Same "presentation over already-tracked state" restraint as
+Milestone 186. Deliberately not extended to the player's own casting
+(redundant -- choosing Cast from the menu already signals intent) or to
+ordinary melee attacks (no equivalent anticipation beat exists for those
+in DQoK either).
+
+**Verified live**, via SendKeys/screenshot on a disposable copy of Mike's
+real `save1.txt` (deleted after; original untouched): a real Wight
+encounter, triggered by walking a teleported copy into a Karthay mountain
+cluster. `w` confirmed a total no-op (screenshot-identical before/after);
+the new command-bar text and every rebound letter (`a`/`d`/`f`) worked as
+designed. The turn-follow mechanic's exact hard case -- not just the happy
+path -- came up naturally: this fight's first round rolled monsters acting
+first, so the paced queue read `["The Wight closes in." (Monster), "You're
+too far away to attack." (Player)]` in that order; the card/camera showed
+`WIGHT`/`HITPOINTS 16`/`AC 5`/`DAMAGE 1D4` centered on the Wight for the
+first message, then correctly swapped to `MIKE`/`HITPOINTS 7`/`AC 5`/
+`WEAPON: LONGSWORD` centered on the player for the second -- a direct live
+confirmation that the monsters-first correctness fix above actually
+matters. Full writeup: Milestone 200 in `docs/MILESTONES.md`. Not yet
+witnessed live: the turn-follow card/camera following a companion's own
+turn, `c`/`u` in a fight where they're actually usable, the
+`PickingTarget` secondary card in its new compact format against a real
+2+-monster group, the new anticipation beat, and the `Lost` end state --
+see `docs/CURRENT_WORK.md`'s Playtest backlog.
+
 ## Live DQoK research session (2026-09-16)
 
 Distinct from `References/DQoK.pdf` (the manual) and `References/
