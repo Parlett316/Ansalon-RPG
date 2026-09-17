@@ -1,35 +1,46 @@
 # Current work
 
-**Nothing in flight.** Milestones 205-207 (zone landmark plates, the Gold
-Box town menu pilot on Solace, and a same-session art/layout follow-up)
-all shipped 2026-09-17. Menu rows are auto-derived from data the zone
-file already has (one row per actionable POI, keyed by its own
-already-declared character), and selecting one reuses the exact same
+**Nothing in flight.** Milestones 205-212 all shipped 2026-09-17: zone
+landmark plates, the Gold Box town menu (originally piloted on Solace
+alone, **now auto-derived for any zone with real plate art, confirmed
+live end-to-end**), dialogue portraits (redesigned bigger at Milestone
+210, then **fixed-size + paginated at Milestone 211** after live feedback
+that a long response was shrinking the portrait instead of staying
+consistently large — both confirmed live), the town menu's Leave row now
+naming the actual parent zone ("Back to Solace" from the Inn, not "Leave
+town" — Milestone 212, also confirmed live), and the real-art placement
+along the way that found and fixed four real rendering/correctness bugs.
+Menu rows are auto-derived from data the zone file already has (one row
+per actionable POI, keyed by its own already-declared character —
+including, as of Milestone 210, a zone's `TIMELINE_ANCHOR` POI even with
+no `TALK` line of its own), and selecting one reuses the exact same
 `shopBegin`/`restBegin(true)`/`dialogueBegin` a walking player would
-trigger. Deliberate, documented trade-off: inside Solace's menu, a
+trigger. Deliberate, documented trade-off: inside a menu-town zone, a
 letter always means "go there or nothing," so Inventory (`I`)/Journal
 (`G`)/Rest (`R`) are unreachable while inside its town screen (its own
 destinations use those letters).
 
-**Milestone 207**: the user generated and dropped in real banner art for
-Solace (`assets/plates/solace.png`, following `docs/TOWN_ART_PROMPTS.md`'s
-brief) -- the first real, non-placeholder plate art this project has
-shipped. Looking at it live immediately surfaced two layout bugs in
-`drawTownMenuOverlay`, both fixed the same session: the image area was a
-fixed 260px band (wasting most of the window whenever the menu itself
-was short), and contain-fit scaling left visible letterboxing against the
-real art's actual aspect ratio. Fixed by anchoring the letter list to the
-bottom of the panel and letting the image fill whatever space is left
-above it, and switching to cover-fit (crops a little rather than
-letterboxing) so the image fully fills its area. Confirmed live by the
-user across three iterations, ending in "Chefs kiss."
+**Real art now exists for 12 zones + 2 dialogue portraits** (Solace,
+Palanthas, Kalaman, Neraka, Pax Tharkas, Qualinost, Silvanost, Tarsis,
+Thorbardin, Xak Tsaroth, High Clerist's Tower, the Inn of the Last Home,
+plus Otik and Tika) — every other zone still ships with zero art and
+stays walkable. Full writeups: Milestones 205-212 in `docs/MILESTONES.md`,
+the SFML section of `docs/ARCHITECTURE.md`, `docs/ZONE_NOTES.md`'s "Town
+menus" (the new `L`/`l`-reservation authoring rule applies to any zone
+now, not just explicitly-flagged ones).
 
-Full writeups: Milestones 205-207 in `docs/MILESTONES.md`, the SFML
-section of `docs/ARCHITECTURE.md`, and `docs/ZONE_NOTES.md`'s "Town
-menus" section for the grammar. **Not fully interactively confirmed** --
-see the Playtest backlog below: individual destination hotkeys, the Inn
-round-trip, and Leave still haven't been walked live, only the visual
-layout has. Every zone besides Solace still ships with zero art.
+**Gotcha worth remembering**: `cmake --build build --target X --clean-first`
+cleans the *entire* build tree, not just `X` — building a second target
+with `--clean-first` right after silently deletes the first target's
+already-built binary. Build every target you need in one invocation (no
+`--target`, or list them all) if using `--clean-first`.
+
+The Gold Box town menu's individual destination hotkeys, the Inn round-
+trip (Inn ↔ Solace, both directions, including the corrected Leave
+label), and Leave are all now confirmed live — see the Playtest backlog
+below for the couple of narrower items still open (shop/bed screens
+specifically returning to the menu afterward, and the "Nothing here by
+that name." message).
 
 Everything else recently shipped is verified and handed off — see
 `docs/MILESTONES.md` for the full shipping history (each numbered entry
@@ -55,30 +66,51 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
+- ~~**Dialogue portraits** (Milestone 208; redesigned bigger Milestone
+  210; fixed-size + paginated Milestone 211)~~ — confirmed live
+  2026-09-17 in its final (paginated) form: real conversations with both
+  Otik and Tika showed the portrait at the same large, fixed size
+  regardless of response length — Otik's long `TALK_AFTER` paginated
+  underneath it instead of shrinking it ("press Enter to see more"
+  through the middle pages, "continue" on the last), Tika's short
+  greeting showed the same size portrait with just one page. Both fully
+  uncropped (contain-fit). Picker-delegated states (Otik's own quest
+  offer and topic list) still correctly show no portrait. Nothing left
+  open for this milestone.
+- ~~**Zone landmark plates** (Milestone 205), ordinary + portal-nested~~
+  — confirmed live 2026-09-17: the Inn of the Last Home (a portal-nested
+  zone) showed its plate full-window on arrival, cover-fit filling the
+  frame with no letterboxing. Nothing left open for this milestone.
+- ~~**Gold Box town menu auto-derivation + hotkey-collision fix**
+  (Milestone 210)~~ — confirmed live 2026-09-17: the Inn auto-converted
+  to a menu with zero `TOWN_MENU` flag, its `TIMELINE_ANCHOR` fireplace
+  row present and gracefully showing "no one here"; Palanthas and High
+  Clerist's Tower (both real `L`-collision fixes) each showed exactly one
+  `[L]` row after their rename, and `Leave` correctly returned to the
+  overworld from both (via direct `ZONE`/`ZONEPOS`/`ZONESTACK` edits to a
+  disposable save, not a long overworld walk — a fresh, no-stack
+  zone-entry in both cases). Nothing left open for the auto-derivation or
+  the collision fix specifically.
+- ~~**Gold Box town menu Inn round-trip + Leave label**
+  (Milestones 206, 212)~~ — confirmed live 2026-09-17: walking back *out*
+  of the Inn via its `[L]` row (now correctly labeled "Back to Solace,"
+  Milestone 212) landed cleanly back on Solace's own menu, which still
+  correctly showed its real banner art (exercising the `leaveCurrentZone`
+  plate-reload-for-the-parent fix found during Milestone 206's original
+  implementation) and its own accurate "[L] Leave town" label (its
+  `zoneStack` is empty — a true top-level menu town). Nothing left open
+  for the round-trip or the label fix specifically.
 - **Gold Box town menu, pilot: Solace** (Milestones 206-207) — the
-  *visual layout* is now confirmed live and looking right (real art,
-  cover-fit image filling the space, bottom-anchored menu -- see
-  Milestone 207), but the *interaction* itself still hasn't been walked
-  with a real keyboard beyond launching into it. Still open: each
-  destination (`I`/`B`/`G`/`S`/`K`) individually confirmed to actually
-  open the right screen and return to the menu afterward (not just
-  launch into Solace's menu on load); the Inn round-trip specifically
-  (`I` in, then leave the Inn back to Solace) — this exercises the
-  `leaveCurrentZone` plate-reload fix found during implementation,
-  unverified live; `L` (Leave town) not yet confirmed from a fresh
-  overworld-entry into Solace, only from a save that already starts
-  inside it; and the "Nothing here by that name." message for an
-  unmatched letter.
-- **Zone landmark plates** (Milestone 205) — implemented and smoke-tested
-  clean, but never watched actually render with real art: needs a real
-  `assets/plates/<zone-id>.png` dropped in (the user is sourcing artwork
-  for the towns now) and a live entry into an *ordinary* (non-`TOWN_MENU`)
-  zone with one to confirm the image contain-fit scales/centers correctly
-  inside the Gold-Box frame, the caption/zone-name text reads right, and
-  any keypress dismisses cleanly back to the ordinary tile view without
-  also being consumed as a movement/menu key. Also unverified: the
-  portal-entry trigger site specifically (no portal-nested zone has a
-  plate yet either).
+  *visual layout* is confirmed live (Milestone 207), and the `I` (Inn)
+  destination is confirmed live (Milestone 209, reaching Otik/Tika) —
+  opens correctly and stayed open through a full conversation. Still
+  open: `B`/`G`/`S`/`K` (Solace's own Notice Board/General Store/Smithy/
+  Bren Alder) individually confirmed to open the right screen and return
+  to the menu afterward; a live walk from the overworld onto a menu-town's
+  tile and pressing Enter to trigger `enterZone` that way specifically
+  (every live confirmation so far has either started a save already
+  inside the zone or portal-triggered from Solace's own menu); and the
+  "Nothing here by that name." message for an unmatched letter.
 - **Real DQoK Aim cursor + auto-advancing narration** (Milestone 204) —
   confirmed live end-to-end (free-look/zero-cost, live status text, Escape
   cancel, commit/sweep, auto-advance, and Won staying manual — see that

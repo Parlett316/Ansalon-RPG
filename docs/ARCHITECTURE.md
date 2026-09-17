@@ -295,15 +295,26 @@ zero art, exactly like combat sprites did before "player.png" existed.
 Triggered at both places `main.cpp` already transitions into a zone
 (overworld → zone, and portal → nested zone) — checking both, rather
 than only the overworld entry, means a plate for a portal-reached
-interior works with no special-casing. State is transient UI
-(`zonePlateOpen`/`zonePlateTexture`/`zonePlateZoneName`), not
-`game::GameState` — same "screen transition, not world state" reasoning
-as `DialogueSession`/`worldMapOpen`. Dismissed by any key, folded into
-the existing `helpOpen`/`worldMapOpen`/`journalOpen` cascade, and
-rendered through the same shared `drawPanelChrome()` frame every other
-full-window overlay uses, with the image contain-fit scaled and centered
-the same way `drawWorldMapOverlay`'s own minimap already scales the real
-map texture.
+interior works with no special-casing. A save that loads directly into a
+zone (`MODE ZONE`) never passes through `enterZone` either, so the same
+load is also done once at startup, right after `currentZone` is resolved
+from the save (Milestone 209 — found via a real blank-image bug the first
+time this was actually watched live) — deliberately never setting
+`zonePlateOpen` there, same "resuming isn't a fresh arrival" reasoning
+`leaveCurrentZone` already uses when backing out of a child zone. State
+is transient UI (`zonePlateOpen`/`zonePlateTexture`/`zonePlateZoneName`),
+not `game::GameState` — same "screen transition, not world state"
+reasoning as `DialogueSession`/`worldMapOpen`. Dismissed by any key,
+folded into the existing `helpOpen`/`worldMapOpen`/`journalOpen` cascade,
+and rendered through the same shared `drawPanelChrome()` frame every
+other full-window overlay uses. **Cover-fit-and-crop** (Milestone 209,
+changed from the original contain-fit-and-center): `scale =
+max(boxW/imgW, boxH/imgH)`, `sf::Sprite::setTextureRect` crops a centered
+region of the source sized to exactly what the scaled box shows — same
+math `drawTownMenuOverlay`'s own plate image uses (below), switched to
+once the user's real plate art for 11 zones turned out to be uniformly
+banner-shaped (2508x627) even for these ordinary, non-`TOWN_MENU` zones;
+contain-fit would have letterboxed all of it.
 
 **Shows on every entry, not gated behind "seen before" tracking** —
 confirmed with the user up front, since the alternative (first-visit-
@@ -313,7 +324,19 @@ format change requiring a major-version release. This choice needs
 neither, and is the easier one to make more elaborate later if it ever
 feels repetitive.
 
-### Gold Box town menu (Milestone 206, pilot: Solace)
+**Effectively dead code as of Milestone 210.** Once "has art" became the
+same thing as "is menu-town" (see the Gold Box town menu section below),
+`zonePlateOpen` can no longer ever become true: a zone with art is always
+menu-town (persistent-band display instead, `drawTownMenuOverlay`), and a
+zone without art never had a plate to show in the first place. Left in
+place rather than deleted — this milestone's own scope was the menu
+conversion, not retiring a separately-shipped, previously-working
+feature as a side effect — but `drawZonePlateOverlay`/`zonePlateOpen`
+will not render for any zone today, and won't unless some future zone
+gets art while deliberately staying walkable (which would need new code
+to even express, not just new data, under the current auto-derive rule).
+
+### Gold Box town menu (Milestone 206, pilot: Solace; auto-derived from art since Milestone 210)
 
 After seeing the plate above, the user's actual mental model turned out
 to be the full SSI Gold Box town interface: a picture *plus* a letter-
@@ -326,31 +349,59 @@ band at the top of the screen the whole time, confirmed with the user up
 front, rather than dismissing into the tile grid the way an ordinary
 zone's plate still does.
 
+**As of Milestone 210, the flag isn't the only way in.** Confirmed with
+the user: any zone with real plate art now behaves as menu-town too, flag
+or not — the same "file's presence is the opt-in" convention already
+governing the plate/portrait/sprite art itself, now extended to the
+*interaction model*, not just the art. `sfml_phase1/main.cpp`'s
+`isEffectiveMenuTown()` (`isMenuTown() || zonePlateLoaded`) is the actual
+check at every behavioral call site; `Zone::isMenuTown()` itself still
+only ever reflects the explicit flag — `Zone`/`ZoneLoader` are shared
+with the art-unaware `ansalon_rpg` console target, so all art-awareness
+stays local to this file. 11 zones (Palanthas, Kalaman, Neraka, Pax
+Tharkas, Qualinost, Silvanost, Tarsis, Thorbardin, Xak Tsaroth, High
+Clerist's Tower, the Inn of the Last Home) went menu-only this way with
+zero `TOWN_MENU` flags added to their data files.
+
 **`enterZone`/`leaveCurrentZone` (both in `main.cpp`) are new shared
 helpers**, extracted from what used to be two near-duplicate inline
 zone-entry/exit sequences (overworld → zone, and a walked-into `PORTAL`
 tile) — the menu's own portal-type rows are a third caller doing the
 identical thing, which is what justified the extraction (this project's
-own "rule of three"). `enterZone` decides whether to set the one-shot
-`zonePlateOpen` flourish or leave it off (menu-town target) purely by
-asking the target zone's own `isMenuTown()` — no separate transient flag
-tracks this. `leaveCurrentZone` also **re-loads the plate texture for
-whichever zone becomes current** (not just the zone most recently
-entered forward) — a real correctness fix found during implementation:
-without it, backing out of a child zone (Solace's own Inn, say) into a
-`TOWN_MENU` parent would show the child's (usually absent) plate instead
-of the parent's own.
+own "rule of three"). `enterZone` never sets the one-shot `zonePlateOpen`
+flourish when a plate loads — as of Milestone 210 having a plate always
+means menu-town, so that flourish is now unreachable (see the Zone
+landmark plates section above). `leaveCurrentZone` also **re-loads the
+plate texture for whichever zone becomes current** (not just the zone
+most recently entered forward) — a real correctness fix found during
+implementation: without it, backing out of a child zone (Solace's own
+Inn, say) into a `TOWN_MENU` parent would show the child's (usually
+absent) plate instead of the parent's own.
 
 **Menu rows are auto-derived, never hand-authored** — one row per
-*actionable* POI (a `PORTAL` target, `SHOP`, `BED`, or anything with a
-`TALK` line), keyed by that POI's own already-declared character
-(`buildTownMenuItems`, `main.cpp`). Selecting a row never invents new
-behavior: it silently moves the player onto that POI's tile and calls
-the exact same `shopBegin`/`restBegin(true)`/`dialogueBegin` a walking
-player pressing `p`/`z`/`t` there would trigger — those functions were
-already position-based (keyed off `currentZone->poiAt(state.zoneX,
-state.zoneY)`, never taking an explicit POI), which is what made this
-possible with zero changes to any of them.
+*actionable* POI (a `PORTAL` target, `SHOP`, `BED`, the zone's own
+`TIMELINE_ANCHOR` POI, or anything with a `TALK` line), keyed by that
+POI's own already-declared character (`buildTownMenuItems`, `main.cpp`).
+The `TIMELINE_ANCHOR` case (Milestone 210) matters even when that POI has
+no `TALK` line of its own (most don't) — without it, a canon Hero found
+only via that anchor (`docs/TIMELINE_NOTES.md`) would become permanently
+unreachable the moment the zone went menu-only, since walking onto its
+tile — the only other way to trigger the position-based anchor check in
+`gatherTalkCandidates` — no longer happens there. Selecting a row never
+invents new behavior otherwise: it silently moves the player onto that
+POI's tile and calls the exact same `shopBegin`/`restBegin(true)`/
+`dialogueBegin` a walking player pressing `p`/`z`/`t` there would
+trigger — those functions were already position-based (keyed off
+`currentZone->poiAt(state.zoneX, state.zoneY)`, never taking an explicit
+POI), which is what made this possible with zero changes to any of them.
+
+**`L`/`l` is now reserved on any actionable POI in any zone**, not just
+ones explicitly flagged `TOWN_MENU` — see `docs/ZONE_NOTES.md`'s "Town
+menus" for the full rule and the two real violations (Palanthas' Astinus,
+High Clerist's Tower's Knight of the Circle) found and fixed as data when
+this shipped. `ZoneLoader`'s own fail-fast check only ever covered the
+explicit-flag case; it has no filesystem/art awareness to catch the
+art-derived one at load time.
 
 **A real, deliberate keybinding trade-off**: while standing in a
 `TOWN_MENU` zone with no other overlay open, *every* letter key is
@@ -365,6 +416,107 @@ non-letter global commands (Help's `/`) are unaffected either way. For
 Solace specifically, this means Inventory/Journal/Rest are unreachable
 while inside its town screen (its own `I`/`G`/`R` destinations shadow
 them) — documented, not accidental.
+
+### Dialogue portraits (Milestone 208, redesigned bigger at Milestone 210, fixed-size + paginated at Milestone 211)
+
+A small extension of the same opt-in convention as the zone plates
+above, applied to conversations instead of zone arrivals. `DialogueSession`/
+`DialogueCandidate` had no image concept before this milestone.
+
+**Keyed by `DialogueCandidate::id`, not a new zone-file field.** That id
+is already unique per conversation partner: `<zoneId>:<poiChar>` for an
+ordinary zone POI (e.g. `solace_inn:O` for Otik), or a canon Hero's own
+character id for a chance encounter. `loadDialoguePortraitTexture`
+(`main.cpp`, right below `loadZonePlateTexture`) swaps `:` for `_`
+(filesystem-safe) and tries `assets/portraits/<sanitized-id>.png` --
+Otik's portrait is `assets/portraits/solace_inn_O.png`. Same
+`std::optional<sf::Texture>`, never-throws contract as
+`loadZonePlateTexture`/`loadCombatSprite`. Ships correctly with zero
+portrait art.
+
+**Loaded once per conversation**, in `dialogueStartTalk` right after
+`dialogueSession.current` is set to the resolved candidate -- the single
+place a candidate becomes "current" regardless of whether it was reached
+directly (one talkable POI on the tile) or via the `PickingCandidate`
+picker. Stays valid, no reload, for the whole conversation (topic/ask
+exchanges don't re-call `dialogueStartTalk`). Transient state
+(`dialoguePortraitLoaded`/`dialoguePortraitTexture`), declared next to
+`zonePlateTexture` -- same "screen transition, not world state" reasoning.
+
+**Redesigned at Milestone 210, after seeing the original 180x180 corner
+box live**: the user wanted it "much bigger, with the text below, and
+then the option to talk." Order top to bottom: speaker name, portrait,
+body text, continue prompt -- a deliberate departure from every *other*
+image in this codebase:
+
+- **Contain-fit, not cover-fit.** The user's actual portrait art is
+  portrait-oriented (~4:5, e.g. 1122x1402) single-character art, not a
+  wide establishing shot -- cropping it to fill an arbitrary box (cover-
+  fit, used everywhere else: zone plates, the town menu, the original
+  corner box) only ever hides more of the art as the box grows, never
+  reveals more. Contain-fit (`scale = min(maxWidthPx/imgW, boxH/imgH)`,
+  centered) always shows the whole portrait, scaled as large as the
+  available space allows.
+- **Full panel width.** No more narrowed `maxWidthPx` beside the box --
+  body text is full panel width, since the image moved above it instead
+  of beside it.
+
+**Fixed-size, not adaptive -- and paginated instead (Milestone 211).**
+The first cut sized the portrait *adaptively*: whatever space was left
+after reserving room for the actual current response's full wrapped
+length. Live testing showed the problem immediately -- Otik's `TALK_AFTER`
+(~20 wrapped lines) shrank the portrait to a small floor size, while
+Tika's three-line greeting let it fill most of the panel. The user wanted
+the opposite: the portrait should **stay the same large size every time**,
+and long text should **paginate** underneath it instead, "press Enter to
+see more" -- the same text-adventure convention `AskResponse`'s own
+multi-message queue already used, just applied within a single response
+too, not only between queued ones.
+
+- `drawPortraitFixed` (renamed from `drawPortraitAdaptive`, no longer
+  takes a content-height parameter) always reserves the same space:
+  `kBodyLinesPerPage` (6) lines' worth of body text plus the footer
+  prompt line, a *constant*, not something measured from the current
+  response. The portrait gets whatever's left above that, every time --
+  which is why it no longer fluctuates.
+- `paginateBodyText` (`main.cpp`, declared right before
+  `dialogueStartTalk` so it's in scope for every `bodyText`-setting site)
+  wraps a string and chunks the wrapped lines into pages of
+  `kBodyLinesPerPage`. `DialogueSession` gained `bodyTextPage` (which page
+  is currently showing).
+- **`setDialogueBodyText`, a small setter wrapping the raw
+  `dialogueSession.bodyText = ...` assignment**, used at every one of the
+  seven places that used to assign the field directly (Greeting/
+  TopicText/the four Quest\* text frames/AskResponse's queue advance) --
+  resets `bodyTextPage` to 0 so a fresh response always starts at its
+  first page. A raw assignment would have been easy to add later and
+  silently skip the reset; routing all of them through one setter closes
+  that off structurally rather than relying on remembering the rule.
+- `dialogueContinue` (Enter on any of these text states) checks
+  `paginateBodyText(dialogueSession.bodyText).size()` against
+  `bodyTextPage` **first**, before any of its existing per-state
+  transition logic: more pages remain -> just increments `bodyTextPage`
+  and returns; on the last page -> falls through to the original
+  transition logic unchanged (quest checks, the topic menu, the
+  Wayreth/Ask flows, ...). The footer prompt itself reflects which case
+  it is -- "(press Enter to see more)" vs "(press Enter to continue)".
+- `AskInput` (the free-typed "ask about" screen) uses the same
+  `drawPortraitFixed()` call, dropping its own now-unnecessary
+  height-measurement code -- it never had unbounded text (title/hints/
+  input line/footer are all naturally short), so it didn't need
+  pagination, just the same fixed-size portrait for visual consistency.
+
+**Only wired into the states that render text directly in
+`drawDialogueOverlay`'s own switch** (Greeting/TopicText/AskResponse/the
+Quest text states/WayrethIntro/AskInput) -- deliberately **not** the
+states delegated to the shared `drawPickerOverlay` (TopicPicker/
+BoatOffer/RecruitOffer/QuestAcceptDecline/WayrethChoice/
+PickingCandidate). That picker lambda is shared UI used by non-dialogue
+screens too (the world-map location list, the shop list, ...), so this
+milestone didn't want to teach it a dialogue-specific image concept just
+for this. A documented trade-off, not an oversight -- easy to extend
+later if the portrait disappearing during, say, a quest accept/decline
+choice reads wrong once seen live.
 
 ## Why location data is a hand-rolled text format, not JSON
 

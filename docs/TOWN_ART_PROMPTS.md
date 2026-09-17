@@ -63,6 +63,16 @@ trunks themselves; a broad, many-windowed inn with a smoking chimney
 sits atop the tallest tree in the scene. Autumn evening light, cozy and
 lived-in rather than grand.
 
+### Inn of the Last Home (interior) -- `solace_inn`
+The ground floor of a tavern built into the trunk of a great vallenwood:
+a broad, low-raftered room lit by lantern-light and a stone hearth big
+enough to roast a boar, its fire built straight into the living wood.
+Deep-worn wooden tables, a long bar polished by years of use, a narrow
+stair spiraling up around the trunk toward the rooms above. Warm,
+smoky, lived-in -- a room that's hosted the same regulars for years, not
+a grand hall. No people needed (see the "Dialogue portraits" section
+below for Otik and Tika specifically).
+
 ### Palanthas -- `palanthas`
 A wheel-shaped city of white marble ringing a wide bay, broad avenues
 radiating out from a central hub toward the sea gates. Elegant, orderly
@@ -239,6 +249,46 @@ A distant fortress glimpsed through a gap in dense, dark pine forest on
 a steep mountainside, almost no daylight reaching the forest floor even
 though it's midday. The keep itself should read as a shadowed silhouette
 rather than a clearly lit subject -- unease and dread, not grandeur.
+
+## Dialogue portraits (Milestone 208)
+
+A second, separate art category from everything above: a small per-NPC
+image shown beside the text during a conversation with that specific
+character, not an establishing shot of a place. See
+`docs/ARCHITECTURE.md`'s SFML section for how these render in-engine.
+
+- **Unlike the location plates above, these feature one person, front
+  and center** -- the conversation partner themselves, head-and-
+  shoulders or waist-up, looking roughly toward the viewer. The "no
+  people in the foreground" rule for location plates doesn't apply here;
+  it's the opposite brief.
+- **Same painted-illustration style direction** as the rest of this
+  file (no photo-real, no pixel art; inspired by Dragonlance's voice,
+  never copied from its published art or named illustrators).
+- **Aspect ratio**: roughly **1:1 to 4:3** (e.g. 800x800 or 900x700px).
+  Rendered in a small fixed square box, cover-fit scaled and cropped in-
+  engine (same cover-fit idea as the Solace banner, Milestone 207) --
+  exact pixel dimensions don't matter, but a portrait-oriented or very
+  wide source image will lose more to the crop than a roughly square one.
+- **Filename**: `assets/portraits/<zoneId>_<poiChar>.png` -- `<zoneId>`
+  is the zone file's own id (matches `data/zones/<id>.txt`'s filename
+  stem, same as the plate convention above) and `<poiChar>` is that
+  character's own `POI`/`TALK` letter in that zone file. Drop the file
+  in with that exact name; no code or data changes needed.
+- No text, no logo, no border/frame baked in -- same as location plates.
+
+### Otik Sandeth (Inn of the Last Home) -- `solace_inn_O`
+A middle-aged innkeeper behind his own bar, sleeves rolled up, mid-wipe
+with a rag or mid-pour -- the settled, good-natured look of a man who's
+heard every excuse for an unpaid tab there is and forgiven most of them
+anyway. Warm lamplight, the Inn's own hearth-and-lantern glow rather
+than daylight.
+
+### Tika Waylan (Inn of the Last Home) -- `solace_inn_Y`
+A young woman balancing a full serving tray on one hand with practiced
+ease, apron over simple tavern clothes, a quick and appraising look in
+her eyes -- someone who's learned to spot trouble before it reaches a
+table. Same warm lamplit Inn setting as Otik above.
 
 ## Notes for whoever generates these
 

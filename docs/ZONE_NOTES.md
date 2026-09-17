@@ -353,17 +353,51 @@ of a walkable `GRID`. Deliberately **auto-derived from data the zone file
 already has**, not a second, hand-authored list — no new per-POI grammar
 at all.
 
+**As of Milestone 210, a zone doesn't need the `TOWN_MENU` flag at all
+if it has real plate art** (`assets/plates/<zone-id>.png`) — having art
+*is* the opt-in, the same "file's presence is the opt-in" convention
+`assets/plates`/`assets/portraits`/`assets/sprites` all already use.
+Confirmed with the user: this is deliberately automatic, not something
+to remember to flag per zone as more art gets dropped in. `TOWN_MENU`
+itself still exists for a zone that should behave this way with no art
+yet. `sfml_phase1/main.cpp`'s `isEffectiveMenuTown()` is the actual
+check everywhere in code (`isMenuTown() || zonePlateLoaded`) — `Zone::
+isMenuTown()` itself only ever reflects the explicit flag, since `Zone`/
+`ZoneLoader` are shared with the art-unaware `ansalon_rpg` console
+target.
+
 **What becomes a menu row.** Every *actionable* POI — a `PORTAL` target,
-`SHOP`, `BED`, or anything with a `TALK` line — becomes one row, keyed by
-that POI's own already-declared `char` and labeled with its own `name`.
-A pure-scenery POI (a `POI` line with none of those — Solace's Vallenwood
-Tree, say) is silently omitted, the same way a real Gold Box town menu
-only ever lists actual destinations, never ambient flavor; there is
-currently no way to read a scenery-only POI's description at all inside
-a `TOWN_MENU` zone (walking, and therefore standing on its tile, doesn't
-happen there). A synthetic final row, always present, isn't a POI at
-all: `L` for "Leave town," which is why `L`/`l` is reserved and
-`ZoneLoader` fails fast if any real POI tries to use it.
+`SHOP`, `BED`, the zone's own `TIMELINE_ANCHOR` POI (Milestone 210 —
+otherwise a canon Hero found only via that anchor would become
+permanently unreachable the moment the zone goes menu-only), or anything
+with a `TALK` line — becomes one row, keyed by that POI's own already-
+declared `char` and labeled with its own `name`. A pure-scenery POI (a
+`POI` line with none of those — Solace's Vallenwood Tree, say) is
+silently omitted, the same way a real Gold Box town menu only ever lists
+actual destinations, never ambient flavor; there is currently no way to
+read a scenery-only POI's description at all inside a menu-town zone
+(walking, and therefore standing on its tile, doesn't happen there). A
+synthetic final row, always present, isn't a POI at all: hotkey `L`,
+labeled "Leave town" for a top-level menu town (leaving really does exit
+to the overworld) or "Back to `<parent zone name>`" for one reached via a
+parent's own menu — Solace's Inn says "Back to Solace," not "Leave town"
+(reported wrong live, fixed at Milestone 212; `townMenuLeaveLabel`,
+`main.cpp`, checks `state.zoneStack`, the same source `leaveCurrentZone`
+itself reads to decide where "leaving" actually goes).
+
+**`L`/`l` is reserved on any actionable POI in *any* zone, not just ones
+flagged `TOWN_MENU` today** (Milestone 210) — since art alone can now
+make a zone menu-only, any zone could end up needing this later.
+`ZoneLoader` fails fast on this only for a zone explicitly flagged
+`TOWN_MENU`; it has no filesystem/art awareness, so it can't catch the
+art-derived case at load time. This is a documented authoring rule, not
+a validated one — check by hand before adding art to a zone with an
+actionable `L`/`l` POI. Two real violations existed and were fixed as
+data when this shipped: `data/zones/palanthas.txt`'s Astinus (`L` → `Y`)
+and `data/zones/high_clerist_tower.txt`'s Knight of the Circle (`L` →
+`Q`) — both would otherwise have made their zone's menu permanently
+un-leaveable (the real POI's row, built before the synthetic Leave row,
+always won the hotkey lookup).
 
 **Selecting a row never invents new behavior.** `shopBegin`/
 `restBegin(true)`/the talk path (`gatherTalkCandidates` and friends) are
@@ -383,11 +417,14 @@ there's no walking), and reading a scenery-only POI's own description.
 Global, zone-independent screens (Inventory/Sheet/Help/Journal/World
 Map/Quit) are unaffected either way.
 
-**Pilot**: `data/zones/solace.txt` is the first (and, as of this writing,
-only) `TOWN_MENU` zone — see Milestone 205's follow-up in
-`docs/MILESTONES.md`. Every other zone, including Solace's own nested
-`solace_inn.txt`, stays walkable; converting more zones is a future,
-separate decision per zone, not an all-or-nothing switch.
+**Pilot**: `data/zones/solace.txt` is the only zone with the explicit
+`TOWN_MENU` flag — see Milestone 206's writeup in `docs/MILESTONES.md`.
+As of Milestone 210, though, every zone that has real plate art behaves
+as menu-town too, flag or not — `solace_inn` and the 10 other zones with
+art as of this writing (Palanthas, Kalaman, Neraka, Pax Tharkas,
+Qualinost, Silvanost, Tarsis, Thorbardin, Xak Tsaroth, High Clerist's
+Tower) all walk-free no longer. A zone with neither the flag nor art
+stays walkable, same as always.
 
 ## NPCs: POIs you can talk to
 

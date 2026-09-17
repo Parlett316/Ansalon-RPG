@@ -534,6 +534,22 @@ std::optional<sf::Texture> loadZonePlateTexture(const std::string& zoneId) {
     return texture;
 }
 
+// Dialogue portrait (Milestone 208) -- same "file's mere presence is the
+// opt-in" contract as loadZonePlateTexture just above, keyed instead by
+// DialogueCandidate::id (either "<zoneId>:<poiChar>" for an ordinary zone
+// POI, or a canon Hero's own character id for a chance encounter -- see
+// where DialogueCandidate::id is assigned in dialogueBegin). ':' isn't
+// filesystem-safe, so it's swapped for '_' before the path is built:
+// Otik (solace_inn:O) -> assets/portraits/solace_inn_O.png.
+std::optional<sf::Texture> loadDialoguePortraitTexture(const std::string& candidateId) {
+    std::string filename = candidateId;
+    std::replace(filename.begin(), filename.end(), ':', '_');
+    sf::Texture texture;
+    if (!texture.loadFromFile("assets/portraits/" + filename + ".png")) return std::nullopt;
+    texture.setSmooth(true);
+    return texture;
+}
+
 // Gold-Box town menu (Milestone 206, docs/ZONE_NOTES.md's "Town menus"):
 // one row per actionable POI in a TOWN_MENU zone, auto-derived from data
 // the zone file already has -- see buildTownMenuItems below.
@@ -568,15 +584,26 @@ int letterIndexForKey(sf::Keyboard::Key key) {
 }
 
 // Scans the zone grid once, collecting one row per actionable POI -- a
-// PORTAL target, SHOP, BED, or anything with a TALK line -- deduped by POI
-// char. Pure scenery (no TALK, not a shop/bed/portal) is silently omitted,
-// same as a real Gold Box town menu only ever listing actual destinations.
-// A synthetic final row, hotkey 'L', is always appended for "Leave town" --
-// ZoneLoader already guarantees no real POI in a TOWN_MENU zone uses that
-// letter (see docs/ZONE_NOTES.md). Rebuilt fresh on demand (a handful of
-// POIs per zone) rather than cached, same "no premature caching" restraint
-// as loadZonePlateTexture above.
-std::vector<TownMenuItem> buildTownMenuItems(const world::Zone& zone) {
+// PORTAL target, SHOP, BED, anything with a TALK line, or the zone's own
+// TIMELINE_ANCHOR POI (Milestone 210) -- deduped by POI char. Pure scenery
+// (none of the above) is silently omitted, same as a real Gold Box town
+// menu only ever listing actual destinations. A synthetic final row,
+// hotkey 'L', is always appended (its label passed in by the caller --
+// see townMenuLeaveLabel; "Leave town" isn't accurate for a zone reached
+// via a parent's own menu, e.g. Solace's Inn) -- ZoneLoader guarantees
+// no real POI uses that letter for a zone explicitly flagged TOWN_MENU,
+// but a zone that's only *effectively* menu-town because it has art
+// (isEffectiveMenuTown, Milestone 210) was never data-validated this way,
+// since ZoneLoader has no filesystem/art awareness to check against; this
+// is now a documented authoring rule instead (docs/ZONE_NOTES.md) --
+// avoid 'L'/'l' on any actionable POI in any zone, not just ones flagged
+// TOWN_MENU today, since any zone could get art later. Two real
+// violations existed and were fixed as data when this shipped: Palanthas'
+// Astinus and High Clerist's Tower's Knight of the Circle both used to be
+// 'L'. Rebuilt fresh on demand (a handful of POIs per zone) rather than
+// cached, same "no premature caching" restraint as loadZonePlateTexture
+// above.
+std::vector<TownMenuItem> buildTownMenuItems(const world::Zone& zone, const std::string& leaveLabel) {
     std::vector<TownMenuItem> items;
     std::vector<char> seen;
     for (int y = 0; y < zone.height(); ++y) {
@@ -586,7 +613,18 @@ std::vector<TownMenuItem> buildTownMenuItems(const world::Zone& zone) {
             if (std::find(seen.begin(), seen.end(), poi->code) != seen.end()) continue;
             seen.push_back(poi->code);
             const std::string* portalTarget = zone.portalAt(x, y);
-            const bool actionable = poi->isShop || poi->isBed || !poi->dialogue.empty() || portalTarget != nullptr;
+            // Milestone 210: a zone's TIMELINE_ANCHOR POI (where a canon
+            // Hero can be found -- docs/TIMELINE_NOTES.md) is actionable
+            // even with no TALK line of its own (e.g. solace_inn's Great
+            // Fireplace) -- without this, that POI would silently get no
+            // menu row at all, making the encounter unreachable the moment
+            // a zone becomes menu-town. The row's label is just the POI's
+            // own declared name; selecting it falls into the generic
+            // dialogueBegin() branch below like any other talk-only row,
+            // which already checks the anchor independently of the POI's
+            // own dialogue (gatherTalkCandidates above).
+            const bool actionable = poi->isShop || poi->isBed || !poi->dialogue.empty() ||
+                                     portalTarget != nullptr || poi->code == zone.timelineAnchorPoi();
             if (!actionable) continue;
             TownMenuItem item;
             item.hotkeyChar = static_cast<char>(std::toupper(static_cast<unsigned char>(poi->code)));
@@ -604,7 +642,7 @@ std::vector<TownMenuItem> buildTownMenuItems(const world::Zone& zone) {
               [](const TownMenuItem& a, const TownMenuItem& b) { return a.hotkeyChar < b.hotkeyChar; });
     TownMenuItem leave;
     leave.hotkeyChar = 'L';
-    leave.label = "Leave town";
+    leave.label = leaveLabel;
     items.push_back(std::move(leave));
     return items;
 }
@@ -1044,6 +1082,7 @@ struct DialogueSession {
     DialogueUiState uiState = DialogueUiState::PickingCandidate;
     DialogueCandidate current;             // the candidate actually being talked to
     std::string bodyText;                  // text currently on screen
+    int bodyTextPage = 0;                  // which page of bodyText is showing -- see paginateBodyText
     std::string displaySpeaker;            // usually current.name; overridden by askLimitLocked's speaker
     std::vector<std::string> topicLabels;  // topics [+ "Ask about..."] + "Nothing, thanks"
     int topicSelected = 0;
@@ -2441,6 +2480,45 @@ int runPhase1(const std::string& savePath) {
     sf::Texture zonePlateTexture;
     std::string zonePlateZoneName;
 
+    // Milestone 210: any zone with real plate art now behaves as a
+    // Gold-Box menu town, not just one explicitly flagged TOWN_MENU --
+    // confirmed with the user rather than adding a per-zone flag to every
+    // new art drop. zonePlateLoaded already tracks "does the *current*
+    // zone have art" (set once per zone at enterZone/leaveCurrentZone/the
+    // Milestone 209 startup-load fix), so this needs no new I/O.
+    // Zone::isMenuTown() itself deliberately stays untouched -- Zone/
+    // ZoneLoader are shared with the ansalon_rpg console target, which
+    // has no concept of assets/, so all art-awareness stays local to this
+    // file (see docs/ARCHITECTURE.md's SFML section).
+    auto isEffectiveMenuTown = [&]() {
+        return currentZone != nullptr && (currentZone->isMenuTown() || zonePlateLoaded);
+    };
+
+    // Dialogue portrait (Milestone 208) -- same "screen transition, not
+    // world state" reasoning as the zone-plate state just above. Set once
+    // per conversation in dialogueStartTalk, stays valid (no reload) for
+    // however many topic/ask exchanges that same conversation has.
+    bool dialoguePortraitLoaded = false;
+    sf::Texture dialoguePortraitTexture;
+
+    // A save can load directly into a zone (MODE ZONE) without ever
+    // passing through enterZone -- the only other place zonePlateTexture/
+    // zonePlateLoaded get set. Without this, a save that starts (or is
+    // continued from the slot menu) already standing inside, say, Solace
+    // would show a blank image area on launch until the player physically
+    // left and re-entered. Never sets zonePlateOpen -- same "resuming
+    // isn't a fresh arrival" reasoning leaveCurrentZone already uses when
+    // backing out of a child zone, so an ordinary (non-TOWN_MENU) zone's
+    // one-shot full-window flourish doesn't re-fire just because the
+    // process restarted.
+    if (currentZone != nullptr) {
+        if (auto plate = loadZonePlateTexture(state.currentZoneId)) {
+            zonePlateTexture = std::move(*plate);
+            zonePlateZoneName = currentZone->name();
+            zonePlateLoaded = true;
+        }
+    }
+
     sf::View mapView(sf::Vector2f(0.f, 0.f), sf::Vector2f(mapWidth, static_cast<float>(windowH)));
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
@@ -2893,6 +2971,40 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // Dialogue body-text pagination (feedback after Milestone 210's
+    // portrait redesign): the user didn't want a long response (Otik's
+    // TALK_AFTER, ~20 wrapped lines) shrinking the portrait to make room
+    // for all of it at once -- the portrait should stay the same large
+    // size every time, and long text should page instead, "press Enter to
+    // see more" the same way AskResponse's own multi-message queue
+    // already works, just applied within a single response too.
+    // kBodyLinesPerPage is also what fixes the portrait's own size (see
+    // drawPortraitFixed in drawDialogueOverlay) -- reserving a constant
+    // amount of text space regardless of the current response's actual
+    // length is what makes the portrait stop fluctuating.
+    constexpr int kBodyLinesPerPage = 6;
+    auto paginateBodyText = [&](const std::string& text) {
+        const float maxWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
+        const std::vector<std::string> wrapped = wrapToPixelWidth(font, kSheetBodyCharSize, text, maxWidthPx);
+        std::vector<std::vector<std::string>> pages;
+        for (std::size_t i = 0; i < wrapped.size(); i += static_cast<std::size_t>(kBodyLinesPerPage)) {
+            const std::size_t end = std::min(wrapped.size(), i + static_cast<std::size_t>(kBodyLinesPerPage));
+            pages.emplace_back(wrapped.begin() + static_cast<std::ptrdiff_t>(i),
+                                wrapped.begin() + static_cast<std::ptrdiff_t>(end));
+        }
+        if (pages.empty()) pages.emplace_back();  // empty body text -- one (empty) page
+        return pages;
+    };
+    // Every dialogueSession.bodyText assignment goes through this instead
+    // of setting the field directly, so a fresh response always starts
+    // back at page 0 -- easy to miss one of the several call sites
+    // otherwise (Greeting/TopicText/the Quest* text frames/AskResponse's
+    // own queue advance all set bodyText independently).
+    auto setDialogueBodyText = [&](const std::string& text) {
+        dialogueSession.bodyText = text;
+        dialogueSession.bodyTextPage = 0;
+    };
+
     // Mirrors GameLoop::talkTo's greeting-resolution precedence exactly
     // (GameLoop.cpp:1002-1046), including the askLimitLocked override.
     // Quest's real handling (checkQuestReadiness + questBegin), boat, and
@@ -2902,6 +3014,12 @@ int runPhase1(const std::string& savePath) {
     auto dialogueStartTalk = [&](const DialogueCandidate& candidate) {
         dialogueSession.current = candidate;
         dialogueSession.displaySpeaker = candidate.name;
+        if (auto portrait = loadDialoguePortraitTexture(candidate.id)) {
+            dialoguePortraitTexture = std::move(*portrait);
+            dialoguePortraitLoaded = true;
+        } else {
+            dialoguePortraitLoaded = false;
+        }
         const std::string afterId = candidate.id + ":after";
         const bool showAfter = !candidate.dialogueAfter.empty() && state.metCharacters.count(afterId) == 0;
         const bool alreadyMet = state.metCharacters.count(candidate.id) > 0;
@@ -2929,7 +3047,7 @@ int runPhase1(const std::string& savePath) {
                 }
             }
         }
-        dialogueSession.bodyText = text;
+        setDialogueBodyText(text);
         state.metCharacters.insert(candidate.id);
         checkQuestReadiness(); // a TALK objective may have just been satisfied
 
@@ -3190,11 +3308,15 @@ int runPhase1(const std::string& savePath) {
             zonePlateTexture = std::move(*plate);
             zonePlateZoneName = target->name();
             zonePlateLoaded = true;
-            // A TOWN_MENU zone draws this same texture persistently inside
-            // drawTownMenuOverlay instead -- the one-shot full-window
-            // flourish (zonePlateOpen) is only for a walkable zone's
-            // arrival, same as it's shipped since Milestone 205.
-            zonePlateOpen = !target->isMenuTown();
+            // Milestone 210: having art now always means menu-town (see
+            // isEffectiveMenuTown above), which draws this same texture
+            // persistently inside drawTownMenuOverlay instead -- so the
+            // one-shot full-window flourish (zonePlateOpen, Milestone 205)
+            // can never fire for a zone that has art, and never could for
+            // one that doesn't. Left unconditionally false rather than
+            // deleting drawZonePlateOverlay/zonePlateOpen outright -- see
+            // docs/ARCHITECTURE.md's SFML section for why.
+            zonePlateOpen = false;
         } else {
             zonePlateLoaded = false;
             zonePlateOpen = false;
@@ -3239,6 +3361,21 @@ int runPhase1(const std::string& savePath) {
         }
     };
 
+    // The town menu's synthetic Leave row's label -- reported wrong live
+    // (a user playtest, 2026-09-17): a zone reached via a *parent's own*
+    // menu (Solace's Inn, entered via Solace's own "[I]" row) said "Leave
+    // Town" too, which is misleading -- leaveCurrentZone above doesn't
+    // exit to the overworld there, it just pops back to the parent zone's
+    // menu. "Leave town" is only accurate when zoneStack is empty (a
+    // top-level menu town, e.g. Solace, Palanthas -- leaving really does
+    // go to the overworld); otherwise the label names the actual parent
+    // zone leaveCurrentZone is about to return to.
+    auto townMenuLeaveLabel = [&]() -> std::string {
+        if (state.zoneStack.empty()) return "Leave town";
+        const world::Zone* parent = zones.getZone(state.zoneStack.back().zoneId);
+        return "Back to " + (parent != nullptr ? parent->name() : std::string("town"));
+    };
+
     // Enter on the "talk to whom?" picker.
     auto dialogueConfirmCandidate = [&]() {
         if (dialogueSession.candidateSelected < 0 ||
@@ -3280,8 +3417,8 @@ int runPhase1(const std::string& savePath) {
             dialogueBeginAsk();
             return;
         }
-        dialogueSession.bodyText =
-            dialogueSession.current.speech.topics[static_cast<size_t>(dialogueSession.topicSelected)].second;
+        setDialogueBodyText(
+            dialogueSession.current.speech.topics[static_cast<size_t>(dialogueSession.topicSelected)].second);
         dialogueSession.uiState = DialogueUiState::TopicText;
     };
 
@@ -3357,7 +3494,7 @@ int runPhase1(const std::string& savePath) {
             }
         }
         dialogueSession.askMessageIndex = 0;
-        dialogueSession.bodyText = dialogueSession.askMessages.front();
+        setDialogueBodyText(dialogueSession.askMessages.front());
         dialogueSession.uiState = DialogueUiState::AskResponse;
     };
 
@@ -3455,18 +3592,18 @@ int runPhase1(const std::string& savePath) {
         auto it = state.quests.find(candidate.questId);
         if (it == state.quests.end()) {
             if (!q->requirement.empty() && !conditionMatches(q->requirement, state.character)) return false;
-            dialogueSession.bodyText = q->offerText;
+            setDialogueBodyText(q->offerText);
             dialogueSession.uiState = DialogueUiState::QuestOfferText;
             return true;
         }
         if (it->second == game::QuestStatus::Complete) return false;
         if (it->second == game::QuestStatus::Active) {
-            dialogueSession.bodyText = q->progressText;
+            setDialogueBodyText(q->progressText);
             dialogueSession.uiState = DialogueUiState::QuestProgressText;
             return true;
         }
         // ReadyToTurnIn.
-        dialogueSession.bodyText = q->completeText;
+        setDialogueBodyText(q->completeText);
         dialogueSession.uiState = DialogueUiState::QuestCompleteText;
         return true;
     };
@@ -3488,7 +3625,7 @@ int runPhase1(const std::string& savePath) {
         const quest::Quest* q = quests.find(dialogueSession.current.questId);
         if (q == nullptr) return; // defensive, same as questBegin
         state.quests[dialogueSession.current.questId] = game::QuestStatus::Active;
-        dialogueSession.bodyText = q->acceptText;
+        setDialogueBodyText(q->acceptText);
         dialogueSession.uiState = DialogueUiState::QuestAcceptText;
         pushLog("Quest accepted: " + q->name + ".");
         // Catches "already did it before being asked" -- without this, a
@@ -3574,12 +3711,12 @@ int runPhase1(const std::string& savePath) {
             // for the full sourcing/design rationale (Dragonlance
             // Adventures pp.34-35, Players Guide pp.79-80: the Test grades
             // conduct during the Test, not a preset alignment).
-            dialogueSession.bodyText =
+            setDialogueBodyText(
                 "The grave-cold thing you put down a moment ago doesn't dissipate the way a beaten "
                 "illusion should. It holds, one heartbeat too long, and reshapes -- not into the "
                 "stranger, not into anything Wayreth would claim as its own, but into a face you'd "
                 "trust with your back turned. It doesn't attack. It doesn't need to. It just stands "
-                "between you and the rest of your life, waiting to see what you do about that.";
+                "between you and the rest of your life, waiting to see what you do about that.");
             dialogueSession.uiState = DialogueUiState::WayrethIntro;
             return;
         }
@@ -3660,8 +3797,15 @@ int runPhase1(const std::string& savePath) {
     // there is one, else ends the conversation or returns to a freshly-
     // rebuilt topic menu, per dialogueSubmitAsk's bookkeeping. The Quest*/
     // Wayreth* text frames all continue the same quest detour they're
-    // already in (see each's own dedicated handler above).
+    // already in (see each's own dedicated handler above). Checks for a
+    // remaining page of the *current* bodyText first -- only once that's
+    // exhausted does it actually advance the conversation state.
     auto dialogueContinue = [&]() {
+        const std::size_t pageCount = paginateBodyText(dialogueSession.bodyText).size();
+        if (static_cast<std::size_t>(dialogueSession.bodyTextPage) + 1 < pageCount) {
+            ++dialogueSession.bodyTextPage;
+            return;
+        }
         if (dialogueSession.uiState == DialogueUiState::Greeting) {
             if (!questBegin()) dialogueAfterGreeting();
         } else if (dialogueSession.uiState == DialogueUiState::QuestOfferText) {
@@ -3678,8 +3822,7 @@ int runPhase1(const std::string& savePath) {
         } else if (dialogueSession.uiState == DialogueUiState::AskResponse) {
             ++dialogueSession.askMessageIndex;
             if (dialogueSession.askMessageIndex < static_cast<int>(dialogueSession.askMessages.size())) {
-                dialogueSession.bodyText =
-                    dialogueSession.askMessages[static_cast<size_t>(dialogueSession.askMessageIndex)];
+                setDialogueBodyText(dialogueSession.askMessages[static_cast<size_t>(dialogueSession.askMessageIndex)]);
             } else if (dialogueSession.askQueueEndsConversation) {
                 dialogueEnd();
             } else {
@@ -6207,9 +6350,14 @@ int runPhase1(const std::string& savePath) {
     };
 
     // Zone landmark plate -- shown full-window on entry to a zone that has
-    // one (see loadZonePlateTexture above). Same contain-fit-and-center
-    // scaling idea drawWorldMapOverlay's own minimap uses just above,
-    // applied to the plate image instead of the real map texture.
+    // one (see loadZonePlateTexture above). Cover-fit-and-crop (Milestone
+    // 209), same math drawTownMenuOverlay's own plate image uses (Milestone
+    // 207) -- fills the whole box, cropping the centered excess off
+    // whichever axis overflows, rather than the contain-fit-and-letterbox
+    // this shipped with originally. Switched once the user's own real plate
+    // art turned out to be uniformly banner-shaped (2508x627, same as
+    // Solace's) even for ordinary non-TOWN_MENU zones -- contain-fit left
+    // large empty bands above/below at that aspect ratio.
     auto drawZonePlateOverlay = [&]() {
         drawPanelChrome();
 
@@ -6220,14 +6368,19 @@ int runPhase1(const std::string& savePath) {
 
         const sf::Vector2u plateSize = zonePlateTexture.getSize();
         if (plateSize.x > 0 && plateSize.y > 0) {
-            const float scale =
-                std::min(boxW / static_cast<float>(plateSize.x), boxH / static_cast<float>(plateSize.y));
-            const float drawW = static_cast<float>(plateSize.x) * scale;
-            const float drawH = static_cast<float>(plateSize.y) * scale;
+            const float imgW = static_cast<float>(plateSize.x);
+            const float imgH = static_cast<float>(plateSize.y);
+            const float scale = std::max(boxW / imgW, boxH / imgH);
+            const float visibleSrcW = boxW / scale;
+            const float visibleSrcH = boxH / scale;
+            const int cropX = static_cast<int>(std::round((imgW - visibleSrcW) / 2.f));
+            const int cropY = static_cast<int>(std::round((imgH - visibleSrcH) / 2.f));
             sf::Sprite plateSprite(zonePlateTexture);
+            plateSprite.setTextureRect(
+                sf::IntRect({cropX, cropY}, {static_cast<int>(std::round(visibleSrcW)),
+                                              static_cast<int>(std::round(visibleSrcH))}));
             plateSprite.setScale(sf::Vector2f(scale, scale));
-            plateSprite.setPosition(
-                sf::Vector2f(kSheetMarginX + (boxW - drawW) / 2.f, kTopMargin + (boxH - drawH) / 2.f));
+            plateSprite.setPosition(sf::Vector2f(kSheetMarginX, kTopMargin));
             window.draw(plateSprite);
         }
 
@@ -6251,7 +6404,9 @@ int runPhase1(const std::string& savePath) {
     // stays visible the whole time -- confirmed with the user up front,
     // matching how the real Gold Box games kept the town picture on
     // screen while its own letter menu sat underneath it. currentZone is
-    // guaranteed non-null by the isMenuTown() check at every call site.
+    // guaranteed non-null by the isEffectiveMenuTown() check at every call
+    // site (Milestone 210 -- also true for a zone that's menu-town purely
+    // because it has art, not just an explicit TOWN_MENU flag).
     //
     // Layout, top to bottom: title, then the image filling whatever
     // vertical space is left over once the letter list (anchored to the
@@ -6267,7 +6422,7 @@ int runPhase1(const std::string& savePath) {
         title.setPosition(sf::Vector2f(kSheetMarginX, 30.f));
         window.draw(title);
 
-        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone, townMenuLeaveLabel());
         const float lineHeight = static_cast<float>(kSheetBodyCharSize) + 10.f;
         const float listHeight = static_cast<float>(items.size()) * lineHeight;
         const float footerY = static_cast<float>(windowH) - 36.f;
@@ -6385,6 +6540,13 @@ int runPhase1(const std::string& savePath) {
     // delegate to drawPickerOverlay above instead of rendering their own
     // list.
     auto drawDialogueOverlay = [&]() {
+        // Dialogue portrait (Milestone 208, redesigned Milestone 210) --
+        // only for the states below that render text directly in this
+        // lambda (not the picker-delegated ones further down, which share
+        // drawPickerOverlay with non-dialogue screens -- see
+        // docs/ARCHITECTURE.md's SFML section). Full panel width now (no
+        // more narrowing beside a corner box) -- the image moved above the
+        // text instead.
         const float maxWidthPx = static_cast<float>(windowW) - 2.f * kSheetMarginX;
         float y = 40.f;
 
@@ -6394,6 +6556,48 @@ int runPhase1(const std::string& savePath) {
             sfText.setPosition(sf::Vector2f(kSheetMarginX, y));
             window.draw(sfText);
             y += static_cast<float>(size) + 10.f;
+        };
+
+        // Contain-fit (Milestone 210, replacing the small 180x180 cover-fit
+        // corner box) -- deliberately the *other* fit strategy from every
+        // other image in this codebase (zone plates, town menu, the old
+        // portrait box all crop-to-fill). The user's actual portrait art is
+        // portrait-oriented (~4:5) single-character art, not a wide
+        // establishing shot -- cropping it to fill an arbitrary box only
+        // ever hides more of it as the box grows, never reveals more.
+        // Contain-fit always shows the whole portrait, scaled as large as
+        // the available space allows.
+        //
+        // A *fixed* reserved text height (kBodyLinesPerPage worth of
+        // lines, plus the footer prompt), not one measured from the
+        // current response -- changed at the same time pagination was
+        // added (see paginateBodyText/setDialogueBodyText above): the
+        // user didn't want the portrait shrinking for a long response
+        // (Otik's TALK_AFTER did, under the original adaptive-height
+        // version), they wanted it to stay large and consistent every
+        // time, with long text paginating underneath it instead. Width is
+        // the full panel width. Returns the y to resume drawing at (a
+        // no-op passthrough of the current y when no portrait is loaded).
+        auto drawPortraitFixed = [&]() -> float {
+            if (!dialoguePortraitLoaded) return y;
+            const sf::Vector2u texSize = dialoguePortraitTexture.getSize();
+            if (texSize.x == 0 || texSize.y == 0) return y;
+            constexpr float kPortraitGap = 20.f;
+            constexpr float kBottomMargin = 30.f;
+            const float reservedTextH =
+                static_cast<float>(kBodyLinesPerPage) * (kSheetBodyCharSize + 10.f) + 10.f + kSheetHeaderCharSize + 10.f;
+            const float boxH = static_cast<float>(windowH) - y - reservedTextH - kBottomMargin;
+            const float imgW = static_cast<float>(texSize.x);
+            const float imgH = static_cast<float>(texSize.y);
+            const float scale = std::min(maxWidthPx / imgW, boxH / imgH);
+            const float drawW = imgW * scale;
+            const float drawH = imgH * scale;
+            sf::Sprite portraitSprite(dialoguePortraitTexture);
+            portraitSprite.setScale(sf::Vector2f(scale, scale));
+            portraitSprite.setPosition(
+                sf::Vector2f(kSheetMarginX + (maxWidthPx - drawW) / 2.f, y + (boxH - drawH) / 2.f));
+            window.draw(portraitSprite);
+            return y + boxH + kPortraitGap;
         };
 
         switch (dialogueSession.uiState) {
@@ -6419,12 +6623,23 @@ int runPhase1(const std::string& savePath) {
                                                   : dialogueSession.current.name;
                 drawLine(speaker, sf::Color::White, kSheetTitleCharSize);
                 y += 10.f;
-                for (const std::string& wrapped :
-                     wrapToPixelWidth(font, kSheetBodyCharSize, dialogueSession.bodyText, maxWidthPx)) {
+                y = drawPortraitFixed();
+                // Only the current page's lines draw -- see
+                // paginateBodyText/dialogueContinue above. bodyTextPage is
+                // clamped defensively (a shorter response than the page
+                // it was left on, e.g. after AskResponse advances to its
+                // next queued message, resets via setDialogueBodyText
+                // anyway, but this is cheap insurance).
+                const std::vector<std::vector<std::string>> pages = paginateBodyText(dialogueSession.bodyText);
+                const std::size_t pageIndex =
+                    std::min(static_cast<std::size_t>(dialogueSession.bodyTextPage), pages.size() - 1);
+                for (const std::string& wrapped : pages[pageIndex]) {
                     drawLine(wrapped, kSheetBodyColor, kSheetBodyCharSize);
                 }
                 y += 10.f;
-                drawLine("(press Enter to continue)", sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                const bool morePages = pageIndex + 1 < pages.size();
+                drawLine(morePages ? "(press Enter to see more)" : "(press Enter to continue)",
+                         sf::Color(150, 150, 160), kSheetHeaderCharSize);
                 break;
             }
             case DialogueUiState::PickingCandidate: {
@@ -6476,23 +6691,25 @@ int runPhase1(const std::string& savePath) {
                                    "(up/down = select, Enter = choose)");
                 break;
             }
-            case DialogueUiState::AskInput:
+            case DialogueUiState::AskInput: {
                 drawPanelChrome();
                 drawLine("Ask " + dialogueSession.current.name + " about...", kSheetSectionColor,
                          kSheetTitleCharSize);
                 y += 10.f;
+                y = drawPortraitFixed();
+                std::vector<std::string> wrappedHints;
                 if (!dialogueSession.askInputHints.empty()) {
                     std::string hintLine = "You could ask about: ";
                     for (std::size_t i = 0; i < dialogueSession.askInputHints.size(); ++i) {
                         if (i > 0) hintLine += ", ";
                         hintLine += dialogueSession.askInputHints[i];
                     }
-                    for (const std::string& wrapped :
-                         wrapToPixelWidth(font, kSheetHeaderCharSize, hintLine, maxWidthPx)) {
-                        drawLine(wrapped, sf::Color(150, 150, 160), kSheetHeaderCharSize);
-                    }
-                    y += 10.f;
+                    wrappedHints = wrapToPixelWidth(font, kSheetHeaderCharSize, hintLine, maxWidthPx);
                 }
+                for (const std::string& wrapped : wrappedHints) {
+                    drawLine(wrapped, sf::Color(150, 150, 160), kSheetHeaderCharSize);
+                }
+                if (!wrappedHints.empty()) y += 10.f;
                 // Static trailing cursor glyph, no blink -- this project has
                 // no animation/timing primitive yet (see
                 // docs/CURRENT_WORK.md's "Parked" section) and this box
@@ -6502,6 +6719,7 @@ int runPhase1(const std::string& savePath) {
                 drawLine("(type a subject, Enter to ask -- empty Enter cancels)", sf::Color(150, 150, 160),
                          kSheetHeaderCharSize);
                 break;
+            }
         }
     };
 
@@ -7302,7 +7520,7 @@ int runPhase1(const std::string& savePath) {
                             inventorySession.selected = 0;
                         }
                     } else if (state.mode == game::Mode::Zone && currentZone != nullptr &&
-                               currentZone->isMenuTown() && letterIndexForKey(key) >= 0) {
+                               isEffectiveMenuTown() && letterIndexForKey(key) >= 0) {
                         // Gold-Box town menu (Milestone 206, docs/ZONE_NOTES.md's
                         // "Town menus"): every letter key is interpreted as a
                         // destination-selection attempt here, full stop -- no
@@ -7313,7 +7531,7 @@ int runPhase1(const std::string& savePath) {
                         // above, checked before this one) and non-letter global
                         // commands (Help's Slash, ...) are unaffected either way.
                         const char pressed = static_cast<char>('A' + letterIndexForKey(key));
-                        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone);
+                        const std::vector<TownMenuItem> items = buildTownMenuItems(*currentZone, townMenuLeaveLabel());
                         const TownMenuItem* match = nullptr;
                         for (const TownMenuItem& item : items) {
                             if (item.hotkeyChar == pressed) {
@@ -7342,7 +7560,7 @@ int runPhase1(const std::string& savePath) {
                             }
                         }
                     } else if (state.mode == game::Mode::Zone && currentZone != nullptr &&
-                               currentZone->isMenuTown()) {
+                               isEffectiveMenuTown()) {
                         // Any other key while in a town menu (arrows, Enter,
                         // digits, ...) -- no walking and no Enter-to-confirm in
                         // this interaction model, so nothing happens. Silent, to
@@ -8105,7 +8323,7 @@ int runPhase1(const std::string& savePath) {
             // inventorySession below so a sub-interaction opened from a
             // menu row (talk/shop/bed) paints over it, exactly like it
             // already paints over an ordinary walkable zone's scene.
-            if (state.mode == game::Mode::Zone && currentZone != nullptr && currentZone->isMenuTown()) {
+            if (state.mode == game::Mode::Zone && currentZone != nullptr && isEffectiveMenuTown()) {
                 window.setView(uiView);
                 drawTownMenuOverlay();
             }

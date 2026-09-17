@@ -8392,6 +8392,266 @@ now fully verified, nothing further outstanding.
        hotkeys, the Inn round-trip, and Leave are still unconfirmed --
        see `docs/CURRENT_WORK.md`'s Playtest backlog.
 
+208. **Dialogue portraits (`ansalon_sfml_phase1` only): a small per-NPC
+     image shown alongside the text during a conversation.** Raised when
+     the user reported having new art ready -- an interior plate for the
+     Inn of the Last Home, plus conversation portraits for Otik Sandeth
+     and Tika Waylan (both `solace_inn.txt` POIs). The Inn interior
+     needed no code change at all: zone plates (Milestone 205) already
+     key purely off `<zone-id>`, so `assets/plates/solace_inn.png` gets
+     the ordinary full-window arrival treatment automatically. The two
+     conversation portraits were genuinely new -- nothing in
+     `DialogueSession`/`DialogueCandidate` had any image concept before
+     this.
+     - **Same "file's mere presence is the opt-in" contract as
+       `loadZonePlateTexture`/`loadCombatSprite`.** New free function
+       `loadDialoguePortraitTexture(candidateId)` in `main.cpp`, right
+       below `loadZonePlateTexture`, tries
+       `assets/portraits/<sanitizedId>.png` (`:` swapped for `_`, since
+       `DialogueCandidate::id` is `<zoneId>:<poiChar>` for an ordinary
+       zone POI -- e.g. `solace_inn:O` for Otik becomes
+       `solace_inn_O.png`). Returns `std::nullopt` on any failure, never
+       throws. A canon Hero's `DialogueCandidate::id` is just their own
+       character id with no colon, so a future portrait for one of them
+       needs no new code either -- just `assets/portraits/<character-
+       id>.png`.
+     - **Loaded once per conversation**, in `dialogueStartTalk` right
+       after `dialogueSession.current` is set -- the one place a
+       candidate (whether reached directly or via the `PickingCandidate`
+       picker) becomes "current," so it stays valid for however many
+       topic/ask exchanges that same conversation has, no per-frame
+       reload.
+     - **Rendered as a fixed 180x180 cover-fit box, top-right corner of
+       the panel**, only for the `drawDialogueOverlay` states that
+       render text directly in that lambda (Greeting/TopicText/
+       AskResponse/the Quest text states/WayrethIntro/AskInput) --
+       deliberately **not** the states delegated to the shared
+       `drawPickerOverlay` (TopicPicker/BoatOffer/RecruitOffer/
+       QuestAcceptDecline/WayrethChoice/PickingCandidate), since that
+       picker is shared UI used outside dialogue too and this milestone
+       didn't want to grow it a dialogue-specific image concept. Called
+       out explicitly as a scoped trade-off, same habit as Milestone
+       206's keybinding note -- easy to extend later if it reads wrong
+       live. Reuses the exact cover-fit-and-crop math
+       `drawTownMenuOverlay`'s plate image already uses (Milestone 207):
+       scale to fill on whichever axis needs it more, crop a centered
+       region via `setTextureRect` rather than letterbox. `maxWidthPx`
+       is narrowed by the box width + a 20px gap whenever a portrait is
+       loaded, so wrapped body text can't run under it.
+     - Verified via a clean rebuild (`--clean-first`, both real targets)
+       showing zero new `/W4` warnings, and **confirmed live** the same
+       session once the user's real art landed -- see Milestone 209.
+
+209. **Real art for 11 more zones + Otik/Tika portraits dropped in, plus
+     two real bugs a live look surfaced.** Mid-Milestone-208, the user
+     produced and dropped in thirteen real files: plate art for Palanthas,
+     Kalaman, Neraka, Pax Tharkas, Qualinost, Silvanost, Tarsis,
+     Thorbardin, Xak Tsaroth, High Clerist's Tower, and the Inn of the
+     Last Home, plus the two dialogue portraits. Placing them surfaced two
+     real, unrelated bugs before any of it could be trusted live:
+     - **Filename mismatches**, fixed by renaming to match the established
+       conventions: `inn_of_the_last_home.png` -> `solace_inn.png` (the
+       zone's real id), `silvantesti.png` -> `silvanesti.png` (typo
+       against the real zone id), and `otik.png`/`tika.png` moved from
+       `assets/plates/` into `assets/portraits/solace_inn_O.png`/
+       `solace_inn_Y.png` (portraits, not zone plates).
+     - **Every one of the 11 new plates was 2508x627 -- the same 4:1
+       banner shape as Solace's own art -- not the 16:9-3:2 "plate
+       format" `docs/TOWN_ART_PROMPTS.md` specs for non-`TOWN_MENU`
+       zones.** `drawZonePlateOverlay` (used by every zone but Solace)
+       still used its original Milestone 205 contain-fit-and-center
+       math, which would have letterboxed all 11 images with large empty
+       bands. Asked the user rather than guessing (regenerate the art
+       vs. change the fit); they chose to extend Milestone 207's
+       cover-fit-and-crop math to `drawZonePlateOverlay` too, matching
+       `drawTownMenuOverlay`'s own version exactly (`scale =
+       max(boxW/imgW, boxH/imgH)`, `setTextureRect` crops a centered
+       region sized to what the scaled box shows). One shared idiom now
+       used by both overlays instead of two different fit strategies.
+     - **A real, separate startup gap, found by the live test itself**:
+       a save that loads directly into a zone (`MODE ZONE`, e.g. any
+       save sitting inside Solace when the game was last closed) never
+       called `enterZone` -- the only place `zonePlateTexture`/
+       `zonePlateLoaded` got set -- so the very first live screenshot
+       this session (Solace's own town menu, launched from a disposable
+       save copy already sitting inside it) showed a completely blank
+       image band despite `assets/plates/solace.png` existing and having
+       worked in Milestone 207. Fixed by loading the current zone's plate
+       once at startup, right after `currentZone` is resolved from the
+       save -- mirrors `enterZone`'s own load call, but deliberately never
+       sets `zonePlateOpen` (same "resuming isn't a fresh arrival"
+       reasoning `leaveCurrentZone` already uses), so an ordinary zone's
+       one-shot full-window flourish doesn't re-fire just because the
+       process restarted.
+     - **Confirmed live end-to-end**, via a disposable save copy
+       (`build/Debug/smoketest_dialogue_portrait.txt`, deleted after
+       along with its autosave `.bak` files; real `save1.txt`/`save2.txt`
+       confirmed untouched by checksum before and after) driven by
+       VirtualScreen + SendKeys screenshots, not just smoke-tested: the
+       fixed Solace banner filling its band correctly on launch, the new
+       `solace_inn` plate rendering full-window on walking into the Inn
+       (cover-fit, no letterboxing), and -- navigating to and talking to
+       both NPCs in-world -- Otik's and Tika's portraits both rendering
+       correctly in the dialogue box's top-right corner with the body
+       text wrapped narrower and not overlapping. Also incidentally
+       confirmed the picker-delegated states correctly show no portrait
+       (Otik's own quest offer and topic-list screens, hit along the
+       way), validating Milestone 208's scoped trade-off in practice, not
+       just in code. Clean rebuild (`--clean-first`) showed zero new
+       `/W4` warnings before this live pass.
+
+210. **Every zone with art is now menu-style, and dialogue portraits
+     grew much bigger with text below** -- two pieces of live feedback
+     after seeing Milestone 208-209's work in action.
+     - **Auto-derive menu-town status from art, confirmed with the
+       user**: a zone no longer needs the `TOWN_MENU` flag if it has real
+       plate art -- having art *is* the opt-in now, matching every other
+       art convention in this codebase. `main.cpp`'s new
+       `isEffectiveMenuTown()` (`isMenuTown() || zonePlateLoaded`) is the
+       real check everywhere; `Zone::isMenuTown()` itself stays untouched
+       (`Zone`/`ZoneLoader` are shared with the art-unaware `ansalon_rpg`
+       console target). 11 zones went menu-only this way with zero data
+       flags added: Palanthas, Kalaman, Neraka, Pax Tharkas, Qualinost,
+       Silvanost, Tarsis, Thorbardin, Xak Tsaroth, High Clerist's Tower,
+       the Inn of the Last Home.
+     - **A real correctness bug caught by research, not live testing**:
+       10 of those 11 zones have a `TIMELINE_ANCHOR` POI (where a canon
+       Hero can be found -- the project's core pitch) with no `TALK` line
+       of its own. `buildTownMenuItems`'s old actionable check
+       (`isShop || isBed || !dialogue.empty() || isPortal`) would have
+       silently given that POI no menu row at all, making the encounter
+       permanently unreachable the moment its zone went menu-only. Fixed
+       by adding `|| poi->code == zone.timelineAnchorPoi()` -- the row
+       uses the POI's own declared name (e.g. "The Great Fireplace"), and
+       selecting it already falls into the existing generic
+       `dialogueBegin()` branch, which was already position-based and
+       anchor-aware (confirmed reading `gatherTalkCandidates` before
+       writing any code) -- no talk-logic change needed, only the menu-
+       row eligibility.
+     - **A second real bug, also caught by research**: the synthetic
+       `'L'`/Leave row is always appended. Checked every *actionable* POI
+       (not just POI presence -- `kalaman.txt` uses `L` too, but only on
+       pure scenery, never actionable) against `L`/`l` and found two real
+       collisions: `palanthas.txt`'s `L` was Astinus himself (`TALK` +
+       `TIMELINE_ANCHOR`, ~50 lines including his large `SUBJECT` pool),
+       and `high_clerist_tower.txt`'s `L` was "A Knight of the Circle"
+       (`TALK` + a `QUEST`). Either zone's menu would have had two rows
+       sharing hotkey `L`, and since the real POI's row is built before
+       the synthetic one, `L` always would have resolved to the POI --
+       the player could never have left either zone via the menu, with
+       no walking fallback available. Fixed as **data, not code**:
+       renamed via an anchored `sed` across every POI-keyed grammar line
+       (`POI`/`TALK`/`TALK_AGAIN`/`SAY_IF`/`SUBJECT`/`SUBJECT_WHEN`/
+       `SUBJECT_ENDS`/`SUBJECT_UNKNOWN`/`QUEST`/`TIMELINE_ANCHOR`, plus
+       the `GRID` tile itself, checked by hand) -- Astinus `L` → `Y`,
+       the Knight `L` → `Q`, both free letters in their own files. One-
+       time, harmless side effect: a save that already talked to either
+       will see a fresh greeting once more instead of "again" (met-
+       tracking id changes with the letter). `docs/ZONE_NOTES.md` now
+       documents `L`/`l` as reserved on any actionable POI in *any* zone
+       going forward, not just explicitly-flagged ones -- `ZoneLoader`
+       can't catch this at load time (no filesystem/art awareness), so
+       it's an authoring rule, not a validated one.
+     - **Dialogue portraits redesigned**: the 180x180 cover-fit corner
+       box became a full-panel-width, adaptive-height, **contain-fit**
+       image (deliberately the opposite fit strategy from every other
+       image in this codebase) drawn above the body text instead of
+       beside it. Contain-fit because the user's portrait art is
+       portrait-oriented (~4:5) character art, not a wide establishing
+       shot -- cropping it (cover-fit) only ever hides more as the box
+       grows, never reveals more. Height is whatever space is left above
+       the body-text-plus-footer block (measured first, same "anchor the
+       variable content, image fills what's left" idea as
+       `drawTownMenuOverlay`'s own image area, just inverted), floored at
+       150px so a long response never collapses it to nothing.
+     - **Confirmed live end-to-end**, via a disposable save copy (deleted
+       after along with autosave `.bak`s; real `save1.txt`/`save2.txt`
+       confirmed untouched by checksum before and after) and direct
+       `ZONE`/`ZONEPOS`/`ZONESTACK` edits to that disposable copy to reach
+       Palanthas and High Clerist's Tower without a long overworld walk:
+       the Inn auto-converted to a menu with no flag, its Fireplace
+       anchor row present and gracefully showing "no one here" (no Hero
+       scheduled that day); Otik's long `TALK_AFTER` correctly shrank the
+       portrait to its floor while Tika's short greeting let it fill most
+       of the panel, both uncropped; Palanthas showed exactly one `[L]`
+       row (Astinus now `[Y]`) and `Leave` correctly returned to the
+       overworld; High Clerist's Tower showed both the renamed `[Q]`
+       Knight and the anchor-derived `[Y]` Muster Yard row, `Leave`
+       confirmed working there too. Clean rebuild (`ansalon_sfml_phase1`
+       and `ansalon_rpg`, since `Zone.h`/`ZoneLoader.cpp` are shared)
+       showed zero new `/W4` warnings; the console build's piped
+       character-creation check also confirmed the renamed zone files
+       parse cleanly.
+
+211. **Dialogue portraits: fixed size + pagination, instead of shrinking
+     for a long response.** Immediate live feedback on Milestone 210's
+     adaptive-height portrait: the user didn't like that Otik's long
+     `TALK_AFTER` shrank his portrait down to its 150px floor while
+     Tika's short greeting let hers fill the panel -- they wanted the
+     portrait to **stay the same large size every time**, with long text
+     paging underneath it instead ("hit Enter to see more").
+     - **`drawPortraitFixed`** (renamed from `drawPortraitAdaptive`) now
+       always reserves the same constant space -- `kBodyLinesPerPage` (6)
+       lines plus the footer -- rather than measuring the current
+       response's actual wrapped length. The portrait gets whatever's
+       left above that, always the same, which is what makes it stop
+       fluctuating.
+     - **New `paginateBodyText`** (`main.cpp`, declared ahead of
+       `dialogueStartTalk` so every `bodyText`-setting site can see it)
+       chunks a wrapped string into pages of `kBodyLinesPerPage` lines.
+       `DialogueSession` gained `bodyTextPage`.
+     - **New `setDialogueBodyText` setter**, wrapping the raw
+       `dialogueSession.bodyText = ...` assignment and resetting
+       `bodyTextPage` to 0 -- replaces all seven places that used to
+       assign the field directly (Greeting/TopicText/the four Quest\*
+       text frames/AskResponse's own queue advance). A raw assignment
+       would have been easy to add later without remembering to reset the
+       page; routing every site through one setter closes that off
+       structurally.
+     - **`dialogueContinue` checks for a remaining page first**, before
+       any of its existing per-state transition logic: more pages left
+       just advances `bodyTextPage`; the last page falls through to the
+       original logic unchanged. Footer prompt reflects which case it is.
+     - `AskInput` gets the same fixed-size portrait call for visual
+       consistency, dropping its own now-unneeded height-measurement code
+       (it never had unbounded text to paginate in the first place).
+     - Verified via a clean rebuild of the full build tree (`--clean-first`
+       with no `--target`, after an earlier `--target X --clean-first`
+       this same session was found to silently wipe *every* target's
+       binary, not just X's -- a real gotcha worth remembering) showing
+       zero new `/W4` warnings, then confirmed live: a disposable save
+       copy (deleted after, along with autosave `.bak`s; real
+       `save1.txt`/`save2.txt` confirmed untouched by checksum) with
+       Otik's `TALK_AFTER` re-triggered (temporarily removing
+       `solace_inn:O:after` from the copy's own `MET` line) showed the
+       portrait at full, consistent size across every page, "(press Enter
+       to see more)" through the middle pages, "(press Enter to
+       continue)" on the last one, and a clean fall-through into the
+       topic picker afterward -- no stuck state, no crash.
+
+212. **Town menu's Leave row: "Back to `<parent>`" instead of always
+     "Leave town."** Reported live: the Inn of the Last Home's menu said
+     "Leave Town" on its `[L]` row, which reads wrong for a zone reached
+     via a *parent's own* menu (Solace's own "[I]" row) -- pressing it
+     doesn't exit to the overworld, `leaveCurrentZone` just pops back to
+     Solace's menu. New `townMenuLeaveLabel` (`main.cpp`, right after
+     `leaveCurrentZone`) checks the same `state.zoneStack`
+     `leaveCurrentZone` itself reads: empty (a top-level menu town --
+     Solace, Palanthas, ...) keeps "Leave town" (still accurate, leaving
+     really does go to the overworld there); non-empty names the actual
+     parent zone `leaveCurrentZone` is about to return to, via
+     `zones.getZone(state.zoneStack.back().zoneId)->name()`.
+     `buildTownMenuItems` (`main.cpp`) now takes the computed label as a
+     parameter instead of hardcoding it, passed in by both call sites
+     (the menu's own render, and the key-dispatch hotkey match).
+     - Verified via a clean rebuild of the full build tree showing zero
+       new `/W4` warnings, then confirmed live with a disposable save
+       copy (deleted after; real `save1.txt`/`save2.txt` confirmed
+       untouched by checksum): launched directly inside the Inn showed
+       "[L] Back to Solace," pressing `L` correctly returned to Solace's
+       own menu, which itself still correctly shows "[L] Leave town" (its
+       own `zoneStack` is empty -- a true top-level menu town).
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not
