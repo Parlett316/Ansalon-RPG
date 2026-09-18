@@ -292,11 +292,13 @@ table. Same warm lamplit Inn setting as Otik above.
 
 ### Portrait checklist (full 14-character roster)
 
-Status as of 2026-09-17: only Otik and Tika have art (`solace_inn_O.png`,
-`solace_inn_Y.png`), one expression each, no reaction shot yet. Every
-other character below has zero art. This is the full to-source list for
-the in-flight "dialogue portraits, full roster" work tracked in
-`docs/CURRENT_WORK.md`.
+Status as of 2026-09-17: Otik and Tika now have both expressions
+(`solace_inn_O.png`/`solace_inn_O_unknown.png`,
+`solace_inn_Y.png`/`solace_inn_Y_unknown.png` -- the reaction shots
+landed this session, sourced via `docs/PORTRAIT_PROMPTS.md`'s prompts).
+Every other character below still has zero art. This is the full
+to-source list for the in-flight "dialogue portraits, full roster" work
+tracked in `docs/CURRENT_WORK.md`.
 
 **Filename convention for the reaction expression** (not previously
 committed to one): `<normal-filename-stem>_unknown.png` -- e.g. Tanis's
@@ -328,8 +330,8 @@ label.
 | Laurana | `assets/portraits/laurana.png` | `assets/portraits/laurana_unknown.png` | Composed -- doesn't slip, takes a measured moment | Both needed |
 | Alhana Starbreeze | `assets/portraits/alhana.png` | `assets/portraits/alhana_unknown.png` | Guarded -- expression closes off, thin patience | Both needed |
 | Silvara | `assets/portraits/silvara.png` | `assets/portraits/silvara_unknown.png` | Wary -- won't meet your eyes, uncertain | Both needed |
-| Otik Sandeth | `assets/portraits/solace_inn_O.png` (have) | `assets/portraits/solace_inn_O_unknown.png` | Dry, unbothered -- still wiping the bar, "ask me something I can pour you an answer to" | Reaction only |
-| Tika Waylan | `assets/portraits/solace_inn_Y.png` (have) | `assets/portraits/solace_inn_Y_unknown.png` | Breezy, amused -- eyebrow arched, hands full | Reaction only |
+| Otik Sandeth | `assets/portraits/solace_inn_O.png` (have) | `assets/portraits/solace_inn_O_unknown.png` (have) | Dry, unbothered -- still wiping the bar, "ask me something I can pour you an answer to" | Both have |
+| Tika Waylan | `assets/portraits/solace_inn_Y.png` (have) | `assets/portraits/solace_inn_Y_unknown.png` (have) | Breezy, amused -- eyebrow arched, hands full | Both have |
 | Astinus (Palanthas) | `assets/portraits/palanthas_Y.png` | `assets/portraits/palanthas_Y_unknown.png` | Unbothered, precise -- pen never slows, "I do not speculate on what might" | Both needed |
 
 **Astinus was missed in the first pass of this checklist** -- he's a
@@ -347,9 +349,11 @@ than the rest ("ask me about ale, illusions, or pig jokes") but nowhere
 near Astinus's depth -- not added here, just noted in case that zone's
 scope grows.
 
-**Totals**: 13 normal portraits + 15 reaction portraits = **28 new
-images** to source (Otik/Tika's normal portraits already exist). That's
-the "one normal + one tailored reaction" plan as written in
+**Totals**: 13 normal portraits + 15 reaction portraits = 28 new images
+originally to source (Otik/Tika's normal portraits already existed);
+Otik/Tika's 2 reaction shots landed this session, leaving **26 still
+needed** (12 canon Heroes x 2 + Astinus x 2). That's the "one normal + one
+tailored reaction" plan as written in
 `docs/CURRENT_WORK.md`'s "Plan so far" paragraph, now covering all 15
 characters worth a portrait (12 canon Heroes + Otik + Tika + Astinus).
 That plan doc also mentions "2-3 expressions each" and a "42 images"
@@ -371,24 +375,22 @@ deliberate, not an oversight -- here's why, with the numbers behind it:
   alone has 16 of them; Flint and Tasslehoff each have close to 20
   (their late-game wilderness/refugee-camp detours add up). Alhana is
   the one true exception, with exactly 1 (`silvanesti`).
-- Of those 25 zones, only **11 have plate art today** (`solace`,
-  `palanthas`, `kalaman`, `neraka`, `pax_tharkas`, `qualinesti`,
-  `silvanesti`, `tarsis`, `thorbardin`, `xak_tsaroth`,
-  `high_clerist_tower` -- `solace_inn` also has a plate but is Otik/
-  Tika-only, not a Hero `PRESENCE` zone). The other 14 (`haven`,
-  `darken_wood`, `que_shu`, `hopeful_vale`, `port_balifor`, `flotsam`,
-  `godshome`, `ice_wall`, `southern_ergoth`, `qualimori`,
-  `foghaven_vale`, `sancrist_isle`, `mount_nevermind`, `dargaard_keep`)
-  have no plate art to build a matching portrait background from even
-  if we wanted one.
+- **Update, Milestone 216 (2026-09-17): every zone now has plate art**
+  -- at the time this section was originally written only 11 of the 25
+  had one, which is why option 3 below was written off as unworkable.
+  That's no longer true; the numbers/analysis below are left as-is for
+  the historical reasoning, but the "still falls back... for the 14
+  zones with no plate art" caveat on option 3 no longer applies -- it
+  can now composite against a real plate for every single encounter
+  zone.
 
 A true one-background-per-encounter-location matrix is not a small art
-gap to fill in later -- it's not really possible yet, and even once every
-zone has a plate, it'd mean roughly 25 backgrounds x 12 characters x 2
-expressions for the well-traveled Heroes alone. This needs a real
-decision before any of these prompts get generated for real, not
-something to quietly assume. Three ways to resolve it, roughly cheapest
-to most work:
+gap to fill in later -- it's real work either way, since it'd mean
+roughly 25 backgrounds x 12 characters x 2 expressions for the
+well-traveled Heroes alone if done as baked-in images (option 2) rather
+than composited at runtime (option 3). This needs a real decision before
+any of these prompts get generated for real, not something to quietly
+assume. Three ways to resolve it, roughly cheapest to most work:
 
 1. **Generic/neutral backdrop, same idea for every portrait.** A soft,
    indistinct painterly background (firelight, mist, unfocused stone or
@@ -409,9 +411,9 @@ to most work:
    new function beside it) layer that over the *current* zone's own
    `assets/plates/<zoneId>.png` at draw time, when one exists. Most
    "correct" -- the background would actually match where the
-   conversation is happening -- but real new code work, and still falls
-   back to something else (option 1's neutral backdrop, most likely) for
-   the 14 zones with no plate art at all.
+   conversation is happening -- but real new code work. As of Milestone
+   216, every zone has a plate to composite against, so this no longer
+   needs a fallback for missing art.
 
 Not deciding this now; flagging it for you. The character-description
 half of the prompts below is unaffected by whichever option you pick --

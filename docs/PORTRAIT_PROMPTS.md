@@ -528,7 +528,7 @@ history yet.
 
 ---
 
-## Otik Sandeth (reaction: dry, unbothered)
+## Otik Sandeth (reaction: dry, unbothered) -- DONE 2026-09-17
 **Save as**: `assets/portraits/solace_inn_O_unknown.png`
 *(his normal portrait already exists at `assets/portraits/solace_inn_O.png`)*
 
@@ -547,7 +547,7 @@ of question there is.
 
 ---
 
-## Tika Waylan (reaction: breezy, amused)
+## Tika Waylan (reaction: breezy, amused) -- DONE 2026-09-17
 **Save as**: `assets/portraits/solace_inn_Y_unknown.png`
 *(her normal portrait already exists at `assets/portraits/solace_inn_Y.png`)*
 

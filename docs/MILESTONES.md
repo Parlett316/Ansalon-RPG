@@ -8831,6 +8831,60 @@ now fully verified, nothing further outstanding.
        `docs/CURRENT_WORK.md`'s
        Playtest backlog.
 
+216. **Zone landmark plates: full coverage, all 17 remaining zones.** The
+     user dropped 21 new PNGs into `assets/plates/` in one batch --
+     sorting them out found three different things mixed together, not
+     just 21 new plates:
+     - **17 real new zone plates**, each correctly named
+       `<zoneId>.png` and matching a real `LOCATION` or
+       `data/zones/<id>.txt` id with no existing art: `crossing`,
+       `dargaard_keep`, `darken_wood`, `flotsam`, `foghaven_vale`,
+       `godshome`, `haven`, `hopeful_vale`, `ice_wall`, `mount_nevermind`,
+       `plains_of_dust`, `port_balifor`, `port_ocall`, `qualimori`,
+       `que_shu`, `sancrist_isle`, `southern_ergoth`. All 1672x941 (16:9,
+       plate format, matching `docs/TOWN_ART_PROMPTS.md`'s spec) and
+       spot-checked for content/style compliance (painted style, no
+       foreground people, no baked-in text/logo). Combined with the 12
+       zones that already had art, **every zone documented in
+       `docs/TOWN_ART_PROMPTS.md`'s "Per-location prompts" now has real
+       plate art** -- nothing left in that checklist to source. No code
+       or data changes needed (`loadZonePlateTexture`'s "file's mere
+       presence is the opt-in" contract, `main.cpp:532`, already covers
+       any zone id with a matching file).
+     - **2 misplaced dialogue-portrait reaction shots**: `otik.png` and
+       `tika.png` were dropped in `assets/plates/` (which is keyed by
+       zone id, not character id -- neither filename matches a zone),
+       but their actual content matched the Otik/Tika `_unknown` reaction
+       prompts in `docs/PORTRAIT_PROMPTS.md` exactly (Otik still wiping
+       the bar mid-question, Tika breezing past with a full tray).
+       Renamed and moved to their correct, already-documented paths:
+       `assets/portraits/solace_inn_O_unknown.png` and
+       `assets/portraits/solace_inn_Y_unknown.png` (the
+       `<normal-stem>_unknown.png` convention from Milestone 208's
+       portrait checklist).
+     - **2 byte-identical duplicate files under the wrong name**,
+       deleted: `inn_of_the_last_home.png` (SHA-256-identical to the
+       already-shipped `solace_inn.png` -- the real zone id for the Inn)
+       and `silvantesti.png` (identical to the already-shipped
+       `silvanesti.png` -- a typo'd extra character, not a real id).
+       Neither filename matches any zone id `loadZonePlateTexture` would
+       ever look up, so both were dead weight, not lost content.
+     - **QA note, not yet resolved**: 2 of the 17 new plates
+       (`darken_wood.png`, `mount_nevermind.png`) have a faint,
+       illegible cursive scribble baked into a bottom corner -- reads as
+       an AI generator's imitation-of-an-artist's-signature flourish, not
+       a legible logo/watermark, and it sits in near-total shadow in both
+       images. Doesn't clearly violate the "no text/logo" style rule
+       given it's unreadable, but wasn't confirmed with the user before
+       being wired in -- flag if it's ever noticed live, regenerate those
+       two specifically if so.
+     - Verified via a clean incremental rebuild (zero source changes,
+       zero new `/W4` -- the post-build `copy_directory` step for
+       `assets/` already wholesale-copies any new file, no CMake change
+       needed) and a launch smoke test against Mike's real `save1.txt`:
+       "zones loaded, 29 zones" and every other catalog/save/map-texture
+       load line printed clean, same as always.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

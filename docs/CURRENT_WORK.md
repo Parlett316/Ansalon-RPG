@@ -33,11 +33,17 @@ section, sourced from the actual Chronicles/Legends novel text in
 to `docs/PORTRAIT_PROMPTS.md`.
 **Open decision surfaced by that pass, not yet resolved**: portrait
 backgrounds. The 12 Heroes cross 25 distinct zones total between them
-(Tanis alone has 16), only 11 of which have plate art today -- a true
-per-location background matrix isn't feasible yet. Three options laid
-out in that doc's "Portrait backgrounds" section (generic backdrop /
-one signature location baked in / runtime compositing over the zone's
-own plate) -- prompts are written background-agnostic in the meantime.
+(Tanis alone has 16); at the time this was written only 11 of those had
+plate art, ruling out a true per-location background matrix. **That
+constraint is gone as of Milestone 216** -- every zone now has plate art,
+so option 3 (runtime compositing the portrait over the zone's own plate)
+is now actually feasible, not just theoretical. Still not decided which
+of the three options in that doc's "Portrait backgrounds" section
+(generic backdrop / one signature location baked in / runtime
+compositing) to pursue -- prompts are written background-agnostic in the
+meantime, and the existing portrait art was generated under option 1
+(generic backdrop), so switching to option 3 later would mean
+regenerating it.
 **Not started yet**: picking a backgrounds option (ask the user), then
 sourcing the actual portrait art, and the code to select which
 expression to show, when -- `loadDialoguePortraitTexture`
@@ -89,11 +95,24 @@ layout/sizing, the live Hero line actually appearing/disappearing
 correctly) is **not yet interactively confirmed** — see the Playtest
 backlog below.
 
-**Real art now exists for 12 zones + 2 dialogue portraits** (Solace,
-Palanthas, Kalaman, Neraka, Pax Tharkas, Qualinost, Silvanost, Tarsis,
-Thorbardin, Xak Tsaroth, High Clerist's Tower, the Inn of the Last Home,
-plus Otik and Tika) — every other zone still ships with zero art and
-stays walkable. Full writeups: Milestones 205-212 in `docs/MILESTONES.md`,
+**Real art now exists for all 29 documented zones + 4 dialogue
+portraits**, as of Milestone 216 (2026-09-17): every zone in
+`docs/TOWN_ART_PROMPTS.md`'s "Per-location prompts" checklist now has a
+real `assets/plates/<zoneId>.png` — the original 12 (Solace, Palanthas,
+Kalaman, Neraka, Pax Tharkas, Qualinost, Silvanost, Tarsis, Thorbardin,
+Xak Tsaroth, High Clerist's Tower, the Inn of the Last Home) plus 17 more
+uploaded and sorted in this session (Crossing, Dargaard Keep, Darken
+Wood, Flotsam, Foghaven Vale, Godshome, Haven, Hopeful Vale, Ice Wall,
+Mount Nevermind, Plains of Dust, Port Balifor, Port O'Call, Qualimori,
+Que-shu, Sancrist Isle, Southern Ergoth). Otik and Tika now have both
+portrait expressions (`solace_inn_O.png`/`_unknown.png`,
+`solace_inn_Y.png`/`_unknown.png`). Same upload also included 2
+byte-identical duplicate files under wrong names, deleted as dead weight
+— see Milestone 216 in `docs/MILESTONES.md` for the full sort-out.
+**Open QA note, unresolved**: 2 of the 17 new plates (`darken_wood.png`,
+`mount_nevermind.png`) have a faint illegible signature-flourish baked
+into a shadowed corner — not confirmed with the user, flag if noticed
+live. Full writeups: Milestones 205-212 and 216 in `docs/MILESTONES.md`,
 the SFML section of `docs/ARCHITECTURE.md`, `docs/ZONE_NOTES.md`'s "Town
 menus" (the new `L`/`l`-reservation authoring rule applies to any zone
 now, not just explicitly-flagged ones).
