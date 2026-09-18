@@ -750,6 +750,9 @@ END
 
 CHARACTER fizban
 NAME Fizban
+
+SUBJECT_UNKNOWN The old man's face lights up, not remotely troubled by his own ignorance. "Haven't the faintest idea! Wonderful question, though." He pats his robes, as if the answer might be hiding in a pocket instead. "Ask me something else, and we'll see if I do any better with that one. I generally do, eventually, whether I mean to or not."
+
 PRESENCE qualinesti 10 12 A white-bearded old man in a scorched, wide-brimmed hat is losing an argument with a garden aspen, gesturing at it sternly while a pair of elven pages hover nearby, unsure whether to intervene.
 SAY "Now then -- have we met?" The old man peers at you over a truly alarming number of chins for someone so thin. "We must have. Everyone's met me eventually, one way or another." He pats a leather satchel slung at his hip as if reassuring it. "Fizban. That's the name. I'm meant to be minding these Disks for the Plainswoman. Very important business. I forget exactly why, but I'm assured it's important."
 SAY_AGAIN "Ah -- you." The old man brightens, then frowns, then brightens again. "I do remember you. Mostly. Give me a moment and it'll come back entirely."
@@ -785,6 +788,9 @@ END
 
 CHARACTER laurana
 NAME Laurana
+
+SUBJECT_UNKNOWN Laurana's composure doesn't slip, though she takes a moment before answering. "I'm afraid I don't have an answer for that one. Ask me something else, if you would -- I'd rather admit what I don't know than guess and mislead you."
+
 PRESENCE qualinesti 10 12 Laurana stands at her father's side in the golden tower, performing every grace her station requires of her, though her eyes keep finding Tanis across the hall whether she wills them to or not. A ring of woven golden ivy leaves sits heavy on her hand.
 SAY "I welcome you to Qualinost," Laurana says, formal as her father taught her, though her voice catches somewhere underneath the formality. "Be at ease here while you can. I don't know how much longer any of us will get to say that, about this place or any other."
 SAY_IF halfelf Laurana's formal welcome doesn't cool the way you might expect, here of all places. "Some in this city would rather you not have come," she says quietly. "I am not one of them, whatever anyone else's manners might suggest otherwise."
@@ -852,6 +858,9 @@ END
 
 CHARACTER alhana
 NAME Alhana Starbreeze
+
+SUBJECT_UNKNOWN Alhana's expression closes like a door. "That means nothing to me, and I've little patience left to guess at what you intend by it. Ask me something else, if you've a true question in mind."
+
 PRESENCE silvanesti 51 63 Alhana Starbreeze kneels at her father's side within the Tower of the Stars, refusing every suggestion that she rest herself, thorn-scratches still beading dark along her hands from a night none of you are eager to describe to each other.
 SAY "Humans were never permitted in Silvanesti," Alhana says, not quite looking away from her father, "and I brought five of you in myself, griffons and all. I have had a great deal of practice, these last days, learning to live with decisions I did not expect to make." Her hand doesn't leave Lorac's. "Whatever you came here to find, I hope it was worth what all of us paid for it."
 SAY_IF halfelf Alhana studies you a moment, something unreadable crossing her face. "Half-Elven." She says the word plainly, without whatever edge it might once have carried. "It's what I've been calling one of your companions for days now, more often than his own name. I no longer have the luxury of sorting people by species alone. Not this week."
@@ -862,6 +871,9 @@ END
 
 CHARACTER silvara
 NAME Silvara
+
+SUBJECT_UNKNOWN Silvara doesn't meet your eyes. "I don't understand what you're asking me, and I'm sorry for it." She's still watchful, uncertain. "Ask me again, if you would -- plainer, please. I don't want to answer you wrong."
+
 PRESENCE southern_ergoth 69 72 A silver-haired young woman kneels at a wounded elf-lord's side, her hands gentle and sure despite how visibly she flinches from every raised voice around her -- as though she expects, at any moment, to be made to stop.
 SAY "They call me Silvan here. Silvara, if you'd rather -- it means the same thing, silver-haired, and it's closer to true besides." She doesn't quite meet your eyes. "I'm told I brought danger onto this shore by bringing you here at all. I'd already decided the danger you were already in mattered more than an oath I made before I understood what it would cost to keep."
 SAY_AGAIN Silvara is still close by, watchful in a way that has nothing to do with the wound she's tending. "I haven't left. I don't think I'm going to, not until I've finished what I started by pulling you out of that water."

@@ -1,6 +1,28 @@
 # Current work
 
-**Nothing in flight.** Milestones 205-212 all shipped 2026-09-17: zone
+**In flight: dialogue portraits for the full canon/companion roster (14
+characters), 2-3 expressions each.** Plan so far: one "normal" portrait per
+character, plus a tailored second expression for whoever triggers
+`SUBJECT_UNKNOWN` (an unrecognized ask-input question) -- not a uniform
+"confused" label, but matched per-character to how their own
+`SUBJECT_UNKNOWN` line already reads (puzzled for most, irritated for
+Raistlin/Flint, unbothered/delighted for Tasslehoff and Fizban, guarded
+for Alhana, wary for Silvara, composed for Laurana and Riverwind). Step 1
+done: Fizban/Laurana/Alhana/Silvara didn't have a `SUBJECT_UNKNOWN` line
+at all yet (the other 8 canon Heroes did) -- added one for each, in-voice,
+matching the established pattern (all 4 previously fell through to a
+generic system line, "gives you a blank look... I'm not sure what you
+mean," not a bug, just impersonal). Verified via a launch smoke test
+(`ansalon_sfml_phase1`, Mike's real `save1.txt` -- "timeline loaded"
+confirms the new lines parse). **Not started yet**: sourcing the actual
+portrait art (42 images at the current 2-per-character plan) and the code
+to select which expression to show, when -- `loadDialoguePortraitTexture`
+(`sfml_phase1/main.cpp:547`) currently loads exactly one static texture
+per character id for a whole conversation; nothing yet decides "show the
+alternate expression right now." Not committed to a filename/lookup
+convention for the second expression yet either.
+
+Milestones 205-212 all shipped 2026-09-17: zone
 landmark plates, the Gold Box town menu (originally piloted on Solace
 alone, **now auto-derived for any zone with real plate art, confirmed
 live end-to-end**), dialogue portraits (redesigned bigger at Milestone
