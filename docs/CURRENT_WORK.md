@@ -14,13 +14,36 @@ matching the established pattern (all 4 previously fell through to a
 generic system line, "gives you a blank look... I'm not sure what you
 mean," not a bug, just impersonal). Verified via a launch smoke test
 (`ansalon_sfml_phase1`, Mike's real `save1.txt` -- "timeline loaded"
-confirms the new lines parse). **Not started yet**: sourcing the actual
-portrait art (42 images at the current 2-per-character plan) and the code
-to select which expression to show, when -- `loadDialoguePortraitTexture`
+confirms the new lines parse). Step 2 done 2026-09-17: full portrait
+checklist built and filename convention settled -- see
+`docs/TOWN_ART_PROMPTS.md`'s "Portrait checklist (full 14-character
+roster)". Resolves the plan to 2 expressions per character (one normal +
+one `SUBJECT_UNKNOWN`-reaction, mood read off each character's own line,
+not a uniform "confused"), 26 new images to source (Otik/Tika's normal
+portraits already exist); reaction filename is `<normal-stem>_unknown.png`
+(e.g. `tanis_unknown.png`). Step 3 done 2026-09-17: novel-research pass complete, full art-direction
+prompts (physical description + normal/reaction expression) written for
+all 12 canon Heroes, Astinus (a zone POI missed by the first pass' sweep
+of `data/timeline.txt`'s `CHARACTER` roster -- caught when the user
+asked, then confirmed no one else in the game's other 29
+`SUBJECT_UNKNOWN` lines has comparable depth), and Otik/Tika's reaction
+shots -- see `docs/TOWN_ART_PROMPTS.md`'s "Dialogue portrait prompts"
+section, sourced from the actual Chronicles/Legends novel text in
+`.research/`. Ready-to-paste generator prompts (28 total) also written
+to `docs/PORTRAIT_PROMPTS.md`.
+**Open decision surfaced by that pass, not yet resolved**: portrait
+backgrounds. The 12 Heroes cross 25 distinct zones total between them
+(Tanis alone has 16), only 11 of which have plate art today -- a true
+per-location background matrix isn't feasible yet. Three options laid
+out in that doc's "Portrait backgrounds" section (generic backdrop /
+one signature location baked in / runtime compositing over the zone's
+own plate) -- prompts are written background-agnostic in the meantime.
+**Not started yet**: picking a backgrounds option (ask the user), then
+sourcing the actual portrait art, and the code to select which
+expression to show, when -- `loadDialoguePortraitTexture`
 (`sfml_phase1/main.cpp:547`) currently loads exactly one static texture
 per character id for a whole conversation; nothing yet decides "show the
-alternate expression right now." Not committed to a filename/lookup
-convention for the second expression yet either.
+alternate expression right now."
 
 Milestones 205-212 all shipped 2026-09-17: zone
 landmark plates, the Gold Box town menu (originally piloted on Solace

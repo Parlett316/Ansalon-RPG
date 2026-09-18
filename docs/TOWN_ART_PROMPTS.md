@@ -290,6 +290,323 @@ ease, apron over simple tavern clothes, a quick and appraising look in
 her eyes -- someone who's learned to spot trouble before it reaches a
 table. Same warm lamplit Inn setting as Otik above.
 
+### Portrait checklist (full 14-character roster)
+
+Status as of 2026-09-17: only Otik and Tika have art (`solace_inn_O.png`,
+`solace_inn_Y.png`), one expression each, no reaction shot yet. Every
+other character below has zero art. This is the full to-source list for
+the in-flight "dialogue portraits, full roster" work tracked in
+`docs/CURRENT_WORK.md`.
+
+**Filename convention for the reaction expression** (not previously
+committed to one): `<normal-filename-stem>_unknown.png` -- e.g. Tanis's
+reaction shot is `assets/portraits/tanis_unknown.png`, Otik's is
+`assets/portraits/solace_inn_O_unknown.png`. Named for the trigger event
+(`SUBJECT_UNKNOWN`, an unrecognized ask-input question) rather than the
+emotion, since the emotion itself differs per character (see table).
+Nothing in code reads this second file yet -- `loadDialoguePortraitTexture`
+(`sfml_phase1/main.cpp:547`) still loads exactly one static texture per
+conversation; picking the reaction shot at the right moment is separate,
+unwritten work.
+
+Each reaction mood below is read directly off that character's own
+`SUBJECT_UNKNOWN` line in `data/timeline.txt` (or `data/zones/
+solace_inn.txt` for Otik/Tika) -- not invented, not a uniform "confused"
+label.
+
+| Character | Normal portrait | Reaction portrait | Reaction mood (from their own line) | Status |
+|---|---|---|---|---|
+| Tanis Half-Elven | `assets/portraits/tanis.png` | `assets/portraits/tanis_unknown.png` | Puzzled, apologetic half-smile | Both needed |
+| Sturm Brightblade | `assets/portraits/sturm.png` | `assets/portraits/sturm_unknown.png` | Puzzled, formally apologetic | Both needed |
+| Caramon Majere | `assets/portraits/caramon.png` | `assets/portraits/caramon_unknown.png` | Puzzled, good-natured, scratching his head | Both needed |
+| Goldmoon | `assets/portraits/goldmoon.png` | `assets/portraits/goldmoon_unknown.png` | Puzzled but not unkind, studying you a moment | Both needed |
+| Raistlin Majere | `assets/portraits/raistlin.png` | `assets/portraits/raistlin_unknown.png` | Irritated -- weary disdain, turning back to the fire | Both needed |
+| Flint Fireforge | `assets/portraits/flint.png` | `assets/portraits/flint_unknown.png` | Irritated -- gruff grunt, unimpressed, out of patience | Both needed |
+| Tasslehoff Burrfoot | `assets/portraits/tasslehoff.png` | `assets/portraits/tasslehoff_unknown.png` | Unbothered/delighted -- head tilted, cheerfully unfazed | Both needed |
+| Fizban | `assets/portraits/fizban.png` | `assets/portraits/fizban_unknown.png` | Delighted -- face lighting up, patting his robes | Both needed |
+| Riverwind | `assets/portraits/riverwind.png` | `assets/portraits/riverwind_unknown.png` | Composed -- steady, patient | Both needed |
+| Laurana | `assets/portraits/laurana.png` | `assets/portraits/laurana_unknown.png` | Composed -- doesn't slip, takes a measured moment | Both needed |
+| Alhana Starbreeze | `assets/portraits/alhana.png` | `assets/portraits/alhana_unknown.png` | Guarded -- expression closes off, thin patience | Both needed |
+| Silvara | `assets/portraits/silvara.png` | `assets/portraits/silvara_unknown.png` | Wary -- won't meet your eyes, uncertain | Both needed |
+| Otik Sandeth | `assets/portraits/solace_inn_O.png` (have) | `assets/portraits/solace_inn_O_unknown.png` | Dry, unbothered -- still wiping the bar, "ask me something I can pour you an answer to" | Reaction only |
+| Tika Waylan | `assets/portraits/solace_inn_Y.png` (have) | `assets/portraits/solace_inn_Y_unknown.png` | Breezy, amused -- eyebrow arched, hands full | Reaction only |
+| Astinus (Palanthas) | `assets/portraits/palanthas_Y.png` | `assets/portraits/palanthas_Y_unknown.png` | Unbothered, precise -- pen never slows, "I do not speculate on what might" | Both needed |
+
+**Astinus was missed in the first pass of this checklist** -- he's a
+zone POI (`palanthas.txt`, letter `Y`) with his own large `SUBJECT`
+pool the user keeps adding to, not a `CHARACTER` entry in
+`data/timeline.txt`, so the original sweep (which was keyed off that
+file's 12-character roster) never caught him. A check of every zone
+file turned up 30 total `SUBJECT_UNKNOWN` lines across 21 zones; the
+other ~29 are all one-line generic brush-offs from unnamed guards,
+dockhands, and merchants ("not my business," "ask someone who isn't
+holding a manifest") -- not characters with enough presence to warrant
+individual portrait art, unlike Otik/Tika/Astinus. Worth a second look
+later: William (`port_balifor.txt`), who has a bit more personality
+than the rest ("ask me about ale, illusions, or pig jokes") but nowhere
+near Astinus's depth -- not added here, just noted in case that zone's
+scope grows.
+
+**Totals**: 13 normal portraits + 15 reaction portraits = **28 new
+images** to source (Otik/Tika's normal portraits already exist). That's
+the "one normal + one tailored reaction" plan as written in
+`docs/CURRENT_WORK.md`'s "Plan so far" paragraph, now covering all 15
+characters worth a portrait (12 canon Heroes + Otik + Tika + Astinus).
+That plan doc also mentions "2-3 expressions each" and a "42 images"
+figure elsewhere, without ever saying what a 3rd expression would be
+for -- no 3rd-expression use case is defined anywhere in the docs, so
+this checklist resolves the plan to the concrete 2-per-character
+reading. Flag this to the user rather than assume if a 3rd expression
+turns out to be wanted after all.
+
+### Portrait backgrounds -- open question, not yet decided
+
+The prompts below intentionally give each character's physical
+description but leave the **background/setting unspecified** (a plain,
+softly atmospheric backdrop -- no specific location baked in). That's
+deliberate, not an oversight -- here's why, with the numbers behind it:
+
+- Across all 12 canon Heroes' `PRESENCE` windows in `data/timeline.txt`,
+  there are **25 distinct zones** a Hero can be encountered in. Tanis
+  alone has 16 of them; Flint and Tasslehoff each have close to 20
+  (their late-game wilderness/refugee-camp detours add up). Alhana is
+  the one true exception, with exactly 1 (`silvanesti`).
+- Of those 25 zones, only **11 have plate art today** (`solace`,
+  `palanthas`, `kalaman`, `neraka`, `pax_tharkas`, `qualinesti`,
+  `silvanesti`, `tarsis`, `thorbardin`, `xak_tsaroth`,
+  `high_clerist_tower` -- `solace_inn` also has a plate but is Otik/
+  Tika-only, not a Hero `PRESENCE` zone). The other 14 (`haven`,
+  `darken_wood`, `que_shu`, `hopeful_vale`, `port_balifor`, `flotsam`,
+  `godshome`, `ice_wall`, `southern_ergoth`, `qualimori`,
+  `foghaven_vale`, `sancrist_isle`, `mount_nevermind`, `dargaard_keep`)
+  have no plate art to build a matching portrait background from even
+  if we wanted one.
+
+A true one-background-per-encounter-location matrix is not a small art
+gap to fill in later -- it's not really possible yet, and even once every
+zone has a plate, it'd mean roughly 25 backgrounds x 12 characters x 2
+expressions for the well-traveled Heroes alone. This needs a real
+decision before any of these prompts get generated for real, not
+something to quietly assume. Three ways to resolve it, roughly cheapest
+to most work:
+
+1. **Generic/neutral backdrop, same idea for every portrait.** A soft,
+   indistinct painterly background (firelight, mist, unfocused stone or
+   foliage -- whatever suits the character, not the specific room) baked
+   into the one portrait image. No code changes, matches the existing
+   `assets/portraits/<id>.png` convention exactly, cheapest by far. The
+   prompts below are written to this option by default.
+2. **One "signature" location per character, baked into the image.**
+   Same zero-code-change convention as above, but the backdrop matches
+   wherever that character is most narratively tied to (Solace for the
+   original eight, Qualinost for Laurana, Silvanost for Alhana, etc.)
+   rather than a neutral wash. Costs nothing extra in image count over
+   option 1, just more specific (and more research/decision-making) per
+   character, and still won't match most of that character's other 24
+   encounter locations.
+3. **Runtime compositing**: render the character on a simple/plain or
+   transparent background, and have `loadDialoguePortraitTexture` (or a
+   new function beside it) layer that over the *current* zone's own
+   `assets/plates/<zoneId>.png` at draw time, when one exists. Most
+   "correct" -- the background would actually match where the
+   conversation is happening -- but real new code work, and still falls
+   back to something else (option 1's neutral backdrop, most likely) for
+   the 14 zones with no plate art at all.
+
+Not deciding this now; flagging it for you. The character-description
+half of the prompts below is unaffected by whichever option you pick --
+only the setting line changes.
+
+## Dialogue portrait prompts -- canon Hero roster
+
+Sourced from the actual novel text (`References/Dragons_of_Autumn_Twilight_-_Margaret_Weis.pdf`
+and `References/Dragons_of_Winter_Night_-_Margaret_Weis.pdf`, pre-extracted
+to `.research/dat_full.txt` / `.research/dwn_full.txt` / `.research/dosd_full.txt`
+for this research pass), not written from memory -- per this project's
+sourcing rule. Citations below are `<file> lines ~<range>`. All 12 are
+introduced with real physical description in Chapter 1 of *Dragons of
+Autumn Twilight* except Alhana (*Dragons of Winter Night*) and Silvara
+(*Dragons of Spring Dawning*), who appear in later books. Prompts are
+original paraphrases, not transcriptions -- same non-infringement
+discipline as the location plates above, and reaction moods reuse the
+mood labels already established in the checklist (sourced from each
+character's own `SUBJECT_UNKNOWN` line).
+
+### Tanis Half-Elven -- `tanis`
+*Sourced: `.research/dat_full.txt` lines ~330-365, 409-410, 1030-1040.*
+Tan, weathered skin and a close-trimmed reddish-brown beard grown to
+hide elven ancestry, over an elven fighter's lean, graceful build with a
+human's thicker muscle. Dressed in supple, hand-tooled leather cut in
+elven patterns, a green travel hood pushed back, a longbow visible over
+one shoulder. A watchful, weighing expression -- a leader carrying more
+than he says.
+- **Normal**: as described above, steady and thoughtful, meeting the
+  viewer's eyes directly.
+- **Reaction (puzzled)**: same figure, an apologetic half-smile, brow
+  creased in genuine confusion, one hand absently at his beard.
+
+### Sturm Brightblade -- `sturm`
+*Sourced: `.research/dat_full.txt` lines ~994-1042, 1100-1113.*
+Tall and straight-backed in antique, dented plate armor bearing the Rose
+emblem of his Order, over chain mail. Thick, sweeping moustaches groomed
+with evident pride, brown hair touched with gray at the temples, warm
+brown eyes despite a stern, formal set to his mouth. One hand resting on
+the hilt of an old two-handed sword.
+- **Normal**: as described above, proud and formally composed.
+- **Reaction (puzzled, formally apologetic)**: same knight, a genuinely
+  apologetic expression, brows drawn in confusion he's too well-mannered
+  to hide, the faintest formal bow of the head.
+
+### Caramon Majere -- `caramon`
+*Sourced: `.research/dat_full.txt` lines ~761-781, 1104-1122, 1145-1150.*
+A hugely muscled warrior with a broad, open, good-natured face and dark
+hair, wearing a battered winged dragon-crest helm and plain banded or
+leather armor, a sword at his hip. An easy grin that doesn't quite hide
+real worry underneath.
+- **Normal**: as described above, warm and open.
+- **Reaction (puzzled, good-natured, lost)**: same big man, scratching
+  the back of his head, brow furrowed in honest confusion, a sheepish
+  half-grin.
+
+### Goldmoon -- `goldmoon`
+*Sourced: `.research/dat_full.txt` lines ~1175-1182, 1200-1245.*
+A Plainswoman with a chieftain's daughter's bearing, her face composed
+and striking as carved marble. Remarkable silver-and-gold hair, unlike
+any other Plainsperson's, loose over her shoulders. Simple but regal
+Que-shu tribal dress trimmed with feathers, one hand resting on a plain
+staff bound with feathers.
+- **Normal**: as described above, composed and quietly regal.
+- **Reaction (puzzled but not unkind)**: same woman, head tilted
+  slightly, a patient, searching look, the faintest concerned crease
+  between her brows.
+
+### Riverwind -- `riverwind`
+*Sourced: `.research/dat_full.txt` lines ~1119-1128.*
+An extraordinarily tall, rawboned Plainsman (taller than any of his
+companions), dark-skinned face drawn thin and pale from past hardship,
+wrapped in heavy Plains traveling furs. Quiet strength rather than
+warmth -- the stillness of a man always watching the door.
+- **Normal**: as described above, steady and watchful.
+- **Reaction (composed)**: same figure, unreadable and patient, a
+  single measuring look -- no irritation, just quiet attention.
+
+### Raistlin Majere -- `raistlin`
+*Sourced: `.research/dat_full.txt` lines ~792-892.*
+A slight, gaunt young mage with unsettling golden, faintly metallic
+skin stretched tight over sharp cheekbones, eyes with narrow
+hourglass-shaped pupils and glittering gold irises, thin lips set in a
+faint, private smile. Hooded red robes, one clawlike hand resting on a
+plain wooden staff topped with a crystal held in a carved golden
+dragon's talon (the Staff of Magius).
+- **Normal**: as described above, cold and self-possessed.
+- **Reaction (irritated)**: same mage, head turning away in weary, open
+  disdain, eyes narrowed, thin hands drawing further into his sleeves --
+  already finished with the question.
+
+### Flint Fireforge -- `flint`
+*Sourced: `.research/dat_full.txt` lines ~4053-4070, 309-340.*
+A stout, heavy-set dwarf with a full gray beard and moustaches, bushy
+overhanging white eyebrows, a weathered brown face creased like old
+leather, gnarled hands. Dressed in a smith's sturdy leathers, a war-axe
+close at hand.
+- **Normal**: as described above, gruff but solid.
+- **Reaction (irritated)**: same dwarf, arms crossed, a gruff scowl, one
+  eyebrow raised in open, out-of-patience exasperation.
+
+### Tasslehoff Burrfoot -- `tasslehoff`
+*Sourced: `.research/dat_full.txt` lines ~734, 1469, 1562, 1733,
+2427-2430.*
+A small, slight, child-sized kender with a long topknot of hair and
+bright, restless eyes. Festooned with an enormous number of bulging
+pouches, a hoopak slung over one shoulder, an open, delighted grin.
+- **Normal**: as described above, cheerful and endlessly curious.
+- **Reaction (unbothered/delighted)**: same kender, head tilted with
+  cheerful curiosity rather than confusion, entirely unfazed, already
+  looking past the question toward something more interesting.
+
+### Fizban -- `fizban`
+*Sourced: `.research/dat_full.txt` lines ~186-270, 16000-16043; also
+`data/timeline.txt`'s own `PRESENCE` lines ("white-bearded old man in a
+scorched, wide-brimmed hat").*
+A stooped, white-bearded old man in a tattered gray robe and a scorched,
+wide-brimmed pointed hat, leaning on a worn oak staff. Sharp, hawkish
+eyes that don't quite match his absent-minded manner.
+- **Normal**: as described above, leaning on his staff, an inscrutable
+  half-smile.
+- **Reaction (delighted)**: same old man, face lit up with open delight
+  rather than embarrassment, one hand patting down his robes as if the
+  answer's hiding in a pocket, utterly untroubled by not knowing.
+
+### Laurana -- `laurana`
+*Sourced: `.research/dat_full.txt` lines ~12788-12839.*
+An elven princess with extraordinarily long honey-gold hair spilling
+past her waist, smooth woodland-brown skin, delicate elven features,
+large expressive eyes. Fine Qualinesti court dress. Composed, with a
+hint of shy self-consciousness underneath.
+- **Normal**: as described above, graceful and composed.
+- **Reaction (composed)**: same elfmaiden, composure held carefully in
+  place, a measured breath before answering, a furrow of real thought
+  rather than confusion.
+
+### Alhana Starbreeze -- `alhana`
+*Sourced: `.research/dwn_full.txt` lines ~1989-1996.*
+A striking elven princess ("Muralasa," Princess of the Night) with
+black hair soft as the night wind, bound in a fine jeweled net. Skin
+pale as moonlight, deep dark-purple eyes, lips tinted like the red
+moon's shadow. Rich, formal elven dress.
+- **Normal**: as described above, regal and guarded.
+- **Reaction (guarded)**: same princess, expression closing off like a
+  shutting door, chin lifted, eyes cooling -- patience visibly thinning.
+
+### Silvara -- `silvara`
+*Sourced: `.research/dosd_full.txt` lines ~4771-4774; also
+`data/timeline.txt`'s own `PRESENCE` line 877 ("silver-haired young
+woman... flinches from every raised voice").*
+An elfwoman with striking silver hair and deep blue eyes (her true form
+is a silver dragon; this is her elven guise). Simple traveling clothes,
+a gentle but watchful bearing -- someone who startles easily and stays
+near the edges of a room.
+- **Normal**: as described above, gentle and quietly alert.
+- **Reaction (wary)**: same woman, gaze dropped rather than meeting the
+  viewer's eyes, shoulders drawn slightly in, uncertain and apologetic
+  rather than confused.
+
+### Astinus -- `palanthas_Y`
+*Sourced: `.research/tott_full.txt` lines ~79-193 (his first real
+physical description, in *Time of the Twins*), `.research/dosd_full.txt`
+lines ~2033-2115 (his own cameo in *Dragons of Spring Dawning*, the
+scene this project's Palanthas zone already draws its Astinus
+characterization from).* A face "handsome in a timeless, ageless
+fashion" that no one who meets him ever quite remembers -- what they
+remember instead are his eyes: dark, intent, constantly moving, seeing
+everything. Seated at a great polished desk in his study within the
+Great Library of Palanthas, a quill in hand moving in firm, unbroken
+strokes across a page, a stack of finished parchment at his elbow.
+Plain, dark, unadorned scholar's robes (the novel excerpts researched
+didn't specify an exact robe color -- left deliberately muted/dark
+rather than invented). Utterly composed, unhurried, already writing.
+- **Normal**: as described above, mid-sentence, pen still moving,
+  glancing up just enough to acknowledge the viewer.
+- **Reaction (unbothered, precise)**: same historian, pen still moving
+  without pause, an even, unreadable glance, already returning his gaze
+  to the page -- not annoyed, just finished with a question that isn't
+  history yet.
+
+### Otik Sandeth reaction -- `solace_inn_O` (normal already exists)
+*Original-to-project dialogue, not novel-sourced -- see his own
+`SUBJECT_UNKNOWN` line in `data/zones/solace_inn.txt`.*
+- **Reaction (dry, unbothered)**: same innkeeper as the existing
+  portrait, still wiping the bar without pause, one eyebrow raised, a
+  dry, patient almost-smile -- the look of a man who's heard every kind
+  of question there is.
+
+### Tika Waylan reaction -- `solace_inn_Y` (normal already exists)
+*Original-to-project dialogue, not novel-sourced -- see her own
+`SUBJECT_UNKNOWN` line in `data/zones/solace_inn.txt`.*
+- **Reaction (breezy, amused)**: same server as the existing portrait,
+  tray still balanced without looking, one eyebrow arched, a teasing
+  almost-smile -- amused rather than annoyed.
+
 ## Notes for whoever generates these
 
 - Generate a few variations per location and pick the one that best
