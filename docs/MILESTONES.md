@@ -8652,6 +8652,185 @@ now fully verified, nothing further outstanding.
        own menu, which itself still correctly shows "[L] Leave town" (its
        own `zoneStack` is empty -- a true top-level menu town).
 
+213. **Retired the non-combat Overworld/Zone status+log sidebar for an SSI
+     Gold-Box-style bottom command bar.** User feedback: the right-hand
+     "status" card (Milestone 201 -- character name/level/race/class, HP,
+     time-of-day, indoor zone name) sitting above a full log card was
+     unnecessary clutter. Dropped both cards entirely rather than trimming
+     just the top one (the user's own explicit choice between the two,
+     via `AskUserQuestion`) -- character HP/level/zone-name are no longer
+     passively displayed anywhere; full detail stays one keypress away via
+     `c` (character sheet), the same "no passive HUD clutter" posture this
+     project already applies to companion HP in combat. In its place, the
+     shared bottom command/message bar Milestone 199 introduced for combat
+     (`kBottomBarHeight`, renamed from `kCombatBottomBarHeight` since it's
+     no longer combat-only; `bottomBarBg`, renamed from
+     `combatBottomBarBg` likewise) is now reused for exploration too:
+     `mapView` (`main.cpp`) reserves that bottom strip instead of the old
+     right-hand `sidebarWidth` column, so the map now spans the full
+     window width outside combat, and the exploration screen's own draw
+     branch shows the most recent log message (mirrors combat's own
+     Idle-state "last message stays visible for continuity" line) followed
+     by a static, always-the-same SSI Gold-Box-style command hint line
+     (`MOVE (arrows/numpad)  LOOK (l)  TALK (t)  ENTER (Enter)  CHARACTER
+     (c)  SHOP (p)  INVENTORY (i)  REST (r)  ENCAMP (z)  JOURNAL (g)  LOG
+     (v)  MAP (o)  SAVE (auto)  HELP (/)  QUIT (q)`) -- not context-gated,
+     same posture combat's own Idle bar already takes (it shows `CAST (c)`
+     even for a non-caster). `SAVE (auto)` is label-only: the game already
+     autosaves after every processed keypress (`main.cpp:7740`), so no new
+     manual-save bind was added, per the user's own explicit choice.
+     `ENCAMP` labels the existing `z` bed-rest bind (full heal, real-bed-
+     only, unchanged gate) to match SSI's own "camp" terminology; `REST`
+     (`r`) is the existing anywhere-partial-heal bind, also unchanged.
+     Combat's own compact card + bottom bar are untouched -- it still
+     reserves `sidebarWidth` on the right for its card, same as before,
+     now just sharing the renamed bottom-bar constant/lambdas with
+     exploration's own branch instead of declaring its own copy.
+     - Verified via a clean rebuild of the full build tree showing zero
+       new `/W4` warnings, then a launch smoke test against Mike's real
+       `save1.txt`: World/ZoneCatalog/Timeline/MonsterCatalog/quests/the
+       save itself all loaded cleanly ("init ok"), the window stayed open
+       with no crash, and `save1.txt` was byte-identical afterward (no
+       keys pressed, so the close-triggered autosave rewrote the same
+       state). **Not yet interactively confirmed**: the actual on-screen
+       wrapping/positioning of the new bottom bar at a real maximized
+       resolution, the log-echo line updating correctly as the player
+       moves/acts, and the map genuinely using the full window width --
+       flagged on `docs/CURRENT_WORK.md`'s Playtest backlog for the user
+       to check live.
+
+214. **Ported the missing canon-Hero "chance encounter" announcement to
+     the SFML build.** Raised by the user right after Milestone 213
+     shipped: how would they even know they'd stumbled onto a Hero of the
+     Lance landing on Solace? Investigation found a real, pre-existing gap
+     unrelated to 213 -- the console build's `GameLoop::announceOverworldTile`/
+     `announceZoneTile` (`GameLoop.cpp:424-462`) automatically push a
+     `"<Hero> is here."` line to the log on arrival, using
+     `timeline::Timeline::presentAt`; `sfml_phase1/main.cpp` never ported
+     this at all (a grep for the "is here" pattern returned zero matches
+     project-wide). Arriving anywhere only ever pushed a bare "Arrived at
+     X."/"Here: X." -- the *only* way to discover a Hero was to already
+     suspect one and press `T`/`L`. Ported now:
+     - **Overworld arrival** (the movement branch's `here != nullptr`
+       case): kept the existing "Arrived at X." line (this build's own
+       wording, not console's `"== Name (Region) =="` ASCII-flourish
+       header), added `here->description` and a loop over
+       `timeline.presentAt(here->id, day)` pushing `"<Hero> is here."` for
+       each -- content-parity with `announceOverworldTile`, minus its
+       trailing blank spacer (a pure scrolling-log visual separator,
+       meaningless in the new bottom bar).
+     - **Zone-interior POI arrival**: kept the existing "Here: <POI>." line,
+       added the same `poi->code == currentZone->timelineAnchorPoi()` check
+       `announceZoneTile` uses, looping the zone's `timelineLocationId()`
+       (or the zone's own id) the same way -- so a Hero scheduled at a
+       zone's own `TIMELINE_ANCHOR` (e.g. Thorbardin's Great Hall) is
+       announced too, not just an overworld `LOCATION`. Deliberately not
+       porting `announceZoneTile`'s unrelated scenery-vs-NPC description
+       split.
+     - **The real wrinkle**: console's announcement is a 3-5 line burst
+       (header, description, one line per Hero, spacer) shown all at once
+       in a scrolling panel; Milestone 213's new bottom bar had just
+       started showing only `log.back()` (the single most recent line) --
+       porting the burst verbatim would've silently buried the Hero line
+       under whatever else got pushed, in the worst case console's own
+       trailing spacer. Fixed with a new `turnLog` (`std::vector<std::string>`,
+       alongside the existing `log` deque): `pushLog` now appends to both;
+       `turnLog` is cleared at the top of the `KeyPressed` handler, so by
+       render time it holds exactly what the most recent keypress pushed,
+       independent of `log`'s own 14-entry eviction. The bottom bar now
+       draws every line in `turnLog` (skipping blanks), falling back to
+       `log.back()` only when a keypress pushed nothing at all (same "last
+       message stays visible" continuity principle combat's own Idle state
+       already uses). Zero changes needed at any of the ~60 other existing
+       `pushLog` call sites.
+     - Verified via a clean rebuild of the full build tree showing zero new
+       `/W4` warnings, then a launch smoke test against Mike's real
+       `save1.txt` (World/ZoneCatalog/Timeline/MonsterCatalog/quests/save
+       all loaded cleanly, window stayed open, confirmed stable over an
+       18-second unattended poll with no crash -- an earlier single-check
+       run that appeared to disappear turned out to be unrelated
+       independent activity on the same machine, not a regression: the
+       save's own position had moved between runs even though no
+       automated keypress was ever sent). **Not yet interactively
+       confirmed**: the actual live "Hero is here" announcement firing at
+       a real `PRESENCE` window (needs a disposable save teleported to a
+       known window from `data/timeline.txt`, same technique Milestone
+       182's Look-command verification used), and the burst rendering
+       cleanly in the bottom bar without visual overflow -- flagged on
+       `docs/CURRENT_WORK.md`'s Playtest backlog.
+
+215. **Reverted Milestone 213's exploration bottom bar; restored a
+     right-side status card, now with a live canon-Hero-presence line.**
+     User feedback after actually seeing 213/214 live: the bottom of the
+     screen had become too cluttered -- status info, an arrival's message
+     burst, and the static command hint line all stacked in one strip.
+     Resolved via `AskUserQuestion` into three explicit calls: drop the
+     bottom bar entirely for exploration (combat keeps its own, untouched);
+     bring back a status card on the right, but *not* the old log card
+     (recent history stays reachable via the full-log overlay, `v`, on
+     demand); and make the new "who's here" line a *live* readout,
+     recomputed every frame from the player's current position -- the same
+     "always accurate" idiom HP/time-of-day already use -- rather than a
+     one-shot message that scrolls away.
+     - `mapView` (`main.cpp`) reverted to reserving `sidebarWidth` on the
+       right instead of a bottom strip, exactly its pre-213 shape;
+       `kBottomBarHeight`/`bottomBarBg` renamed back to
+       `kCombatBottomBarHeight`/`combatBottomBarBg` and their draw setup
+       moved back inside `if (combatSession.active)`, right before
+       combat's own `switch` -- combat's card and bottom bar are otherwise
+       completely unaffected by this milestone.
+     - `turnLog` (Milestone 214's per-keypress batch buffer) deleted
+       outright -- its only reader was the now-gone bottom-bar echo, so it
+       had become dead code with zero remaining consumers.
+     - The status card itself (Milestone 201's original content: name/
+       level/race/class, HP, time-of-day, indoor zone name) is back,
+       `drawCardPanel`-boxed and sized to its own content -- no log card
+       alongside it this time, per the user's explicit choice. New: a
+       live Hero-presence block computed fresh every frame straight from
+       `state.x`/`state.y` (overworld, via `world.locationAt` +
+       `timeline.presentAt`) or the zone's own `TIMELINE_ANCHOR` POI
+       (indoors, same `timelineLocationId()`-or-zone-id fallback Milestone
+       214 already established) -- decoupled entirely from `log`/
+       keypresses, so it's exactly as reliably present as the HP line
+       right next to it. Milestone 214's *log*-side push (the arrival
+       description + `"<Hero> is here."` lines into the plain scrolling
+       `log`) is untouched -- still real content for the `v` overlay and
+       the location's own flavor text; only the passive on-screen surface
+       moved from the (now-removed) bottom bar to this new live line.
+     - **Live-look follow-up, same day (two rounds)**: the user actually
+       looked at the restored card. First report: the name/level/race/
+       class line ran off the panel -- it was drawn with plain `drawLine`
+       (no wrap), unlike every other line in this file long enough to risk
+       it (the combat MOVE line, the character-creation sidebar's own
+       lines, both already fixed for exactly this). Fixed by wrapping it
+       through the same `wrapToPixelWidth`/`maxLineWidthPx` budget the
+       rest of the column uses, with the card's height following however
+       many rows that line actually takes (`nameLines.size() + 2`) instead
+       of assuming exactly one. Second report, moments later, a screenshot
+       from a brand-new Day-0 character standing in Solace: the *same* bug
+       in the Hero-presence lines specifically, and a worst case for it --
+       all eight canon Heroes' opening `PRESENCE` windows overlap at
+       Solace on day 0, so all eight lines ("Tanis Half-Elven is here.",
+       ...) were running off the actual window edge at once ("TANIS
+       HALF-ELVEN IS" visible, "here." pushed off-screen entirely). Same
+       fix, applied to the presence lines too: each is now wrapped
+       individually and flattened into one `presenceDisplayLines` list
+       before the height calculation, so the card grows correctly even
+       when some entries wrap to 2+ lines.
+     - Verified via a clean rebuild of the full build tree showing zero
+       new `/W4` warnings, then a launch smoke test against Mike's real
+       `save1.txt` (all catalogs loaded cleanly, window stable, save
+       byte-for-byte the expected size afterward) -- repeated after each
+       of the two wrap fixes above, same result both times. **Not yet
+       interactively confirmed**: the restored status card's on-screen
+       layout/sizing with both wrap fixes in place (including the
+       all-eight-Heroes-at-once case that surfaced the second bug), and
+       the live Hero-presence line actually appearing and disappearing
+       correctly as the player enters/leaves a real `PRESENCE` window or
+       steps on/off a zone's `TIMELINE_ANCHOR` POI -- flagged on
+       `docs/CURRENT_WORK.md`'s
+       Playtest backlog.
+
 ## NEXT UP
 
 Not yet started -- a short menu of well-grounded backlog candidates, not

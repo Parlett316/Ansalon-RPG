@@ -20,6 +20,30 @@ letter always means "go there or nothing," so Inventory (`I`)/Journal
 (`G`)/Rest (`R`) are unreachable while inside its town screen (its own
 destinations use those letters).
 
+**Milestones 213-215 also happened same day, and net out to this final
+state**: the non-combat Overworld/Zone screen keeps its right-hand status
+card (name/level/race/class, HP, time-of-day, indoor zone name — Milestone
+201's original content), reinstated at Milestone 215 after Milestone 213's
+bottom-command-bar experiment turned out too cluttered live (status info,
+an arrival's message burst, and the command hint line all stacked in one
+strip) — the map is back to reserving `sidebarWidth` on the right, no
+bottom bar outside combat. Along the way, Milestone 214 found and fixed a
+real, **pre-existing** gap unrelated to any of this layout churn: the SFML
+build never had console's automatic "`<Hero> is here.`" arrival
+announcement at all (`GameLoop::announceOverworldTile`/`announceZoneTile`).
+That fix's *substance* survived the 213→215 layout reversal, just moved
+surfaces — the status card now also shows a **live** "who's here" line,
+recomputed every frame straight from the player's current position (same
+"always accurate" idiom HP/time already use), while the original log-side
+push (arrival description + Hero lines into the plain scrolling `log`)
+stays for the full-log overlay (`v`) and location flavor text. Combat's own
+card + bottom bar were unaffected by all three milestones throughout.
+Clean rebuild (zero new `/W4`) + launch smoke test against Mike's real
+`save1.txt` passed at every step; the final on-screen result (status card
+layout/sizing, the live Hero line actually appearing/disappearing
+correctly) is **not yet interactively confirmed** — see the Playtest
+backlog below.
+
 **Real art now exists for 12 zones + 2 dialogue portraits** (Solace,
 Palanthas, Kalaman, Neraka, Pax Tharkas, Qualinost, Silvanost, Tarsis,
 Thorbardin, Xak Tsaroth, High Clerist's Tower, the Inn of the Last Home,
@@ -66,6 +90,30 @@ yet fully walked live with a real keyboard. Full sourcing/detail for each
 is in its `docs/MILESTONES.md` entry (linked below) — this list only
 tracks what's still open and how to force it.
 
+- **Exploration status card + live Hero-presence line** (Milestones 201,
+  reinstated with the new line at 215, superseding 213/214's bottom-bar
+  detour) — a live look already caught and fixed two real bugs, both the
+  same unwrapped-text class: the name/level/race/class line ran off the
+  panel, then (a screenshot with a Day-0 character at Solace, all eight
+  canon Heroes' opening windows overlapping at once) every Hero-presence
+  line did too. Both now wrap like every other long line in this file.
+  Still needs a fuller look in both Overworld and an indoor zone: does the
+  status card size and position cleanly at a real maximized resolution
+  with both wrap fixes in place, including that all-eight-Heroes case; does
+  combat's own card+bottom bar look completely untouched when a fight
+  starts right after (confirms the `kCombatBottomBarHeight`/
+  `combatBottomBarBg` revert-rename didn't regress combat's own layout);
+  and, the real test, does the live Hero-presence line actually appear
+  the instant the player is standing where a Hero is scheduled and
+  disappear the instant they're not. Forcing a real Hero encounter needs a
+  disposable save edited to a known `PRESENCE <location> <day-start>
+  <day-end>` window from `data/timeline.txt` (same technique Milestone
+  182's Look-command verification used): teleport to that location, set
+  `hoursElapsed` inside the window, and confirm the status card shows
+  "`<Name> is here.`" with no `T`/`L` needed first. Also worth checking a
+  zone's own `TIMELINE_ANCHOR` POI (e.g. Thorbardin's Great Hall) the same
+  way, and that the log-side push (still separate, feeding the full-log
+  overlay and the location's flavor text) is unaffected.
 - ~~**Dialogue portraits** (Milestone 208; redesigned bigger Milestone
   210; fixed-size + paginated Milestone 211)~~ — confirmed live
   2026-09-17 in its final (paginated) form: real conversations with both

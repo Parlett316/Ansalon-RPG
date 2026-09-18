@@ -121,11 +121,14 @@ constexpr float kCombatTilePx = 56.f;
 
 // DQoK-style combat HUD (Milestone 199): a full-width bottom command/message
 // bar, combat-only -- see combatMapView below for why the map's own viewport
-// shrinks to make room for it rather than overlapping. Invented, unverified
-// layout number, same "flagged, not sourced" idiom as kAiStepAnimationMs
-// below -- sanity-check live once built (the bar has to fit an optional
-// status line, a wrapped paced message + its continue prompt, and the Idle
-// command row + movement line, several of which can wrap to 2 lines).
+// shrinks to make room for it rather than overlapping. (Milestone 213
+// briefly also reused this strip for a non-combat exploration command bar;
+// Milestone 215 reverted that in favor of a right-side status card instead
+// -- combat-only again.) Invented, unverified layout number, same "flagged,
+// not sourced" idiom as kAiStepAnimationMs below -- sanity-check live once
+// built (the bar has to fit an optional status line, a wrapped paced
+// message + its continue prompt, and the Idle command row + movement line,
+// several of which can wrap to 2 lines).
 constexpr float kCombatBottomBarHeight = 140.f;
 
 // Pluralizes a monster's display name for the group-arrival/victory summary
@@ -2523,13 +2526,15 @@ int runPhase1(const std::string& savePath) {
     mapView.setViewport(sf::FloatRect({0.f, 0.f}, {mapWidth / static_cast<float>(windowW), 1.f}));
 
     // Combat-only counterpart to mapView, reserving kCombatBottomBarHeight
-    // along the bottom for the new DQoK-style command/message bar (Milestone
+    // along the bottom for the DQoK-style command/message bar (Milestone
     // 199) -- a separate view rather than resizing mapView itself, since
     // mapView is shared by Overworld/Zone too and neither of those gets a
-    // bottom bar. The camera-clamp math in combatAnimateAiStep and the main
-    // combat draw branch both read this view's own size, so a focused token
-    // near the bottom of the 50x25 grid clamps against the real unobstructed
-    // height instead of the bar's dead zone.
+    // bottom bar (Milestone 215 -- see the right-side status card in the
+    // main draw loop's non-combat branch instead). The camera-clamp math
+    // in combatAnimateAiStep and the main combat draw branch both read this
+    // view's own size, so a focused token near the bottom of the 50x25 grid
+    // clamps against the real unobstructed height instead of the bar's dead
+    // zone.
     sf::View combatMapView(sf::Vector2f(0.f, 0.f),
                             sf::Vector2f(mapWidth, static_cast<float>(windowH) - kCombatBottomBarHeight));
     combatMapView.setViewport(sf::FloatRect(
@@ -5685,8 +5690,11 @@ int runPhase1(const std::string& savePath) {
     // trio as drawPanelChrome (kPanelBg/kPanelBorderOuter/
     // kPanelBorderInner) but sized to arbitrary content instead of always
     // the whole window. Introduced for combat's compact card (Milestone
-    // 200); Milestone 201 reuses it, unchanged, for the non-combat
-    // Overworld/Zone sidebar's stat and log boxes too.
+    // 200); Milestone 201 reused it for the non-combat Overworld/Zone
+    // sidebar's stat and log boxes too; Milestone 213 briefly replaced
+    // that with a bottom command bar instead; Milestone 215 reverted to a
+    // sidebar, now a status-only card (no log box) with a live
+    // Hero-presence line -- see the main draw loop's non-combat branch.
     auto drawCardPanel = [&](float x, float y, float w, float h) {
         sf::RectangleShape bg(sf::Vector2f(w, h));
         bg.setPosition(sf::Vector2f(x, y));
@@ -7651,6 +7659,36 @@ int runPhase1(const std::string& savePath) {
                                     // visitedLocations until now).
                                     state.visitedLocations.insert(here->id);
                                     checkQuestReadiness();
+                                    // Milestone 214: content-parity port of
+                                    // GameLoop::announceOverworldTile
+                                    // (GameLoop.cpp:424-436) -- the actual
+                                    // "chance encounter" mechanic the whole
+                                    // project is pitched around (CLAUDE.md)
+                                    // was never wired up on this build at
+                                    // all before now. Keeps this build's own
+                                    // "Arrived at X." wording rather than
+                                    // adopting console's "== Name (Region)
+                                    // ==" header (an ASCII flourish that
+                                    // doesn't fit this target's chrome-based
+                                    // look), and skips console's trailing
+                                    // blank-spacer push (a pure scrolling-
+                                    // log separator, meaningless here).
+                                    // Milestone 215: the player's own status
+                                    // card (see the main draw loop's
+                                    // non-combat branch below) now also
+                                    // shows a live "<Hero> is here." line
+                                    // recomputed every frame from the
+                                    // player's current position -- this log
+                                    // push stays regardless, since it's
+                                    // still real content for the full-log
+                                    // overlay ('v') and carries the
+                                    // location's own flavor text, which the
+                                    // live status line doesn't.
+                                    pushLog(here->description);
+                                    for (const timeline::Presence& presence :
+                                         timeline.presentAt(here->id, static_cast<int>(state.hoursElapsed / 24))) {
+                                        pushLog(presence.character->name + " is here.");
+                                    }
                                 }
                                 // Random encounters (see GameLoop::
                                 // tryMoveOverworld): towns/named places stay
@@ -7710,6 +7748,28 @@ int runPhase1(const std::string& savePath) {
                                 state.zoneY = ny;
                                 if (const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY)) {
                                     pushLog("Here: " + poi->name + ".");
+                                    // Milestone 214: content-parity port of
+                                    // announceZoneTile's TIMELINE_ANCHOR
+                                    // check (GameLoop.cpp:450-457) -- a
+                                    // canon Hero can be scheduled at a
+                                    // zone's own anchor POI (e.g. Thorbardin's
+                                    // Great Hall), not just an overworld
+                                    // Location, so this needed the same fix
+                                    // as the Overworld arrival branch above.
+                                    // Deliberately not porting
+                                    // announceZoneTile's separate scenery-
+                                    // vs-NPC description split -- unrelated
+                                    // to the Hero-discovery gap this targets.
+                                    if (poi->code == currentZone->timelineAnchorPoi()) {
+                                        const std::string& effectiveId =
+                                            currentZone->timelineLocationId().empty()
+                                                ? state.currentZoneId
+                                                : currentZone->timelineLocationId();
+                                        for (const timeline::Presence& presence : timeline.presentAt(
+                                                 effectiveId, static_cast<int>(state.hoursElapsed / 24))) {
+                                            pushLog(presence.character->name + " is here.");
+                                        }
+                                    }
                                 }
                             } else if (!isPoi && !tile.passable) {
                                 pushLog("Blocked: cannot walk onto " + std::string(tile.name) + ".");
@@ -8015,8 +8075,9 @@ int runPhase1(const std::string& savePath) {
             // Milestone 200 gave combat its own compact, content-sized
             // card box in place of the old always-on full-height sidebar
             // fill; Milestone 201 did the same for the non-combat
-            // Overworld/Zone sidebar below (see drawCardPanel, shared by
-            // both) -- the old flat sidebarBg fill is gone entirely now.
+            // Overworld/Zone status card below (Milestone 215's version --
+            // see drawCardPanel, shared by both) -- the old flat sidebarBg
+            // fill is gone entirely now.
 
             float lineY = 16.f;
             const float lineX = mapWidth + 16.f;
@@ -8248,32 +8309,99 @@ int runPhase1(const std::string& savePath) {
                         break;
                 }
             } else {
-                // Milestone 201: two Gold-Box-bordered cards (via the same
-                // drawCardPanel combat's own card uses) in place of the old
-                // flat sidebarBg fill -- a stat card sized to its own
-                // content, and a separate log card below it filling the
-                // rest of the column. Real SSI Gold Box exploration screens
-                // use two boxes here (a status box, a message box) rather
-                // than one merged panel, so this mirrors that instead of a
-                // single full-height wrapper. Same content/data as before in
-                // both boxes -- only the chrome and the split are new.
+                // Milestone 201's status card, reinstated at Milestone 215
+                // after Milestone 213's bottom-bar experiment turned out too
+                // cluttered live (status info, an arrival's message burst,
+                // and the command hint line all stacked in one strip). No
+                // log box this time (the user's explicit call) -- recent
+                // history stays reachable via the full-log overlay ('v')
+                // on demand; this card is status-only, sized to its own
+                // content via drawCardPanel, same as combat's own card.
                 constexpr float kCardPaddingY = 12.f;
                 constexpr float kCardMarginTop = 8.f;
                 const float cardX = mapWidth + 8.f;
                 const float cardWidth = sidebarWidth - 16.f;
                 const bool showIndoors = state.mode == game::Mode::Zone && currentZone;
 
-                float statCardHeight = kCardPaddingY * 2.f + lineHeight * 3.f;
+                // Milestone 215: live "who's here" readout -- recomputed
+                // every frame directly from the player's current position
+                // (same "always accurate" idiom the HP/time lines below
+                // already use), not tied to any keypress/log event. This is
+                // what actually answers "how would I know I stumbled onto a
+                // Hero" -- Milestone 214's own log push (still there, a few
+                // lines up) remains for the full-log overlay and the
+                // location's own flavor text, but this is the passive,
+                // glanceable surface for it now. Overworld checks the
+                // Location the player is standing on; indoors, only the
+                // zone's own TIMELINE_ANCHOR POI counts (same
+                // timelineLocationId()-or-zone-id fallback Milestone 214's
+                // log-side check already uses) -- an ordinary POI never has
+                // canon-character presence of its own.
+                std::vector<std::string> presentHeroes;
+                if (state.mode == game::Mode::Overworld) {
+                    if (const world::Location* here = world.locationAt(state.x, state.y)) {
+                        for (const timeline::Presence& presence :
+                             timeline.presentAt(here->id, static_cast<int>(state.hoursElapsed / 24))) {
+                            presentHeroes.push_back(presence.character->name + " is here.");
+                        }
+                    }
+                } else if (showIndoors) {
+                    if (const world::PointOfInterest* poi = currentZone->poiAt(state.zoneX, state.zoneY)) {
+                        if (poi->code == currentZone->timelineAnchorPoi()) {
+                            const std::string& effectiveId = currentZone->timelineLocationId().empty()
+                                                                  ? state.currentZoneId
+                                                                  : currentZone->timelineLocationId();
+                            for (const timeline::Presence& presence : timeline.presentAt(
+                                     effectiveId, static_cast<int>(state.hoursElapsed / 24))) {
+                                presentHeroes.push_back(presence.character->name + " is here.");
+                            }
+                        }
+                    }
+                }
+
+                // Found live: the name/level/race/class line was drawn with
+                // plain drawLine (no wrap), so a long enough name/race/class
+                // combination ran straight past the card's own right edge --
+                // same bug class as the combat MOVE line and the creation
+                // wizard's sidebar already hit and fixed (see their own
+                // comments). Wrapped the same way here, with the card's
+                // height following however many rows that actually takes
+                // instead of assuming exactly one.
+                const std::vector<std::string> nameLines = wrapToPixelWidth(
+                    font, kSidebarCharSize,
+                    state.character.name + ", level " + std::to_string(state.character.level) + " " +
+                        std::string(character::raceInfo(state.character.race).name) + " " +
+                        std::string(character::classInfo(state.character.charClass).name),
+                    maxLineWidthPx);
+
+                // Same fix, same bug, for the Hero-presence lines -- found
+                // live moments later with a fresh character standing in
+                // Solace at Day 0, when all eight canon Heroes' opening
+                // PRESENCE windows overlap there at once: every one of the
+                // 8 lines ran off the actual window edge unwrapped ("TANIS
+                // HALF-ELVEN IS" with "here." pushed off-screen entirely).
+                // Wrapped per-entry, then flattened, so the height
+                // calculation below sees the real total row count even
+                // when some entries wrap to 2+ lines.
+                std::vector<std::string> presenceDisplayLines;
+                for (const std::string& heroLine : presentHeroes) {
+                    for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, heroLine, maxLineWidthPx)) {
+                        presenceDisplayLines.push_back(wrapped);
+                    }
+                }
+
+                float statCardHeight =
+                    kCardPaddingY * 2.f + lineHeight * static_cast<float>(nameLines.size() + 2);
                 if (showIndoors) {
                     statCardHeight += lineHeight;
                 }
+                statCardHeight += lineHeight * static_cast<float>(presenceDisplayLines.size());
                 drawCardPanel(cardX, kCardMarginTop, cardWidth, statCardHeight);
 
                 lineY = kCardMarginTop + kCardPaddingY;
-                drawLine(state.character.name + ", level " + std::to_string(state.character.level) + " " +
-                              std::string(character::raceInfo(state.character.race).name) + " " +
-                              std::string(character::classInfo(state.character.charClass).name),
-                          sf::Color::White);
+                for (const std::string& wrapped : nameLines) {
+                    drawLine(wrapped, sf::Color::White);
+                }
                 drawLine("HP: " + std::to_string(state.character.currentHp) + "/" +
                               std::to_string(state.character.maxHp),
                           sf::Color(220, 90, 90));
@@ -8281,18 +8409,8 @@ int runPhase1(const std::string& savePath) {
                 if (showIndoors) {
                     drawLine("Indoors -- " + currentZone->name(), sf::Color(150, 200, 230));
                 }
-
-                constexpr float kLogCardMarginTop = 8.f;
-                const float logCardY = kCardMarginTop + statCardHeight + kLogCardMarginTop;
-                const float logCardHeight = static_cast<float>(windowH) - logCardY - kCardMarginTop;
-                drawCardPanel(cardX, logCardY, cardWidth, logCardHeight);
-
-                lineY = logCardY + kCardPaddingY;
-                drawLine("-- Log --", sf::Color(140, 140, 160));
-                for (const std::string& entry : log) {
-                    for (const std::string& wrapped : wrapToPixelWidth(font, kSidebarCharSize, entry, maxLineWidthPx)) {
-                        drawLine(wrapped, sf::Color(190, 190, 200));
-                    }
+                for (const std::string& heroLine : presenceDisplayLines) {
+                    drawLine(heroLine, sf::Color(230, 220, 120));
                 }
             }
 
